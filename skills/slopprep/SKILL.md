@@ -1,6 +1,6 @@
 ---
 name: agent-readiness
-description: "Audit and build the infrastructure a repo needs so agents can work autonomously — boot scripts, smoke tests, CI/CD gates, dev environment setup, React project guardrails, observability, worktree isolation, and .worktreeinclude handling for Codex or Claude worktrees. Use when setting up a React project, a repo can't boot, tests are broken or missing, there's no dev environment, agents can't verify their work, worktrees miss ignored local config, or agents need human help to get anything done. Do not use for reviewing an existing diff or for documentation-only cleanup."
+description: "Audit and build the infrastructure a repo needs so agents can work autonomously — boot scripts, smoke tests, CI/CD gates, dev environment setup, React and Effect project guardrails, observability, worktree isolation, and .worktreeinclude handling for Codex or Claude worktrees. Use when setting up a React project, improving an existing Effect project, a repo can't boot, tests are broken or missing, there's no dev environment, agents can't verify their work, worktrees miss ignored local config, or agents need human help to get anything done. Do not use for reviewing an existing diff or for documentation-only cleanup."
 ---
 
 # Agent-Readiness
@@ -58,11 +58,19 @@ not count optional agent instructions as enforcement. Use
 [references/react-enforcement.md](references/react-enforcement.md) for the
 adoption sequence and rollout boundaries.
 
+For a codebase already using Effect, audit whether agents can research the
+installed version, boot one explicit runtime and Layer graph, test time and
+services deterministically, observe failures, and prove scoped cleanup. Do not
+introduce Effect solely to improve readiness. Use
+[references/effect-readiness.md](references/effect-readiness.md).
+
 When the repo uses Codex or Claude worktrees, audit `.worktreeinclude` too:
 
 - confirm required gitignored local config is present in managed worktrees
 - keep patterns narrow and rooted to files the repo actually ignores
-- do not list tracked files, broad secret directories, generated caches, or dependency folders
+- do not list tracked files, broad secret directories, generated caches, or
+  runtime dependency folders; a narrow read-only research checkout may be
+  copied only as a seed for an authoritative bootstrap that validates it
 - prefer generated test config, Infisical/CI env, or setup scripts when copying secrets would broaden access
 - note that custom worktree hooks and manual `git worktree add` flows need their own copy step
 
@@ -93,6 +101,13 @@ verification paths before considering optional agent or hook integrations. Keep
 the first CI rollout advisory until the baseline and false-positive rate are
 understood, then enforce only the trusted severity. See
 [references/react-enforcement.md](references/react-enforcement.md).
+
+For existing Effect projects, make the source-research contract reproducible
+when the repository expects one, align Effect package versions, and put
+Effect-native tests plus a real runtime smoke in the canonical gate. Keep code
+style and API choices in the repository's Effect guidance rather than
+duplicating them here. See
+[references/effect-readiness.md](references/effect-readiness.md).
 
 See [references/setup-patterns.md](references/setup-patterns.md) for local gates, boot scripts, e2e, observability, isolation, `.worktreeinclude`, containerized stacks, and tooling-version ownership.
 
@@ -134,4 +149,5 @@ Keep details compact:
 - [references/grading.md](references/grading.md) — agent-readiness grading scale with mechanical criteria
 - [references/setup-patterns.md](references/setup-patterns.md) — local gates, boot, smoke, e2e, observability, isolation, and `.worktreeinclude` patterns
 - [references/react-enforcement.md](references/react-enforcement.md) — React-specific lint, local-gate, and CI adoption
+- [references/effect-readiness.md](references/effect-readiness.md) — Effect-specific source, runtime, test, observability, and cleanup proof
 - [references/industry-examples.md](references/industry-examples.md) — external patterns and justification for readiness investment

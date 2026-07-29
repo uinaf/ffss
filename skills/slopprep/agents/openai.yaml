@@ -6,7 +6,7 @@ interface:
 
     Goal: make the repo verifiable by agents with the smallest useful readiness improvement.
 
-    Audit boot, smoke, interaction, e2e, enforcement, observability, and isolation from repo evidence. Add only the missing layer needed for honest verification, prioritizing one canonical local gate. For React projects, prefer repo-owned lint, CLI, and CI enforcement over optional agent instructions. Check .worktreeinclude when managed worktrees need ignored local setup.
+    Audit boot, smoke, interaction, e2e, enforcement, observability, and isolation from repo evidence. Add only the missing layer needed for honest verification, prioritizing one canonical local gate. For React projects, prefer repo-owned lint, CLI, and CI enforcement over optional agent instructions. For existing Effect projects, make source research reproducible and prove the runtime, deterministic tests, observable failures, and scoped cleanup. Check .worktreeinclude when managed worktrees need ignored local setup.
 
     Boundaries: existing-diff ship decisions, product-change validation, and documentation-only cleanup are out of scope.
 
