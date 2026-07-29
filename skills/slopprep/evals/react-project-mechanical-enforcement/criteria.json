@@ -1,0 +1,66 @@
+{
+  "context": "Tests whether the agent turns React Doctor into repository-owned mechanical enforcement instead of relying on optional skill activation, preserves the existing oxlint setup, establishes an advisory baseline before blocking, and verifies the real gate.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "React Doctor tooling is repository-owned",
+      "max_score": 10,
+      "description": "package.json and the lockfile own the React Doctor CLI and/or oxlint plugin at a resolved version; checked-in commands do not use @latest"
+    },
+    {
+      "name": "Existing oxlint is preserved",
+      "max_score": 10,
+      "description": "The solution extends the existing oxlint configuration instead of replacing oxlint or adding ESLint solely for React Doctor"
+    },
+    {
+      "name": "Oxlint plugin is configured",
+      "max_score": 10,
+      "description": ".oxlintrc.json registers oxlint-plugin-react-doctor and enables one or more react-doctor rules"
+    },
+    {
+      "name": "Canonical gate remains authoritative",
+      "max_score": 8,
+      "description": "npm run verify continues to run the React-aware lint path and any added full CLI scan; the solution does not create a disconnected local command"
+    },
+    {
+      "name": "Project-level scan distinction",
+      "max_score": 8,
+      "description": "react-readiness.md explains that standalone lint plugins do not cover React Doctor project-level security, configuration, and artifact checks"
+    },
+    {
+      "name": "Pull request CI exists",
+      "max_score": 10,
+      "description": ".github/workflows/react-doctor.yml exists and runs React Doctor for pull requests using the repository's established action-pinning policy"
+    },
+    {
+      "name": "Full history is available",
+      "max_score": 7,
+      "description": ".github/workflows/react-doctor.yml checks out the repository with fetch-depth: 0 so its changed-PR scan can derive the merge base"
+    },
+    {
+      "name": "Initial rollout is advisory",
+      "max_score": 8,
+      "description": "The initial React Doctor CI configuration uses advisory or non-blocking behavior while the baseline and false-positive rate are evaluated"
+    },
+    {
+      "name": "Tightening path is documented",
+      "max_score": 8,
+      "description": "react-readiness.md says when and how to make trusted severities blocking and require the check in branch protection"
+    },
+    {
+      "name": "Permissions are justified",
+      "max_score": 7,
+      "description": "The workflow grants only permissions required for enabled comments, reviews, or statuses, and react-readiness.md explains them"
+    },
+    {
+      "name": "Agent skill is not treated as enforcement",
+      "max_score": 7,
+      "description": "react-readiness.md says optional agent instructions may improve feedback but are not required and do not replace local or CI gates"
+    },
+    {
+      "name": "Known-bad detection is verified",
+      "max_score": 7,
+      "description": "react-readiness.md records or prescribes a disposable known-bad change that proves the local and CI checks actually detect a React Doctor finding"
+    }
+  ]
+}

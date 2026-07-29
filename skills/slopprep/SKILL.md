@@ -1,6 +1,6 @@
 ---
 name: agent-readiness
-description: "Audit and build the infrastructure a repo needs so agents can work autonomously — boot scripts, smoke tests, CI/CD gates, dev environment setup, observability, worktree isolation, and .worktreeinclude handling for Codex or Claude worktrees. Use when a repo can't boot, tests are broken or missing, there's no dev environment, agents can't verify their work, worktrees miss ignored local config, or agents need human help to get anything done. Do not use for reviewing an existing diff or for documentation-only cleanup."
+description: "Audit and build the infrastructure a repo needs so agents can work autonomously — boot scripts, smoke tests, CI/CD gates, dev environment setup, React project guardrails, observability, worktree isolation, and .worktreeinclude handling for Codex or Claude worktrees. Use when setting up a React project, a repo can't boot, tests are broken or missing, there's no dev environment, agents can't verify their work, worktrees miss ignored local config, or agents need human help to get anything done. Do not use for reviewing an existing diff or for documentation-only cleanup."
 ---
 
 # Agent-Readiness
@@ -52,6 +52,12 @@ Use [references/grading.md](references/grading.md). Lowest dimension sets the ov
 
 Also scan unattended-run constraints: session independence, explicit artifact paths, resource bounds, infrastructure-enforced permissions, and direct CLI/HTTP/file interfaces for dashboard-only flows. If these are not needed for the current task, keep them as remaining gaps instead of expanding the scope.
 
+For a React codebase, audit whether framework-specific findings are mechanically
+enforced through the repo's existing linter, canonical local gate, and CI. Do
+not count optional agent instructions as enforcement. Use
+[references/react-enforcement.md](references/react-enforcement.md) for the
+adoption sequence and rollout boundaries.
+
 When the repo uses Codex or Claude worktrees, audit `.worktreeinclude` too:
 
 - confirm required gitignored local config is present in managed worktrees
@@ -81,6 +87,12 @@ Each step should be independently useful. Stop once the repo is reliably verifia
 Prioritize one canonical local gate (`make verify`, `just verify`, `./scripts/verify.sh`, or equivalent) that agents can run before push. It should mirror meaningful CI checks enough to catch routine failures without opening a dashboard.
 
 When readiness work includes agent entrypoints, keep `AGENTS.md` as the canonical authored guide and place `CLAUDE.md` beside it as a symlink to `AGENTS.md` rather than maintaining two separate guidance files.
+
+For React projects, add deterministic static analysis to the existing lint and
+verification paths before considering optional agent or hook integrations. Keep
+the first CI rollout advisory until the baseline and false-positive rate are
+understood, then enforce only the trusted severity. See
+[references/react-enforcement.md](references/react-enforcement.md).
 
 See [references/setup-patterns.md](references/setup-patterns.md) for local gates, boot scripts, e2e, observability, isolation, `.worktreeinclude`, containerized stacks, and tooling-version ownership.
 
@@ -121,4 +133,5 @@ Keep details compact:
 
 - [references/grading.md](references/grading.md) — agent-readiness grading scale with mechanical criteria
 - [references/setup-patterns.md](references/setup-patterns.md) — local gates, boot, smoke, e2e, observability, isolation, and `.worktreeinclude` patterns
+- [references/react-enforcement.md](references/react-enforcement.md) — React-specific lint, local-gate, and CI adoption
 - [references/industry-examples.md](references/industry-examples.md) — external patterns and justification for readiness investment
