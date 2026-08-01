@@ -1,15 +1,4 @@
 interface:
   display_name: "Agent-Readiness"
-  short_description: "Audit, build, and improve a repo's readiness for autonomous agent work"
-  default_prompt: |
-    Use $agent-readiness.
-
-    Goal: make the repo verifiable by agents with the smallest useful readiness improvement.
-
-    Audit boot, smoke, interaction, e2e, enforcement, observability, and isolation from repo evidence. Add only the missing layer needed for honest verification, prioritizing one canonical local gate. For React projects, prefer repo-owned lint, CLI, and CI enforcement over optional agent instructions. For existing Effect projects, make source research reproducible and prove the runtime, deterministic tests, observable failures, and scoped cleanup. Check .worktreeinclude when managed worktrees need ignored local setup.
-
-    Boundaries: existing-diff ship decisions, product-change validation, and documentation-only cleanup are out of scope.
-
-    Output: no conversational opener. Use bullet labels only: grade, evidence, files changed, remaining gaps, and next. Summarize passing checks by intent/result instead of printing full command strings; include full commands only for failures, reproduction, or when asked.
-
-    Stop rules: stop and report blocked when the repo cannot be booted or required infrastructure facts cannot be verified.
+  short_description: "Audit repo and runner readiness for autonomous work"
+  default_prompt: "Use $agent-readiness to audit and improve repository and runner readiness for implementation or QA work; grade repository capability, runner capability, and evidence strength separately; treat C as a checkpoint and noninteractive machine identities as runner infrastructure; return the compact labeled readiness handoff; continue through setup and recovery until the requested result or an evidenced authority, scope, or safety blocker; and never make ship decisions or perform unauthorized submissions."

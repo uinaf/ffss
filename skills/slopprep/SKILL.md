@@ -1,153 +1,181 @@
 ---
 name: agent-readiness
-description: "Audit and build the infrastructure a repo needs so agents can work autonomously — boot scripts, smoke tests, CI/CD gates, dev environment setup, React and Effect project guardrails, observability, worktree isolation, and .worktreeinclude handling for Codex or Claude worktrees. Use when setting up a React project, improving an existing Effect project, a repo can't boot, tests are broken or missing, there's no dev environment, agents can't verify their work, worktrees miss ignored local config, or agents need human help to get anything done. Do not use for reviewing an existing diff or for documentation-only cleanup."
+description: "Audit and build repository and runner infrastructure for autonomous agent work and unattended triage-to-result flows — implementation, QA, reproducible bootstrap, machine identities, real-surface proof, artifacts, CI gates, observability, isolation, recovery, and result submission. Use when a repo cannot boot or verify reliably, a React or Effect repo needs agent-facing enforcement or runtime proof, agents need human setup, a devbox or orchestrator will execute or QA tasks, credentials or worktrees block automation, or teams want to raise measured readiness toward B or A. Do not use for reviewing an existing diff or for documentation-only cleanup."
 ---
 
 # Agent-Readiness
 
-Make a repo ready for autonomous agent work by adding mechanical proof: boot scripts, smoke checks, CI/hooks, observable signals, and isolation where needed. Add the smallest useful layer first; stop once the repo is reliably verifiable.
+Make a repository and its declared runner dependable for autonomous work. Build
+toward the requested target; default to B and treat C only as a checkpoint.
 
 ## Boundaries
 
-- Existing code, diff, branch, or PR review is out of scope.
-- Completed product changes need their own runtime proof pass.
-- AGENTS.md, README.md, specs, or repo docs are documentation work unless they support readiness infrastructure.
-- Mock-only tests, docs-only cleanup, and builder self-evaluation are not readiness proof.
+- Source diff or PR review is out of scope; repeatable application QA is in
+  scope, and its evidence stands on its own without an artificial PR.
+- Prepare a stable repository-runner contract without inventing an orchestrator,
+  making ship decisions, or authorizing public, destructive, or cross-system actions.
+- Grade platform-owned tools, network access, and machine authentication as
+  runner capabilities, not automatically as repository debt.
+- Count guidance and product or architecture contracts only when agents need
+  them to understand tasks; unrelated documentation cleanup does not count.
+- Mock-only tests, docs-only claims, and builder self-evaluation are not empirical proof.
 
-## The 7-Layer Stack
+## Readiness Model
 
-1. **Boot** — single command starts the app
-2. **Smoke** — a fast proof the app is alive
-3. **Interact** — agent can exercise the real surface
-4. **E2e** — key user flows work end to end
-5. **Enforce** — one local gate plus hooks, CI gates, lint rules, or mechanical checks
-6. **Observe** — logs, health endpoints, traces, machine-readable signals
-7. **Isolate** — worktrees or containers do not collide; ignored local setup files are available where needed
+Grade these applicable capabilities using [references/grading.md](references/grading.md):
 
-Concrete examples:
+1. **Legibility** — agents can discover ownership, architecture, task contracts,
+   commands, and relevant sources of truth without relying on chat or memory
+2. **Executability** — a clean workspace can install, configure, boot, seed, and
+   tear down through documented, noninteractive entrypoints
+3. **Feedback** — agents can exercise real surfaces, run canonical gates, inspect
+   artifacts, and diagnose failures without opening a dashboard
+4. **Safety** — credentials, permissions, network access, and destructive actions
+   are scoped and enforced by infrastructure
+5. **Durability** — work survives session loss through explicit state, idempotent
+   setup, bounded retries, cleanup, and actionable recovery
+6. **Scale** — concurrent agents have isolated workspaces and resources, and an
+   orchestrator can submit and reconcile results without collisions
 
-- Boot: `pnpm dev`, `cargo run`, or `docker compose up`
-- Smoke: `curl http://127.0.0.1:3000/health`
-- Interact/E2e: `pnpm exec playwright test`
-- Observe: structured logs or a machine-readable health endpoint
+Report three different things rather than hiding them in one letter:
+
+- **repository grade**: what the checkout makes possible
+- **runner grade**: what the declared devbox, CI worker, or automation host provides
+- **evidence level**: how strongly the claim has been exercised
+
+The lowest applicable capability sets each grade; never average away a blocker.
+
+## Automation Path
+
+For unattended work, inspect the entire path even if the requested change
+touches only one part:
+
+**Triage → Dispatch → Provision → Execute → Prove → Submit → Reconcile → Complete**
+
+**Any nonterminal stage → Recover → Retry, Escalate, or Fail**
+
+- **Triage** produces an owned, unambiguous task with acceptance criteria and risk
+- **Dispatch** selects a compatible runner and records task and attempt identity
+- **Provision** creates an isolated workspace and supplies tools and scoped machine identity
+- **Execute** runs the declared task class, such as implementation, QA, or investigation
+- **Prove** grades final state and produces inspectable, attributable artifacts
+- **Submit** sends the required result: a change handoff, PR, QA report, artifact bundle, or provider update
+- **Reconcile** follows CI, review, acceptance, or provider state to the declared terminal condition
+- **Recover** handles stalls or failures from any nonterminal stage, preserves evidence, retries safely, or escalates
+
+Treat no-diff tasks as first-class work. Their contract names the result type,
+evidence, target, terminal condition, and side effects.
 
 ## Workflow
 
-### 1. Audit
+### 1. Audit the declared execution boundary
 
-Grade the repo across these dimensions:
+Establish the target grade, intended task classes, and runner before grading.
+Then:
 
-- **bootable**
-- **testable**
-- **observable**
-- **verifiable**
+1. Read the repository-owned entrypoint and follow its links to relevant contracts.
+2. Run the cold-start, boot, smoke, interaction, verification, and teardown paths
+   that exist; static file presence alone is weak evidence.
+3. Fill the [Required Output](references/grading.md#required-output) profile; for
+   every applicable capability record its grade, evidence, gap, and owner.
+4. Walk the automation path and record missing transitions, inputs, outputs, and terminal states.
+5. Assign an evidence level using [references/autonomy-evidence.md](references/autonomy-evidence.md).
 
-For each, report:
+The runner injects short-lived machine access, the repository consumes it
+noninteractively, and humans provision, rotate, revoke, and recover it. Scoped
+Infisical, workload, or CI identities are positive runner evidence. Human login,
+profile switching, pasted or copied secrets, and printed tokens are gaps. A
+missing identity promised by the runner contract is a runner mismatch.
 
-- status: `pass` / `partial` / `fail`
-- evidence: file, check outcome, or runtime surface
-- gap: what is missing
+Inspect `.worktreeinclude` only when managed worktrees need ignored local files.
+Prefer generated configuration or identity injection over copied secrets;
+manual worktrees and custom hooks need their own provisioning path.
 
-Use [references/grading.md](references/grading.md). Lowest dimension sets the overall grade.
+For React and existing Effect repositories, apply the mechanical enforcement
+and runtime guidance in [references/react-enforcement.md](references/react-enforcement.md)
+and [references/effect-readiness.md](references/effect-readiness.md). Do not
+introduce Effect solely for readiness.
 
-Also scan unattended-run constraints: session independence, explicit artifact paths, resource bounds, infrastructure-enforced permissions, and direct CLI/HTTP/file interfaces for dashboard-only flows. If these are not needed for the current task, keep them as remaining gaps instead of expanding the scope.
+### 2. Build the missing contract
 
-For a React codebase, audit whether framework-specific findings are mechanically
-enforced through the repo's existing linter, canonical local gate, and CI. Do
-not count optional agent instructions as enforcement. Use
-[references/react-enforcement.md](references/react-enforcement.md) for the
-adoption sequence and rollout boundaries.
+Prioritize work in this order:
 
-For a codebase already using Effect, audit whether agents can research the
-installed version, boot one explicit runtime and Layer graph, test time and
-services deterministically, observe failures, and prove scoped cleanup. Do not
-introduce Effect solely to improve readiness. Use
-[references/effect-readiness.md](references/effect-readiness.md).
+**Legibility → Runner contract → Cold start → Real-surface feedback → Enforcement → Isolation → Recovery and result submission → Repeated trials**
 
-When the repo uses Codex or Claude worktrees, audit `.worktreeinclude` too:
+Prefer three stable repository entrypoints when the capability is in scope.
+Their minimum lifecycle is executable and always tears down:
 
-- confirm required gitignored local config is present in managed worktrees
-- keep patterns narrow and rooted to files the repo actually ignores
-- do not list tracked files, broad secret directories, generated caches, or
-  runtime dependency folders; a narrow read-only research checkout may be
-  copied only as a seed for an authoritative bootstrap that validates it
-- prefer generated test config, Infisical/CI env, or setup scripts when copying secrets would broaden access
-- note that custom worktree hooks and manual `git worktree add` flows need their own copy step
-
-Example output:
-
-```text
-bootable: partial — `pnpm dev` starts the app after manual env setup
-testable: fail — only mocked tests under test/
-observable: partial — health endpoint exists, structured logs missing
-verifiable: fail — no stable smoke or interaction script
-overall grade: D
+```bash
+set -euo pipefail
+trap './scripts/agent-teardown.sh' EXIT
+./scripts/agent-bootstrap.sh
+./scripts/agent-verify.sh
 ```
 
-### 2. Setup
+Bootstrap validates prerequisites and becomes ready; verification is canonical
+and reused by CI; teardown handles success, failure, timeout, and cancellation.
+Automation artifacts are keyed by task and attempt.
 
-Build missing layers in this order:
+Keep the execution boundary explicit:
 
-**Boot → Smoke → Interact → E2e → Enforce → Observe → Isolate**
+| Enforce mechanically | Leave to agent judgment |
+| --- | --- |
+| workspace and branch setup, allowed targets, tool install, secret injection | task interpretation and implementation |
+| boot, test, teardown, artifact manifests, upload and push mechanics | exploratory QA, diagnosis, evidence selection, and recovery strategy |
 
-Each step should be independently useful. Stop once the repo is reliably verifiable.
+When readiness work includes agent entrypoints, keep `AGENTS.md` as the canonical
+authored guide and place `CLAUDE.md` beside it as a symlink to `AGENTS.md`.
 
-Prioritize one canonical local gate (`make verify`, `just verify`, `./scripts/verify.sh`, or equivalent) that agents can run before push. It should mirror meaningful CI checks enough to catch routine failures without opening a dashboard.
+Use [references/setup-patterns.md](references/setup-patterns.md) for boot,
+verification, machine identities, observability, isolation, unattended runs,
+proof artifacts, and result contracts.
 
-When readiness work includes agent entrypoints, keep `AGENTS.md` as the canonical authored guide and place `CLAUDE.md` beside it as a symlink to `AGENTS.md` rather than maintaining two separate guidance files.
+### 3. Prove outcomes, not recipes
 
-For React projects, add deterministic static analysis to the existing lint and
-verification paths before considering optional agent or hook integrations. Keep
-the first CI rollout advisory until the baseline and false-positive rate are
-understood, then enforce only the trusted severity. See
-[references/react-enforcement.md](references/react-enforcement.md).
+- Run the stable lifecycle once on the happy path and once with a safe failure,
+  such as a missing required runner input; preserve both statuses and artifacts.
+- Record each trial in a machine-readable form such as:
 
-For existing Effect projects, make the source-research contract reproducible
-when the repository expects one, align Effect package versions, and put
-Effect-native tests plus a real runtime smoke in the canonical gate. Keep code
-style and API choices in the repository's Effect guidance rather than
-duplicating them here. See
-[references/effect-readiness.md](references/effect-readiness.md).
+```json
+{"task_class":"qa","scenario":"missing-runner-identity","result":"expected_failure","human_interventions":0,"duration_seconds":12,"retries":0,"failure_class":"runner/missing_identity","artifacts":"artifacts/task-123/attempt-1/"}
+```
 
-See [references/setup-patterns.md](references/setup-patterns.md) for local gates, boot scripts, e2e, observability, isolation, `.worktreeinclude`, containerized stacks, and tooling-version ownership.
+- Grade final environment or repository state, not the agent's completion claim.
+- Accept equivalent implementations that satisfy the contract; do not require a
+  particular tool, hook, port algorithm, or retry count without an external reason.
+- For B or A claims, repeat representative trials and aggregate their records
+  into success, intervention, duration, retry, resource, and failure metrics.
+- Test parallel isolation and crash or stall recovery when claiming unattended
+  or orchestrated readiness.
+- Inspect transcripts and artifacts for false success, grader defects, secret
+  exposure, and ambiguous task requirements.
 
-### 3. Improve
+### 4. Finish at the requested outcome
 
-Tighten weak or flaky layers:
-
-- add real-surface proof alongside mock-only suites; preserve useful unit tests, but do not treat them as integration evidence
-- replace one-off checks with a canonical local gate, then reuse it from hooks and CI
-- add dead-code or unused-symbol enforcement where the stack supports it
-- add logs and health signals agents can query
-- make parallel work safe when agent collisions are real
-
-### 4. Stop
-
-When the repo reaches C and can be judged honestly, stop readiness work and report the next natural phase.
-If changes created doc drift, report the documentation gap instead of expanding the scope.
+Finish at the requested target or an evidenced blocker. Report the path to A
+and relevant documentation drift without expanding into unrelated cleanup.
 
 ## Output
 
-After readiness work, report in this compact bullet shape:
+Keep the handoff compact:
 
-- `- grade:` before → after
-- `- evidence:` concise explanations of what readiness checks proved
-- `- files changed:` changed readiness files
-- `- remaining gaps:` highest-impact gaps only, or `none`
-- `- next:` runtime proof, independent review, documentation cleanup, human review, or `none`
+```text
+- grades: repository and runner, before → after
+- evidence: level plus the strongest exercised outcomes
+- automation path: first missing or newly proven transition
+- files changed: readiness infrastructure only
+- remaining gaps: highest-impact gaps with owner, or none
+- next: next capability or none
+```
 
-Keep details compact:
-
-- Put dimension-by-dimension evidence in the audit table when useful, not again in the footer
-- Name the command or file that proves the claim and summarize logs by signal
-- Keep the footer to 5 labeled lines or fewer
-- Omit unchanged dimensions unless they explain the final grade
-- Summarize passing checks by intent and result; include full commands only when they failed, are needed for reproduction, or the user asks for them
+Name exact commands only for failures, reproduction, or when asked. Do not
+repeat capability evidence in the footer when it already appears in an audit table.
 
 ## References
 
-- [references/grading.md](references/grading.md) — agent-readiness grading scale with mechanical criteria
-- [references/setup-patterns.md](references/setup-patterns.md) — local gates, boot, smoke, e2e, observability, isolation, and `.worktreeinclude` patterns
+- [references/grading.md](references/grading.md) — repository and runner grades, capability matrix, ceilings, and blockers
+- [references/autonomy-evidence.md](references/autonomy-evidence.md) — evidence levels, representative trials, outcome graders, and reliability metrics
+- [references/setup-patterns.md](references/setup-patterns.md) — bootstrap, gates, credentials, observability, isolation, artifacts, recovery, and result patterns
 - [references/react-enforcement.md](references/react-enforcement.md) — React-specific lint, local-gate, and CI adoption
 - [references/effect-readiness.md](references/effect-readiness.md) — Effect-specific source, runtime, test, observability, and cleanup proof
-- [references/industry-examples.md](references/industry-examples.md) — external patterns and justification for readiness investment
+- [references/industry-examples.md](references/industry-examples.md) — current harness, eval, and orchestration patterns

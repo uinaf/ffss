@@ -84,7 +84,7 @@ Use a submodule only when the repository deliberately wants the source commit in
 its Git contract. Use a subtree only when it deliberately vendors the source.
 Neither is the default for an agent research dependency.
 
-## Build The Readiness Layers
+## Effect-Specific Readiness Order
 
 Apply the general readiness order with Effect-specific proof:
 

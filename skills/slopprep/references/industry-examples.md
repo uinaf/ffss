@@ -5,7 +5,13 @@ Real-world patterns from teams running agents at scale.
 ## Sources
 
 - OpenAI: https://openai.com/index/harness-engineering/
+- OpenAI Symphony: https://openai.com/index/open-source-codex-orchestration-symphony/
+- OpenAI safety controls: https://openai.com/index/running-codex-safely/
+- OpenAI coding-eval audit: https://openai.com/index/separating-signal-from-noise-coding-evaluations/
 - Anthropic: https://www.anthropic.com/engineering/harness-design-long-running-apps
+- Anthropic evals: https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents
+- Anthropic managed agents: https://www.anthropic.com/engineering/managed-agents
+- METR time horizons: https://metr.org/time-horizons/
 - Stripe: https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents
 - Datadog: https://www.datadoghq.com/blog/ai/harness-first-agents/
 - Cursor: https://cursor.com/blog/self-driving-codebases
@@ -20,6 +26,8 @@ Real-world patterns from teams running agents at scale.
 
 - [OpenAI — Codex Frontend](#openai--codex-frontend)
 - [Anthropic — Evaluator Pattern](#anthropic--evaluator-pattern)
+- [Agent Evals — Outcomes and Reliability](#agent-evals--outcomes-and-reliability)
+- [Durable Orchestration and Safety](#durable-orchestration-and-safety)
 - [Stripe — Minions](#stripe--minions)
 - [Datadog — Observability-Driven Verification](#datadog--observability-driven-verification)
 - [Cursor — Self-Driving Codebases](#cursor--self-driving-codebases)
@@ -69,6 +77,50 @@ GAN-inspired three-agent pattern: Planner → Generator → Evaluator.
 **Cost**: solo $9/20min → full 3-agent setup $200/6hr. Simplified (Opus 4.6): $125/4hr.
 
 Source: https://www.anthropic.com/engineering/harness-design-long-running-apps
+
+## Agent Evals — Outcomes and Reliability
+
+Anthropic distinguishes the agent harness from the evaluation harness and
+grades final environment state separately from the transcript. Multiple trials
+are required because one agent-task pairing is stochastic; `pass@1` and
+`pass^k` answer different reliability questions. Start with representative
+manual checks and real failures, then inspect trajectories to distinguish agent
+failure from broken tasks or graders.
+
+OpenAI's 2026 SWE-Bench audits found that implementation-specific tests,
+underspecified prompts, low coverage, and contaminated tasks can make a
+benchmark confidently wrong. Readiness evals should accept equivalent solutions,
+ship a known-valid reference path, and audit suspicious failures and saturation.
+
+METR's task-completion horizons report both 50%- and 80%-reliable durations.
+This makes task length and reliability explicit instead of treating an
+occasional multi-hour success as dependable autonomy.
+
+Sources:
+- https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents
+- https://openai.com/index/separating-signal-from-noise-coding-evaluations/
+- https://metr.org/time-horizons/
+
+## Durable Orchestration and Safety
+
+OpenAI's Symphony treats the issue tracker as a control plane: tasks receive
+isolated workspaces, explicit attempt state, bounded turns and retries, stall
+detection, reconciliation, and provider result state. A successful process
+exit does not by itself mean the task is complete.
+
+Anthropic separates durable session logs, replaceable harness processes, and
+sandbox execution. A crashed harness can resume from recorded events instead of
+requiring a human to nurse a specific container.
+
+OpenAI's production Codex controls combine sandboxing, network policy, scoped
+approval, rules, and agent-native telemetry. Autonomy is productive freedom
+inside infrastructure-enforced boundaries, not broad credentials plus prompt
+instructions.
+
+Sources:
+- https://openai.com/index/open-source-codex-orchestration-symphony/
+- https://www.anthropic.com/engineering/managed-agents
+- https://openai.com/index/running-codex-safely/
 
 ## Stripe — Minions
 
@@ -156,4 +208,8 @@ Source: https://newsletter.pragmaticengineer.com/p/how-uber-uses-ai-for-developm
 
 ## Convergent Architecture
 
-Every team converges on: expensive models for planning, cheap for workers. Workers isolated from each other. Filesystem as coordination primitive (not message passing). Accept and correct > prevent all errors. PR as the human oversight gate.
+The stable convergence is not one multi-agent topology. Planner, evaluator,
+context-reset, and worker structures change as models and tasks improve. The
+durable properties are repository legibility, isolated execution, deterministic
+control-plane transitions, scoped authority, outcome-based feedback, bounded
+recovery, and a path that turns recurring failures into stronger infrastructure.

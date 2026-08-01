@@ -1,36 +1,36 @@
 {
-  "context": "Tests whether the agent correctly audits a repository across the four agent-readiness dimensions (bootable, testable, observable, verifiable), assigns pass/partial/fail status with evidence and gaps, derives the overall grade as the lowest dimension, and produces an init.sh boot script following the health-check loop pattern.",
+  "context": "Tests whether the agent audits the applicable readiness capabilities with evidence and gaps, separates repository and runner headlines from evidence strength, derives each headline from its lowest applicable owned capability, and produces a bounded init path that proves the app is ready.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Four dimensions present",
+      "name": "Applicable readiness capabilities present",
       "max_score": 8,
-      "description": "audit-report.md includes all four dimensions: bootable, testable, observable, and verifiable"
+      "description": "audit-report.md covers legibility, executability, feedback, safety, durability, and scale, marking genuinely inapplicable capabilities with a concrete reason"
     },
     {
-      "name": "Status labels used",
+      "name": "Capability grades used",
       "max_score": 8,
-      "description": "Each dimension in audit-report.md is assigned one of the three statuses: pass, partial, or fail"
+      "description": "Each applicable capability in audit-report.md receives an F-through-A grade, while N/A is used only with a concrete task-scope reason"
     },
     {
-      "name": "Evidence cited per dimension",
+      "name": "Evidence cited per capability",
       "max_score": 8,
-      "description": "Each dimension in audit-report.md cites at least one specific file or command as evidence"
+      "description": "Each capability in audit-report.md cites at least one specific file, exercised command, or observed runtime outcome as evidence"
     },
     {
-      "name": "Gap described per dimension",
+      "name": "Gap described per capability",
       "max_score": 8,
-      "description": "Each dimension that is not 'pass' in audit-report.md includes a gap describing what is missing"
+      "description": "Each capability below the requested target includes the missing outcome and identifies whether the repository or runner owns it"
     },
     {
-      "name": "Overall grade is lowest dimension",
+      "name": "Repository and runner grades use their lowest owned capability",
       "max_score": 8,
-      "description": "audit-report.md states an overall grade that corresponds to the lowest-rated individual dimension (not an average)"
+      "description": "audit-report.md reports separate repository and runner headline grades, each derived from its lowest applicable capability owned by that boundary rather than an average, and does not collapse them into one overall letter"
     },
     {
-      "name": "Mock-only suite below C",
+      "name": "Repository, runner, and evidence are separated",
       "max_score": 8,
-      "description": "audit-report.md identifies that the existing mock-only suite cannot establish C-grade testability or real-surface readiness because it never exercises a running process"
+      "description": "audit-report.md reports repository grade, runner grade, and E0-through-E4 evidence level separately instead of collapsing environment availability and proof strength into one letter"
     },
     {
       "name": "Background app start in init.sh",
@@ -38,9 +38,9 @@
       "description": "scripts/init.sh starts the application process in the background (using & or equivalent) so the script can poll"
     },
     {
-      "name": "Health poll loop in init.sh",
+      "name": "Bounded readiness wait in init.sh",
       "max_score": 10,
-      "description": "scripts/init.sh contains a loop that polls the health or readiness endpoint repeatedly (at minimum 10 iterations) before declaring success"
+      "description": "scripts/init.sh polls health or another real readiness signal until a finite attempt or wall-clock deadline before declaring success"
     },
     {
       "name": "Non-zero exit on failure",
@@ -53,9 +53,9 @@
       "description": "scripts/init.sh includes set -euo pipefail or equivalent strict mode at the top"
     },
     {
-      "name": "Layer ordering respected",
+      "name": "Target progression is explicit",
       "max_score": 7,
-      "description": "improvements.md or audit-report.md references addressing Boot before Smoke, and Smoke before higher layers — no higher layers built before boot is resolved"
+      "description": "improvements.md or audit-report.md prioritizes cold start before real-surface feedback and repeated trials, identifies the remaining path toward B and A, and does not present reaching C as completion"
     },
     {
       "name": "No mock tests treated as real-surface proof",

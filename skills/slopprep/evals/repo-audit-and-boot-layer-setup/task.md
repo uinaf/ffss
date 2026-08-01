@@ -10,11 +10,11 @@ Your job is to assess the current state of the repo and add the minimum infrastr
 
 Produce the following files:
 
-1. `audit-report.md` — A written assessment of the repository's current state from an autonomous-agent perspective. Evaluate the repo across multiple aspects of agent-readiness. For each aspect, indicate how well it is covered, cite specific evidence (a file path or runnable command), and describe what is missing. Include an overall summary grade.
+1. `audit-report.md` — A written assessment of the repository's current state from an autonomous-agent perspective. Treat a clean local Node.js environment with network access for package installation as the declared runner; no external credentials are required. Grade repository and runner readiness separately across legibility, executability, feedback, safety, durability, and scale. For each applicable capability, cite concrete evidence and describe the gap and owner. Include an E0-through-E4 evidence level and derive each headline grade from its lowest applicable capability.
 
 2. `scripts/init.sh` — A shell script that starts the application and verifies it is ready to receive traffic before returning. The script must exit with a non-zero status code if the app fails to come up.
 
-3. `improvements.md` — A short explanation of which readiness layers you addressed, which remain missing, and what the recommended next steps are.
+3. `improvements.md` — A short explanation of which readiness capabilities you addressed, which remain missing toward B and A, and what the recommended next steps are. Do not treat reaching C as completion.
 
 ## Input Files
 

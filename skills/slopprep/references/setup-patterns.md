@@ -7,6 +7,10 @@ Concrete patterns for building each readiness layer. Substitute your project's a
 - Stripe devboxes + blueprints: https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents
 - Anthropic init pattern: https://www.anthropic.com/engineering/harness-design-long-running-apps
 - Datadog DST + observability: https://www.datadoghq.com/blog/ai/harness-first-agents/
+- OpenAI Symphony orchestration: https://openai.com/index/open-source-codex-orchestration-symphony/
+- OpenAI agent safety controls: https://openai.com/index/running-codex-safely/
+- Anthropic managed-agent interfaces: https://www.anthropic.com/engineering/managed-agents
+- Infisical machine identities: https://infisical.com/docs/documentation/platform/identities/machine-identities
 - Ona (infrastructure thesis): https://ona.com/stories/visual-guide-self-driving-codebases
 - Ramp sandbox architecture: https://engineering.ramp.com/inspect
 - Codex app worktrees and `.worktreeinclude`: https://developers.openai.com/codex/app/worktrees
@@ -21,10 +25,12 @@ Concrete patterns for building each readiness layer. Substitute your project's a
 - [Canonical Local Gate](#canonical-local-gate)
 - [Mechanical Enforcement](#mechanical-enforcement)
 - [Tool Version Ownership](#tool-version-ownership)
+- [Machine Identities and Secret Injection](#machine-identities-and-secret-injection)
 - [Observability](#observability)
 - [Seed Data / Fixtures](#seed-data--fixtures)
 - [Per-Worktree Isolation](#per-worktree-isolation)
 - [Unattended Run Constraints](#unattended-run-constraints)
+- [Triage-to-Result Contract](#triage-to-result-contract)
 - [Deterministic vs Agentic Split](#deterministic-vs-agentic-split)
 - [Retry Caps](#retry-caps)
 
@@ -207,6 +213,43 @@ When adding CI, hooks, or bootstrap scripts, keep tool versions in one checked-i
 - Tool wrappers in package metadata or a workspace catalog; if workflow input needs the version, read it with a structured tool such as `jq` instead of copying the literal
 - GitHub Action SHA pins and same-line action version comments are not project tool versions; keep them explicit and Dependabot-managed
 
+## Machine Identities and Secret Injection
+
+Needing credentials is not a readiness failure. Needing a human to supply or
+switch them during every run is.
+
+Keep ownership explicit:
+
+- **runner**: authenticates a machine or workload identity and injects
+  short-lived access into the process environment
+- **repository**: declares required scopes and exposes a noninteractive command
+  that consumes the injected identity
+- **human/operator**: provisions, rotates, revokes, and recovers identities
+  outside normal task execution
+
+For an Infisical-backed runner, the platform can obtain a short-lived machine
+identity token using Universal Auth, OIDC, or a cloud-native auth method. The
+repository command may validate the token and invoke `infisical run` for the
+owned project without ever handling the machine identity's bootstrap secret:
+
+```bash
+: "${INFISICAL_TOKEN:?runner machine identity is unavailable}"
+: "${INFISICAL_PROJECT_ID:?runner project scope is unavailable}"
+infisical login status --json >/dev/null
+exec infisical run --projectId="$INFISICAL_PROJECT_ID" -- ./scripts/verify.sh
+```
+
+The runner should also own the Infisical domain or API URL when it differs from
+the default. Never print the access token, embed a client secret in the repo,
+write fetched secrets to artifacts, or switch a human workstation profile as
+part of an unattended task.
+
+Prefer separate identities or roles for environments and capabilities such as
+read-only triage, test fixtures, artifact submission, branch delivery, and
+production operations.
+Missing or denied scope should fail with the runner capability and recovery
+owner, not a raw credential value.
+
 ## Observability
 
 Structured JSON logs + machine-readable health endpoints. This is what makes "Grade B" possible — agents can query results, not just read code.
@@ -239,12 +282,17 @@ For parallel agents on the same repo:
 
 ```bash
 git worktree add ../feature-xyz -b feature-xyz origin/main
-export PORT=$((3000 + $(echo "$PWD" | cksum | cut -d' ' -f1) % 1000))
-export COMPOSE_PROJECT_NAME="app-$(basename $PWD)"
+: "${AGENT_TASK_ID:?task identity is required}"
+: "${AGENT_PORT:?runner must allocate an isolated port}"
+export PORT="$AGENT_PORT"
+export COMPOSE_PROJECT_NAME="app-$AGENT_TASK_ID"
 docker compose up -d --wait
 ```
 
-Rules: no hardcoded ports, each worktree gets its own Docker Compose project, tear down after completion.
+The allocation mechanism can be runner-assigned, a checked-in deterministic
+function, or an ephemeral-port protocol. Grade collision freedom and cleanup,
+not a particular port algorithm. Each concurrent task also needs isolated test
+state, delivery refs, and any mutable external fixture it can change.
 
 ### Worktree Include Files
 
@@ -283,17 +331,71 @@ Minimum useful contract:
 
 Avoid verification paths that require clicking dashboards, approving prompts mid-run, or watching a local session stay alive.
 
+## Triage-to-Result Contract
+
+Keep the boundary between an orchestrator and repository stable. A useful task
+input contains:
+
+- task and attempt identifiers
+- source item and current revision
+- owned repository, base ref, and allowed result target
+- task class, result type, acceptance criteria, required evidence, and terminal condition
+- risk, required capabilities, and allowed side effects
+- runner class and credential scopes
+- timeout, retry, artifact, and escalation policy
+
+The repository should expose bootstrap, verify, teardown, and artifact
+conventions the orchestrator can call without prompt-specific shell invention.
+Record explicit states such as:
+
+```text
+queued → provisioning → executing → proving → submitting → reconciling
+       ↘ blocked      ↘ failed     ↘ retrying   ↘ canceled   ↘ complete
+```
+
+Success means the final provider and repository state matches the task contract,
+not merely that the agent process exited zero. Preserve task state, attempt
+history, logs, proof artifacts, result identifiers, and failure class so a new
+process can reconcile and resume safely.
+
+Common result branches include:
+
+- **implementation** — environment setup, implementation, real-surface proof,
+  independent review, branch or PR submission, CI and review reconciliation,
+  conflict recovery, and merge when explicitly authorized
+- **QA** — environment and build identification, scenario execution, observed
+  outcomes, an artifact manifest containing required screenshots, images,
+  recordings, logs, traces, or JSON, report submission, reruns, and acceptance
+
+Every artifact should record task and attempt identity, source revision, build
+or environment, scenario, capture time, producer, format, and redaction status;
+use hashes when the receiver needs integrity checks. A QA task should not create
+a branch or PR unless its contract requests repository changes. An artifact is
+proof only when it is tied to an exercised scenario and an observed outcome;
+file existence or an uninspected screenshot is not a passing grader.
+
+Submission and reconciliation may mutate external systems only when the
+orchestrator has explicit authority for those transitions. Keep policy decisions
+deterministic and let the agent escalate judgment calls.
+
 ## Deterministic vs Agentic Split
 
-**Always deterministic** (hardcoded, no LLM): linting, formatting, branch creation, push, PR template, test runner invocation, Docker startup.
+**Always deterministic** (hardcoded, no LLM): linting, formatting, workspace and
+branch setup, allowed-target checks, secret injection, test invocation, artifact
+placement and manifests, upload or push mechanics, result templates, and service
+startup or teardown.
 
-**Agentic** (LLM decides): understanding the task, implementation, fixing failures, deciding which files to change.
+**Agentic** (LLM decides): understanding the task, implementation, exploratory
+QA, diagnosing observed behavior, fixing failures, and deciding which evidence
+best demonstrates the result within the required schema.
 
 This split saves tokens, reduces errors, and guarantees critical steps happen every time.
 
 ## Stop Hooks / Back-Pressure
 
-Run targeted checks when the agent finishes a task — before commit, not just in CI. Silent on success, error-only on failure to avoid context flooding.
+Run targeted checks when the agent finishes a task — through a local gate,
+orchestrator after-run hook, or repository hook, not just in CI. Silent on
+success, error-only on failure to avoid context flooding.
 
 ```bash
 # .git-hooks/pre-commit or agent stop hook
@@ -306,14 +408,16 @@ Pattern: run silently, only show output on failure. Run only tests related to ch
 
 ## Retry Caps
 
-Max 2 CI rounds. No infinite loops.
+Every retrying transition needs a configured bound. Do not encode a universal
+count: choose it from task cost, failure class, provider limits, and risk.
 
 ```
 1. Agent implements change
 2. Local lint + smoke (deterministic, < 5 seconds)
 3. Push to CI — autofix known patterns on failure
-4. One more attempt if unfixed
-5. After 2nd CI failure → hand back to human
+4. Retry only while the failure is classified as recoverable and budget remains
+5. On exhaustion or repeated unchanged failure → preserve evidence and escalate
 ```
 
-A PR that's 80% correct and an engineer polishes in 20 minutes > an agent retrying indefinitely at escalating token cost.
+Track whether retries make progress. Repeating the same failure is an escalation
+signal, not evidence that the retry cap should be raised.

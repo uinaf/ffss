@@ -1,5 +1,5 @@
 {
-  "context": "Tests whether the agent creates a correct pre-push git hook following the required pattern, adds honest end-to-end CLI tests using golden file diffs rather than mock-based tests, recommends the correct dead-code detection tool for TypeScript, and documents git hook activation correctly.",
+  "context": "Tests whether the agent creates the requested pre-push enforcement, adds honest end-to-end CLI coverage on real files, integrates a suitable TypeScript dead-code check, and documents activation without treating mocked tests as real-surface proof.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -38,9 +38,9 @@
       "description": "Both e2e/fixtures/sample.csv and e2e/fixtures/expected.json exist and contain consistent data (parsing sample.csv would yield expected.json)"
     },
     {
-      "name": "Knip for dead-code detection",
+      "name": "Dead-code detection fits the project",
       "max_score": 12,
-      "description": "setup-notes.md recommends npx knip (not a different tool) as the dead-code detection command for this TypeScript project"
+      "description": "setup-notes.md gives a runnable TypeScript dead-code command whose tool is repository-owned or version-pinned and can detect unused exports such as legacyParseCsv; equivalent suitable tools are accepted"
     },
     {
       "name": "No mock tests treated as sufficient readiness",
