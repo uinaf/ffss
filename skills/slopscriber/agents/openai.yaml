@@ -4,10 +4,12 @@ interface:
   default_prompt: |
     Use $docs.
 
-    Goal: update repo documentation or agent-facing guidance so it is accurate, terse, and useful.
+    Goal: make repo documentation accurate, decision-dense, and easy for agents to retrieve.
 
     Success criteria:
     - Touched docs match the current repo, commands, paths, and contracts.
+    - Supported capabilities and next actions lead; decision-changing limitations include the valid path.
+    - Short sections, bullets, mappings, and minimal examples replace narrative prose where they carry the same facts.
     - Top-level routing docs stay short; deeper detail lives in the right doc.
     - Stale, duplicated, or misleading guidance is removed or replaced.
     - Private, local-machine, or cross-repo facts are not promoted into checked-in docs unless the target repo owns them.

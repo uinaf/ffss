@@ -1,19 +1,26 @@
 ---
 name: docs
-description: "Update repo documentation and durable agent-facing artifacts such as AGENTS.md, README.md, docs/, specs, plans, decisions, and runbooks. Use when code, skill, or infrastructure changes risk doc drift or when documentation needs cleanup or restructuring. Do not use for code review, runtime verification, or boot/readiness infrastructure setup."
+description: "Audit, compress, restructure, and update repo documentation and durable agent-facing artifacts such as AGENTS.md, README.md, docs/, specs, plans, decisions, and runbooks. Use when changes risk doc drift or when docs need current-state cleanup or context-efficient agent-first rewriting. Do not use for code review, runtime verification, or boot/readiness infrastructure setup."
 ---
 
 # Docs
 
-Keep the repo legible to humans and agents.
+Keep the repo legible to agents and humans.
 
 ## Principles
 
 - Docs rot silently — every code change is a possible doc change
+- Optimize for decision-relevant, repo-owned truth per token
 - Describe current state; keep history only in migration notes, changelogs, and decisions
+- Lead with supported capabilities and next actions
+- Prefer short, task-shaped sections and structured facts over narrative prose
 - Keep routing docs short and point to deeper docs instead of duplicating them
 - Use repo-relative links for in-repo docs
 - Keep repo docs, agent guidance, and work artifacts linked but distinct
+
+## Negative-state rule
+
+When rewriting current-state docs, delete every absent, removed, or unprovisioned item, including specific names and category paraphrases, unless it changes a plausible current action. Prior curiosity, old tickets, and "agents ask about it" do not make an absence operational. If a limitation must stay, state one precise boundary and the supported path.
 
 ## Handoffs
 
@@ -23,7 +30,7 @@ Not docs work: boot/readiness setup; baseline PR, issue, contributor, or securit
 
 ### 1. Audit the doc surface
 
-Check the files humans and agents actually rely on:
+Check the files agents and humans actually rely on:
 
 - `AGENTS.md`
 - `CLAUDE.md`
@@ -33,11 +40,15 @@ Check the files humans and agents actually rely on:
 - `docs/`
 - durable specs, active plans, runbooks, and decision docs
 
-Flag stale commands, dead paths, duplicate guidance, routing failures, and repo-internal details leaking into reader-facing docs.
+Flag stale commands, dead paths, duplicate guidance, routing failures, narrative history, exhaustive negative inventories, and repo-internal details leaking into reader-facing docs.
 
-Before editing, classify the target as repo docs, agent guidance, or work artifacts such as plans, specs, decisions, and handoffs.
+Before editing:
 
-Use the source-boundary table in [references/documentation.md](references/documentation.md) before writing cross-repo, private workspace, or local-machine facts into checked-in docs.
+- classify the target as repo docs, agent guidance, or a work artifact
+- identify the decision or task each section supports
+- preserve commands, paths, invariants, boundaries, and recovery steps
+
+Use [references/source-boundaries.md](references/source-boundaries.md) before writing cross-repo, private workspace, or local-machine facts into checked-in docs.
 
 ### 2. Update routing docs
 
@@ -63,7 +74,9 @@ Refresh the detailed documents that carry the knowledge.
 
 Write each updated section as the reader's current source of truth.
 
-When the user asks to save a durable rule, prompt, plan, or decision, choose the owning surface: `docs/decisions/`, `docs/specs/`, `docs/plans/`, or agent guidance for behavior future agents must repeat.
+For agent-facing or internal docs, follow the selection, structure, and progressive-disclosure guidance in [references/agent-first.md](references/agent-first.md).
+
+When the user asks to save a durable rule, prompt, plan, or decision, choose its [durable home](references/source-boundaries.md#durable-homes).
 
 For new features, use the directory layout and templates in [references/structuring.md](references/structuring.md) — specs, plans, and decisions each have their own shape.
 
@@ -75,14 +88,7 @@ For new features, use the directory layout and templates in [references/structur
 - keep naming, labels, casing, commands, and section order consistent
 - keep one canonical home for setup or install commands and replace copied command blocks with pointers
 - prefer reader-facing link text over raw paths unless the path is the point
-
-Example — fixing a stale path after a rename:
-
-```diff
- # AGENTS.md
--- Run the old bootstrap command to set up the dev environment.
-+- Run the current setup command to set up the dev environment.
-```
+- apply the [agent-first cleanup filters](references/agent-first.md#select-information)
 
 ### 5. Validate reality
 
@@ -95,6 +101,8 @@ Concrete checks:
 - `test -e <path-from-docs>` before keeping a file reference
 - `test ! -e AGENTS.md || { test -L CLAUDE.md && test "$(readlink CLAUDE.md)" = "AGENTS.md"; }` when normalizing agent entrypoints
 - for claims sourced from outside the repo, cite or verify the upstream source before making the claim durable
+- compare the before and after facts; every current command, invariant, boundary, and recovery path must remain represented
+- apply the negative-state rule above to the final rewrite
 
 ## Output
 
@@ -110,6 +118,8 @@ Keep the footer to 5 labeled lines or fewer. List changed files once.
 
 ## References
 
-- [references/documentation.md](references/documentation.md) — AGENTS.md shape, scoped rules, README patterns, doc hygiene
+- [references/agent-first.md](references/agent-first.md) — agent-first writing, positive state, progressive disclosure, AGENTS.md shape
+- [references/documentation.md](references/documentation.md) — README, contributing, security, and repository-doc shapes
+- [references/source-boundaries.md](references/source-boundaries.md) — durable ownership and private/local evidence boundaries
 - [references/specifications.md](references/specifications.md) — feature specs, conformance tests, spec drift, SDD trade-offs
 - [references/structuring.md](references/structuring.md) — directory layout, templates, and naming for specs, plans, and decisions

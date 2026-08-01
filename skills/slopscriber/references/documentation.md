@@ -1,22 +1,9 @@
-# Documentation
+# Repository Documentation
 
-Keep the repo legible to humans and agents. Docs rot silently — every code change is a potential doc change.
-Documentation is part of the interface; optimize for scanability, rhythm, and visual clarity, not just correctness.
-
-## Sources
-
-- OpenAI Codex AGENTS.md guide: https://developers.openai.com/codex/guides/agents-md
-- Claude Code memory guide: https://code.claude.com/docs/en/memory
-- OpenAI AGENTS.md findings: https://openai.com/index/harness-engineering/
-- Stripe scoped rules: https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents
-- ETH Zurich AGENTS.md study (auto-generated content hurts): https://arxiv.org/abs/2503.01298
-- Agent Skills progressive disclosure: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
-- Agent Skills architecture: https://www.newsletter.swirlai.com/p/agent-skills-progressive-disclosure
+Use one clear responsibility per document. Route readers to deeper detail without duplicating it.
 
 ## Contents
 
-- [AGENTS.md](#agentsmd)
-- [Scoped Rules](#scoped-rules)
 - [Top-Level Doc Split](#top-level-doc-split)
 - [README.md](#readmemd)
 - [CONTRIBUTING.md](#contributingmd)
@@ -24,78 +11,7 @@ Documentation is part of the interface; optimize for scanability, rhythm, and vi
 - [Docs Section](#docs-section)
 - [Architecture Docs](#architecture-docs)
 - [Repo Docs vs Agent Work Artifacts](#repo-docs-vs-agent-work-artifacts)
-- [Source Boundaries](#source-boundaries)
-- [Hygiene](#hygiene)
 - [Keep Docs Alive](#keep-docs-alive)
-
-## AGENTS.md
-
-OpenAI's finding: "We tried the big AGENTS.md. It failed." Context is scarce — too much guidance = non-guidance, rots instantly, hard to verify.
-
-### Structure
-
-- **~100 lines** — table of contents, not encyclopedia
-- Points to `docs/` directory for depth
-- Include: boot command, test command, key conventions, pointers to detailed docs
-- Exclude: architecture tours, full API docs, every lint rule
-- Keep headings and bullets scannable. Prefer task-shaped labels like `Start here`, `Commands`, `Validation`, or `Repo rules` over headings that mirror internal filenames or implementation structure
-- Codex layers global, project, then nested `AGENTS.md` or `AGENTS.override.md`; closer files override broader guidance, so keep root guidance broad and put specialized rules near the code
-- Claude Code targets under 200 lines per `CLAUDE.md`; when a repo already uses `AGENTS.md`, use a symlink or `@AGENTS.md` import instead of duplicating content
-
-### What belongs in AGENTS.md
-
-- How to boot the app (exact command)
-- How to run tests (exact command)
-- Key conventions that deviate from defaults
-- Links to `docs/architecture.md`, `docs/api.md`, etc.
-- Scoped rules pointer (e.g., "see per-directory AGENTS.md files")
-- Section order that follows agent workflow: orient, run, verify, then special rules or hotspots
-
-### What doesn't belong
-
-- Codebase overviews and directory listings (agents discover structure fine on their own — ETH Zurich)
-- Auto-generated content (actively hurts performance — +20% cost, ETH Zurich)
-- Conditional rules that apply only sometimes
-- Implementation details that change frequently
-- Labels or section names that read like raw filesystem output when a clearer human-facing title would do
-
-### Enforcement
-
-OpenAI enforces AGENTS.md health mechanically:
-- Linters + CI validate freshness, cross-linking, structure
-- "Doc-gardening" agent scans for stale docs and opens fix-up PRs
-
-## Scoped Rules
-
-Stripe's pattern: global rules used "very judiciously." Almost all rules scoped to subdirectories or file patterns, auto-attached as the agent navigates.
-
-### How to implement
-
-- Per-directory `AGENTS.md` or `.cursor/rules/*.mdc` files
-- Rules attached to file globs (e.g., `*.test.ts` → testing conventions)
-- Same rules work for Minions, Cursor, Claude Code — no duplication
-
-### Benefits
-
-- Agent picks up only relevant rules for the files it's touching
-- No context waste from rules that don't apply
-- Easier to maintain — each team/module owns its rules
-- Rules stay close to the code they govern
-
-### Example structure
-
-```
-src/
-├── AGENTS.md           # global conventions (~100 lines)
-├── api/
-│   ├── AGENTS.md       # API-specific conventions
-│   └── routes/
-├── ui/
-│   ├── AGENTS.md       # UI component conventions
-│   └── components/
-└── lib/
-    └── AGENTS.md       # shared library conventions
-```
 
 ## Top-Level Doc Split
 
@@ -253,42 +169,6 @@ Agent work artifacts coordinate how agents change the repo:
 - handoff prompts only when they help future agents resume work
 
 Keep the layers connected with short links. Do not pour implementation plans, prompt text, or unfinished reasoning into reader-facing docs. Promote an artifact into general docs only after it becomes a stable contract the repo owns.
-
-## Source Boundaries
-
-Documentation should capture contracts the target repo owns.
-
-Use this quick table before writing:
-
-| Source | Doc action |
-|---|---|
-| Target repo file, config, or script | Write the current contract and verify the path or command |
-| Upstream product/API docs | Link or cite the upstream source |
-| Another repo in the workspace | Link the owner or phrase the dependency generically |
-| Local machine, private workspace, credential, account state, host, or one-off installed tool | Keep it in the work report unless the user explicitly makes it repo policy |
-| User asks to save a recurring rule, prompt, decision, or plan | Put it in the owning durable surface instead of leaving it in chat |
-
-Good durable homes:
-
-- `docs/decisions/` for why a choice was made
-- `docs/specs/` for long-lived behavioral contracts
-- `docs/plans/` for tactical execution that can be deleted when done
-- `AGENTS.md` or scoped agent guidance for behavior future agents must repeat
-
-## Hygiene
-
-Run periodically or after a burst of changes:
-
-1. **Dedup**: same fact in multiple files → pick one canonical location, replace others with pointers
-2. **Consistency**: names, commands, paths in one doc match what referenced docs say
-3. **Labeling**: visible labels read like a file tree or internal implementation detail → rewrite them in reader-facing language
-4. **Ordering**: sections or bullet lists mirror path order instead of reader priority → reorder them
-5. **Conciseness**: section restates what a referenced doc covers → replace with one-line pointer
-6. **Scannability**: agent-facing docs are technically correct but visually awkward, over-cased, or hard to skim → rewrite for fast orientation
-7. **Structure**: file growing past ~80 lines of prose → split detail into `references/`, keep parent as routing layer
-8. **Staleness**: delete or archive docs for removed features, finished plans, superseded decisions
-9. **Symlinks over copies**: two files need identical content → symlink them
-10. **Ownership**: fact belongs to another repo, private workspace, or local machine → keep it out, link the owner, or make the wording generic
 
 ## Keep Docs Alive
 
