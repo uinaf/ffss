@@ -64,8 +64,10 @@ profile switching, copied secrets, and printed tokens are runner gaps.
 
 For React and existing Effect repositories, apply the mechanical enforcement
 and runtime guidance in [references/react-enforcement.md](references/react-enforcement.md)
-and [references/effect-readiness.md](references/effect-readiness.md). Do not
-introduce Effect solely for readiness.
+and [references/effect-readiness.md](references/effect-readiness.md). For Effect
+implementation task classes, require repository-local Effect guidance; a
+machine-global skill is not readiness evidence. Do not introduce Effect solely
+for readiness.
 
 ### 2. Build the missing contract
 

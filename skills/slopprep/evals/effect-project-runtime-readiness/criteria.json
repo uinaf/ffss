@@ -3,8 +3,13 @@
   "type": "weighted_checklist",
   "checklist": [
     {
+      "name": "Effect guidance is repository-local",
+      "max_score": 8,
+      "description": "effect-ts comes from Effect-TS/skills through checked-in skill files or a reproducible repository-owned setup and lock contract, and declared agents discover it without relying on a machine-global installation"
+    },
+    {
       "name": "Effect source bootstrap is reproducible",
-      "max_score": 10,
+      "max_score": 8,
       "description": ".repos/effect is ignored, .worktreeinclude uses only the narrow /.repos/effect/ seed, and an idempotent checked-in prepare script clones https://github.com/Effect-TS/effect at an exact checked-in ref when missing"
     },
     {
@@ -19,17 +24,17 @@
     },
     {
       "name": "Effect-native test harness is used",
-      "max_score": 10,
+      "max_score": 9,
       "description": "Effect tests use @effect/vitest rather than plain Vitest with ad hoc Effect.runPromise calls"
     },
     {
       "name": "Time is deterministic",
-      "max_score": 9,
+      "max_score": 8,
       "description": "Retry or delay coverage uses TestClock and does not wait on real wall-clock sleeps"
     },
     {
       "name": "Layer setup is explicit",
-      "max_score": 8,
+      "max_score": 7,
       "description": "Tests use layer(...) or isolated Layer setup at the test boundary instead of repeated local Effect.provide calls"
     },
     {
@@ -44,12 +49,12 @@
     },
     {
       "name": "Real runtime smoke exists",
-      "max_score": 10,
+      "max_score": 9,
       "description": "A smoke command starts the production Layer graph through a real process and checks a machine-readable ready signal"
     },
     {
       "name": "Invalid configuration fails usefully",
-      "max_score": 8,
+      "max_score": 7,
       "description": "The smoke proof includes invalid configuration, non-zero process exit, actionable field context, and no secret value disclosure"
     },
     {
@@ -59,7 +64,7 @@
     },
     {
       "name": "Proof boundaries are honest",
-      "max_score": 6,
+      "max_score": 5,
       "description": "effect-readiness.md distinguishes in-memory Layer tests from real adapter or process evidence and records remaining gaps"
     }
   ]

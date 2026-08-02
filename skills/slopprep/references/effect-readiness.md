@@ -3,38 +3,64 @@
 Use this sequence for a repository that already depends on Effect, or when the
 user has explicitly chosen Effect. Do not introduce Effect merely to raise an
 agent-readiness grade. Effect implementation conventions remain owned by the
-repository's current guidance and the upstream
-[Effect skills](https://github.com/Effect-TS/skills); this reference owns only
-the infrastructure that makes those conventions reproducible and verifiable.
+repository's current guidance and its repository-local installation of the
+upstream [Effect skills](https://github.com/Effect-TS/skills); this reference
+owns only the infrastructure that makes those conventions reproducible and
+verifiable.
 
 ## Audit
 
 Inspect these surfaces before changing the repository:
 
-1. **Version ownership** — find the package manager, lockfile, installed Effect
+1. **Agent guidance** — confirm the upstream `effect-ts` skill is available
+   through a repository-owned path such as `.agents/skills/effect-ts/SKILL.md`
+   and that the repository can reproduce that installation from
+   `Effect-TS/skills`. A machine-global copy does not count because a clean
+   runner or worktree cannot rely on it.
+2. **Version ownership** — find the package manager, lockfile, installed Effect
    channel, and all `effect` and `@effect/*` packages. They should be owned in
    one checked-in place and kept on compatible, aligned versions.
-2. **Research source** — check whether repository guidance expects Effect source
+3. **Research source** — check whether repository guidance expects Effect source
    at `.repos/effect`. If it does, confirm the checkout exists or that an
    idempotent setup path can create it.
-3. **Runtime boundary** — identify the application Layer graph and the one
+4. **Runtime boundary** — identify the application Layer graph and the one
    top-level runtime entrypoint. Boot failures must exit non-zero with a useful,
    redacted cause.
-4. **Configuration** — verify required configuration is decoded before the app
+5. **Configuration** — verify required configuration is decoded before the app
    reports ready. Missing or invalid values should fail with actionable field
    context without printing secrets.
-5. **Testing** — inspect whether Effect programs use `@effect/vitest`, Layers,
+6. **Testing** — inspect whether Effect programs use `@effect/vitest`, Layers,
    `TestClock`, and test services instead of ad hoc `runPromise`, real sleeps,
    or repeated local provisioning.
-6. **Real-surface proof** — require at least one smoke or integration check
+7. **Real-surface proof** — require at least one smoke or integration check
    through the built runtime and a real adapter boundary. In-memory Layers are
    useful unit proof but are not automatically end-to-end evidence.
-7. **Observability** — confirm meaningful operations produce structured logs or
+8. **Observability** — confirm meaningful operations produce structured logs or
    spans that an agent can query. Preserve error tags or cause classification
    while redacting credentials and payloads.
-8. **Lifecycle and isolation** — prove scoped resources release on success,
+9. **Lifecycle and isolation** — prove scoped resources release on success,
    failure, and interruption. Keep ports, databases, queues, files, and runtime
    instances isolated per worktree when agents run concurrently.
+
+## Repository-Local Skill
+
+Install `effect-ts` from `Effect-TS/skills` into the repository rather than a
+user-global skill directory. Use the repository's existing agent bootstrap or
+skill installer, and own enough source or lock metadata that a clean runner can
+reproduce the same guidance without an interactive choice. For example, the
+Agent Skills installer can be run from the repository root without its global
+flag:
+
+```bash
+pnpm dlx skills@1.5.7 add Effect-TS/skills -y -s effect-ts
+```
+
+Confirm the declared agents discover the installed skill from the repository.
+If the repository checks in installed skill files, record their upstream
+provenance; if setup generates them, pin the source through the repository's
+checked-in setup or lock contract. Do not award repository grade B for Effect
+implementation or refactor task classes while this guidance exists only in a
+developer's global agent home.
 
 ## Source Setup
 
@@ -130,6 +156,8 @@ style. Verify that:
 
 ## Verification
 
+- Bootstrap the repository-local `effect-ts` skill from a clean checkout and
+  confirm every declared agent can discover it without global state.
 - Bootstrap the Effect source contract from a clean worktree when the repository
   requires it.
 - Run the canonical local gate from a clean checkout.
