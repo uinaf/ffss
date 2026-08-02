@@ -1,6 +1,6 @@
 ---
 name: agent-readiness
-description: "Audit and build repository and runner infrastructure for autonomous agent work and unattended triage-to-result flows — implementation, QA, reproducible bootstrap, machine identities, real-surface proof, artifacts, CI gates, observability, isolation, recovery, and result submission. Use when a repo cannot boot or verify reliably, a React or Effect repo needs agent-facing enforcement or runtime proof, agents need human setup, a devbox or orchestrator will execute or QA tasks, credentials or worktrees block automation, or teams want to raise measured readiness toward B or A. Do not use for reviewing an existing diff or for documentation-only cleanup."
+description: "Audit and improve repository and runner infrastructure for dependable autonomous implementation, QA, and unattended task execution. Covers reproducible bootstrap, noninteractive machine identities, real-surface verification, artifacts, CI, observability, isolation, recovery, and result submission. Use when a repository cannot boot or verify reliably, agents still need manual setup, credentials or worktrees block automation, or a devbox or orchestrator must complete tasks without supervision. Do not use for reviewing an existing diff or documentation-only cleanup."
 disable-model-invocation: true
 ---
 
@@ -11,32 +11,18 @@ toward the requested target; default to B and treat C only as a checkpoint.
 
 ## Boundaries
 
-- Source diff or PR review is out of scope; repeatable application QA is in
-  scope, and its evidence stands on its own without an artificial PR.
-- Prepare a stable repository-runner contract without inventing an orchestrator,
-  making ship decisions, or authorizing public, destructive, or cross-system actions.
-- Grade platform-owned tools, network access, and machine authentication as
-  runner capabilities, not automatically as repository debt.
-- Count guidance and product or architecture contracts only when agents need
-  them to understand tasks; unrelated documentation cleanup does not count.
-- Mock-only tests, docs-only claims, and builder self-evaluation are not empirical proof.
+- In scope: readiness infrastructure and repeatable application QA.
+- Out of scope: source-diff review, unrelated documentation cleanup, ship
+  decisions, and unauthorized external actions.
+- Do not invent an orchestrator. Grade platform tools, network access, and
+  machine authentication as runner capabilities.
+- Require task-relevant guidance and empirical proof; mock-only tests,
+  documentation claims, and builder self-evaluation do not prove readiness.
 
 ## Readiness Model
 
-Grade these applicable capabilities using [references/grading.md](references/grading.md):
-
-1. **Legibility** — agents can discover ownership, architecture, task contracts,
-   commands, and relevant sources of truth without relying on chat or memory
-2. **Executability** — a clean workspace can install, configure, boot, seed, and
-   tear down through documented, noninteractive entrypoints
-3. **Feedback** — agents can exercise real surfaces, run canonical gates, inspect
-   artifacts, and diagnose failures without opening a dashboard
-4. **Safety** — credentials, permissions, network access, and destructive actions
-   are scoped and enforced by infrastructure
-5. **Durability** — work survives session loss through explicit state, idempotent
-   setup, bounded retries, cleanup, and actionable recovery
-6. **Scale** — concurrent agents have isolated workspaces and resources, and an
-   orchestrator can submit and reconcile results without collisions
+Use [references/grading.md](references/grading.md) to grade the applicable
+capabilities: **Legibility, Executability, Feedback, Safety, Durability, and Scale**.
 
 Report three different things rather than hiding them in one letter:
 
@@ -48,24 +34,14 @@ The lowest applicable capability sets each grade; never average away a blocker.
 
 ## Automation Path
 
-For unattended work, inspect the entire path even if the requested change
-touches only one part:
+For unattended work, inspect the entire path:
 
 **Triage → Dispatch → Provision → Execute → Prove → Submit → Reconcile → Complete**
 
 **Any nonterminal stage → Recover → Retry, Escalate, or Fail**
 
-- **Triage** produces an owned, unambiguous task with acceptance criteria and risk
-- **Dispatch** selects a compatible runner and records task and attempt identity
-- **Provision** creates an isolated workspace and supplies tools and scoped machine identity
-- **Execute** runs the declared task class, such as implementation, QA, or investigation
-- **Prove** grades final state and produces inspectable, attributable artifacts
-- **Submit** sends the required result: a change handoff, PR, QA report, artifact bundle, or provider update
-- **Reconcile** follows CI, review, acceptance, or provider state to the declared terminal condition
-- **Recover** handles stalls or failures from any nonterminal stage, preserves evidence, retries safely, or escalates
-
-Treat no-diff tasks as first-class work. Their contract names the result type,
-evidence, target, terminal condition, and side effects.
+Record each stage's input, output, owner, and terminal condition. For no-diff
+tasks, also name the result type, evidence, target, and allowed side effects.
 
 ## Workflow
 
@@ -82,15 +58,9 @@ Then:
 4. Walk the automation path and record missing transitions, inputs, outputs, and terminal states.
 5. Assign an evidence level using [references/autonomy-evidence.md](references/autonomy-evidence.md).
 
-The runner injects short-lived machine access, the repository consumes it
-noninteractively, and humans provision, rotate, revoke, and recover it. Scoped
-Infisical, workload, or CI identities are positive runner evidence. Human login,
-profile switching, pasted or copied secrets, and printed tokens are gaps. A
-missing identity promised by the runner contract is a runner mismatch.
-
-Inspect `.worktreeinclude` only when managed worktrees need ignored local files.
-Prefer generated configuration or identity injection over copied secrets;
-manual worktrees and custom hooks need their own provisioning path.
+Use [references/setup-patterns.md](references/setup-patterns.md) for machine
+identity ownership and managed-worktree inputs. Interactive human login,
+profile switching, copied secrets, and printed tokens are runner gaps.
 
 For React and existing Effect repositories, apply the mechanical enforcement
 and runtime guidance in [references/react-enforcement.md](references/react-enforcement.md)
@@ -127,9 +97,8 @@ Keep the execution boundary explicit:
 When readiness work includes agent entrypoints, keep `AGENTS.md` as the canonical
 authored guide and place `CLAUDE.md` beside it as a symlink to `AGENTS.md`.
 
-Use [references/setup-patterns.md](references/setup-patterns.md) for boot,
-verification, machine identities, observability, isolation, unattended runs,
-proof artifacts, and result contracts.
+That reference also owns boot, verification, observability, isolation,
+unattended runs, proof artifacts, and result contracts.
 
 ### 3. Prove outcomes, not recipes
 
