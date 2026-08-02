@@ -2,3 +2,6 @@ interface:
   display_name: "Agent-Readiness"
   short_description: "Audit repo and runner readiness for autonomous work"
   default_prompt: "Use $agent-readiness to audit and improve repository and runner readiness for implementation or QA work; grade repository capability, runner capability, and evidence strength separately; treat C as a checkpoint and noninteractive machine identities as runner infrastructure; return the compact labeled readiness handoff; continue through setup and recovery until the requested result or an evidenced authority, scope, or safety blocker; and never make ship decisions or perform unauthorized submissions."
+
+policy:
+  allow_implicit_invocation: false
