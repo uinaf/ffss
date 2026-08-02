@@ -52,7 +52,7 @@ Agent Skills installer can be run from the repository root without its global
 flag:
 
 ```bash
-pnpm dlx skills@1.5.7 add Effect-TS/skills -y -s effect-ts
+pnpm dlx skills add Effect-TS/skills -y -s effect-ts
 ```
 
 Confirm the declared agents discover the installed skill from the repository.

@@ -4,17 +4,17 @@ Concrete patterns for building each readiness layer. Substitute your project's a
 
 ## Sources
 
-- Stripe devboxes + blueprints: https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents
-- Anthropic init pattern: https://www.anthropic.com/engineering/harness-design-long-running-apps
-- Datadog DST + observability: https://www.datadoghq.com/blog/ai/harness-first-agents/
-- OpenAI Symphony orchestration: https://openai.com/index/open-source-codex-orchestration-symphony/
-- OpenAI agent safety controls: https://openai.com/index/running-codex-safely/
-- Anthropic managed-agent interfaces: https://www.anthropic.com/engineering/managed-agents
-- Infisical machine identities: https://infisical.com/docs/documentation/platform/identities/machine-identities
-- Ona (infrastructure thesis): https://ona.com/stories/visual-guide-self-driving-codebases
-- Ramp sandbox architecture: https://engineering.ramp.com/inspect
-- Codex app worktrees and `.worktreeinclude`: https://developers.openai.com/codex/app/worktrees
-- Claude Code worktrees and `.worktreeinclude`: https://code.claude.com/docs/en/worktrees
+- [Stripe devboxes and blueprints](https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents)
+- [Anthropic init pattern](https://www.anthropic.com/engineering/harness-design-long-running-apps)
+- [Datadog DST and observability](https://www.datadoghq.com/blog/ai/harness-first-agents/)
+- [OpenAI Symphony orchestration](https://openai.com/index/open-source-codex-orchestration-symphony/)
+- [OpenAI agent safety controls](https://openai.com/index/running-codex-safely/)
+- [Anthropic managed-agent interfaces](https://www.anthropic.com/engineering/managed-agents)
+- [Infisical machine identities](https://infisical.com/docs/documentation/platform/identities/machine-identities)
+- [Ona infrastructure thesis](https://ona.com/stories/visual-guide-self-driving-codebases)
+- [Ramp sandbox architecture](https://engineering.ramp.com/inspect)
+- [Codex app worktrees and `.worktreeinclude`](https://developers.openai.com/codex/app/worktrees)
+- [Claude Code worktrees and `.worktreeinclude`](https://code.claude.com/docs/en/worktrees)
 
 ## Contents
 

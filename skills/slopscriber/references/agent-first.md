@@ -4,17 +4,17 @@ Optimize internal and operational docs for agent retrieval. Human readers benefi
 
 ## Sources
 
-- OpenAI Codex `AGENTS.md` guide: https://developers.openai.com/codex/guides/agents-md
-- OpenAI harness engineering: https://openai.com/index/harness-engineering/
-- Claude Code memory guidance: https://code.claude.com/docs/en/memory
-- Anthropic context engineering: https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents
-- Anthropic Agent Skills architecture: https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills
-- Anthropic Agent Skills best practices: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
-- Anthropic prompting guidance: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5
-- GitHub instruction-file guidance: https://github.blog/ai-and-ml/github-copilot/unlocking-the-full-power-of-copilot-code-review-master-your-instructions-files/
-- Stripe scoped-rule practice: https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents
-- Gloaguen et al., repository context evaluation: https://arxiv.org/abs/2602.11988
-- Lulla et al., `AGENTS.md` efficiency study: https://arxiv.org/abs/2601.20404
+- [OpenAI Codex `AGENTS.md` guide](https://developers.openai.com/codex/guides/agents-md)
+- [OpenAI harness engineering](https://openai.com/index/harness-engineering/)
+- [Claude Code memory guidance](https://code.claude.com/docs/en/memory)
+- [Anthropic context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
+- [Anthropic Agent Skills architecture](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
+- [Anthropic Agent Skills best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
+- [Anthropic prompting guidance](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5)
+- [GitHub instruction-file guidance](https://github.blog/ai-and-ml/github-copilot/unlocking-the-full-power-of-copilot-code-review-master-your-instructions-files/)
+- [Stripe scoped-rule practice](https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents)
+- [Gloaguen et al., repository context evaluation](https://arxiv.org/abs/2602.11988)
+- [Lulla et al., `AGENTS.md` efficiency study](https://arxiv.org/abs/2601.20404)
 
 The empirical results are mixed. Context files can help or hurt depending on their relevance and delivery. The stable recommendation is minimal, specific requirements plus just-in-time retrieval.
 

@@ -4,12 +4,12 @@ Spec-Driven Development concepts for when features warrant upfront specification
 
 ## Sources
 
-- Drew Breunig — The Rise of SDD: https://www.dbreunig.com/2026/02/06/the-rise-of-spec-driven-development.html
-- Drew Breunig — The SDD Triangle: https://www.dbreunig.com/2026/03/04/the-spec-driven-development-triangle.html
-- GitHub Spec Kit: https://github.com/speckit/speckit
-- SDD vs TDD: https://dev.to/planu/sdd-vs-tdd-why-spec-driven-development-changes-the-game-for-ai-assisted-coding-5gba
-- Anthropic sprint contracts: https://www.anthropic.com/engineering/harness-design-long-running-apps
-- AWS Kiro (SDD-native IDE): https://kiro.dev
+- [Drew Breunig: The Rise of SDD](https://www.dbreunig.com/2026/02/06/the-rise-of-spec-driven-development.html)
+- [Drew Breunig: The SDD Triangle](https://www.dbreunig.com/2026/03/04/the-spec-driven-development-triangle.html)
+- [GitHub Spec Kit](https://github.com/speckit/speckit)
+- [SDD vs TDD](https://dev.to/planu/sdd-vs-tdd-why-spec-driven-development-changes-the-game-for-ai-assisted-coding-5gba)
+- [Anthropic sprint contracts](https://www.anthropic.com/engineering/harness-design-long-running-apps)
+- [AWS Kiro](https://kiro.dev)
 
 ## Contents
 

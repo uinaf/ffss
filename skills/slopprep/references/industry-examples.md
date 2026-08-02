@@ -4,23 +4,23 @@ Real-world patterns from teams running agents at scale.
 
 ## Sources
 
-- OpenAI: https://openai.com/index/harness-engineering/
-- OpenAI Symphony: https://openai.com/index/open-source-codex-orchestration-symphony/
-- OpenAI safety controls: https://openai.com/index/running-codex-safely/
-- OpenAI coding-eval audit: https://openai.com/index/separating-signal-from-noise-coding-evaluations/
-- Anthropic: https://www.anthropic.com/engineering/harness-design-long-running-apps
-- Anthropic evals: https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents
-- Anthropic managed agents: https://www.anthropic.com/engineering/managed-agents
-- METR time horizons: https://metr.org/time-horizons/
-- Stripe: https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents
-- Datadog: https://www.datadoghq.com/blog/ai/harness-first-agents/
-- Cursor: https://cursor.com/blog/self-driving-codebases
-- Uber/Pragmatic Engineer: https://newsletter.pragmaticengineer.com/p/how-uber-uses-ai-for-development
-- HumanLayer: https://www.humanlayer.dev/blog/skill-issue-harness-engineering-for-coding-agents
-- LangChain: https://blog.langchain.com/the-anatomy-of-an-agent-harness/
-- Ramp (Inspect): https://engineering.ramp.com/inspect
-- Background Agents: https://background-agents.com/
-- Meta REA: https://engineering.fb.com/2026/03/17/developer-tools/ranking-engineer-agent-rea-autonomous-ai-system-accelerating-meta-ads-ranking-innovation/
+- [OpenAI harness engineering](https://openai.com/index/harness-engineering/)
+- [OpenAI Symphony](https://openai.com/index/open-source-codex-orchestration-symphony/)
+- [OpenAI safety controls](https://openai.com/index/running-codex-safely/)
+- [OpenAI coding-eval audit](https://openai.com/index/separating-signal-from-noise-coding-evaluations/)
+- [Anthropic long-running agent harness](https://www.anthropic.com/engineering/harness-design-long-running-apps)
+- [Anthropic agent evals](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)
+- [Anthropic managed agents](https://www.anthropic.com/engineering/managed-agents)
+- [METR time horizons](https://metr.org/time-horizons/)
+- [Stripe Minions](https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents)
+- [Datadog harness-first agents](https://www.datadoghq.com/blog/ai/harness-first-agents/)
+- [Cursor self-driving codebases](https://cursor.com/blog/self-driving-codebases)
+- [Uber via Pragmatic Engineer](https://newsletter.pragmaticengineer.com/p/how-uber-uses-ai-for-development)
+- [HumanLayer harness engineering](https://www.humanlayer.dev/blog/skill-issue-harness-engineering-for-coding-agents)
+- [LangChain agent harness](https://blog.langchain.com/the-anatomy-of-an-agent-harness/)
+- [Ramp Inspect](https://engineering.ramp.com/inspect)
+- [Background Agents](https://background-agents.com/)
+- [Meta REA](https://engineering.fb.com/2026/03/17/developer-tools/ranking-engineer-agent-rea-autonomous-ai-system-accelerating-meta-ads-ranking-innovation/)
 
 ## Contents
 
@@ -51,7 +51,7 @@ Real-world patterns from teams running agents at scale.
 
 **Slop management**: "golden principles" + background Codex tasks scan for deviations, open refactoring PRs. Technical debt as high-interest loan — pay down continuously.
 
-Source: https://openai.com/index/harness-engineering/
+Source: [OpenAI harness engineering](https://openai.com/index/harness-engineering/)
 
 ## Anthropic — Evaluator Pattern
 
@@ -76,7 +76,7 @@ GAN-inspired three-agent pattern: Planner → Generator → Evaluator.
 
 **Cost**: solo $9/20min → full 3-agent setup $200/6hr. Simplified (Opus 4.6): $125/4hr.
 
-Source: https://www.anthropic.com/engineering/harness-design-long-running-apps
+Source: [Anthropic long-running agent harness](https://www.anthropic.com/engineering/harness-design-long-running-apps)
 
 ## Agent Evals — Outcomes and Reliability
 
@@ -97,9 +97,10 @@ This makes task length and reliability explicit instead of treating an
 occasional multi-hour success as dependable autonomy.
 
 Sources:
-- https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents
-- https://openai.com/index/separating-signal-from-noise-coding-evaluations/
-- https://metr.org/time-horizons/
+
+- [Anthropic agent evals](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)
+- [OpenAI coding-eval audit](https://openai.com/index/separating-signal-from-noise-coding-evaluations/)
+- [METR time horizons](https://metr.org/time-horizons/)
 
 ## Durable Orchestration and Safety
 
@@ -118,9 +119,10 @@ inside infrastructure-enforced boundaries, not broad credentials plus prompt
 instructions.
 
 Sources:
-- https://openai.com/index/open-source-codex-orchestration-symphony/
-- https://www.anthropic.com/engineering/managed-agents
-- https://openai.com/index/running-codex-safely/
+
+- [OpenAI Symphony](https://openai.com/index/open-source-codex-orchestration-symphony/)
+- [Anthropic managed agents](https://www.anthropic.com/engineering/managed-agents)
+- [OpenAI safety controls](https://openai.com/index/running-codex-safely/)
 
 ## Stripe — Minions
 
@@ -138,7 +140,7 @@ Sources:
 
 **Key insight**: "Investments in human developer productivity over time have returned to pay dividends in the world of agents."
 
-Sources: https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents
+Source: [Stripe Minions](https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents)
 
 ## Datadog — Observability-Driven Verification
 
@@ -164,7 +166,7 @@ The most rigorous verification approach. Infrastructure-first: invest in automat
 
 **Reviews become bloom filters** — a fast gate, not the source of correctness.
 
-Source: https://www.datadoghq.com/blog/ai/harness-first-agents/
+Source: [Datadog harness-first agents](https://www.datadoghq.com/blog/ai/harness-first-agents/)
 
 ## Cursor — Self-Driving Codebases
 
@@ -179,7 +181,7 @@ Built a web browser with ~1,000 commits/hour across 10M tool calls. Almost zero 
 - Scratchpads should be rewritten, not appended to
 - Disk I/O was the bottleneck at scale, not CPU/RAM
 
-Source: https://cursor.com/blog/self-driving-codebases
+Source: [Cursor self-driving codebases](https://cursor.com/blog/self-driving-codebases)
 
 ## Uber — Minion + Internal AI Stack
 
@@ -204,7 +206,7 @@ Source: https://cursor.com/blog/self-driving-codebases
 
 **Key finding**: Claude Code usage nearly doubled in 3 months (32% → 63%), while IDE tools plateaued. Engineers naturally gravitate to multi-agent workflows. Sharing wins between engineers is the most effective adoption tactic — top-down mandates had limited impact.
 
-Source: https://newsletter.pragmaticengineer.com/p/how-uber-uses-ai-for-development
+Source: [Uber via Pragmatic Engineer](https://newsletter.pragmaticengineer.com/p/how-uber-uses-ai-for-development)
 
 ## Convergent Architecture
 
