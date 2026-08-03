@@ -1,0 +1,9 @@
+{
+  "name": "uinaf/planning",
+  "version": "0.1.0",
+  "description": "Turn agreed work into a durable, resumable plan in the repository's preferred tracker, using the smallest useful issue hierarchy and explicit dependencies without implementing the work or silently committing local plan files.",
+  "private": false,
+  "skills": [
+    "SKILL.md"
+  ]
+}

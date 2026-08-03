@@ -1,6 +1,6 @@
 ---
 name: docs
-description: "Audit, compress, restructure, and update repo documentation and durable agent-facing artifacts such as AGENTS.md, README.md, docs/, specs, plans, decisions, and runbooks. Use when changes risk doc drift or when docs need current-state cleanup or context-efficient agent-first rewriting. Do not use for code review, runtime verification, or boot/readiness infrastructure setup."
+description: "Audit, compress, restructure, and update repo documentation and durable agent-facing artifacts such as AGENTS.md, README.md, docs/, specs, decisions, and runbooks. Use when changes risk doc drift or when docs need current-state cleanup or context-efficient agent-first rewriting. Do not use to create tactical work plans, epics, or tracker tickets, or for code review, runtime verification, or boot/readiness infrastructure setup."
 ---
 
 # Docs
@@ -16,15 +16,15 @@ Keep the repo legible to agents and humans.
 - Prefer short, task-shaped sections and structured facts over narrative prose
 - Keep routing docs short and point to deeper docs instead of duplicating them
 - Use repo-relative links for in-repo docs
-- Keep repo docs, agent guidance, and work artifacts linked but distinct
+- Keep repo docs, agent guidance, and work tracking linked but distinct
 
 ## Negative-state rule
 
 When rewriting current-state docs, delete every absent, removed, or unprovisioned item, including specific names and category paraphrases, unless it changes a plausible current action. Prior curiosity, old tickets, and "agents ask about it" do not make an absence operational. If a limitation must stay, state one precise boundary and the supported path.
 
-## Handoffs
+## Boundaries
 
-Not docs work: boot/readiness setup; baseline PR, issue, contributor, or security policy templates; independent code review; runtime verification.
+Not docs work: tactical work planning; epic or tracker-ticket creation; boot/readiness setup; baseline PR, issue, contributor, or security policy templates; independent code review; runtime verification.
 
 ## Workflow
 
@@ -38,13 +38,13 @@ Check the files agents and humans actually rely on:
 - `CONTRIBUTING.md`
 - `SECURITY.md`
 - `docs/`
-- durable specs, active plans, runbooks, and decision docs
+- durable specs, runbooks, and decision docs
 
 Flag stale commands, dead paths, duplicate guidance, routing failures, narrative history, exhaustive negative inventories, and repo-internal details leaking into reader-facing docs.
 
 Before editing:
 
-- classify the target as repo docs, agent guidance, or a work artifact
+- classify the target as repo docs, agent guidance, or a durable spec or decision
 - identify the decision or task each section supports
 - preserve commands, paths, invariants, boundaries, and recovery steps
 
@@ -69,16 +69,17 @@ Refresh the detailed documents that carry the knowledge.
 - architecture and API docs
 - task guides and runbooks
 - durable feature specs and decision records
-- tactical plans and handoff prompts only when future agents need them
 - readiness infrastructure docs after boot, smoke, observability, or isolation changes
 
 Write each updated section as the reader's current source of truth.
 
 For agent-facing or internal docs, follow the selection, structure, and progressive-disclosure guidance in [references/agent-first.md](references/agent-first.md).
 
-When the user asks to save a durable rule, prompt, plan, or decision, choose its [durable home](references/source-boundaries.md#durable-homes).
+When the user asks to save a durable rule, prompt, specification, or decision, choose its [durable home](references/source-boundaries.md#durable-homes).
 
-For new features, use the directory layout and templates in [references/structuring.md](references/structuring.md) — specs, plans, and decisions each have their own shape.
+Tactical implementation plans, epics, tracker tickets, and session handoffs are a separate work-tracking operation. When requested alongside docs cleanup, keep the surfaces linked and report the planning work as a distinct next action instead of inventing a checked-in plan home.
+
+For new features, use the directory layout and templates in [references/structuring.md](references/structuring.md) — specifications and decisions have distinct lifecycles.
 
 ### 4. Clean up drift
 
@@ -112,7 +113,7 @@ After docs work, report a compact docs footer:
 - verified: command names or path checks, not output logs
 - removed or rewritten: only if stale or duplicated docs changed
 - gaps: remaining doc gaps, or `none`
-- next: readiness setup, independent review, runtime verification, or `none`
+- next: work planning, readiness setup, independent review, runtime verification, or `none`
 
 Keep the footer to 5 labeled lines or fewer. List changed files once.
 
@@ -122,4 +123,4 @@ Keep the footer to 5 labeled lines or fewer. List changed files once.
 - [references/documentation.md](references/documentation.md) — README, contributing, security, and repository-doc shapes
 - [references/source-boundaries.md](references/source-boundaries.md) — durable ownership and private/local evidence boundaries
 - [references/specifications.md](references/specifications.md) — feature specs, conformance tests, spec drift, SDD trade-offs
-- [references/structuring.md](references/structuring.md) — directory layout, templates, and naming for specs, plans, and decisions
+- [references/structuring.md](references/structuring.md) — directory layout, templates, and naming for specifications and decisions

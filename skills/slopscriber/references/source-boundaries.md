@@ -10,14 +10,16 @@ Documentation captures contracts the target repo owns.
 | Upstream product or API docs | Link or cite the upstream source |
 | Another workspace repo | Link the owner or state the dependency generically |
 | Local machine, private workspace, credential, account, host, or one-off tool | Keep it in the work report unless the user makes it repo policy |
-| User-approved recurring rule, prompt, decision, or plan | Write it in the owning durable surface |
+| User-approved recurring rule, prompt, specification, or decision | Write it in the owning durable documentation surface |
+| Tactical plan, backlog item, epic, or ticket | Use the repository's preferred tracker or the user's selected destination |
 
 ## Durable Homes
 
 - `docs/decisions/`: why a choice was made
 - `docs/specs/`: long-lived behavioral contracts
-- `docs/plans/`: tactical execution that can be deleted when complete
 - `AGENTS.md` or scoped guidance: behavior future agents must repeat
+- repository work tracker: tactical execution, ownership, dependencies, and resumable status
+- an existing local plan directory: only when the repository explicitly uses it as the work tracker
 - work report: transient, machine-local, private, or one-off evidence
 
 Before promotion, confirm:

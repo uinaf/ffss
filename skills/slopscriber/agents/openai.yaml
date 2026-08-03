@@ -16,6 +16,7 @@ interface:
     - Baseline contributor/security policy templates are not invented from scratch during docs cleanup.
 
     Constraints:
+    - Tactical work plans, epics, tracker tickets, and session handoffs are out of scope.
     - Code-review requests are out of scope.
     - Runtime-verification requests are out of scope.
     - Missing readiness infrastructure is setup work, not docs work.

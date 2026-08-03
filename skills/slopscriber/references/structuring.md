@@ -1,19 +1,19 @@
 # Structuring
 
-Lightweight file shapes for agent work artifacts: specs, plans, and decisions. Templates, not ceremony.
+Lightweight file shapes for durable specifications and decisions. Templates, not ceremony.
 
 ## Directory Layout
 
 ```
 docs/
 ├── specs/           # WHAT + WHY — long-lived contracts
-├── plans/           # HOW + WHEN — tactical, deleted when done
 └── decisions/       # WHY we chose X — ADR-lite
 ```
 
 These directories are not a replacement for reader-facing docs like `README.md`,
 `CONTRIBUTING.md`, architecture docs, or runbooks. Link them from routing docs when
-useful, but keep tactical planning out of the general documentation surface.
+useful. Keep tactical planning in the repository's preferred work tracker unless
+the repository explicitly establishes a local plan directory as that tracker.
 
 ## Specs
 
@@ -48,41 +48,6 @@ One paragraph. What's wrong and for whom.
 ### Lifecycle
 Write → review → agree → implement. Update only when requirements change, not when the plan changes.
 
-## Plans
-
-Tactical execution strategy. Evolves during implementation. Delete when implemented — the branch/PR tells the story.
-
-Plans are agent coordination artifacts, not public docs. Keep them narrow, link the
-owning spec when there is one, and remove them once the work lands unless the repo
-explicitly uses plans as an active backlog.
-
-### Template
-
-```markdown
-# <feature-name> — Plan
-
-Spec: `specs/<feature-slug>.md`
-
-## Approach
-2-3 sentences on the strategy.
-
-## Tasks
-- [ ] <task> → <files/modules>
-- [ ] <task> → <files/modules>
-
-## Order
-What depends on what. What can run in parallel.
-
-## Risks
-- <what could go wrong and how to mitigate>
-```
-
-### Naming
-`plans/YYYY-MM-DD-<feature-slug>.md` — e.g. `plans/2026-04-17-password-reset.md`
-
-### Lifecycle
-Write → implement → delete. The PR/commit history is the record. Plans are working documents, not archives.
-
 ## Decisions
 
 Why, not what. ADR-lite.
@@ -112,12 +77,11 @@ Append-only. New decisions get the next number. Add a new decision when you reve
 
 Agents find these through `AGENTS.md` pointers, not filesystem scanning.
 
-When the docs skill audits a repo and finds (or creates) specs/plans/decisions directories, it adds a routing entry to AGENTS.md:
+When this workflow audits a repo and finds or creates specification or decision directories, it adds a routing entry to `AGENTS.md`:
 
 ```
 ## Docs
 - Specs: docs/specs/
-- Plans: docs/plans/
 - Decisions: docs/decisions/
 ```
 
@@ -125,8 +89,8 @@ Keep AGENTS.md links shallow: directory plus one-line description, one pointer p
 
 ## Rules
 
-1. **One purpose per directory.** Keep specs in specs directories and plans in plans directories.
-2. **Specs outlive plans.** A spec survives multiple plan attempts. A plan is disposable.
-3. **Delete plans when done.** The PR tells the story. Plans are working documents, not archives.
-4. **Link canonical docs.** Plans reference specs by path. Decisions reference both.
-5. **Drift is a signal.** Plan changed but spec didn't = normal. Spec changed but tests didn't = bug.
+1. **One purpose per directory.** Keep specifications and decisions distinct from reader-facing guides.
+2. **Specs define behavior.** Update them only when requirements change.
+3. **Decisions explain consequential choices.** Keep them append-only and record reversals separately.
+4. **Link canonical work.** Specifications and decisions may link to tracker work without copying its status or task list.
+5. **Drift is a signal.** A specification change without corresponding acceptance coverage is a defect.

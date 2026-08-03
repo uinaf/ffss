@@ -1,0 +1,5 @@
+interface:
+  display_name: "Planning"
+  short_description: "Save agreed work in the repository tracker"
+  default_prompt: |
+    Use $planning to turn the agreed work into the smallest durable, resumable plan in this repository's preferred tracker. Preserve settled decisions, discover repo and tracker conventions, ask one destination or blocking-decision question only when needed, publish or update the canonical artifact when authorized, verify its relationships, and return the resume point. Do not implement the plan or silently fall back to checked-in plan files.

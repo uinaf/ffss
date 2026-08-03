@@ -1,0 +1,41 @@
+{
+  "context": "Tests parent-child planning, vertical slices, exact blocking edges, and frontier reporting for parallel execution.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Jira epic and three children",
+      "max_score": 18,
+      "description": "The result creates one TEAM epic and exactly three child tasks matching the approved slices"
+    },
+    {
+      "name": "Vertical slices preserved",
+      "max_score": 18,
+      "description": "Each child delivers an end-to-end invitation behavior rather than splitting UI, API, storage, and tests into layers"
+    },
+    {
+      "name": "Acceptance blocked by creation",
+      "max_score": 14,
+      "description": "The acceptance task is blocked by the invitation-creation task"
+    },
+    {
+      "name": "Revocation blocked only by creation",
+      "max_score": 16,
+      "description": "The revocation task is blocked by creation and is not blocked by acceptance"
+    },
+    {
+      "name": "Native relationships",
+      "max_score": 12,
+      "description": "The result uses Jira parent and blocks relationships rather than only presenting an ordered prose list"
+    },
+    {
+      "name": "Frontier correct",
+      "max_score": 14,
+      "description": "The current frontier contains creation only and explains that acceptance and revocation can proceed in parallel after creation"
+    },
+    {
+      "name": "No implementation",
+      "max_score": 8,
+      "description": "The response does not implement invitation behavior"
+    }
+  ]
+}
