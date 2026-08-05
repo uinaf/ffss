@@ -10,7 +10,7 @@ The codebase is a Node.js/TypeScript payments service. Currently the repo has a 
 
 ## Output Specification
 
-Produce a replacement `AGENTS.md` file for this payments service repository. The file should orient an AI agent to the project efficiently.
+Produce a replacement `AGENTS.md` file for this payments service repository. The file should orient an AI agent to the project efficiently. Each pointer to deeper documentation must say what task or question should cause an agent to follow it.
 
 Also produce a short `doc-report.md` explaining what you changed and why — noting any content you removed, what you kept, and the reasoning.
 

@@ -12,13 +12,23 @@ Optimize internal and operational docs for agent retrieval. Human readers benefi
 - [Anthropic Agent Skills best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
 - [Anthropic prompting guidance](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5)
 - [GitHub instruction-file guidance](https://github.blog/ai-and-ml/github-copilot/unlocking-the-full-power-of-copilot-code-review-master-your-instructions-files/)
+- [Matt Pocock's writing-for-agents](https://github.com/mattpocock/skills/blob/main/skills/productivity/writing-for-agents/SKILL.md)
 - [Stripe scoped-rule practice](https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents)
 - [Gloaguen et al., repository context evaluation](https://arxiv.org/abs/2602.11988)
 - [Lulla et al., `AGENTS.md` efficiency study](https://arxiv.org/abs/2601.20404)
 
 The empirical results are mixed. Context files can help or hurt depending on their relevance and delivery. The stable recommendation is minimal, specific requirements plus just-in-time retrieval.
 
-Use this deletion test: would removing the line cause a capable agent to make a material mistake? If not, remove it or move it behind a focused link.
+Use this deletion test: would removing the line cause a capable agent to make a material mistake? If not, remove it or move it behind a focused link. Delete instructions that merely restate capable-model defaults; they spend attention without changing behavior.
+
+## Budget Retrieval
+
+Agent-facing guidance spends two different resources:
+
+- **Context cost**: always-loaded rules and pointers consume attention on every task.
+- **Discovery cost**: material moved out of context must still be found by an agent or remembered by a human.
+
+Reduce context cost with focused links, but do not hide required guidance behind an unnamed or weakly described target. Spend always-loaded words on routing that reliably changes what the agent reads next.
 
 ## Select Information
 
@@ -41,6 +51,8 @@ Remove or route elsewhere:
 - exhaustive lists of removed or unavailable capabilities
 - speculative guidance and future possibilities
 - introductions, transitions, and recaps without operational facts
+
+Treat the repository as a source of truth. Documentation that repeats an easy file search, script listing, config value, or `--help` lookup is a cache and must justify its drift risk. Document the lookup only when it is expensive, ambiguous, or missing the rationale an agent needs.
 
 ## State Capabilities
 
@@ -71,14 +83,27 @@ Do not rehome deleted names under `Exclusions`, `Unavailable`, `Not supported`, 
 - Keep examples minimal and normative.
 - Use code blocks only for copyable commands, data, or exact syntax.
 - Preserve literal commands, paths, identifiers, and error text for search.
+- Use one stable, familiar term for each recurring concept; define it once instead of restating its meaning under several labels.
 
 Prefer task-shaped headings such as `Start`, `Verify`, `Deploy`, and `Recover`. Avoid headings that merely mirror the file tree.
+
+For procedures and runbooks, end each ordered step with an observable completion condition. Prefer exhaustive bounds such as "every modified command resolves" over vague outcomes such as "docs understood" or "review complete."
+
+## Design Pointers
+
+A pointer is the short text that decides whether an agent opens another source. Its wording is part of the behavior, not decorative navigation.
+
+- Front-load the task or domain that should trigger the lookup.
+- State both what the target contains and when it is needed.
+- Give each distinct branch one trigger; collapse synonyms that describe the same branch.
+- Describe the question answered instead of listing a bare filename.
+- Keep mandatory instructions inline only when a focused pointer cannot make retrieval reliable.
 
 ## Progressive Disclosure
 
 - Keep the root entrypoint a map.
 - Link one level down to task- or domain-specific sources.
-- Describe what each link answers.
+- Apply the pointer rules above to every link.
 - Put specialized rules near the files they govern.
 - Split a document when readers routinely need only one section.
 - Avoid fragmentation when the same task always requires every fragment.

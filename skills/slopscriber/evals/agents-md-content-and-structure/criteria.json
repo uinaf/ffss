@@ -20,7 +20,7 @@
     {
       "name": "Links to deep docs",
       "max_score": 10,
-      "description": "AGENTS.md contains links or pointers to at least two deeper docs files (e.g. docs/architecture.md, docs/api.md, docs/deployment.md)"
+      "description": "AGENTS.md contains links or pointers to at least two deeper docs files and describes the task or question each target answers rather than presenting a bare filename list"
     },
     {
       "name": "No directory listing",
