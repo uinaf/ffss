@@ -12,7 +12,7 @@ transition at a time — mindful token spend, without sacrificing quality.
 
 ## Status
 
-Bootstrap in progress. Track work on [GitHub Issues](https://github.com/uinaf/slopinator/issues).
+Bootstrap landed. Canonical plan: [#1](https://github.com/uinaf/slopinator/issues/1).
 
 ## Install (planned)
 
