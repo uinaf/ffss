@@ -1,7 +1,7 @@
 {
   "name": "uinaf/planning",
   "version": "0.1.0",
-  "description": "Turn agreed work into a durable, resumable plan in the repository's preferred tracker, using the smallest useful issue hierarchy and explicit dependencies without implementing the work or silently committing local plan files.",
+  "description": "Turn an agreed change, specification, or conversation into a durable, resumable work plan in the repository's preferred tracker. Use when asked to plan future work, write or make a plan, save a plan, create an epic or tickets, break work into tickets, decompose work for parallel execution, or prepare work for another session. Do not use for routine in-session checklists, implementation, general documentation cleanup, or open-ended discovery where requirements still need substantive product decisions.",
   "private": false,
   "skills": [
     "SKILL.md"

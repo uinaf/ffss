@@ -1,6 +1,6 @@
 ---
 name: planning
-description: "Turn an agreed change, specification, or conversation into a durable, resumable work plan in the repository's preferred tracker. Use when asked to plan future work, save a plan, create an epic or tickets, decompose work for parallel execution, or prepare work for another session. Do not use for routine in-session checklists, implementation, general documentation cleanup, or open-ended discovery where requirements still need substantive product decisions."
+description: "Turn an agreed change, specification, or conversation into a durable, resumable work plan in the repository's preferred tracker. Use when asked to plan future work, write or make a plan, save a plan, create an epic or tickets, break work into tickets, decompose work for parallel execution, or prepare work for another session. Do not use for routine in-session checklists, implementation, general documentation cleanup, or open-ended discovery where requirements still need substantive product decisions."
 ---
 
 # Planning
@@ -67,20 +67,32 @@ Each child should deliver a narrow end-to-end behavior and be independently demo
 
 ### 4. Draft from the agreed evidence
 
-The canonical plan should preserve:
+The canonical plan should preserve: problem/outcome, decisions, acceptance
+criteria, non-goals, approach at stable module boundaries, verification, risks
+and stop conditions, plus parent/child/blocking relationships.
 
-- problem or outcome
-- agreed decisions and constraints
-- acceptance criteria
-- non-goals
-- implementation approach at stable module or contract boundaries
-- verification expectations
-- risks and stop conditions
-- parent, child, and blocking relationships
+Child-ticket skeleton (expand via [artifact-shapes.md](references/artifact-shapes.md)):
 
-Use exact paths or code excerpts only when they materially help execution and have been verified against the current revision. Prefer stable contracts and module names over brittle line-by-line instructions.
+```markdown
+## Parent
+<canonical parent URL or key>
+## What this delivers
+<one independently verifiable behavior>
+## Acceptance criteria
+- [ ] <observable result>
+## Verification
+- <test, check, or real-surface evidence>
+## Blocked by
+- <issue link or None>
+```
 
-Before creating multiple tickets, present the proposed titles, delivered behavior, and blocking edges for approval unless the user already approved that decomposition.
+Blocking edge example: `Migrate auth tokens` blocks `Wire login UI` because the
+UI cannot verify against the new token contract until migration lands; shared
+theme alone is not a blocker.
+
+Use exact paths only when verified against the current revision. Before creating
+multiple tickets, present titles, delivered behavior, and blocking edges for
+approval unless already approved.
 
 ### 5. Publish or update
 
@@ -99,15 +111,15 @@ If the preferred tracker cannot be written:
 
 Re-read every created or updated artifact. Confirm titles, bodies, metadata, hierarchy, blocking relationships, and links match the approved plan.
 
-Return a compact handoff:
+Return a compact handoff (tracker artifact is durable; do not duplicate it):
 
-- canonical plan URL or key
-- created or updated child items
-- current dependency frontier: items with no unresolved blockers
-- publication or relationship gaps
-- next action to resume work
-
-The tracker artifact is the durable handoff. Do not create a second handoff document that repeats it.
+```text
+canonical: PROJ-123
+children: PROJ-124, PROJ-125
+frontier: PROJ-124 (no blockers)
+gaps: none
+next: start PROJ-124
+```
 
 ## References
 
