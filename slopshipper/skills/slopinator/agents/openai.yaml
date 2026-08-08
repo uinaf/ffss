@@ -1,0 +1,17 @@
+interface:
+  display_name: "Slopinator"
+  short_description: "Clarify, release, then evidence-gated implement loops"
+  default_prompt: |
+    Use $slopinator.
+
+    Goal: structured slop-cannoning — clarify intake, human release, then obey
+    slopinator status next_action through verify → review → deliver.
+
+    Require the installed slopinator binary. Confirm review approach once at
+    intake (autoreview CLI and/or Cursor Bugbot). Prefer strong models for
+    build and cheaper review. Do not invent a second runtime or narrate phases.
+
+    Output: compact status-driven updates only.
+
+policy:
+  allow_implicit_invocation: false
