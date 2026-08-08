@@ -1,8 +1,8 @@
 # AGENTS.md
 
-Contributor guidance for `slopinator`.
+Contributor guidance for `slopomatic`.
 
-- North star: plan → `/slopinator` → clarify → human releases → machine runs.
+- North star: plan → `/slopomatic` → clarify → human releases → machine runs.
 - Binary owns the state machine, schemas, and sqlite store; the skill is thin
   and drives the CLI. Do not invent a second runtime in markdown or scripts.
 - Prefer structured I/O (enums, JSON schemas, fail-closed validation).

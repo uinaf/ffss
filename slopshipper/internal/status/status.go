@@ -3,7 +3,7 @@ package status
 import (
 	"encoding/json"
 
-	"github.com/uinaf/slopinator/internal/machine"
+	"github.com/uinaf/slopomatic/internal/machine"
 )
 
 // Document is the compact agent-facing status contract.
@@ -101,7 +101,7 @@ func (d Document) CompactLine() string {
 	if next == "" {
 		next = "(none)"
 	}
-	return "slopinator " + d.RunID + " state=" + d.State + " " + rel + " next=" + next
+	return "slopomatic " + d.RunID + " state=" + d.State + " " + rel + " next=" + next
 }
 
 func (d Document) JSON() ([]byte, error) {
@@ -116,14 +116,14 @@ func nextAction(allowed []machine.Command) string {
 	for _, p := range priority {
 		for _, a := range allowed {
 			if a == p {
-				return "slopinator " + string(p)
+				return "slopomatic " + string(p)
 			}
 		}
 	}
 	if len(allowed) == 0 {
 		return ""
 	}
-	return "slopinator " + string(allowed[0])
+	return "slopomatic " + string(allowed[0])
 }
 
 func requiredEvidence(allowed []machine.Command) []string {

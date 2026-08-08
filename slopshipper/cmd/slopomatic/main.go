@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/uinaf/slopinator/internal/machine"
-	"github.com/uinaf/slopinator/internal/repo"
-	"github.com/uinaf/slopinator/internal/status"
-	"github.com/uinaf/slopinator/internal/store"
+	"github.com/uinaf/slopomatic/internal/machine"
+	"github.com/uinaf/slopomatic/internal/repo"
+	"github.com/uinaf/slopomatic/internal/status"
+	"github.com/uinaf/slopomatic/internal/store"
 )
 
 func main() {
@@ -27,13 +27,13 @@ func run(args []string) int {
 		return 0
 	}
 	if args[0] == "version" || args[0] == "--version" {
-		fmt.Fprintln(os.Stdout, "slopinator 0.0.0-dev")
+		fmt.Fprintln(os.Stdout, "slopomatic 0.0.0-dev")
 		return 0
 	}
 
 	st, err := openStore()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "slopinator: %v\n", err)
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 10
 	}
 	defer st.Close()
@@ -64,32 +64,32 @@ func run(args []string) int {
 	case "status":
 		return cmdStatus(st, rest)
 	default:
-		fmt.Fprintf(os.Stderr, "slopinator: unknown command %q\n", cmd)
+		fmt.Fprintf(os.Stderr, "slopomatic: unknown command %q\n", cmd)
 		return 2
 	}
 }
 
 func usage() string {
-	return `slopinator — deterministic structured slop cannoning
+	return `slopomatic — deterministic structured slop cannoning
 
 Usage:
-  slopinator init [--run ID]
-  slopinator intake --file intake.json [--run ID]
-  slopinator release --revision N [--run ID]
-  slopinator build [--run ID]
-  slopinator verify --cmd CMD | --evidence file.json [--run ID]
-  slopinator review --evidence file.json [--run ID]
-  slopinator rework [--run ID]
-  slopinator deliver --evidence file.json [--run ID]
-  slopinator ask --question TEXT [--run ID]
-  slopinator decide --answer TEXT [--run ID]
-  slopinator status [--json] [--run ID]
-  slopinator version
+  slopomatic init [--run ID]
+  slopomatic intake --file intake.json [--run ID]
+  slopomatic release --revision N [--run ID]
+  slopomatic build [--run ID]
+  slopomatic verify --cmd CMD | --evidence file.json [--run ID]
+  slopomatic review --evidence file.json [--run ID]
+  slopomatic rework [--run ID]
+  slopomatic deliver --evidence file.json [--run ID]
+  slopomatic ask --question TEXT [--run ID]
+  slopomatic decide --answer TEXT [--run ID]
+  slopomatic status [--json] [--run ID]
+  slopomatic version
 `
 }
 
 func openStore() (*store.Store, error) {
-	if p := os.Getenv("SLOPINATOR_DB"); p != "" {
+	if p := os.Getenv("SLOPOMATIC_DB"); p != "" {
 		return store.Open(p)
 	}
 	home, err := os.UserHomeDir()
@@ -111,12 +111,12 @@ func cmdInit(st *store.Store, args []string) int {
 	cwd, _ := os.Getwd()
 	key, err := repo.Key(cwd)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "slopinator: %v\n", err)
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 2
 	}
 	run := machine.NewRun(runID, key)
 	if err := st.CreateRun(run, nil); err != nil {
-		fmt.Fprintf(os.Stderr, "slopinator: %v\n", err)
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 10
 	}
 	return printStatus(st, key, runID, false)
@@ -135,12 +135,12 @@ func cmdIntake(st *store.Store, args []string) int {
 	}
 	file := fs["file"]
 	if file == "" {
-		fmt.Fprintln(os.Stderr, "slopinator: intake requires --file")
+		fmt.Fprintln(os.Stderr, "slopomatic: intake requires --file")
 		return 2
 	}
 	raw, err := os.ReadFile(file)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "slopinator: %v\n", err)
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 2
 	}
 	var patch struct {
@@ -150,7 +150,7 @@ func cmdIntake(st *store.Store, args []string) int {
 		Units         []intakeUnitDTO `json:"units"`
 	}
 	if err := json.Unmarshal(raw, &patch); err != nil {
-		fmt.Fprintf(os.Stderr, "slopinator: invalid intake json: %v\n", err)
+		fmt.Fprintf(os.Stderr, "slopomatic: invalid intake json: %v\n", err)
 		return 2
 	}
 	ip := &machine.IntakePatch{SeriesBound: patch.SeriesBound}
@@ -179,12 +179,12 @@ func cmdRelease(st *store.Store, args []string) int {
 	}
 	revS := fs["revision"]
 	if revS == "" {
-		fmt.Fprintln(os.Stderr, "slopinator: release requires --revision")
+		fmt.Fprintln(os.Stderr, "slopomatic: release requires --revision")
 		return 2
 	}
 	rev, err := strconv.ParseInt(revS, 10, 64)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "slopinator: bad --revision: %v\n", err)
+		fmt.Fprintf(os.Stderr, "slopomatic: bad --revision: %v\n", err)
 		return 2
 	}
 	return applyCmd(st, fs["run"], machine.CmdRelease, machine.ApplyInput{IntakeRevision: rev}, map[string]any{"intake_revision": rev})
@@ -206,14 +206,14 @@ func cmdVerify(st *store.Store, args []string) int {
 	var ev machine.VerifyEvidence
 	if f := fs["evidence"]; f != "" {
 		if err := readJSON(f, &ev); err != nil {
-			fmt.Fprintf(os.Stderr, "slopinator: %v\n", err)
+			fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 			return 2
 		}
 	} else if c := fs["cmd"]; c != "" {
 		code := runShell(c)
 		ev = machine.VerifyEvidence{Command: c, ExitCode: code}
 	} else {
-		fmt.Fprintln(os.Stderr, "slopinator: verify requires --cmd or --evidence")
+		fmt.Fprintln(os.Stderr, "slopomatic: verify requires --cmd or --evidence")
 		return 2
 	}
 	return applyCmd(st, fs["run"], machine.CmdVerify, machine.ApplyInput{Verify: &ev}, ev)
@@ -225,12 +225,12 @@ func cmdReview(st *store.Store, args []string) int {
 		return code
 	}
 	if fs["evidence"] == "" {
-		fmt.Fprintln(os.Stderr, "slopinator: review requires --evidence")
+		fmt.Fprintln(os.Stderr, "slopomatic: review requires --evidence")
 		return 2
 	}
 	var ev machine.ReviewEvidence
 	if err := readJSON(fs["evidence"], &ev); err != nil {
-		fmt.Fprintf(os.Stderr, "slopinator: %v\n", err)
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 2
 	}
 	return applyCmd(st, fs["run"], machine.CmdReview, machine.ApplyInput{Review: &ev}, ev)
@@ -250,12 +250,12 @@ func cmdDeliver(st *store.Store, args []string) int {
 		return code
 	}
 	if fs["evidence"] == "" {
-		fmt.Fprintln(os.Stderr, "slopinator: deliver requires --evidence")
+		fmt.Fprintln(os.Stderr, "slopomatic: deliver requires --evidence")
 		return 2
 	}
 	var ev machine.DeliverEvidence
 	if err := readJSON(fs["evidence"], &ev); err != nil {
-		fmt.Fprintf(os.Stderr, "slopinator: %v\n", err)
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 2
 	}
 	return applyCmd(st, fs["run"], machine.CmdDeliver, machine.ApplyInput{Deliver: &ev}, ev)
@@ -267,7 +267,7 @@ func cmdAsk(st *store.Store, args []string) int {
 		return code
 	}
 	if fs["question"] == "" {
-		fmt.Fprintln(os.Stderr, "slopinator: ask requires --question")
+		fmt.Fprintln(os.Stderr, "slopomatic: ask requires --question")
 		return 2
 	}
 	return applyCmd(st, fs["run"], machine.CmdAsk, machine.ApplyInput{
@@ -281,7 +281,7 @@ func cmdDecide(st *store.Store, args []string) int {
 		return code
 	}
 	if fs["answer"] == "" {
-		fmt.Fprintln(os.Stderr, "slopinator: decide requires --answer")
+		fmt.Fprintln(os.Stderr, "slopomatic: decide requires --answer")
 		return 2
 	}
 	return applyCmd(st, fs["run"], machine.CmdDecide, machine.ApplyInput{
@@ -298,7 +298,7 @@ func cmdStatus(st *store.Store, args []string) int {
 	cwd, _ := os.Getwd()
 	key, err := repo.Key(cwd)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "slopinator: %v\n", err)
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 2
 	}
 	return printStatus(st, key, fs["run"], jsonOut)
@@ -308,7 +308,7 @@ func applyCmd(st *store.Store, runID string, cmd machine.Command, in machine.App
 	cwd, _ := os.Getwd()
 	key, err := repo.Key(cwd)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "slopinator: %v\n", err)
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 2
 	}
 	run, units, err := st.ResolveActiveRun(key, runID)
@@ -335,7 +335,7 @@ func printStatus(st *store.Store, repoKey, runID string, asJSON bool) int {
 	if asJSON {
 		b, err := doc.JSON()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "slopinator: %v\n", err)
+			fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 			return 10
 		}
 		fmt.Fprintln(os.Stdout, string(b))
@@ -346,7 +346,7 @@ func printStatus(st *store.Store, repoKey, runID string, asJSON bool) int {
 }
 
 func mapErr(err error) int {
-	fmt.Fprintf(os.Stderr, "slopinator: %v\n", err)
+	fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 	switch {
 	case errors.Is(err, machine.ErrBadArgs):
 		return 2
@@ -369,7 +369,7 @@ var knownFlags = map[string]bool{
 func requireFlags(args []string) (map[string]string, int) {
 	fs, err := parseFlags(args)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "slopinator: %v\n", err)
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return nil, 2
 	}
 	return fs, 0

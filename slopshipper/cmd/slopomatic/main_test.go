@@ -18,7 +18,7 @@ type cliHarness struct {
 
 func newCLIHarness(t *testing.T) *cliHarness {
 	t.Helper()
-	bin := filepath.Join(t.TempDir(), "slopinator")
+	bin := filepath.Join(t.TempDir(), "slopomatic")
 	build := exec.Command("go", "build", "-o", bin, ".")
 	build.Dir = "."
 	if out, err := build.CombinedOutput(); err != nil {
@@ -40,7 +40,7 @@ func newCLIHarness(t *testing.T) *cliHarness {
 		t:       t,
 		bin:     bin,
 		repoDir: repoDir,
-		env:     append(os.Environ(), "SLOPINATOR_DB="+db),
+		env:     append(os.Environ(), "SLOPOMATIC_DB="+db),
 	}
 }
 

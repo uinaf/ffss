@@ -364,10 +364,10 @@ func nextActionCommand(allowed []Command) string {
 	priority := []Command{CmdRelease, CmdBuild, CmdVerify, CmdReview, CmdDeliver, CmdRework, CmdDecide, CmdIntake}
 	for _, p := range priority {
 		if slices.Contains(allowed, p) {
-			return "slopinator " + string(p)
+			return "slopomatic " + string(p)
 		}
 	}
-	return "slopinator " + string(allowed[0])
+	return "slopomatic " + string(allowed[0])
 }
 
 func requiredEvidence(state State, allowed []Command) []string {

@@ -5,8 +5,8 @@
 Requirements: Go 1.26+.
 
 ```bash
-git clone https://github.com/uinaf/slopinator.git
-cd slopinator
+git clone https://github.com/uinaf/slopomatic.git
+cd slopomatic
 go test ./...
 ```
 

@@ -1,4 +1,4 @@
-module github.com/uinaf/slopinator
+module github.com/uinaf/slopomatic
 
 go 1.26.0
 

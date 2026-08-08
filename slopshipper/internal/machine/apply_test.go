@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/uinaf/slopinator/internal/machine"
+	"github.com/uinaf/slopomatic/internal/machine"
 )
 
 func TestHappyPathMultiUnit(t *testing.T) {

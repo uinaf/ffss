@@ -1,6 +1,6 @@
 package machine
 
-// Run is the durable orchestration record for one slopinator run.
+// Run is the durable orchestration record for one slopomatic run.
 type Run struct {
 	ID               string
 	RepoKey          string

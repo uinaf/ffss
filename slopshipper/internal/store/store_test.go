@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/uinaf/slopinator/internal/machine"
-	"github.com/uinaf/slopinator/internal/store"
+	"github.com/uinaf/slopomatic/internal/machine"
+	"github.com/uinaf/slopomatic/internal/store"
 )
 
 func TestCreateResolveAndCAS(t *testing.T) {
