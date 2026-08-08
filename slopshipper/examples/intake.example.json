@@ -1,0 +1,12 @@
+{
+  "delivery_mode": "pr-hold",
+  "review_consent": "autoreview",
+  "series_bound": 1,
+  "units": [
+    {
+      "id": "u1",
+      "title": "First frontier unit",
+      "blockers": []
+    }
+  ]
+}

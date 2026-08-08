@@ -1,0 +1,17 @@
+{
+  "delivery_mode": "pr-hold",
+  "review_consent": "bugbot",
+  "series_bound": 2,
+  "units": [
+    {
+      "id": "u1",
+      "title": "First frontier unit",
+      "blockers": []
+    },
+    {
+      "id": "u2",
+      "title": "Depends on u1",
+      "blockers": ["u1"]
+    }
+  ]
+}
