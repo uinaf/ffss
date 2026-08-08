@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -268,6 +269,14 @@ func TestParseFlags(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected unknown flag error")
 	}
+	_, err = parseFlags([]string{"--addr", "127.0.0.1:7780"})
+	if err == nil {
+		t.Fatal("expected --addr unknown outside serve")
+	}
+	got, err = parseFlagsWith([]string{"--addr", "127.0.0.1:7780"}, serveFlags)
+	if err != nil || got["addr"] != "127.0.0.1:7780" {
+		t.Fatalf("serve flags: %#v %v", got, err)
+	}
 }
 
 func runGit(t *testing.T, dir string, args ...string) {
@@ -288,4 +297,11 @@ func mustWrite(t *testing.T, path, body string) {
 
 func itoa(v int64) string {
 	return strconv.FormatInt(v, 10)
+}
+
+func TestUsageMentionsServe(t *testing.T) {
+	got := usage()
+	if !strings.Contains(got, "slopomatic serve") {
+		t.Fatalf("usage missing serve:\n%s", got)
+	}
 }

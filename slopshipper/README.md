@@ -65,6 +65,19 @@ Park a human question with `slopomatic ask --question "…"`, then
 `slopomatic decide --answer "…"`. Multi-unit intake:
 [`examples/intake.multi.example.json`](examples/intake.multi.example.json).
 
+## Control plane
+
+Project the same sqlite store in a loopback browser UI (Go templates +
+`@uinaf/design` tables). Read-only — not a second state authority.
+
+```bash
+slopomatic serve                 # http://127.0.0.1:7780
+slopomatic serve --addr 127.0.0.1:9000
+```
+
+Smoke: start `serve`, open `/`, click a run, confirm units + evidence timeline
+match `slopomatic status --json --run <id>`.
+
 ## Agent skill
 
 The bundled [agent skill](skills/slopomatic/SKILL.md) drives the CLI. It does

@@ -1,0 +1,63 @@
+{{define "index.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+{{template "head" .}}
+</head>
+<body class="uinaf">
+<header class="page-head">
+  <div class="u-label">slopomatic · control plane</div>
+  <h1>Runs</h1>
+  <p>Projector over the same sqlite as the CLI. Loopback only — not a second authority.</p>
+</header>
+
+<section class="section">
+  <div class="u-label">repo</div>
+  <p class="u-meta repo-key" title="{{.RepoKey}}">{{.RepoKey}}</p>
+</section>
+
+<section class="section">
+  <div class="u-label">runs</div>
+  {{if .Runs}}
+  <div class="u-ticks">
+    <div class="wrap">
+      <table class="u-table">
+        <thead>
+          <tr>
+            <th class="col-run">run</th>
+            <th class="col-state">state</th>
+            <th class="col-flag">released</th>
+            <th class="col-unit">current unit</th>
+            <th class="num col-num">done</th>
+            <th class="num col-num">bound</th>
+            <th class="col-time">updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Runs}}
+          <tr>
+            <td class="col-run" title="{{.ID}}"><a class="row-link" href="/runs/{{.ID}}">{{.ID}}</a></td>
+            <td class="col-state" title="{{.State}}">
+              <span class="cell-status">
+                <i class="{{statusDot .State .Open}}"></i>
+                <span>{{.State}}</span>
+              </span>
+            </td>
+            <td class="col-flag">{{if .Released}}yes{{else}}no{{end}}</td>
+            <td class="col-unit" title="{{.CurrentUnitID}}">{{if .CurrentUnitID}}{{.CurrentUnitID}}{{else}}—{{end}}</td>
+            <td class="num col-num">{{.CompletedUnits}}</td>
+            <td class="num col-num">{{.SeriesBound}}</td>
+            <td class="col-time" title="{{.UpdatedAt}}">{{shortTime .UpdatedAt}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {{else}}
+  <div class="empty">No runs for this repo yet. <code>slopomatic init</code> to create one.</div>
+  {{end}}
+</section>
+</body>
+</html>
+{{end}}

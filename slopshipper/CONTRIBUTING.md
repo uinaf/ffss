@@ -18,6 +18,10 @@ Use the PR template. Prefer small, verifiable slices. Squash-merge is the
 default on `main`. Conventional Commits on `main` drive Semantic Release
 (see [`docs/RELEASES.md`](docs/RELEASES.md)).
 
+Control plane UI lives in `internal/serve` (Go `html/template` + embedded
+`@uinaf/design` tokens). Keep it a read-only projector over sqlite; do not add
+mutations that bypass the CLI state machine.
+
 ## Releases
 
 Publication uses the protected `release` Environment (shared Apple signing

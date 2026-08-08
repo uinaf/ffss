@@ -1,0 +1,98 @@
+{{define "run.html"}}
+<!doctype html>
+<html lang="en">
+<head>
+{{template "head" .}}
+</head>
+<body class="uinaf">
+<header class="page-head">
+  <div class="u-label"><a class="row-link" href="/">← runs</a> · {{.Run.ID}}</div>
+  <h1>{{.Run.ID}}</h1>
+  <p>{{.StatusLine}}</p>
+</header>
+
+<section class="section">
+  <div class="u-label">status</div>
+  <div class="meta-row">
+    <span>state <strong>{{.Run.State}}</strong></span>
+    <span>released <strong>{{if .Released}}yes{{else}}no{{end}}</strong></span>
+    <span>next <strong title="{{.NextAction}}">{{if .NextAction}}{{.NextAction}}{{else}}—{{end}}</strong></span>
+    <span>completed <strong>{{.Run.CompletedUnits}}/{{.Run.SeriesBound}}</strong></span>
+  </div>
+  {{if .Blocker}}
+  <p class="u-meta">blocker: {{.Blocker}}</p>
+  {{end}}
+</section>
+
+<section class="section">
+  <div class="u-label">units</div>
+  {{if .Units}}
+  <div class="u-ticks">
+    <div class="wrap">
+      <table class="u-table">
+        <thead>
+          <tr>
+            <th class="col-id">id</th>
+            <th class="col-title">title</th>
+            <th class="col-done">done</th>
+            <th class="num col-attempt">attempt</th>
+            <th class="col-blockers">blockers</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Units}}
+          <tr{{if eq .ID $.CurrentUnitID}} data-selected{{end}}>
+            <td class="col-id" title="{{.ID}}">{{.ID}}</td>
+            <td class="col-title cell-wrap" title="{{.Title}}">{{.Title}}</td>
+            <td class="col-done">{{if .Done}}yes{{else}}no{{end}}</td>
+            <td class="num col-attempt">{{.Attempt}}</td>
+            <td class="col-blockers" title="{{if .Blockers}}{{join .Blockers ", "}}{{end}}">{{if .Blockers}}{{join .Blockers ", "}}{{else}}—{{end}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {{else}}
+  <div class="empty">No units on this run.</div>
+  {{end}}
+</section>
+
+<section class="section">
+  <div class="u-label">evidence timeline</div>
+  {{if .Events}}
+  <div class="u-ticks">
+    <div class="wrap">
+      <table class="u-table">
+        <thead>
+          <tr>
+            <th class="num col-seq">seq</th>
+            <th class="col-time">at</th>
+            <th class="col-cmd">command</th>
+            <th class="col-state-sm">from</th>
+            <th class="col-state-sm">to</th>
+            <th class="col-evidence">evidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Events}}
+          <tr>
+            <td class="num col-seq">{{.Seq}}</td>
+            <td class="col-time" title="{{.At}}">{{shortTime .At}}</td>
+            <td class="col-cmd" title="{{.Command}}">{{.Command}}</td>
+            <td class="col-state-sm" title="{{.FromState}}">{{.FromState}}</td>
+            <td class="col-state-sm" title="{{.ToState}}">{{.ToState}}</td>
+            <td class="col-evidence cell-mono" title="{{.EvidenceJSON}}"><code>{{.EvidenceJSON}}</code></td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {{else}}
+  <div class="empty">No events yet.</div>
+  {{end}}
+</section>
+</body>
+</html>
+{{end}}

@@ -105,4 +105,99 @@ func TestResolveStatusRunIncludesClosed(t *testing.T) {
 	}
 }
 
+func TestListRunsAndEvents(t *testing.T) {
+	dir := t.TempDir()
+	s, err := store.Open(filepath.Join(dir, "t.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+
+	runA := machine.NewRun("run-a", "repo-a")
+	units := []machine.Unit{{ID: "u1", Title: "one"}}
+	if err := s.CreateRun(runA, units); err != nil {
+		t.Fatal(err)
+	}
+	res, err := machine.Apply(runA, units, machine.CmdIntake, machine.ApplyInput{
+		ExpectedRevision: runA.Revision,
+		Intake:           &machine.IntakePatch{SeriesBound: intPtr(1)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SaveApply(res, map[string]any{"series_bound": 1}); err != nil {
+		t.Fatal(err)
+	}
+	runA = res.Run
+	units = res.Units
+	res, err = machine.Apply(runA, units, machine.CmdRelease, machine.ApplyInput{
+		ExpectedRevision: runA.Revision,
+		IntakeRevision:   runA.IntakeRevision,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SaveApply(res, map[string]any{"intake_revision": runA.IntakeRevision}); err != nil {
+		t.Fatal(err)
+	}
+
+	runB := machine.NewRun("run-b", "repo-a")
+	if err := s.CreateRun(runB, units); err != nil {
+		t.Fatal(err)
+	}
+	other := machine.NewRun("run-other", "repo-b")
+	if err := s.CreateRun(other, units); err != nil {
+		t.Fatal(err)
+	}
+
+	summaries, err := s.ListRuns("repo-a")
+	if err != nil || len(summaries) != 2 {
+		t.Fatalf("ListRuns: %v %+v", err, summaries)
+	}
+	if summaries[0].ID != "run-b" || summaries[1].ID != "run-a" {
+		t.Fatalf("ListRuns order: %+v", summaries)
+	}
+	if !summaries[1].Released || !summaries[1].Open {
+		t.Fatalf("run-a summary flags: %+v", summaries[1])
+	}
+	if summaries[0].Released {
+		t.Fatalf("run-b should be unreleased: %+v", summaries[0])
+	}
+
+	events, err := s.ListEvents("repo-a", "run-a")
+	if err != nil || len(events) != 2 {
+		t.Fatalf("ListEvents: %v %+v", err, events)
+	}
+	if events[0].Command != string(machine.CmdIntake) || events[1].Command != string(machine.CmdRelease) {
+		t.Fatalf("ListEvents order: %+v", events)
+	}
+	_, err = s.ListEvents("repo-b", "run-a")
+	if !errors.Is(err, machine.ErrNotFound) {
+		t.Fatalf("ListEvents cross-repo: %v", err)
+	}
+	_, _, _, err = s.GetRunProjection("repo-a", "run-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, err = s.GetRunProjection("repo-b", "run-a")
+	if !errors.Is(err, machine.ErrNotFound) {
+		t.Fatalf("cross-repo projection: %v", err)
+	}
+}
+
+func TestRunIDsAreGloballyUnique(t *testing.T) {
+	s, err := store.Open(filepath.Join(t.TempDir(), "t.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if err := s.CreateRun(machine.NewRun("demo", "repo-a"), nil); err != nil {
+		t.Fatal(err)
+	}
+	err = s.CreateRun(machine.NewRun("demo", "repo-b"), nil)
+	if err == nil {
+		t.Fatal("expected global primary-key conflict for duplicate run id")
+	}
+}
+
 func intPtr(v int) *int { return &v }

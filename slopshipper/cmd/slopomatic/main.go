@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -8,12 +9,15 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/uinaf/slopomatic/internal/buildinfo"
 	"github.com/uinaf/slopomatic/internal/machine"
 	"github.com/uinaf/slopomatic/internal/repo"
+	"github.com/uinaf/slopomatic/internal/serve"
 	"github.com/uinaf/slopomatic/internal/status"
 	"github.com/uinaf/slopomatic/internal/store"
 )
@@ -64,6 +68,8 @@ func run(args []string) int {
 		return cmdDecide(st, rest)
 	case "status":
 		return cmdStatus(st, rest)
+	case "serve":
+		return cmdServe(st, rest)
 	default:
 		fmt.Fprintf(os.Stderr, "slopomatic: unknown command %q\n", cmd)
 		return 2
@@ -85,6 +91,7 @@ Usage:
   slopomatic ask --question TEXT [--run ID]
   slopomatic decide --answer TEXT [--run ID]
   slopomatic status [--json] [--run ID]
+  slopomatic serve [--addr 127.0.0.1:7780]
   slopomatic version
 `
 }
@@ -367,6 +374,44 @@ var knownFlags = map[string]bool{
 	"answer": true, "question": true, "json": true,
 }
 
+var serveFlags = map[string]bool{
+	"addr": true,
+}
+
+func cmdServe(st *store.Store, args []string) int {
+	fs, err := parseFlagsWith(args, serveFlags)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
+		return 2
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
+		return 2
+	}
+	key, err := repo.Key(cwd)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
+		return 2
+	}
+	addr := fs["addr"]
+	if addr == "" {
+		addr = "127.0.0.1:7780"
+	}
+	srv, err := serve.New(serve.Options{Store: st, RepoKey: key, Addr: addr})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
+		return 2
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if err := srv.ListenAndServe(ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
+		return 10
+	}
+	return 0
+}
+
 func requireFlags(args []string) (map[string]string, int) {
 	fs, err := parseFlags(args)
 	if err != nil {
@@ -377,6 +422,10 @@ func requireFlags(args []string) (map[string]string, int) {
 }
 
 func parseFlags(args []string) (map[string]string, error) {
+	return parseFlagsWith(args, knownFlags)
+}
+
+func parseFlagsWith(args []string, allowed map[string]bool) (map[string]string, error) {
 	out := map[string]string{}
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -391,7 +440,7 @@ func parseFlags(args []string) (map[string]string, error) {
 			key = key[:eq]
 			hasVal = true
 		}
-		if !knownFlags[key] {
+		if !allowed[key] {
 			return nil, fmt.Errorf("unknown flag --%s", key)
 		}
 		if key == "json" {
