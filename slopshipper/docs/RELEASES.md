@@ -99,7 +99,7 @@ Changes under `skills/slopomatic` publish only after they merge to protected
 `main` (or via `workflow_dispatch` on that workflow). The dedicated
 `skill-release` Environment exposes a Tessl API key with the workspace-scoped
 `publisher` role; pull-request jobs remain secretless. The pinned
-`uinaf/tessl-publish-action` runs the 100-point Tessl review and publishes the
+`uinaf/tessl-publish-action` runs free Tessl plugin lint (default) and publishes the
 explicit version from `skills/slopomatic/.tessl-plugin/plugin.json` without
 mutating the repository.
 

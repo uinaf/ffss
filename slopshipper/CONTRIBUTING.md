@@ -27,11 +27,11 @@ the workflow on the tagged HEAD instead.
 
 Skill publication uses a separate `skill-release` Environment with
 `TESSL_TOKEN` (Tessl workspace `uinaf` publisher). GitHub Actions runs Tessl
-review at threshold 100 via `uinaf/tessl-publish-action`, then publishes the
+plugin lint via `uinaf/tessl-publish-action`, then publishes the
 manifest version and smokes a Codex install. Locally:
 
 ```bash
-mise run skill:review
+mise run skill:lint
 ```
 
 Bump `skills/slopomatic/.tessl-plugin/plugin.json` when the skill should ship a

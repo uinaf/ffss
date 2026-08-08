@@ -73,11 +73,18 @@ for archive in dist/slopomatic_*.tar.gz; do
 done
 '''
 
-[tasks."skill:review"]
-description = "Tessl-review the skill at the publish threshold (needs tessl + auth)"
+[tasks."skill:lint"]
+description = "Free Tessl plugin lint for the skill package"
 run = '''
 set -e
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl skill lint skills/slopomatic
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopomatic
+'''
+
+[tasks."skill:review"]
+description = "Optional credit-burning Tessl cloud review at threshold 100"
+run = '''
+set -e
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopomatic
 TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopomatic-0.1.0 skills/slopomatic
 '''
 
