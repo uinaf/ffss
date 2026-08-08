@@ -45,8 +45,8 @@ Inspect these surfaces before changing the repository:
 ## Repository-Local Skill
 
 Install `effect-ts` from `Effect-TS/skills` into the repository rather than a
-user-global skill directory. Use the repository's existing agent bootstrap or
-skill installer, and own enough source or lock metadata that a clean runner can
+user-global skill directory. Use the repository's existing bootstrap or skill
+installer, and own enough source or lock metadata that a clean runner can
 reproduce the same guidance without an interactive choice. For example, the
 Agent Skills installer can be run from the repository root without its global
 flag:

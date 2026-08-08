@@ -1,13 +1,13 @@
 ---
 name: agent-readiness
-description: "Audit and improve repository and runner infrastructure for dependable autonomous implementation, QA, and unattended task execution. Covers reproducible bootstrap, noninteractive machine identities, real-surface verification, artifacts, CI, observability, isolation, recovery, and result submission. Use when a repository cannot boot or verify reliably, agents still need manual setup, credentials or worktrees block automation, or a devbox or orchestrator must complete tasks without supervision. Do not use for reviewing an existing diff or documentation-only cleanup."
+description: "Audit and improve repository and runner infrastructure for dependable autonomous implementation, QA, and unattended task execution. Covers reproducible bootstrap, noninteractive machine identities, real-surface verification, artifacts, CI, observability, isolation, recovery, and result submission. Use when making a repo agent-ready, agents cannot boot or verify, setup still needs a human, credentials or worktrees block automation, AGENTS.md lacks a cold-start path, runner setup is broken, automation still needs babysitting, or a devbox/orchestrator must finish tasks unsupervised. Do not use for reviewing an existing diff or documentation-only cleanup."
 disable-model-invocation: true
 ---
 
 # Agent-Readiness
 
-Make a repository and its declared runner dependable for autonomous work. Build
-toward the requested target; default to B and treat C only as a checkpoint.
+Make a repository and its declared runner dependable for autonomous work.
+Default target: B. Treat C as a checkpoint only ([references/grading.md](references/grading.md)).
 
 ## Boundaries
 
@@ -21,115 +21,104 @@ toward the requested target; default to B and treat C only as a checkpoint.
 
 ## Readiness Model
 
-Use [references/grading.md](references/grading.md) to grade the applicable
-capabilities: **Legibility, Executability, Feedback, Safety, Durability, and Scale**.
-
-Report three different things rather than hiding them in one letter:
-
-- **repository grade**: what the checkout makes possible
-- **runner grade**: what the declared devbox, CI worker, or automation host provides
-- **evidence level**: how strongly the claim has been exercised
-
-The lowest applicable capability sets each grade; never average away a blocker.
+Grade with [references/grading.md](references/grading.md). Report repository
+grade, runner grade, and evidence level separately. The lowest applicable
+capability sets each grade; never average away a blocker.
 
 ## Automation Path
 
-For unattended work, inspect the entire path:
-
-**Triage → Dispatch → Provision → Execute → Prove → Submit → Reconcile → Complete**
-
-**Any nonterminal stage → Recover → Retry, Escalate, or Fail**
-
-Record each stage's input, output, owner, and terminal condition. For no-diff
-tasks, also name the result type, evidence, target, and allowed side effects.
+For unattended work, walk
+**Triage → Dispatch → Provision → Execute → Prove → Submit → Reconcile → Complete**,
+with **Recover → Retry, Escalate, or Fail** from any nonterminal stage. Record
+each stage's input, output, owner, and terminal condition. For no-diff tasks,
+also name the result type, evidence, target, and allowed side effects.
 
 ## Workflow
 
 ### 1. Audit the declared execution boundary
 
-Establish the target grade, intended task classes, and runner before grading.
+Lock the request first: target grade (default B), task classes
+(`implementation` / `qa` / both), and runner (`local` / `ci` / named devbox).
 Then:
 
-1. Read the repository-owned entrypoint and follow its links to relevant contracts.
-2. Run the cold-start, boot, smoke, interaction, verification, and teardown paths
-   that exist; static file presence alone is weak evidence.
+1. Read `AGENTS.md` (or the repo entrypoint) and follow its linked contracts.
+2. Discover lifecycle commands and exercise what exists; record exit codes:
+
+   ```bash
+   rg -n 'bootstrap|verify|teardown|boot|smoke' AGENTS.md package.json Makefile Justfile scripts 2>/dev/null
+   # run each discovered cold-start, boot, smoke, verify, and teardown command
+   ```
+
+   Static file presence alone is weak evidence.
 3. Fill the [Required Output](references/grading.md#required-output) profile; for
    every applicable capability record its grade, evidence, gap, and owner.
-4. Walk the automation path and record missing transitions, inputs, outputs, and terminal states.
+4. For each automation-path stage, write `input / output / owner / terminal` or
+   mark the stage missing.
 5. Assign an evidence level using [references/autonomy-evidence.md](references/autonomy-evidence.md).
 
 Use [references/setup-patterns.md](references/setup-patterns.md) for machine
 identity ownership and managed-worktree inputs. Interactive human login,
 profile switching, copied secrets, and printed tokens are runner gaps.
 
-For React and existing Effect repositories, apply the mechanical enforcement
-and runtime guidance in [references/react-enforcement.md](references/react-enforcement.md)
-and [references/effect-readiness.md](references/effect-readiness.md). For Effect
-implementation task classes, require repository-local Effect guidance; a
-machine-global skill is not readiness evidence. Do not introduce Effect solely
-for readiness.
+For React or existing Effect repos, apply
+[references/react-enforcement.md](references/react-enforcement.md) and
+[references/effect-readiness.md](references/effect-readiness.md). Effect
+implementation task classes need repository-local Effect guidance; do not add
+Effect solely for readiness.
 
 ### 2. Build the missing contract
 
-Prioritize work in this order:
+Work in this order: **Legibility → Runner contract → Cold start → Real-surface
+feedback → Enforcement → Isolation → Recovery and result submission → Repeated
+trials**.
 
-**Legibility → Runner contract → Cold start → Real-surface feedback → Enforcement → Isolation → Recovery and result submission → Repeated trials**
-
-Prefer three stable repository entrypoints when the capability is in scope.
-Their minimum lifecycle is executable and always tears down:
+Reuse the repository's ordinary bootstrap, verify, and teardown commands — the
+same surface humans and CI already use. Do not invent a parallel `agent-*`
+script layer. If entrypoints are missing, add plain ones and wire them into
+`package.json`, Make/`just`, or CI:
 
 ```bash
 set -euo pipefail
-trap './scripts/agent-teardown.sh' EXIT
-./scripts/agent-bootstrap.sh
-./scripts/agent-verify.sh
+trap './scripts/teardown.sh' EXIT
+./scripts/bootstrap.sh
+./scripts/verify.sh
 ```
 
-Bootstrap validates prerequisites and becomes ready; verification is canonical
-and reused by CI; teardown handles success, failure, timeout, and cancellation.
-Automation artifacts are keyed by task and attempt.
-
-Keep the execution boundary explicit:
+Bootstrap validates prerequisites; verify is the CI-reused gate; teardown covers
+success, failure, timeout, and cancellation. Name the declared commands in
+`AGENTS.md`. Key automation artifacts by task and attempt.
 
 | Enforce mechanically | Leave to agent judgment |
 | --- | --- |
 | workspace and branch setup, allowed targets, tool install, secret injection | task interpretation and implementation |
 | boot, test, teardown, artifact manifests, upload and push mechanics | exploratory QA, diagnosis, evidence selection, and recovery strategy |
 
-When readiness work includes agent entrypoints, keep `AGENTS.md` as the canonical
-authored guide and place `CLAUDE.md` beside it as a symlink to `AGENTS.md`.
-
-That reference also owns boot, verification, observability, isolation,
-unattended runs, proof artifacts, and result contracts.
+Keep `AGENTS.md` as the canonical agent guide; symlink `CLAUDE.md` → `AGENTS.md`.
 
 ### 3. Prove outcomes, not recipes
 
-- Run the stable lifecycle once on the happy path and once with a safe failure,
-  such as a missing required runner input; preserve both statuses and artifacts.
-- Record each trial in a machine-readable form such as:
+- Run the lifecycle once on the happy path and once with a safe failure
+  (for example a missing required runner input); preserve both statuses and artifacts.
+- Record each trial as machine-readable JSON:
 
 ```json
 {"task_class":"qa","scenario":"missing-runner-identity","result":"expected_failure","human_interventions":0,"duration_seconds":12,"retries":0,"failure_class":"runner/missing_identity","artifacts":"artifacts/task-123/attempt-1/"}
 ```
 
 - Grade final environment or repository state, not the agent's completion claim.
-- Accept equivalent implementations that satisfy the contract; do not require a
-  particular tool, hook, port algorithm, or retry count without an external reason.
-- For B or A claims, repeat representative trials and aggregate their records
-  into success, intervention, duration, retry, resource, and failure metrics.
-- Test parallel isolation and crash or stall recovery when claiming unattended
-  or orchestrated readiness.
+- Accept equivalent implementations that satisfy the contract.
+- For B or A claims, repeat representative trials and aggregate success,
+  intervention, duration, retry, resource, and failure metrics.
+- Test parallel isolation and crash or stall recovery for unattended claims.
 - Inspect transcripts and artifacts for false success, grader defects, secret
-  exposure, and ambiguous task requirements.
+  exposure, and ambiguous requirements.
 
 ### 4. Finish at the requested outcome
 
 Finish at the requested target or an evidenced blocker. Report the path to A
-and relevant documentation drift without expanding into unrelated cleanup.
+and relevant documentation drift without unrelated cleanup.
 
 ## Output
-
-Keep the handoff compact:
 
 ```text
 - grades: repository and runner, before → after
@@ -140,8 +129,7 @@ Keep the handoff compact:
 - next: next capability or none
 ```
 
-Name exact commands only for failures, reproduction, or when asked. Do not
-repeat capability evidence in the footer when it already appears in an audit table.
+Name exact commands only for failures, reproduction, or when asked.
 
 ## References
 

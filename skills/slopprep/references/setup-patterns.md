@@ -344,8 +344,11 @@ input contains:
 - runner class and credential scopes
 - timeout, retry, artifact, and escalation policy
 
-The repository should expose bootstrap, verify, teardown, and artifact
-conventions the orchestrator can call without prompt-specific shell invention.
+The repository should expose its ordinary bootstrap, verify, teardown, and
+artifact commands — package scripts, Make/`just` targets, or plain scripts —
+so an orchestrator can call the same surface humans and CI use without
+prompt-specific shell invention. Do not invent a parallel `agent-*` wrapper
+layer.
 Record explicit states such as:
 
 ```text

@@ -20,12 +20,12 @@
     {
       "name": "Bootstrap validates the runner contract safely",
       "max_score": 8,
-      "description": "scripts/agent-bootstrap.sh uses strict mode, validates required task, attempt, Infisical, and runner inputs without echoing values, checks authentication noninteractively, installs reproducibly through the repository-owned package-manager and dependency contract, and emits actionable repository-versus-runner failure ownership"
+      "description": "A declared ordinary bootstrap entrypoint (package script, Make/just target, or plain script — not an agent-* wrapper) uses strict mode, validates required task, attempt, Infisical, and runner inputs without echoing values, checks authentication noninteractively, installs reproducibly through the repository-owned package-manager and dependency contract, and emits actionable repository-versus-runner failure ownership"
     },
     {
       "name": "Triage and result contract is explicit",
       "max_score": 10,
-      "description": "docs/agent-automation.md defines task source, repository and revision, task and attempt IDs, task class, result type, acceptance criteria, required evidence, risk and capabilities, allowed side effects, submission target, terminal condition, and runner selection"
+      "description": "docs/automation.md defines task source, repository and revision, task and attempt IDs, task class, result type, acceptance criteria, required evidence, risk and capabilities, allowed side effects, submission target, terminal condition, and runner selection"
     },
     {
       "name": "Workspace and mutable resources are isolated",
@@ -35,7 +35,7 @@
     {
       "name": "Verification grades outcomes and preserves artifacts",
       "max_score": 10,
-      "description": "scripts/agent-verify.sh invokes the canonical repository verification path with a finite bound, preserves inspectable success or failure evidence and a machine-readable manifest under a task-and-attempt-specific artifact root, records revision, build, environment, scenario, producer, capture time, format, and redaction status for QA evidence, and relies on final state rather than an agent completion claim"
+      "description": "The declared ordinary verify entrypoint (extending the existing repository verify path — not an agent-* wrapper) runs with a finite bound, preserves inspectable success or failure evidence and a machine-readable manifest under a task-and-attempt-specific artifact root, records revision, build, environment, scenario, producer, capture time, format, and redaction status for QA evidence, and relies on final state rather than an agent completion claim"
     },
     {
       "name": "Implementation and QA result paths are first class",
@@ -45,7 +45,7 @@
     {
       "name": "Attempt state and cleanup are durable",
       "max_score": 8,
-      "description": "scripts/agent-teardown.sh exists and is idempotent on success, failure, cancellation, timeout, and retry; the contract records task and attempt state, commands, and artifact locations needed for a fresh process to resume"
+      "description": "A declared ordinary teardown entrypoint (not an agent-* wrapper) is idempotent on success, failure, cancellation, timeout, and retry; the contract records task and attempt state, commands, and artifact locations needed for a fresh process to resume"
     },
     {
       "name": "Retries, stalls, and escalation are bounded",
@@ -55,7 +55,7 @@
     {
       "name": "Submission and reconciliation use explicit state",
       "max_score": 8,
-      "description": "docs/agent-automation.md defines generic queued, provisioning, executing, proving, submitting, reconciling, retry, failure and terminal states plus result-specific provider states for PR and QA-report paths, while leaving actual external mutations to the authorized future orchestrator"
+      "description": "docs/automation.md defines generic queued, provisioning, executing, proving, submitting, reconciling, retry, failure and terminal states plus result-specific provider states for PR and QA-report paths, while leaving actual external mutations to the authorized future orchestrator"
     },
     {
       "name": "Authority and evidence claims are honest",

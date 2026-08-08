@@ -33,23 +33,30 @@ Produce:
 
 1. `readiness-report.md` — Separate repository grade, runner grade, capability
    profile, and E0-through-E4 evidence level. Identify gaps and their owner.
-2. `docs/agent-automation.md` — Define task input, result type, attempt identity,
+2. `docs/automation.md` — Define task input, result type, attempt identity,
    artifact and manifest layout, triage-to-result states, allowed submission
    target, terminal condition, retry and escalation rules, recovery behavior,
    and repository/runner ownership. Cover implementation and QA result paths.
-3. `scripts/agent-bootstrap.sh` — A noninteractive, strict-mode bootstrap that
-   validates the runner contract and machine identity without exposing secrets,
-   installs dependencies reproducibly, and fails with actionable ownership.
-4. `scripts/agent-verify.sh` — The canonical bounded verification entrypoint. It
-   records inspectable outcome evidence and a machine-readable artifact manifest
-   under a task-and-attempt-specific directory, and exits non-zero with a useful
-   diagnostic when verification fails. QA evidence must identify the tested revision, build, environment,
-   scenario, producer, capture time, format, and redaction status.
-5. `scripts/agent-teardown.sh` — Idempotent cleanup suitable for success,
-   failure, cancellation, timeout, and retry.
+3. Declared bootstrap, verify, and teardown entrypoints on the repository's
+   ordinary surface (`package.json` scripts, Make/`just` targets, or plain
+   scripts such as `scripts/bootstrap.sh`). Do not invent an `agent-*` parallel
+   layer. Replace the interactive `scripts/current-agent-setup.sh` path.
 
-Document stable contracts and accept compatible orchestrator implementations;
-do not prescribe an internal Symphony implementation.
+   - **bootstrap** — noninteractive, strict-mode cold start that validates the
+     runner contract and machine identity without exposing secrets, installs
+     dependencies reproducibly through the repository-owned package-manager
+     contract, and fails with actionable repository-versus-runner ownership.
+   - **verify** — extend the existing canonical bounded verification path. It
+     records inspectable outcome evidence and a machine-readable artifact
+     manifest under a task-and-attempt-specific directory, and exits non-zero
+     with a useful diagnostic when verification fails. QA evidence must identify
+     the tested revision, build, environment, scenario, producer, capture time,
+     format, and redaction status.
+   - **teardown** — idempotent cleanup suitable for success, failure,
+     cancellation, timeout, and retry.
+
+Document the exact commands in `AGENTS.md`. Accept compatible orchestrator
+implementations; do not prescribe an internal Symphony implementation.
 
 ## Input Files
 

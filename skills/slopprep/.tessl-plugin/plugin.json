@@ -1,7 +1,7 @@
 {
   "name": "uinaf/agent-readiness",
   "version": "1.0.13",
-  "description": "Audit and build repository and runner infrastructure for autonomous agent work and unattended triage-to-result flows — implementation, QA, reproducible bootstrap, machine identities, real-surface proof, artifacts, CI gates, observability, isolation, recovery, and result submission. Use when a repo cannot boot or verify reliably, a React or Effect repo needs agent-facing enforcement or runtime proof, agents need human setup, a devbox or orchestrator will execute or QA tasks, credentials or worktrees block automation, or teams want to raise measured readiness toward B or A. Do not use for reviewing an existing diff or for documentation-only cleanup.",
+  "description": "Audit and improve repository and runner infrastructure for dependable autonomous implementation, QA, and unattended task execution. Covers reproducible bootstrap, noninteractive machine identities, real-surface verification, artifacts, CI, observability, isolation, recovery, and result submission. Use when making a repo agent-ready, agents cannot boot or verify, setup still needs a human, credentials or worktrees block automation, AGENTS.md lacks a cold-start path, runner setup is broken, automation still needs babysitting, or a devbox/orchestrator must finish tasks unsupervised. Do not use for reviewing an existing diff or documentation-only cleanup.",
   "private": false,
   "skills": [
     "SKILL.md"
