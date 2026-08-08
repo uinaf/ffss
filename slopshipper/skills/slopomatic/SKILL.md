@@ -1,11 +1,6 @@
 ---
 name: slopomatic
-description: >-
-  Runs a deterministic, evidence-gated loop×graph implementation workflow via
-  the installed slopomatic CLI: clarify intake, human release, build, verify,
-  independent review, deliver. Use only when the user explicitly invokes
-  /slopomatic for structured task/plan execution. Do not use for ad-hoc edits
-  or planning-only work.
+description: "Runs a structured, deterministic implementation workflow via the installed slopomatic CLI: clarifies intake, gates human release, runs build and verify, records independent review evidence, and delivers a reviewed artifact. Use when the user says /slopomatic, run this plan, execute the task list, ship this in slices, implement with checkpoints, walk the plan end to end, build it with human gates, or do a governed multi-step implementation. Do not use for ad-hoc edits or planning-only work."
 disable-model-invocation: true
 ---
 
@@ -24,30 +19,85 @@ command -v slopomatic
 slopomatic version
 ```
 
-If missing, stop and ask the user to install it (`go install github.com/uinaf/slopomatic/cmd/slopomatic@latest` or their release path). Do not invent a second runtime.
+If missing, stop and ask the user to install the CLI through their approved host
+package or release workflow. Do not download or run installers from this skill.
+Do not invent a second runtime.
+
+## Commands
+
+```bash
+slopomatic status --json
+slopomatic release --revision "$INTAKE_REVISION"
+slopomatic build
+slopomatic verify --cmd 'go test ./...'
+slopomatic review --evidence ./review.evidence.json
+slopomatic deliver --evidence ./deliver.evidence.json
+slopomatic ask --question "Should we merge or hold the PR?"
+slopomatic decide --answer "Merge when CI is green"
+slopomatic version
+```
 
 ## Leash
 
-1. Run `slopomatic status` (add `--json` when parsing).
-2. Obey `next_action` / `allowed_commands`. Do not narrate state-machine theater.
-3. Advance only through named CLI commands with structured evidence.
+1. Run `slopomatic status --json` and obey its next step. See
+   [status.md](references/status.md) for the full status field contract.
+2. Advance only through named CLI commands with the evidence status requires.
+3. Re-read status after every advance. Do not invent transitions or narrate
+   phase theater.
+
+## Machine loop
+
+After the human releases: build → verify → review → deliver, always driven by
+status.
+
+```bash
+# after verify succeeds and status asks for review:
+cat > ./review.evidence.json <<'EOF'
+{"reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://local"}
+EOF
+slopomatic review --evidence ./review.evidence.json
+```
+
+Deliver only after a recorded review, with `./deliver.evidence.json` covering
+the delivery mode and PR/commit fields status requires.
+
+## Talk to the human
+
+Collaborator voice: short prose + optional tables. Lead with what changed or
+what you need — never a wall of CLI JSON. Plain words over machine dumps.
 
 ## Three human moments
 
-1. **Release** — after intake, show the confirm-table and wait for the human; then `slopomatic release --revision "$INTAKE_REVISION"`.
-2. **Review consent** — at intake, confirm approach once: `autoreview` CLI (portable), Cursor `/review-bugbot` (cheap local), both, or human. Store via intake `review_consent`. Do not auto-fire reviewers.
-3. **Decide** — park with `slopomatic ask --question …`; when status is `NEEDS_DECISION`, `slopomatic decide --answer …`.
+1. **Release** — confirm table (what/how/review), wait, then
+   `slopomatic release --revision` using `intake_revision` from status JSON.
+2. **Review consent** — once at intake: `autoreview` CLI, Cursor `/review-bugbot`,
+   both, or human. Store via intake `review_consent`. Do not auto-fire reviewers.
+3. **Decide** — `slopomatic ask --question …`, then
+   `slopomatic decide --answer …`.
+
+## Error recovery
+
+Non-zero exit: show stderr, re-read status, surface the `blocker` field
+verbatim when present, stop, and ask how to proceed. Never retry silently.
+Empty/illegal next step: tell the human and wait.
+
+## Post-review flow
+
+- `verdict: clean` → summarize, then deliver when status says so.
+- Findings / non-clean → summarize, ask whether to `slopomatic rework` (when
+  allowed) or decide.
+- Ambiguous verdict → **Decide** moment.
 
 ## Mindful spend
 
-Strong/capable model for BUILD. Prefer cheaper review (Bugbot / lighter autoreview models). Never default “most expensive everywhere.”
+Strong model for BUILD; cheaper review (Bugbot / lighter autoreview). Never
+default "most expensive everywhere."
 
 ## Companion tools
 
-- Preferred portable review: installed `autoreview` binary (ask harness/model if unclear).
-- On Cursor: `/review-bugbot` is cheap — still confirm.
-- Record review with `slopomatic review --evidence PATH.json` (`reviewer`, `verdict`, `artifact_ref`).
+Installed `autoreview` binary preferred; Cursor `/review-bugbot` is a cheap
+local option with consent.
 
 ## Done
 
-Stop at `RUN_DONE` / `BLOCKED` / awaiting human. Keep chat updates compact; sqlite holds the event log.
+Stop when finished, blocked, or waiting on the human. Sqlite holds the event log.

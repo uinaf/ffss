@@ -1,11 +1,11 @@
 interface:
   display_name: "Slopomatic"
-  short_description: "Clarify, release, then evidence-gated implement loops"
+  short_description: "Run a plan with human gates and evidence-backed loops"
   default_prompt: |
     Use $slopomatic.
 
     Goal: structured slop-cannoning — clarify intake, human release, then obey
-    slopomatic status next_action through verify → review → deliver.
+    slopomatic status next_action through build → verify → review → deliver.
 
     Require the installed slopomatic binary. Confirm review approach once at
     intake (autoreview CLI and/or Cursor Bugbot). Prefer strong models for

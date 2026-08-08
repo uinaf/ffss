@@ -1,0 +1,86 @@
+[settings]
+jobs = 1
+
+[tools]
+actionlint = "1.7.12"
+go = "1.26.2"
+goreleaser = "2.17.1"
+shellcheck = "0.11.0"
+
+[env]
+GOWORK = "off"
+
+[tasks.fmt]
+description = "Format Go sources"
+run = "gofmt -w ."
+
+[tasks."fmt:check"]
+description = "Check Go source formatting"
+run = "test -z \"$(gofmt -l .)\""
+
+[tasks.test]
+description = "Run unit tests"
+run = "go test -p 4 -parallel 4 ./..."
+
+[tasks.vet]
+description = "Run Go static analysis"
+run = "go vet ./..."
+
+[tasks.build]
+description = "Build the slopomatic CLI"
+run = "go build ./cmd/slopomatic"
+
+[tasks."installer:test"]
+description = "Run the offline Linux installer fixture tests"
+run = "bash scripts/test-install.sh"
+
+[tasks."installer:check"]
+description = "Validate the Linux installer"
+depends = ["installer:test"]
+run = '''
+set -e
+sh -n install.sh
+bash -n scripts/test-install.sh
+shellcheck -s sh install.sh
+shellcheck -s bash scripts/test-install.sh
+'''
+
+[tasks."release:check"]
+description = "Validate GoReleaser, installer, and GitHub Actions configuration"
+depends = ["installer:check"]
+run = '''
+set -e
+actionlint
+goreleaser check
+bash -n scripts/verify-apple-credentials.sh
+bash -n scripts/verify-apple-release.sh
+bash -n scripts/verify-published-skill.sh
+shellcheck -s bash scripts/verify-published-skill.sh
+test -f .releaserc.json
+'''
+
+[tasks."release:snapshot"]
+description = "Build and inspect unpublished release archives"
+depends = ["release:check"]
+run = '''
+set -e
+goreleaser release --snapshot --clean --skip=publish,sign
+test "$(find dist -maxdepth 1 -name 'slopomatic_*.tar.gz' -type f | wc -l | tr -d ' ')" = "4"
+test "$(find dist -maxdepth 1 -name 'slopomatic_*_linux_amd64.tar.gz' -type f | wc -l | tr -d ' ')" = "1"
+test "$(find dist -maxdepth 1 -name 'slopomatic_*_linux_arm64.tar.gz' -type f | wc -l | tr -d ' ')" = "1"
+for archive in dist/slopomatic_*.tar.gz; do
+  test "$(tar -tzf "$archive" | LC_ALL=C sort | tr '\n' ' ')" = "LICENSE README.md slopomatic "
+done
+'''
+
+[tasks."skill:review"]
+description = "Tessl-review the skill at the publish threshold (needs tessl + auth)"
+run = '''
+set -e
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl skill lint skills/slopomatic
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopomatic-0.1.0 skills/slopomatic
+'''
+
+[tasks.verify]
+description = "Run deterministic repository verification"
+depends = ["fmt:check", "test", "vet", "build", "installer:check", "release:check"]

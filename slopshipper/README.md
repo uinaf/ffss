@@ -1,35 +1,51 @@
+![slopomatic — deterministic and structured approach to slop cannoning.](https://uinaf.dev/og/banner/slopomatic.png)
+
 # slopomatic
 
-Deterministic and structured approach to slop cannoning.
+`slopomatic` is a Go CLI and thin agent skill for evidence-gated loop×graph
+execution. Coding agents build, verify, and deliver work one auditable
+transition at a time — mindful token spend, without sacrificing quality.
 
 ```text
 make a plan  →  /slopomatic  →  clarify with the human  →  human releases  →  machine runs
 ```
 
-`slopomatic` is a Go CLI and thin agent skill: an evidence-gated loop×graph state
-machine so coding agents build, verify, and deliver work one auditable
-transition at a time — mindful token spend, without sacrificing quality.
-
-Canonical plan: [#1](https://github.com/uinaf/slopomatic/issues/1).
-
 ## Install
+
+On macOS, install the signed CLI from the `uinaf/tap` Homebrew tap:
+
+```bash
+brew install --cask uinaf/tap/slopomatic
+slopomatic version
+```
+
+On Linux amd64 or arm64, install the latest released binary without Go,
+Homebrew, `jq`, or `sudo`:
+
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://raw.githubusercontent.com/uinaf/slopomatic/main/install.sh | sh
+~/.local/bin/slopomatic version
+```
+
+Pass `--version v0.1.0` or `--dest /chosen/bin` after `sh -s --` to pin a
+release or override `${HOME}/.local/bin`. The installer downloads the archive
+and `checksums.txt` from the same GitHub Release, verifies the exact SHA-256,
+and atomically replaces the destination binary. See
+[Release verification](docs/RELEASES.md#linux-installer-trust-boundary) for the
+HTTPS trust boundary and independent Cosign and GitHub attestation checks.
+
+Consumers that prefer Go tooling can instead install with Go 1.26 or newer:
 
 ```bash
 go install github.com/uinaf/slopomatic/cmd/slopomatic@latest
 slopomatic version
 ```
 
-From a checkout:
-
-```bash
-go test ./...
-go install ./cmd/slopomatic
-```
-
 State lives in `$XDG_DATA_HOME/slopomatic/slopomatic.sqlite` (default
 `~/.local/share/slopomatic/slopomatic.sqlite`). Override with `SLOPOMATIC_DB`.
 
-## Quick path
+## Quick use
 
 ```bash
 slopomatic init --run demo
@@ -49,18 +65,20 @@ Park a human question with `slopomatic ask --question "…"`, then
 `slopomatic decide --answer "…"`. Multi-unit intake:
 [`examples/intake.multi.example.json`](examples/intake.multi.example.json).
 
-CI / local gate: `go test ./...` (includes multi-unit ask→decide→pr-hold CLI e2e
-and fail-closed release/evidence/`--run` checks).
-
 ## Agent skill
 
-Bundled at [`skills/slopomatic/SKILL.md`](skills/slopomatic/SKILL.md). Manual
-invocation only. The skill drives the CLI; it does not reimplement the machine.
+The bundled [agent skill](skills/slopomatic/SKILL.md) drives the CLI. It does
+not contain a second runtime. Manual invocation only.
 
 ## Companion tools
 
 - [`autoreview`](https://github.com/uinaf/autoreview) — preferred portable independent review CLI
 - On Cursor: `/review-bugbot` as a cheap local review option (confirm before use)
+
+## Documentation
+
+- [Release artifacts and verification](docs/RELEASES.md)
+- [Contributing](CONTRIBUTING.md) — setup, gates, and pull-request expectations
 
 ## License
 

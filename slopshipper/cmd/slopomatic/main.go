@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/uinaf/slopomatic/internal/buildinfo"
 	"github.com/uinaf/slopomatic/internal/machine"
 	"github.com/uinaf/slopomatic/internal/repo"
 	"github.com/uinaf/slopomatic/internal/status"
@@ -27,7 +28,7 @@ func run(args []string) int {
 		return 0
 	}
 	if args[0] == "version" || args[0] == "--version" {
-		fmt.Fprintln(os.Stdout, "slopomatic 0.0.0-dev")
+		fmt.Fprintln(os.Stdout, buildinfo.Version())
 		return 0
 	}
 
