@@ -354,8 +354,8 @@ func validConsent(c ReviewConsent) error {
 func validateGraph(units []Unit) error {
 	ids := map[string]struct{}{}
 	for _, u := range units {
-		if u.ID == "" {
-			return fmt.Errorf("%w: unit id required", ErrBadArgs)
+		if err := ValidateResourceID("unit id", u.ID); err != nil {
+			return err
 		}
 		if _, ok := ids[u.ID]; ok {
 			return fmt.Errorf("%w: duplicate unit id %q", ErrBadArgs, u.ID)

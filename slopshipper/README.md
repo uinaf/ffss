@@ -64,6 +64,9 @@ State is stored at `$XDG_DATA_HOME/slopomatic/slopomatic.sqlite`, or
 `~/.local/share/slopomatic/slopomatic.sqlite` when `XDG_DATA_HOME` is unset.
 The CLI creates the state directory and database on first use with private
 permissions. Set `SLOPOMATIC_DB` to use a different writable database path.
+Relative overrides resolve from the Git worktree root. Inspect the selected
+location with `slopomatic storage --json`; repository-local databases are
+rejected unless the database and its SQLite sidecars are untracked and ignored.
 
 ## Quick start
 
@@ -106,6 +109,22 @@ slopomatic status --json --run demo
 executable `next_action`; `--json` exposes the full contract for agents. Check
 it after every transition instead of guessing the next command.
 
+## Agent interface
+
+Agents should discover the live schema, keep status reads narrow, and validate
+each mutation before applying it:
+
+```bash
+slopomatic schema --command intake
+slopomatic status --json --fields state,next_action,allowed_commands,required_evidence
+slopomatic release --revision N --run demo --dry-run --json
+```
+
+Pass raw command payloads with `--input -` and convenience evidence with
+`--evidence -`; do not leave transport JSON in the repository. See the
+[agent CLI contract](docs/AGENT_INTERFACE.md) for structured input and output,
+dry runs, state storage, sandbox overrides, and error recovery.
+
 For multi-unit intake, start with
 [`examples/intake.multi.example.json`](examples/intake.multi.example.json).
 Every command also has focused help, such as `slopomatic review --help`.
@@ -115,6 +134,9 @@ Every command also has focused help, such as `slopomatic review --help`.
 | Need | Command |
 | --- | --- |
 | Inspect a run or find its next action | `slopomatic status [--json]` |
+| Discover commands and raw payloads | `slopomatic schema [--command NAME]` |
+| Inspect state location and Git safety | `slopomatic storage --json` |
+| Validate a mutation without applying it | `slopomatic COMMAND --dry-run --json` |
 | Pause for a human answer | `slopomatic ask --question "…"` |
 | Record the answer | `slopomatic decide --answer "…"` |
 | Record an external blocker | `slopomatic block --reason "…"` |
@@ -149,6 +171,7 @@ Independent review remains a companion step. Use the installed
 
 ## Documentation
 
+- [Agent CLI contract](docs/AGENT_INTERFACE.md)
 - [Release artifacts and verification](docs/RELEASES.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)

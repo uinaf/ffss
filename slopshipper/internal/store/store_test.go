@@ -11,6 +11,12 @@ import (
 	"github.com/uinaf/slopomatic/internal/store"
 )
 
+func TestOpenReadOnlyRejectsEmptyPath(t *testing.T) {
+	if _, err := store.OpenReadOnly(""); err == nil {
+		t.Fatal("empty read-only database path accepted")
+	}
+}
+
 func TestCreateResolveAndCAS(t *testing.T) {
 	dir := t.TempDir()
 	s, err := store.Open(filepath.Join(dir, "t.sqlite"))
@@ -72,6 +78,52 @@ func TestCreateResolveAndCAS(t *testing.T) {
 	conflict.Run.Revision = res.Run.Revision + 10
 	if err := s.SaveApply(conflict); !errors.Is(err, machine.ErrRevisionConflict) {
 		t.Fatalf("want revision conflict got %v", err)
+	}
+}
+
+func TestOpenReadOnlyResolvesWithoutWriting(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "readonly.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateRun(machine.NewRun("read-only", "repo"), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readOnly, err := store.OpenReadOnly(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, _, err := readOnly.ResolveStatusRun("repo", "read-only")
+	if err != nil || run.ID != "read-only" {
+		t.Fatalf("resolve=%+v err=%v", run, err)
+	}
+	if err := readOnly.SetPref("read-only", "rejected"); err == nil {
+		t.Fatal("read-only store accepted a write")
+	}
+	if err := readOnly.Close(); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !after.ModTime().Equal(before.ModTime()) || after.Size() != before.Size() {
+		t.Fatalf("read-only open changed database: before=%+v after=%+v", before, after)
+	}
+}
+
+func TestOpenReadOnlyRejectsMissingDatabase(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "missing.sqlite")
+	if _, err := store.OpenReadOnly(path); err == nil || !strings.Contains(err.Error(), path) {
+		t.Fatalf("missing read-only database: %v", err)
 	}
 }
 
@@ -197,8 +249,8 @@ func TestRunIDsAreGloballyUnique(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = s.CreateRun(machine.NewRun("demo", "repo-b"), nil)
-	if err == nil {
-		t.Fatal("expected global primary-key conflict for duplicate run id")
+	if !errors.Is(err, machine.ErrRunExists) {
+		t.Fatalf("duplicate run error=%v", err)
 	}
 }
 

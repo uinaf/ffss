@@ -1,11 +1,41 @@
 package status
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
 	"github.com/uinaf/slopomatic/internal/machine"
 )
+
+func TestJSONFieldsAndDryRunMetadata(t *testing.T) {
+	if err := ValidateFields(strings.Split(AgentFieldMask, ",")); err != nil {
+		t.Fatalf("agent field mask: %v", err)
+	}
+	doc := From(machine.Run{ID: "dry", State: machine.StateIntake, ReviewConsent: machine.ReviewAutoreview}, nil)
+	doc.DryRun = true
+	doc.ValidatedCommand = "intake"
+	b, err := doc.JSONFields([]string{"state", "dry_run", "validated_command", "blocker"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]any
+	if err := json.Unmarshal(b, &fields); err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 3 || fields["state"] != "INTAKE" || fields["dry_run"] != true || fields["validated_command"] != "intake" {
+		t.Fatalf("fields=%+v", fields)
+	}
+	if _, present := fields["blocker"]; present {
+		t.Fatalf("omitted blocker present in projection: %+v", fields)
+	}
+	if _, err := doc.JSONFields([]string{"missing"}); err == nil {
+		t.Fatal("unknown field accepted")
+	}
+	if got := doc.CompactLine(); !strings.HasPrefix(got, "slopomatic dry-run dry ") {
+		t.Fatalf("compact dry-run=%q", got)
+	}
+}
 
 func TestFromContracts(t *testing.T) {
 	released := int64(3)
@@ -22,7 +52,7 @@ func TestFromContracts(t *testing.T) {
 		{
 			name: "empty intake requires intake",
 			run:  machine.Run{State: machine.StateIntake, IntakeRevision: 3, ReviewConsent: machine.ReviewAutoreview},
-			next: "slopomatic intake --file <intake.json>", allowed: []string{"intake", "ask"},
+			next: "slopomatic intake --file -", allowed: []string{"intake", "ask"},
 			required: []string{}, frontier: []string{}, completed: []string{},
 		},
 		{
@@ -48,7 +78,7 @@ func TestFromContracts(t *testing.T) {
 		{
 			name: "both reviews shows progress",
 			run:  machine.Run{State: machine.StateReview, ReviewConsent: machine.ReviewBoth, CompletedReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview}},
-			next: "slopomatic review --evidence <review.json>", allowed: []string{"review", "rework", "ask", "block"},
+			next: "slopomatic review --evidence -", allowed: []string{"review", "rework", "ask", "block"},
 			required: []string{"review.reviewer", "review.verdict", "review.artifact_ref"}, frontier: []string{}, completed: []string{"autoreview"},
 		},
 		{
@@ -66,7 +96,7 @@ func TestFromContracts(t *testing.T) {
 		{
 			name: "delivery names its evidence",
 			run:  machine.Run{State: machine.StateDeliver, ReviewConsent: machine.ReviewAutoreview},
-			next: "slopomatic deliver --evidence <deliver.json>", allowed: []string{"deliver", "ask"},
+			next: "slopomatic deliver --evidence -", allowed: []string{"deliver", "ask"},
 			required: []string{"deliver.delivery_mode", "deliver.pr_url|deliver.commit_sha"}, frontier: []string{}, completed: []string{},
 		},
 		{

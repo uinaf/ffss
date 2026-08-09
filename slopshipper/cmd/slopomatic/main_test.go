@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -14,12 +16,14 @@ import (
 
 	"github.com/uinaf/slopomatic/internal/machine"
 	"github.com/uinaf/slopomatic/internal/repo"
+	"github.com/uinaf/slopomatic/internal/status"
 	"github.com/uinaf/slopomatic/internal/store"
 )
 
 type cliHarness struct {
 	t       *testing.T
 	bin     string
+	db      string
 	repoDir string
 	env     []string
 }
@@ -51,6 +55,7 @@ func newCLIHarness(t *testing.T) *cliHarness {
 	return &cliHarness{
 		t:       t,
 		bin:     bin,
+		db:      db,
 		repoDir: repoDir,
 		env:     append(os.Environ(), "SLOPOMATIC_DB="+db),
 	}
@@ -68,21 +73,36 @@ func (h *cliHarness) runInput(input string, args ...string) (string, int) {
 	if input != "" {
 		cmd.Stdin = strings.NewReader(input)
 	}
-	out, err := cmd.CombinedOutput()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
 	code := 0
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
 			code = ee.ExitCode()
 		} else {
-			h.t.Fatalf("%v: %s", err, out)
+			h.t.Fatalf("%v: %s", err, stderr.String())
 		}
 	}
-	return string(out), code
+	if stdout.Len() > 0 {
+		return stdout.String(), code
+	}
+	return stderr.String(), code
 }
 
 func (h *cliHarness) must(args ...string) string {
 	h.t.Helper()
 	out, code := h.run(args...)
+	if code != 0 {
+		h.t.Fatalf("%v: exit %d\n%s", args, code, out)
+	}
+	return out
+}
+
+func (h *cliHarness) mustInput(input string, args ...string) string {
+	h.t.Helper()
+	out, code := h.runInput(input, args...)
 	if code != 0 {
 		h.t.Fatalf("%v: exit %d\n%s", args, code, out)
 	}
@@ -135,6 +155,493 @@ func TestCLINorthStarSmoke(t *testing.T) {
 	out = h.must("status", "--json")
 	if err := json.Unmarshal([]byte(out), &fin); err != nil || fin.State != "RUN_DONE" {
 		t.Fatalf("status without --run: %v %s", err, out)
+	}
+}
+
+func TestAgentDXStructuredProtocolAndSchema(t *testing.T) {
+	h := newCLIHarness(t)
+	out, code := h.run("--json", "unknown")
+	if code != 2 {
+		t.Fatalf("unknown exit=%d output=%s", code, out)
+	}
+	var failure errorDocument
+	if err := json.Unmarshal([]byte(out), &failure); err != nil {
+		t.Fatalf("structured error: %v\n%s", err, out)
+	}
+	if failure.OK || failure.Error.Kind != "invalid_input" || failure.Error.ExitCode != 2 {
+		t.Fatalf("failure=%+v", failure)
+	}
+
+	out = h.must("schema", "--command", "intake")
+	var schema introspectionDocument
+	if err := json.Unmarshal([]byte(out), &schema); err != nil {
+		t.Fatalf("schema JSON: %v\n%s", err, out)
+	}
+	if len(schema.Commands) != 1 || schema.Commands[0].Name != "intake" || schema.Commands[0].Input == nil {
+		t.Fatalf("schema=%+v", schema)
+	}
+	if _, ok := schema.Commands[0].Input.Properties["units"]; !ok {
+		t.Fatalf("intake schema lacks units: %+v", schema.Commands[0].Input)
+	}
+
+	help := h.must("intake", "--help", "--json")
+	if err := json.Unmarshal([]byte(help), &schema); err != nil || len(schema.Commands) != 1 || schema.Commands[0].Name != "intake" {
+		t.Fatalf("JSON help: %v %s", err, help)
+	}
+	version := h.must("--json", "version")
+	var versionDoc map[string]any
+	if err := json.Unmarshal([]byte(version), &versionDoc); err != nil || versionDoc["version"] == "" {
+		t.Fatalf("JSON version: %v %s", err, version)
+	}
+
+	full, err := schemaDocument("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(full.Commands) != len(commandFlags) {
+		t.Fatalf("schema commands=%d flags commands=%d", len(full.Commands), len(commandFlags))
+	}
+	for _, command := range full.Commands {
+		parsed, ok := commandFlags[command.Name]
+		if !ok {
+			t.Fatalf("schema exposes unknown command %q", command.Name)
+		}
+		documented := map[string]bool{}
+		for _, flag := range command.Flags {
+			documented[strings.TrimPrefix(flag.Name, "--")] = true
+		}
+		for flag := range parsed {
+			if !documented[flag] {
+				t.Errorf("command %q parser flag --%s missing from schema", command.Name, flag)
+			}
+		}
+	}
+}
+
+func TestAgentDXProtocolHelperBranches(t *testing.T) {
+	cleaned, opts, err := parseRunOptions([]string{"--json", "build", "--dry-run", "--run=x"})
+	if err != nil || !opts.json || !opts.dryRun || strings.Join(cleaned, " ") != "build --run=x" {
+		t.Fatalf("parse options cleaned=%v opts=%+v err=%v", cleaned, opts, err)
+	}
+	for _, args := range [][]string{
+		{"--json", "--json", "status"},
+		{"--json=false", "status"},
+		{"--dry-run", "--dry-run", "build"},
+		{"--dry-run=false", "build"},
+	} {
+		if _, _, err := parseRunOptions(args); err == nil {
+			t.Errorf("accepted global options %v", args)
+		}
+	}
+	fields, err := parseFields("state, next_action")
+	if err != nil || strings.Join(fields, ",") != "state,next_action" {
+		t.Fatalf("fields=%v err=%v", fields, err)
+	}
+	for _, value := range []string{"", "state,,next_action", "state,state"} {
+		if _, err := parseFields(value); err == nil {
+			t.Errorf("accepted fields %q", value)
+		}
+	}
+
+	kinds := map[error]string{
+		errUnsafeStatePath:           "unsafe_state_path",
+		errInvalidStateConfig:        "invalid_state_config",
+		machine.ErrBadArgs:           "invalid_input",
+		machine.ErrIllegalTransition: "illegal_transition",
+		machine.ErrUnmetGuard:        "unmet_guard",
+		machine.ErrRevisionConflict:  "revision_conflict",
+		machine.ErrAmbiguousRun:      "ambiguous_run",
+		machine.ErrRunExists:         "run_exists",
+		machine.ErrNotFound:          "not_found",
+		machine.ErrCorruptState:      "corrupt_state",
+	}
+	for err, want := range kinds {
+		if got := errorKind(10, fmt.Errorf("wrapped: %w", err)); got != want {
+			t.Errorf("kind %v=%q want %q", err, got, want)
+		}
+	}
+	if got := errorKind(6, errors.New("failed")); got != "verification_failed" {
+		t.Fatalf("verification kind=%q", got)
+	}
+	if got := errorKind(10, errors.New("failed")); got != "internal" {
+		t.Fatalf("internal kind=%q", got)
+	}
+
+	if err := writeJSON(make(chan int)); err == nil {
+		t.Fatal("unencodable JSON accepted")
+	}
+	var mirror strings.Builder
+	mirroredDigest, expectedDigest := newOutputDigester(&mirror), newOutputDigester()
+	for _, chunk := range []string{"out", "err"} {
+		_, _ = mirroredDigest.Write([]byte(chunk))
+		_, _ = expectedDigest.Write([]byte(chunk))
+	}
+	if digest := mirroredDigest.String(); mirror.String() != "outerr" || !strings.HasPrefix(digest, "sha256:") || digest != expectedDigest.String() {
+		t.Fatalf("mirrored output=%q digest=%q expected=%q", mirror.String(), digest, expectedDigest.String())
+	}
+	streamed, shellCode, shellDigest := captureStderrResult(t, func() (int, string) {
+		return runShell("printf out; printf err >&2", true)
+	})
+	stdoutExpected, stderrExpected := newOutputDigester(), newOutputDigester()
+	_, _ = stdoutExpected.Write([]byte("out"))
+	_, _ = stderrExpected.Write([]byte("err"))
+	if shellCode != 0 || (streamed != "outerr" && streamed != "errout") || shellDigest != digestOutputs(stdoutExpected, stderrExpected) {
+		t.Fatalf("runShell code=%d output=%q digest=%q", shellCode, streamed, shellDigest)
+	}
+	plainExpected := newOutputDigester()
+	_, _ = plainExpected.Write([]byte("plain-error"))
+	emptyExpected := newOutputDigester()
+	plainStreamed, plainCode, plainDigest := captureStderrResult(t, func() (int, string) {
+		return runShell("printf plain-error >&2", false)
+	})
+	if plainCode != 0 || plainStreamed != "plain-error" || plainDigest != digestOutputs(emptyExpected, plainExpected) {
+		t.Fatalf("plain runShell code=%d output=%q digest=%q", plainCode, plainStreamed, plainDigest)
+	}
+	output, code := captureStdoutResult(t, func() int { return writeFailure(runOptions{json: true}, 2, errors.New("bad")) })
+	var failure errorDocument
+	if err := json.Unmarshal([]byte(output), &failure); err != nil || code != 2 || failure.Error.ExitCode != 2 {
+		t.Fatalf("failure=%+v code=%d err=%v output=%s", failure, code, err, output)
+	}
+	output = captureStdout(t, func() int { return run([]string{"schema", "--command", "build"}) })
+	var schema introspectionDocument
+	if err := json.Unmarshal([]byte(output), &schema); err != nil || len(schema.Commands) != 1 || schema.Commands[0].Name != "build" {
+		t.Fatalf("schema=%+v err=%v output=%s", schema, err, output)
+	}
+	if strings.Join(schema.RecommendedStatusFields, ",") != status.AgentFieldMask {
+		t.Fatalf("recommended status fields=%v", schema.RecommendedStatusFields)
+	}
+	output = captureStdout(t, func() int { return run([]string{"--help", "--json"}) })
+	if err := json.Unmarshal([]byte(output), &schema); err != nil || len(schema.Commands) != len(commandFlags) {
+		t.Fatalf("JSON root help: %v %s", err, output)
+	}
+	output = captureStdout(t, func() int { return run([]string{"version", "--json"}) })
+	if !strings.Contains(output, `"version"`) {
+		t.Fatalf("JSON version=%s", output)
+	}
+	if code := captureCode(t, func() int { return run([]string{"schema", "--command", "missing", "--json"}) }); code != 2 {
+		t.Fatalf("missing schema code=%d", code)
+	}
+	if _, err := schemaDocument("missing"); err == nil {
+		t.Fatal("unknown schema command accepted")
+	}
+
+	validPath := filepath.Join(t.TempDir(), "input.json")
+	mustWrite(t, validPath, `{"run":"raw"}`)
+	var input initInput
+	if raw, err := decodeMutationInput(map[string]string{}, &input); err != nil || raw {
+		t.Fatalf("absent input raw=%v err=%v", raw, err)
+	}
+	if raw, err := decodeMutationInput(map[string]string{"input": validPath}, &input); err != nil || !raw || input.Run != "raw" {
+		t.Fatalf("valid input raw=%v input=%+v err=%v", raw, input, err)
+	}
+	for _, flags := range []map[string]string{
+		{"input": ""},
+		{"input": validPath, "run": "raw"},
+		{"input": filepath.Join(t.TempDir(), "missing.json")},
+	} {
+		if _, err := decodeMutationInput(flags, &initInput{}); err == nil {
+			t.Errorf("accepted input flags=%v", flags)
+		}
+	}
+}
+
+func TestAgentDocsUseCanonicalStatusMask(t *testing.T) {
+	for _, path := range []string{
+		filepath.Join("..", "..", "docs", "AGENT_INTERFACE.md"),
+		filepath.Join("..", "..", "skills", "slopomatic", "SKILL.md"),
+		filepath.Join("..", "..", "skills", "slopomatic", "references", "status.md"),
+	} {
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(contents), status.AgentFieldMask) {
+			t.Errorf("%s does not use canonical status mask", path)
+		}
+	}
+}
+
+func TestDryRunStoreOpeningBranches(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "nested", "state.sqlite")
+	t.Setenv("SLOPOMATIC_DB", missing)
+	st, err := openStoreForCommand("init", runOptions{dryRun: true})
+	if err != nil || st != nil {
+		t.Fatalf("fresh dry-run store=%v err=%v", st, err)
+	}
+	if _, err := openStoreForCommand("build", runOptions{dryRun: true}); !errors.Is(err, machine.ErrNotFound) {
+		t.Fatalf("non-init dry-run missing store error=%v", err)
+	}
+	st, err = openStoreForCommand("init", runOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatal(err)
+	}
+	st, err = openStoreForCommand("build", runOptions{dryRun: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAgentDXDirectRuntimeBranches(t *testing.T) {
+	repoDir := t.TempDir()
+	runGit(t, repoDir, "init")
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldDir) })
+	database := filepath.Join(t.TempDir(), "agent.sqlite")
+	t.Setenv("SLOPOMATIC_DB", database)
+
+	output, code := captureStdoutResult(t, func() int {
+		return run([]string{"init", "--run", "preview", "--dry-run", "--json"})
+	})
+	if code != 0 {
+		t.Fatalf("fresh init dry-run=%d %s", code, output)
+	}
+	assertJSONState(t, output, "INTAKE")
+	if _, err := os.Stat(database); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("fresh direct dry-run created database: %v", err)
+	}
+	output, code = captureStdoutResult(t, func() int {
+		return run([]string{"build", "--run", "preview", "--dry-run", "--json"})
+	})
+	if code != 5 || !strings.Contains(output, `"kind": "not_found"`) {
+		t.Fatalf("missing-state dry-run=%d %s", code, output)
+	}
+
+	writeInput := func(name, body string) string {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), name)
+		mustWrite(t, path, body)
+		return path
+	}
+	initPath := writeInput("init.json", `{"run":"direct-agent"}`)
+	output = captureStdout(t, func() int { return run([]string{"init", "--input", initPath, "--json"}) })
+	assertJSONState(t, output, "INTAKE")
+	output, code = captureStdoutResult(t, func() int {
+		return run([]string{"init", "--run", "direct-agent", "--dry-run", "--json"})
+	})
+	if code != 2 || !strings.Contains(output, `"kind": "run_exists"`) {
+		t.Fatalf("duplicate init dry-run=%d %s", code, output)
+	}
+	otherRepo, err := store.Open(database)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := otherRepo.CreateRun(machine.NewRun("global-run", "different-repository"), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := otherRepo.Close(); err != nil {
+		t.Fatal(err)
+	}
+	output, code = captureStdoutResult(t, func() int {
+		return run([]string{"init", "--run", "global-run", "--dry-run", "--json"})
+	})
+	if code != 2 || !strings.Contains(output, `"kind": "run_exists"`) {
+		t.Fatalf("cross-repository duplicate init dry-run=%d %s", code, output)
+	}
+
+	intakePath := writeInput("intake.json", `{"run":"direct-agent","series_bound":1,"units":[{"id":"u1","title":"direct","blockers":[]}]}`)
+	output = captureStdout(t, func() int {
+		return run([]string{"intake", "--input", intakePath, "--dry-run", "--json"})
+	})
+	if !strings.Contains(output, `"dry_run": true`) || !strings.Contains(output, `"validated_command": "intake"`) {
+		t.Fatalf("intake projection=%s", output)
+	}
+	output = captureStdout(t, func() int { return run([]string{"intake", "--input", intakePath, "--json"}) })
+	assertJSONState(t, output, "INTAKE")
+	output = captureStdout(t, func() int {
+		return run([]string{"status", "--run", "direct-agent", "--fields", "state,next_action", "--json"})
+	})
+	var masked map[string]any
+	if err := json.Unmarshal([]byte(output), &masked); err != nil || len(masked) != 2 {
+		t.Fatalf("direct mask=%+v err=%v %s", masked, err, output)
+	}
+	if _, code = captureStdoutResult(t, func() int {
+		return run([]string{"status", "--run", "direct-agent", "--fields", "missing", "--json"})
+	}); code != 2 {
+		t.Fatalf("unknown field code=%d", code)
+	}
+	if code := run([]string{"status", "--run", "direct-agent", "--fields", "state"}); code != 2 {
+		t.Fatalf("plain fields code=%d", code)
+	}
+
+	releasePath := writeInput("release.json", `{"run":"direct-agent","revision":2}`)
+	captureStdout(t, func() int { return run([]string{"release", "--input", releasePath, "--json"}) })
+	buildPath := writeInput("build.json", `{"run":"direct-agent"}`)
+	captureStdout(t, func() int { return run([]string{"build", "--input", buildPath, "--json"}) })
+	output = captureStdout(t, func() int {
+		return run([]string{"verify", "--cmd", "exit 99", "--run", "direct-agent", "--dry-run", "--json"})
+	})
+	assertJSONState(t, output, "BUILD")
+	if !strings.Contains(output, `"dry_run": true`) {
+		t.Fatalf("verify direct projection=%s", output)
+	}
+}
+
+func captureStdout(t *testing.T, fn func() int) string {
+	t.Helper()
+	output, code := captureStdoutResult(t, fn)
+	if code != 0 {
+		t.Fatalf("captured command exit=%d output=%s", code, output)
+	}
+	return output
+}
+
+func captureStdoutResult(t *testing.T, fn func() int) (string, int) {
+	t.Helper()
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := os.Stdout
+	os.Stdout = writer
+	code := fn()
+	os.Stdout = previous
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	output, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return string(output), code
+}
+
+func captureCode(t *testing.T, fn func() int) int {
+	t.Helper()
+	_, code := captureStdoutResult(t, fn)
+	return code
+}
+
+func captureStderrResult(t *testing.T, fn func() (int, string)) (string, int, string) {
+	t.Helper()
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := os.Stderr
+	os.Stderr = writer
+	code, digest := fn()
+	os.Stderr = previous
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	output, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return string(output), code, digest
+}
+
+func TestAgentDXRawInputsDryRunAndFieldMask(t *testing.T) {
+	h := newCLIHarness(t)
+	out := h.mustInput(`{"run":"agent"}`, "init", "--input", "-", "--json")
+	assertJSONState(t, out, "INTAKE")
+
+	intake := `{"run":"agent","delivery_mode":"pr-hold","review_consent":"autoreview","series_bound":1,"units":[{"id":"u1","title":"Agent DX","blockers":[]}]}`
+	dry := h.mustInput(intake, "intake", "--input", "-", "--dry-run", "--json")
+	var projection struct {
+		DryRun              bool   `json:"dry_run"`
+		ValidatedCommand    string `json:"validated_command"`
+		IntakeRevision      int64  `json:"intake_revision"`
+		OutcomeUndetermined bool   `json:"outcome_undetermined"`
+	}
+	if err := json.Unmarshal([]byte(dry), &projection); err != nil || !projection.DryRun || projection.ValidatedCommand != "intake" || projection.IntakeRevision != 2 {
+		t.Fatalf("dry-run projection: %v %+v\n%s", err, projection, dry)
+	}
+	masked := h.must("status", "--json", "--run", "agent", "--fields", "state,intake_revision,next_action")
+	var fields map[string]any
+	if err := json.Unmarshal([]byte(masked), &fields); err != nil || len(fields) != 3 || fields["intake_revision"] != float64(1) {
+		t.Fatalf("field mask: %v %+v\n%s", err, fields, masked)
+	}
+
+	out = h.mustInput(intake, "intake", "--input", "-", "--json")
+	var intakeStatus struct {
+		IntakeRevision int64 `json:"intake_revision"`
+	}
+	if err := json.Unmarshal([]byte(out), &intakeStatus); err != nil || intakeStatus.IntakeRevision != 2 {
+		t.Fatalf("intake: %v %+v\n%s", err, intakeStatus, out)
+	}
+	h.mustInput(`{"run":"agent","question":"continue?"}`, "ask", "--input", "-", "--json")
+	h.mustInput(`{"run":"agent","answer":"continue"}`, "decide", "--input", "-", "--json")
+	h.mustInput(`{"run":"agent","revision":2}`, "release", "--input", "-", "--json")
+	h.mustInput(`{"run":"agent"}`, "build", "--input", "-", "--json")
+
+	marker := filepath.Join(t.TempDir(), "must-not-exist")
+	dry = h.must("verify", "--cmd", "touch "+marker, "--run", "agent", "--dry-run", "--json")
+	if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("dry-run executed command: %v", err)
+	}
+	if err := json.Unmarshal([]byte(dry), &projection); err != nil || !projection.DryRun || projection.ValidatedCommand != "verify" || !projection.OutcomeUndetermined {
+		t.Fatalf("verify dry-run: %v %+v\n%s", err, projection, dry)
+	}
+	h.mustInput(`{"run":"agent","reason":"dependency unavailable"}`, "block", "--input", "-", "--json")
+	h.mustInput(`{"run":"agent","reason":"dependency restored"}`, "retry", "--input", "-", "--json")
+	out = h.must("verify", "--cmd", "printf noisy; printf error >&2", "--run", "agent", "--json")
+	assertJSONState(t, out, "REVIEW")
+	h.mustInput(`{"run":"agent"}`, "rework", "--input", "-", "--json")
+	h.mustInput(`{"run":"agent"}`, "build", "--input", "-", "--json")
+	h.mustInput(`{"run":"agent","command":"go test ./...","exit_code":0}`, "verify", "--input", "-", "--json")
+	h.mustInput(`{"run":"agent","reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://local"}`, "review", "--input", "-", "--json")
+	out = h.mustInput(`{"run":"agent","delivery_mode":"pr-hold","pr_url":"https://example.com/pr/1"}`, "deliver", "--input", "-", "--json")
+	assertJSONState(t, out, "RUN_DONE")
+	if status := gitOutput(t, h.repoDir, "status", "--porcelain"); status != "" {
+		t.Fatalf("stdin workflow left repository artifacts: %q", status)
+	}
+
+	out, code := h.runInput(`{"run":"agent"}`, "build", "--input", "-", "--run", "agent", "--json")
+	if code != 2 || !strings.Contains(out, `"kind": "invalid_input"`) {
+		t.Fatalf("mixed raw input exit=%d output=%s", code, out)
+	}
+}
+
+func TestDryRunInitDoesNotCreateState(t *testing.T) {
+	h := newCLIHarness(t)
+	out := h.must("init", "--run", "dry", "--dry-run", "--json")
+	assertJSONState(t, out, "INTAKE")
+	if _, err := os.Stat(h.db); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("dry-run created database: %v", err)
+	}
+}
+
+func TestCLIRejectsAgentHallucinationIDs(t *testing.T) {
+	h := newCLIHarness(t)
+	for _, runID := range []string{"../escape", "run?query", "run#fragment", "run%2e%2e", "run\nnext", "-flag"} {
+		out, code := h.run("init", "--run", runID, "--json")
+		if code != 2 || !strings.Contains(out, `"kind": "invalid_input"`) {
+			t.Fatalf("run id %q exit=%d output=%s", runID, code, out)
+		}
+	}
+	h.must("init", "--run", "valid-run")
+	out, code := h.runInput(`{"run":"valid-run","units":[{"id":"../unit","title":"bad","blockers":[]}]}`, "intake", "--input", "-", "--json")
+	if code != 2 || !strings.Contains(out, "path traversal") {
+		t.Fatalf("unit id exit=%d output=%s", code, out)
+	}
+}
+
+func assertJSONState(t *testing.T, output, want string) {
+	t.Helper()
+	var doc struct {
+		State string `json:"state"`
+	}
+	if err := json.Unmarshal([]byte(output), &doc); err != nil || doc.State != want {
+		t.Fatalf("state=%q want=%q err=%v\n%s", doc.State, want, err, output)
 	}
 }
 
@@ -328,10 +835,12 @@ func itoa(v int64) string {
 	return strconv.FormatInt(v, 10)
 }
 
-func TestUsageMentionsServe(t *testing.T) {
+func TestUsageMentionsStorageAndServe(t *testing.T) {
 	got := usage()
-	if !strings.Contains(got, "slopomatic serve") {
-		t.Fatalf("usage missing serve:\n%s", got)
+	for _, command := range []string{"slopomatic storage", "slopomatic serve"} {
+		if !strings.Contains(got, command) {
+			t.Fatalf("usage missing %s:\n%s", command, got)
+		}
 	}
 }
 
@@ -442,7 +951,7 @@ func TestRunEntryPointsAndFullRecoveryFlow(t *testing.T) {
 		{"build", "--help"}, {"verify", "--help"}, {"review", "--help"},
 		{"rework", "--help"}, {"deliver", "--help"}, {"ask", "--help"},
 		{"decide", "--help"}, {"retry", "--help"}, {"block", "--help"},
-		{"status", "--help"}, {"serve", "--help"},
+		{"status", "--help"}, {"storage", "--help"}, {"serve", "--help"},
 		{"version", "--help"},
 	} {
 		if code := run(args); code != 0 {
@@ -451,6 +960,9 @@ func TestRunEntryPointsAndFullRecoveryFlow(t *testing.T) {
 	}
 	if code := run([]string{"unknown", "--help"}); code != 2 {
 		t.Fatalf("unknown help=%d", code)
+	}
+	if code := run([]string{"storage", "--dry-run"}); code != 2 {
+		t.Fatalf("storage dry-run=%d", code)
 	}
 	if code := run([]string{"version", "--run", "unexpected"}); code != 2 {
 		t.Fatalf("version accepted scoped flag: %d", code)
@@ -612,7 +1124,7 @@ func TestCLIStoreFailureIncludesResolvedPathAndCause(t *testing.T) {
 	h.env = append(h.env, "SLOPOMATIC_DB="+databasePath)
 
 	out, code := h.run("init", "--run", "blocked")
-	if code != 10 || !strings.Contains(out, databasePath) || !strings.Contains(out, "create database directory") {
+	if code != 10 || !strings.Contains(out, databasePath) || !strings.Contains(out, "not a directory") {
 		t.Fatalf("store failure exit=%d output=%s", code, out)
 	}
 }
@@ -620,10 +1132,10 @@ func TestCLIStoreFailureIncludesResolvedPathAndCause(t *testing.T) {
 func TestDirectErrorMappingJSONAndServeBindFailure(t *testing.T) {
 	for err, want := range map[error]int{
 		machine.ErrBadArgs: 2, machine.ErrIllegalTransition: 3, machine.ErrUnmetGuard: 3,
-		machine.ErrRevisionConflict: 4, machine.ErrAmbiguousRun: 5, machine.ErrNotFound: 5,
+		machine.ErrRevisionConflict: 4, machine.ErrRunExists: 2, machine.ErrAmbiguousRun: 5, machine.ErrNotFound: 5,
 		machine.ErrCorruptState: 5, errors.New("storage failed"): 10,
 	} {
-		if got := mapErr(fmt.Errorf("context: %w", err)); got != want {
+		if got := mapErr(fmt.Errorf("context: %w", err), runOptions{}); got != want {
 			t.Errorf("mapErr(%v)=%d want %d", err, got, want)
 		}
 	}
@@ -655,7 +1167,7 @@ func TestDirectErrorMappingJSONAndServeBindFailure(t *testing.T) {
 	if code := run([]string{"build", "--run", "errors"}); code != 3 {
 		t.Fatalf("illegal build=%d", code)
 	}
-	if code := run([]string{"init", "--run", "errors"}); code != 10 {
+	if code := run([]string{"init", "--run", "errors"}); code != 2 {
 		t.Fatalf("duplicate init=%d", code)
 	}
 	for _, args := range [][]string{

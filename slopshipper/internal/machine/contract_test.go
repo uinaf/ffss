@@ -2,10 +2,24 @@ package machine_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/uinaf/slopomatic/internal/machine"
 )
+
+func TestResourceIDHardening(t *testing.T) {
+	for _, valid := range []string{"run-1", "U_2", "unit.v3"} {
+		if err := machine.ValidateResourceID("test id", valid); err != nil {
+			t.Errorf("valid %q: %v", valid, err)
+		}
+	}
+	for _, invalid := range []string{"", "-flag", "../unit", `unit\\child`, "unit?query", "unit#fragment", "unit%2e", "unit\nnext", strings.Repeat("x", 65)} {
+		if err := machine.ValidateResourceID("test id", invalid); !errors.Is(err, machine.ErrBadArgs) {
+			t.Errorf("invalid %q: %v", invalid, err)
+		}
+	}
+}
 
 func TestIntakeRejectsInvalidContracts(t *testing.T) {
 	badDelivery := machine.DeliveryMode("other")

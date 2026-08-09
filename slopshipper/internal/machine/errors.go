@@ -8,6 +8,7 @@ var (
 	ErrUnmetGuard        = errors.New("unmet guard")
 	ErrRevisionConflict  = errors.New("revision conflict")
 	ErrAmbiguousRun      = errors.New("ambiguous active run")
+	ErrRunExists         = errors.New("run already exists")
 	ErrNotFound          = errors.New("not found")
 	ErrCorruptState      = errors.New("corrupt state")
 )

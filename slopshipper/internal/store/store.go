@@ -25,12 +25,9 @@ type Store struct {
 
 // Open opens or creates the global database at path.
 func Open(path string) (*Store, error) {
-	if path == "" {
-		return nil, errors.New("database path is empty")
-	}
-	resolvedPath, err := filepath.Abs(path)
+	resolvedPath, err := resolvedDatabasePath(path)
 	if err != nil {
-		return nil, fmt.Errorf("resolve database path %q: %w", path, err)
+		return nil, err
 	}
 	directory := filepath.Dir(resolvedPath)
 	if err := os.MkdirAll(directory, 0o700); err != nil {
@@ -57,6 +54,43 @@ func Open(path string) (*Store, error) {
 		return nil, fmt.Errorf("initialize database %q: %w", resolvedPath, err)
 	}
 	return s, nil
+}
+
+func OpenReadOnly(path string) (*Store, error) {
+	resolvedPath, err := resolvedDatabasePath(path)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := os.Stat(resolvedPath); err != nil {
+		return nil, fmt.Errorf("open read-only database %q: %w", resolvedPath, err)
+	}
+	dsn := "file:" + filepath.ToSlash(resolvedPath) + "?mode=ro&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("open read-only database %q: %w", resolvedPath, err)
+	}
+	db.SetMaxOpenConns(1)
+	var version int
+	if err := db.QueryRow(`SELECT value FROM meta WHERE key = 'schema_version'`).Scan(&version); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("open read-only database %q: read schema version: %w", resolvedPath, err)
+	}
+	if version != schemaVersion {
+		_ = db.Close()
+		return nil, fmt.Errorf("open read-only database %q: schema version %d requires a normal command to migrate to %d", resolvedPath, version, schemaVersion)
+	}
+	return &Store{db: db}, nil
+}
+
+func resolvedDatabasePath(path string) (string, error) {
+	if path == "" {
+		return "", errors.New("database path is empty")
+	}
+	resolvedPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve database path %q: %w", path, err)
+	}
+	return resolvedPath, nil
 }
 
 func DefaultPath(xdgDataHome, home string) string {
@@ -196,6 +230,12 @@ func (s *Store) CreateRun(run machine.Run, units []machine.Unit) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	var existing int
+	if err := tx.QueryRow(`SELECT 1 FROM runs WHERE id = ?`, run.ID).Scan(&existing); err == nil {
+		return fmt.Errorf("%w: run id %q", machine.ErrRunExists, run.ID)
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	completedReviewers, err := json.Marshal(run.CompletedReviewers)

@@ -69,6 +69,16 @@ Control plane UI lives in `internal/serve` (Go `html/template` + embedded
 `@uinaf/design` tokens). Keep it a read-only projector over sqlite; do not add
 mutations that bypass the CLI state machine.
 
+Agent-facing command schemas live with the binary in
+`cmd/slopomatic/schema.go`; strict raw payload DTOs live in
+`cmd/slopomatic/input.go`; state-location policy lives in
+`cmd/slopomatic/storage.go`. When adding or changing a command, keep its
+parser, runtime schema, JSON output, dry-run behavior, and child-process
+contract in sync. Tests require every parsed command to appear in
+`slopomatic schema`.
+Keep the checked-in [agent CLI contract](docs/AGENT_INTERFACE.md) aligned with
+observable behavior, but do not duplicate runtime schemas in prose.
+
 ## Releases
 
 Publication uses the protected `release` Environment (shared Apple signing

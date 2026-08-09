@@ -26,7 +26,7 @@ Do not invent a second runtime.
 ## Bootstrap the run
 
 ```bash
-slopomatic status --json
+slopomatic status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivery_mode,blocker,decision_question
 ```
 
 If status reports `UNINITIALIZED`, obey its `slopomatic init` next action.
@@ -39,8 +39,9 @@ bounded, and dependency-ordered; use stdin so the workflow does not leave
 evidence scratch files in the repository:
 
 ```bash
-slopomatic intake --file - <<'JSON'
+slopomatic intake --input - --dry-run --json <<'JSON'
 {
+  "run": "run-id-from-status",
   "delivery_mode": "pr-hold",
   "review_consent": "autoreview",
   "series_bound": 1,
@@ -49,8 +50,14 @@ slopomatic intake --file - <<'JSON'
   ]
 }
 JSON
-slopomatic status --json
 ```
+
+Inspect the dry-run projection. If it matches the agreed intake, repeat the
+same command without `--dry-run`. Do this for every mutation: validate first,
+then apply. A dry run never advances canonical state.
+`verify --cmd --dry-run` cannot predict an exit code; when it returns
+`outcome_undetermined: true`, validate the command and current state instead of
+expecting a post-verification transition.
 
 Show the human a compact intake summary: units, delivery mode, review consent,
 and exact `intake_revision`. Wait for explicit release approval, then run the
@@ -58,12 +65,20 @@ exact `slopomatic release --revision N` command printed by `next_action`.
 
 ## Status leash
 
-1. Run `slopomatic status --json` and obey its next step. See
+1. Run the field-masked `slopomatic status --json` command above and obey its
+   next step. See
    [status.md](references/status.md) for the full status field contract.
-2. Advance only through named CLI commands with the evidence status requires.
-3. Re-read status after every advance. Do not invent transitions or narrate
-   phase theater.
+2. Validate every mutation with `--dry-run --json`; apply only when the
+   projection matches intent. Successful `--json` output is the resulting
+   status document.
+3. Advance only through named CLI commands with the evidence status requires.
+   Re-read status after errors or whenever output was not JSON.
 4. Treat placeholders in `next_action` as fields to fill, not literal text.
+   Never materialize intake, review, delivery, or other evidence payloads in
+   the repository; send them through stdin.
+5. Before guessing a payload field or enum, run
+   `slopomatic schema --command <name>`. See
+   [protocol.md](references/protocol.md) for raw input and error handling.
 
 ## Machine loop
 
@@ -72,8 +87,8 @@ status.
 
 ```bash
 # after verify succeeds and status asks for review
-slopomatic review --evidence - <<'JSON'
-{"reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://local"}
+slopomatic review --input - --dry-run --json <<'JSON'
+{"run":"run-id-from-status","reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://local"}
 JSON
 ```
 
@@ -81,10 +96,12 @@ Deliver only after every required reviewer is present in `completed_reviewers`.
 Use stdin evidence and match the intake delivery mode:
 
 ```bash
-slopomatic deliver --evidence - <<'JSON'
-{"delivery_mode":"pr-hold","pr_url":"https://github.com/example/repo/pull/1"}
+slopomatic deliver --input - --dry-run --json <<'JSON'
+{"run":"run-id-from-status","delivery_mode":"pr-hold","pr_url":"https://github.com/example/repo/pull/1"}
 JSON
 ```
+
+After each projection is accepted, repeat without `--dry-run`.
 
 ## Talk to the human
 
@@ -108,9 +125,10 @@ human confirms the recovery, record it with `slopomatic retry --reason "…"`;
 never retry silently. For a known external blocker before verification, use
 `slopomatic block --reason "…"` and follow the same recovery rule.
 
-Malformed input exits 2; illegal transitions or unmet guards exit 3. Fix the
-input or re-read status instead of bypassing the gate. Empty next action means
-the run is done or needs human inspection.
+With `--json`, failures return `error.kind`, `error.message`, and
+`error.exit_code`. Malformed input exits 2; illegal transitions or unmet guards
+exit 3. Fix the input or re-read status instead of bypassing the gate. Empty
+next action means the run is done or needs human inspection.
 
 ## Post-review flow
 
@@ -133,4 +151,4 @@ local option with consent.
 ## Done
 
 Stop when `RUN_DONE`, blocked pending human recovery, or waiting at release or
-decision. Sqlite holds the canonical event log.
+decision. SQLite holds the canonical event log.

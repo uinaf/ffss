@@ -101,7 +101,7 @@ description = "Optional credit-burning Tessl cloud review at threshold 100"
 run = '''
 set -e
 TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopomatic
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopomatic-0.2.1 skills/slopomatic
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopomatic-0.3.0 skills/slopomatic
 '''
 
 [tasks.security]

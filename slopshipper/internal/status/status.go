@@ -3,6 +3,8 @@ package status
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/uinaf/slopomatic/internal/machine"
@@ -11,31 +13,35 @@ import (
 const (
 	schemaVersion      = 2
 	stateUninitialized = "UNINITIALIZED"
+	AgentFieldMask     = "state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivery_mode,blocker,decision_question"
 )
 
 // Document is the compact agent-facing status contract.
 type Document struct {
-	SchemaVersion      int      `json:"schema_version"`
-	Revision           int64    `json:"revision"`
-	RunID              string   `json:"run_id"`
-	RepoKey            string   `json:"repo_key"`
-	State              string   `json:"state"`
-	IntakeRevision     int64    `json:"intake_revision"`
-	Released           bool     `json:"released"`
-	ReleasedRevision   *int64   `json:"released_revision,omitempty"`
-	DeliveryMode       string   `json:"delivery_mode"`
-	ReviewConsent      string   `json:"review_consent"`
-	SeriesBound        int      `json:"series_bound"`
-	CompletedUnits     int      `json:"completed_units"`
-	CurrentUnitID      string   `json:"current_unit_id,omitempty"`
-	Frontier           []string `json:"frontier"`
-	RequiredReviewers  []string `json:"required_reviewers"`
-	CompletedReviewers []string `json:"completed_reviewers"`
-	AllowedCommands    []string `json:"allowed_commands"`
-	RequiredEvidence   []string `json:"required_evidence"`
-	NextAction         string   `json:"next_action"`
-	Blocker            string   `json:"blocker,omitempty"`
-	DecisionQuestion   string   `json:"decision_question,omitempty"`
+	SchemaVersion       int      `json:"schema_version"`
+	Revision            int64    `json:"revision"`
+	RunID               string   `json:"run_id"`
+	RepoKey             string   `json:"repo_key"`
+	State               string   `json:"state"`
+	IntakeRevision      int64    `json:"intake_revision"`
+	Released            bool     `json:"released"`
+	ReleasedRevision    *int64   `json:"released_revision,omitempty"`
+	DeliveryMode        string   `json:"delivery_mode"`
+	ReviewConsent       string   `json:"review_consent"`
+	SeriesBound         int      `json:"series_bound"`
+	CompletedUnits      int      `json:"completed_units"`
+	CurrentUnitID       string   `json:"current_unit_id,omitempty"`
+	Frontier            []string `json:"frontier"`
+	RequiredReviewers   []string `json:"required_reviewers"`
+	CompletedReviewers  []string `json:"completed_reviewers"`
+	AllowedCommands     []string `json:"allowed_commands"`
+	RequiredEvidence    []string `json:"required_evidence"`
+	NextAction          string   `json:"next_action"`
+	Blocker             string   `json:"blocker,omitempty"`
+	DecisionQuestion    string   `json:"decision_question,omitempty"`
+	DryRun              bool     `json:"dry_run,omitempty"`
+	ValidatedCommand    string   `json:"validated_command,omitempty"`
+	OutcomeUndetermined bool     `json:"outcome_undetermined,omitempty"`
 }
 
 func From(run machine.Run, units []machine.Unit) Document {
@@ -93,6 +99,9 @@ func Bootstrap(repoKey string) Document {
 
 func (d Document) CompactLine() string {
 	prefix := "slopomatic"
+	if d.DryRun {
+		prefix += " dry-run"
+	}
 	if d.RunID != "" {
 		prefix += " " + d.RunID
 	}
@@ -114,6 +123,57 @@ func (d Document) JSON() ([]byte, error) {
 	return json.MarshalIndent(d, "", "  ")
 }
 
+func (d Document) JSONFields(fields []string) ([]byte, error) {
+	if len(fields) == 0 {
+		return d.JSON()
+	}
+	if err := ValidateFields(fields); err != nil {
+		return nil, err
+	}
+	full, err := d.JSON()
+	if err != nil {
+		return nil, err
+	}
+	var values map[string]any
+	if err := json.Unmarshal(full, &values); err != nil {
+		return nil, err
+	}
+	selected := make(map[string]any, len(fields))
+	for _, field := range fields {
+		if value, present := values[field]; present {
+			selected[field] = value
+		}
+	}
+	return json.MarshalIndent(selected, "", "  ")
+}
+
+func ValidateFields(fields []string) error {
+	known := FieldNames()
+	allowed := make(map[string]struct{}, len(known))
+	for _, field := range known {
+		allowed[field] = struct{}{}
+	}
+	for _, field := range fields {
+		if _, ok := allowed[field]; !ok {
+			return fmt.Errorf("unknown status field %q", field)
+		}
+	}
+	return nil
+}
+
+func FieldNames() []string {
+	document := reflect.TypeOf(Document{})
+	fields := make([]string, 0, document.NumField())
+	for i := 0; i < document.NumField(); i++ {
+		name := strings.Split(document.Field(i).Tag.Get("json"), ",")[0]
+		if name != "" && name != "-" {
+			fields = append(fields, name)
+		}
+	}
+	sort.Strings(fields)
+	return fields
+}
+
 func nextAction(run machine.Run, allowed []machine.Command) string {
 	priority := []machine.Command{
 		machine.CmdRelease, machine.CmdBuild, machine.CmdVerify, machine.CmdReview,
@@ -125,15 +185,15 @@ func nextAction(run machine.Run, allowed []machine.Command) string {
 				var command string
 				switch p {
 				case machine.CmdIntake:
-					command = "slopomatic intake --file <intake.json>"
+					command = "slopomatic intake --file -"
 				case machine.CmdRelease:
 					command = fmt.Sprintf("slopomatic release --revision %d", run.IntakeRevision)
 				case machine.CmdVerify:
 					command = "slopomatic verify --cmd '<verification command>'"
 				case machine.CmdReview:
-					command = "slopomatic review --evidence <review.json>"
+					command = "slopomatic review --evidence -"
 				case machine.CmdDeliver:
-					command = "slopomatic deliver --evidence <deliver.json>"
+					command = "slopomatic deliver --evidence -"
 				case machine.CmdDecide:
 					command = "slopomatic decide --answer '<answer>'"
 				case machine.CmdRetry:
