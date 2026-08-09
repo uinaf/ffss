@@ -87,8 +87,7 @@ homebrew_casks:
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     directory: Casks
     commit_author:
-      name: "{{ .Env.RELEASE_BOT_NAME }}"
-      email: "{{ .Env.RELEASE_BOT_EMAIL }}"
+      use_github_app_token: true
     commit_msg_template: "chore(slopomatic): update to {{ .Tag }}"
     homepage: https://github.com/uinaf/slopomatic
     description: Deterministic and structured approach to slop cannoning

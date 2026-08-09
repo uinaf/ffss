@@ -280,8 +280,6 @@ jobs:
           GITHUB_TOKEN: ${{ steps.release-bot.outputs.token }}
           HOMEBREW_TAP_TOKEN: ${{ steps.release-bot.outputs.token }}
           GORELEASER_CURRENT_TAG: ${{ steps.tag.outputs.tag }}
-          RELEASE_BOT_NAME: ${{ steps.release-bot.outputs.app-slug }}[bot]
-          RELEASE_BOT_EMAIL: ${{ steps.release-bot-identity.outputs.user-id }}+${{ steps.release-bot.outputs.app-slug }}[bot]@users.noreply.github.com
         run: |
           set -euo pipefail
           ./scripts/verify-apple-credentials.sh "$APPLE_TEAM_ID"
@@ -343,7 +341,16 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.release-bot.outputs.token }}
           RELEASE_TAG: ${{ steps.tag.outputs.tag }}
-        run: gh release verify "$RELEASE_TAG"
+        run: |
+          for attempt in {1..12}; do
+            if gh release verify "$RELEASE_TAG"; then
+              exit 0
+            fi
+            if (( attempt == 12 )); then
+              exit 1
+            fi
+            sleep 5
+          done
 
       - name: Smoke Homebrew installation
         if: steps.tag.outputs.present == 'true'
