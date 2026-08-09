@@ -93,9 +93,30 @@ jobs:
         if: ${{ github.event_name == 'push' }}
         run: mise run verify:release
 
+  gate:
+    name: CI / gate
+    if: ${{ always() }}
+    needs: [classify, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require successful voting jobs
+        uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
+        with:
+          allowed-skips: verify
+          jobs: ${{ toJSON(needs) }}
+
+      - name: Reject skipped verification for non-documentation changes
+        if: ${{ needs.classify.outputs.docs_only != 'true' && needs.verify.result != 'success' }}
+        run: |
+          echo "non-documentation changes require successful verification" >&2
+          echo "verify=${{ needs.verify.result }}" >&2
+          exit 1
+
   package:
     name: package snapshot
-    needs: [classify, verify]
+    needs: [classify, gate]
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.classify.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
