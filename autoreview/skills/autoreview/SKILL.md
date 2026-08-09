@@ -57,18 +57,19 @@ Choose the target that matches the actual change:
 
 ```bash
 # Dirty staged, unstaged, and non-ignored untracked changes
-autoreview review --mode local --engine "$engine" --prompt "$task_contract"
+autoreview review --mode local --engine "$engine" --output json --prompt "$task_contract"
 
 # Complete branch or PR diff
-autoreview review --mode branch --base "$base" --engine "$engine" --prompt "$task_contract"
+autoreview review --mode branch --base "$base" --engine "$engine" --output json --prompt "$task_contract"
 
 # One non-merge commit
-autoreview review --mode commit --commit "$commit" --engine "$engine" --prompt "$task_contract"
+autoreview review --mode commit --commit "$commit" --engine "$engine" --output json --prompt "$task_contract"
 ```
 
 Use the PR's real base revision. Add repeatable `--context-file` values only for
-existing repository-relative evidence. Use `--output json` when a machine must
-consume the canonical report. Never filter findings by confidence.
+existing repository-relative evidence. Always use `--output json` so the agent
+receives the canonical report through every review outcome. Never filter
+findings by confidence.
 
 The CLI may make one configured protocol retry against the same frozen target.
 It never retries authentication, capability, timeout, cancellation, or provider

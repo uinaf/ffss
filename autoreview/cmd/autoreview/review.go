@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/uinaf/autoreview/internal/config"
 	"github.com/uinaf/autoreview/internal/orchestrator"
@@ -25,6 +26,10 @@ func (values *stringList) Set(value string) error {
 }
 
 func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer, dependencies dependencies) int {
+	jsonRequested, outputErr := reviewJSONRequested(arguments)
+	if outputErr != nil {
+		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, outputErr)
+	}
 	flags := flag.NewFlagSet("autoreview review", flag.ContinueOnError)
 	repository := flags.String("repository", ".", "Git repository or path within it")
 	mode := flags.String("mode", "", "target mode: local, branch, or commit")
@@ -35,24 +40,25 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	flags.Var(&contextFiles, "context-file", "repository-relative context file (repeatable)")
 	output := flags.String("output", "terminal", "output format: terminal or json")
 	configFlags := bindConfigFlags(flags)
-	if err := parseFlags(flags, arguments, stdout, stderr); err != nil {
+	flagStderr := stderr
+	if jsonRequested {
+		flagStderr = io.Discard
+	}
+	if err := parseFlags(flags, arguments, stdout, flagStderr); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
-		return 2
+		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, err)
 	}
 	if flags.NArg() != 0 {
-		report(stderr, "autoreview review does not accept positional arguments\n")
-		return 2
+		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, errors.New("autoreview review does not accept positional arguments"))
 	}
 	if *output != "terminal" && *output != "json" {
-		report(stderr, "flag output must be terminal or json\n")
-		return 2
+		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, errors.New("flag output must be terminal or json"))
 	}
 	overrides, err := configFlags.overrides(flags)
 	if err != nil {
-		report(stderr, "%v\n", err)
-		return 2
+		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, err)
 	}
 	effective, err := config.Load(ctx, config.Options{
 		Repository: *repository,
@@ -96,6 +102,73 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		},
 	})
 	return writeReviewResult(stdout, stderr, *output, result)
+}
+
+func reviewJSONRequested(arguments []string) (bool, error) {
+	selected := ""
+	for index := 0; index < len(arguments); index++ {
+		argument := arguments[index]
+		if argument == "--" {
+			break
+		}
+		value := ""
+		found := false
+		switch {
+		case argument == "--output" || argument == "-output":
+			if index+1 >= len(arguments) {
+				continue
+			}
+			index++
+			value = arguments[index]
+			found = true
+		case strings.HasPrefix(argument, "--output="):
+			value = strings.TrimPrefix(argument, "--output=")
+			found = true
+		case strings.HasPrefix(argument, "-output="):
+			value = strings.TrimPrefix(argument, "-output=")
+			found = true
+		}
+		if !found {
+			if reviewFlagConsumesNext(argument) && index+1 < len(arguments) {
+				index++
+			}
+			continue
+		}
+		if selected != "" && selected != value {
+			return selected == "json" || value == "json", errors.New("flag output must select exactly one format")
+		}
+		selected = value
+	}
+	return selected == "json", nil
+}
+
+func reviewFlagConsumesNext(argument string) bool {
+	switch argument {
+	case "--repository", "-repository",
+		"--mode", "-mode",
+		"--base", "-base",
+		"--commit", "-commit",
+		"--prompt", "-prompt",
+		"--context-file", "-context-file",
+		"--engine", "-engine",
+		"--model", "-model",
+		"--reasoning-effort", "-reasoning-effort",
+		"--timeout", "-timeout",
+		"--retries", "-retries",
+		"--max-bytes", "-max-bytes",
+		"--isolation", "-isolation":
+		return true
+	default:
+		return false
+	}
+}
+
+func writeReviewArgumentFailure(stdout, stderr io.Writer, jsonRequested bool, err error) int {
+	if jsonRequested {
+		return writeReviewResult(stdout, stderr, "json", orchestrator.Failure(protocol.FailureConfig, err))
+	}
+	report(stderr, "%v\n", err)
+	return 2
 }
 
 func defaultReviewer(name protocol.ProviderName, repository string) provider.Reviewer {

@@ -242,6 +242,63 @@ func TestInvalidFlagBeforeHelpStaysOnStderr(t *testing.T) {
 	}
 }
 
+func TestReviewCommandKeepsRequestedJSONAcrossEarlyFailures(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepository(t)
+	tests := []struct {
+		name      string
+		arguments []string
+	}{
+		{name: "unknown flag before output", arguments: []string{"--unknown", "--output", "json"}},
+		{name: "unknown flag after output", arguments: []string{"--output=json", "--unknown"}},
+		{name: "positional argument", arguments: []string{"extra", "--output", "json"}},
+		{name: "invalid typed override", arguments: []string{"--output", "json", "--timeout", "not-a-duration"}},
+		{name: "configuration failure", arguments: []string{"--output", "json", "--repository", repository, "--engine", "invalid"}},
+		{name: "conflicting output selectors", arguments: []string{"--output", "terminal", "--output=json"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			exit := run(t.Context(), append([]string{"review"}, test.arguments...), &stdout, &stderr, dependencies{})
+			if exit != 2 {
+				t.Fatalf("exit=%d stdout=%q stderr=%q", exit, stdout.String(), stderr.String())
+			}
+			var result protocol.Report
+			if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+				t.Fatalf("decode result: %v: %s", err, stdout.String())
+			}
+			if err := result.Validate(); err != nil {
+				t.Fatalf("validate result: %v", err)
+			}
+			if result.Status != protocol.StatusFailure || result.Failure == nil || result.Failure.Class != protocol.FailureConfig {
+				t.Fatalf("result=%+v", result)
+			}
+			if stderr.Len() != 0 || strings.Contains(stdout.String(), "Usage of autoreview") {
+				t.Fatalf("stdout/stderr contract failed: stdout=%q stderr=%q", stdout.String(), stderr.String())
+			}
+		})
+	}
+}
+
+func TestReviewCommandWithoutUnambiguousJSONStaysTerminal(t *testing.T) {
+	t.Parallel()
+
+	for _, arguments := range [][]string{
+		{"review", "--output", "yaml"},
+		{"review", "--prompt", "--output", "json"},
+		{"review", "--context-file", "--output", "json"},
+	} {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		exit := run(t.Context(), arguments, &stdout, &stderr, dependencies{})
+		if exit != 2 || stdout.Len() != 0 || stderr.Len() == 0 {
+			t.Fatalf("arguments=%v exit=%d stdout=%q stderr=%q", arguments, exit, stdout.String(), stderr.String())
+		}
+	}
+}
+
 func TestConfigCommandPrintsSourceAwareJSON(t *testing.T) {
 	t.Parallel()
 

@@ -1,7 +1,10 @@
 # Results and failures
 
 Terminal and JSON output represent the same locally validated report. Review
-results go to stdout; progress and diagnostics go to stderr.
+results go to stdout; progress and diagnostics go to stderr. When `review
+--output json` is selected unambiguously, representable argument, flag, and
+configuration failures also use the canonical failure report instead of prose.
+Help remains a separate human-readable surface.
 
 | Exit | Status | Meaning |
 | ---: | --- | --- |
