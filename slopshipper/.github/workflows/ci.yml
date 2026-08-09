@@ -248,8 +248,19 @@ jobs:
             echo "present=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Install GoReleaser
+      - name: Inspect GitHub Release state
         if: steps.tag.outputs.present == 'true'
+        id: release-state
+        env:
+          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          is_draft="$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)"
+          echo "published=$([[ "$is_draft" == "false" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Install GoReleaser
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser
@@ -257,7 +268,7 @@ jobs:
           install-only: true
 
       - name: Publish release artifacts
-        if: steps.tag.outputs.present == 'true'
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
         shell: bash
         env:
           APPLE_DEVELOPER_ID_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_P12_BASE64 }}
@@ -277,7 +288,7 @@ jobs:
           exec goreleaser release --clean
 
       - name: Verify checksums and signature
-        if: steps.tag.outputs.present == 'true'
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -289,20 +300,50 @@ jobs:
             dist/checksums.txt
 
       - name: Verify Apple signatures
-        if: steps.tag.outputs.present == 'true'
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
         env:
           EXPECTED_APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
           GORELEASER_CURRENT_TAG: ${{ steps.tag.outputs.tag }}
         run: ./scripts/verify-apple-release.sh
 
+      - name: Verify draft asset manifest
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
+        env:
+          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          asset_count="$(
+            gh release view "$RELEASE_TAG" --json assets \
+              --jq '[.assets[].name | select(test("^(slopomatic_v[0-9]+\\.[0-9]+\\.[0-9]+_(darwin|linux)_(arm64|amd64)\\.tar\\.gz|checksums\\.txt|checksums\\.txt\\.sigstore\\.json)$"))] | length'
+          )"
+          if [[ "$asset_count" != "6" ]]; then
+            echo "expected four archives, checksums, and signature bundle; found $asset_count matching assets" >&2
+            exit 1
+          fi
+
       - name: Attest build provenance
-        if: steps.tag.outputs.present == 'true'
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
           subject-path: |
             dist/slopomatic_*.tar.gz
             dist/checksums.txt
             dist/checksums.txt.sigstore.json
+
+      - name: Publish verified draft
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
+        env:
+          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: gh release edit "$RELEASE_TAG" --draft=false
+
+      - name: Verify immutable release
+        if: steps.tag.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: gh release verify "$RELEASE_TAG"
 
       - name: Smoke Homebrew installation
         if: steps.tag.outputs.present == 'true'
