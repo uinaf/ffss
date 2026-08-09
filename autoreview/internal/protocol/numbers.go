@@ -15,8 +15,8 @@ func (value *wireInt) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	converted := int(parsed)
-	if int64(converted) != parsed {
+	converted, err := strconv.Atoi(strconv.FormatInt(parsed, 10))
+	if err != nil {
 		return fmt.Errorf("integer %s is out of range", data)
 	}
 	*value = wireInt(converted)

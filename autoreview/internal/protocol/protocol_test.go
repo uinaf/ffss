@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -265,6 +266,22 @@ func TestExactInt64Bounds(t *testing.T) {
 	for _, input := range []string{"9223372036854775808", "-9223372036854775809", "12.5", "1e999999999", "1e-999999999"} {
 		if _, err := exactInt64([]byte(input)); err == nil {
 			t.Errorf("exactInt64(%s) unexpectedly succeeded", input)
+		}
+	}
+}
+
+func TestWireIntAcceptsPlatformBounds(t *testing.T) {
+	t.Parallel()
+
+	maxInt := int(^uint(0) >> 1)
+	for _, want := range []int{maxInt, -maxInt - 1} {
+		var value wireInt
+		input := strconv.Itoa(want)
+		if err := json.Unmarshal([]byte(input), &value); err != nil {
+			t.Fatalf("wireInt.UnmarshalJSON(%s) error = %v", input, err)
+		}
+		if int(value) != want {
+			t.Errorf("wireInt.UnmarshalJSON(%s) = %d, want %d", input, value, want)
 		}
 	}
 }
