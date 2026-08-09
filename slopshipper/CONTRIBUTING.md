@@ -9,8 +9,55 @@ git clone https://github.com/uinaf/slopomatic.git
 cd slopomatic
 mise trust
 mise install
+```
+
+## Run locally
+
+Build and invoke the development binary from the checkout:
+
+```bash
+mise run build
+./bin/slopomatic version
+```
+
+The build task never installs an unversioned `slopomatic` into the active Go
+toolchain or replaces a packaged CLI on `PATH`.
+
+## Remove a legacy Go-installed binary
+
+An older `go install` workflow may have left a development binary ahead of a
+packaged release on `PATH`. List every copy before removing anything:
+
+```bash
+type -a slopomatic
+```
+
+After confirming `command -v slopomatic` points into a Go or mise installation,
+remove that exact copy and refresh the shell command cache:
+
+```bash
+legacy_slopomatic="$(command -v slopomatic)"
+case "$legacy_slopomatic" in
+  */mise/installs/go/*/bin/slopomatic|*/go/bin/slopomatic)
+    rm -- "$legacy_slopomatic"
+    hash -r
+    ;;
+  *) printf 'Refusing to remove non-Go path: %s\n' "$legacy_slopomatic" >&2 ;;
+esac
+```
+
+## Validate
+
+Run the deterministic local gate before opening a pull request:
+
+```bash
 mise run verify
 ```
+
+Coverage is enforced per production package: 80% minimum, with the state
+machine and status contract held to 90%. The CLI child-process integration
+surface has a separate floor. The gate also runs the race detector, installer
+fixtures, release configuration checks, and the repo-local build.
 
 ## Pull requests
 
@@ -42,9 +89,6 @@ mise run skill:lint
 Bump `skills/slopomatic/.tessl-plugin/plugin.json` when the skill should ship a
 new immutable revision.
 
-Coverage is enforced per production package: 80% minimum, with the state
-machine and status contract held to 90%. The CLI child-process integration
-surface has a separate floor. `mise run verify` also runs the race detector.
 A scheduled `govulncheck` scan covers changes in the vulnerability database
 without making the deterministic local gate depend on the network.
 

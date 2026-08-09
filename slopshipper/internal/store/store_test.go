@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -336,6 +337,70 @@ func TestDefaultsPreferencesRekeyAndMissingRuns(t *testing.T) {
 	}
 	if got, _, err := s.GetRun("repointed"); err != nil || got.RepoKey != "https://old-host/repo|/work/repo" {
 		t.Fatalf("repointed repository was not independently sanitized: %+v %v", got, err)
+	}
+}
+
+func TestOpenCreatesPrivateStateAndReportsResolvedFailures(t *testing.T) {
+	root := t.TempDir()
+	databasePath := filepath.Join(root, "missing", "slopomatic", "state.sqlite")
+	s, err := store.Open(databasePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	directoryInfo, err := os.Stat(filepath.Dir(databasePath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := directoryInfo.Mode().Perm(); got != 0o700 {
+		t.Fatalf("database directory mode=%#o want 0700", got)
+	}
+	databaseInfo, err := os.Stat(databasePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := databaseInfo.Mode().Perm(); got != 0o600 {
+		t.Fatalf("database mode=%#o want 0600", got)
+	}
+
+	blockingFile := filepath.Join(root, "not-a-directory")
+	if err := os.WriteFile(blockingFile, []byte("blocked"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	blockedPath := filepath.Join(blockingFile, "state.sqlite")
+	_, err = store.Open(blockedPath)
+	resolvedPath, resolveErr := filepath.Abs(blockedPath)
+	if resolveErr != nil {
+		t.Fatal(resolveErr)
+	}
+	if err == nil || !strings.Contains(err.Error(), filepath.Dir(resolvedPath)) ||
+		!strings.Contains(err.Error(), "create database directory") {
+		t.Fatalf("contextual open error=%v", err)
+	}
+
+	databaseDirectory := filepath.Join(root, "database-directory")
+	if err := os.Mkdir(databaseDirectory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Open(databaseDirectory); err == nil ||
+		!strings.Contains(err.Error(), databaseDirectory) || !strings.Contains(err.Error(), "prepare database") {
+		t.Fatalf("directory database error=%v", err)
+	}
+
+	corruptPath := filepath.Join(root, "corrupt.sqlite")
+	if err := os.WriteFile(corruptPath, []byte("not sqlite"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Open(corruptPath); err == nil ||
+		!strings.Contains(err.Error(), corruptPath) || !strings.Contains(err.Error(), "initialize database") {
+		t.Fatalf("corrupt database error=%v", err)
+	}
+
+	if _, err := store.Open(""); err == nil || !strings.Contains(err.Error(), "database path is empty") {
+		t.Fatalf("empty path error=%v", err)
 	}
 }
 

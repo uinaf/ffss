@@ -27,6 +27,19 @@ brew install --cask uinaf/tap/slopomatic
 slopomatic version
 ```
 
+#### Troubleshoot mixed installations
+
+After installing or upgrading, an unexpected `0.0.0-dev` version means an
+older Go build may appear before Homebrew on `PATH`:
+
+```bash
+type -a slopomatic
+test "$(command -v slopomatic)" = "$(brew --prefix)/bin/slopomatic"
+```
+
+If the check fails, follow the guarded
+[legacy Go-install cleanup](CONTRIBUTING.md#remove-a-legacy-go-installed-binary).
+
 ### Linux
 
 Install the latest amd64 or arm64 release without Go, Homebrew, `jq`, or
@@ -44,18 +57,13 @@ against the release checksum before atomically replacing the binary. See
 [Release verification](docs/RELEASES.md#linux-installer-trust-boundary) for
 independent Cosign and GitHub attestation checks.
 
-### Go
-
-With Go 1.26 or newer:
-
-```bash
-go install github.com/uinaf/slopomatic/cmd/slopomatic@latest
-slopomatic version
-```
+To build from source without replacing the packaged CLI on `PATH`, see
+[Run locally](CONTRIBUTING.md#run-locally).
 
 State is stored at `$XDG_DATA_HOME/slopomatic/slopomatic.sqlite`, or
 `~/.local/share/slopomatic/slopomatic.sqlite` when `XDG_DATA_HOME` is unset.
-Set `SLOPOMATIC_DB` to use a different database.
+The CLI creates the state directory and database on first use with private
+permissions. Set `SLOPOMATIC_DB` to use a different writable database path.
 
 ## Quick start
 

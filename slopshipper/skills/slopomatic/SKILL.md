@@ -29,8 +29,7 @@ Do not invent a second runtime.
 slopomatic status --json
 ```
 
-If status exits 5 and stderr contains `not found: no run for repo`, create one
-with `slopomatic init`.
+If status reports `UNINITIALIZED`, obey its `slopomatic init` next action.
 If it reports multiple open runs, show their IDs and ask which one to resume.
 Do not replace a blocked run. If status shows `RUN_DONE` and the user requested
 new work, create a new run; otherwise report the completed run.

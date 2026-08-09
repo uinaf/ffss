@@ -106,6 +106,33 @@ func TestJSONUsesStableEmptyArrays(t *testing.T) {
 	}
 }
 
+func TestBootstrapDirectsFirstRunToInit(t *testing.T) {
+	doc := Bootstrap("repo-key")
+	if doc.SchemaVersion != 2 || doc.State != "UNINITIALIZED" || doc.RepoKey != "repo-key" {
+		t.Fatalf("bootstrap identity: %+v", doc)
+	}
+	assertStrings(t, "allowed", doc.AllowedCommands, []string{"init"})
+	assertStrings(t, "frontier", doc.Frontier, []string{})
+	assertStrings(t, "required reviewers", doc.RequiredReviewers, []string{})
+	assertStrings(t, "completed reviewers", doc.CompletedReviewers, []string{})
+	assertStrings(t, "required evidence", doc.RequiredEvidence, []string{})
+	if doc.NextAction != "slopomatic init" || doc.Blocker == "" {
+		t.Fatalf("bootstrap action: %+v", doc)
+	}
+	if got := doc.CompactLine(); got != "slopomatic state=UNINITIALIZED next=slopomatic init" {
+		t.Fatalf("bootstrap compact line=%q", got)
+	}
+	b, err := doc.JSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{`"frontier": []`, `"allowed_commands": [`, `"required_evidence": []`} {
+		if !strings.Contains(string(b), field) {
+			t.Fatalf("missing %s in %s", field, b)
+		}
+	}
+}
+
 func TestNextActionSelectsAndQuotesRun(t *testing.T) {
 	doc := From(machine.Run{
 		ID: "run with ' quote", State: machine.StateNeedsDecision,

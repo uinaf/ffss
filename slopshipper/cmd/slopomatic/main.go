@@ -500,9 +500,15 @@ func applyCmd(st *store.Store, runID string, cmd machine.Command, in machine.App
 func printStatus(st *store.Store, repoKey, runID string, asJSON bool) int {
 	run, units, err := st.ResolveStatusRun(repoKey, runID)
 	if err != nil {
+		if runID == "" && errors.Is(err, machine.ErrNotFound) {
+			return writeStatus(status.Bootstrap(repoKey), asJSON)
+		}
 		return mapErr(err)
 	}
-	doc := status.From(run, units)
+	return writeStatus(status.From(run, units), asJSON)
+}
+
+func writeStatus(doc status.Document, asJSON bool) int {
 	if asJSON {
 		b, err := doc.JSON()
 		if err != nil {

@@ -8,6 +8,11 @@ import (
 	"github.com/uinaf/slopomatic/internal/machine"
 )
 
+const (
+	schemaVersion      = 2
+	stateUninitialized = "UNINITIALIZED"
+)
+
 // Document is the compact agent-facing status contract.
 type Document struct {
 	SchemaVersion      int      `json:"schema_version"`
@@ -46,7 +51,7 @@ func From(run machine.Run, units []machine.Unit) Document {
 	requiredReviewers := requiredReviewers(run.ReviewConsent)
 	requiredEvidence := requiredEvidence(allowed)
 	return Document{
-		SchemaVersion:      2,
+		SchemaVersion:      schemaVersion,
 		Revision:           run.Revision,
 		RunID:              run.ID,
 		RepoKey:            run.RepoKey,
@@ -70,7 +75,30 @@ func From(run machine.Run, units []machine.Unit) Document {
 	}
 }
 
+// Bootstrap describes the supported state before a repository has a run.
+func Bootstrap(repoKey string) Document {
+	return Document{
+		SchemaVersion:      schemaVersion,
+		RepoKey:            repoKey,
+		State:              stateUninitialized,
+		Frontier:           []string{},
+		RequiredReviewers:  []string{},
+		CompletedReviewers: []string{},
+		AllowedCommands:    []string{string(machine.CmdInit)},
+		RequiredEvidence:   []string{},
+		NextAction:         "slopomatic init",
+		Blocker:            "no run exists for this repository",
+	}
+}
+
 func (d Document) CompactLine() string {
+	prefix := "slopomatic"
+	if d.RunID != "" {
+		prefix += " " + d.RunID
+	}
+	if d.State == stateUninitialized {
+		return prefix + " state=" + d.State + " next=" + d.NextAction
+	}
 	rel := "unreleased"
 	if d.Released {
 		rel = "released"
@@ -79,7 +107,7 @@ func (d Document) CompactLine() string {
 	if next == "" {
 		next = "(none)"
 	}
-	return "slopomatic " + d.RunID + " state=" + d.State + " " + rel + " next=" + next
+	return prefix + " state=" + d.State + " " + rel + " next=" + next
 }
 
 func (d Document) JSON() ([]byte, error) {

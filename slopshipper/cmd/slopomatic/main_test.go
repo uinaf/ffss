@@ -563,6 +563,60 @@ func TestRunAutoIDAndDefaultDataPath(t *testing.T) {
 	}
 }
 
+func TestCLIFirstRunCreatesDefaultStateAndReturnsBootstrapStatus(t *testing.T) {
+	h := newCLIHarness(t)
+	stateRoot := filepath.Join(t.TempDir(), "new", "xdg")
+	h.env = append(h.env,
+		"SLOPOMATIC_DB=",
+		"XDG_DATA_HOME="+stateRoot,
+		"HOME="+filepath.Join(t.TempDir(), "home"),
+	)
+
+	out, code := h.run("status", "--json")
+	if code != 0 {
+		t.Fatalf("first status exit=%d: %s", code, out)
+	}
+	var bootstrap struct {
+		State           string   `json:"state"`
+		AllowedCommands []string `json:"allowed_commands"`
+		NextAction      string   `json:"next_action"`
+		Blocker         string   `json:"blocker"`
+	}
+	if err := json.Unmarshal([]byte(out), &bootstrap); err != nil {
+		t.Fatalf("bootstrap JSON: %v\n%s", err, out)
+	}
+	if bootstrap.State != "UNINITIALIZED" || bootstrap.NextAction != "slopomatic init" ||
+		len(bootstrap.AllowedCommands) != 1 || bootstrap.AllowedCommands[0] != "init" || bootstrap.Blocker == "" {
+		t.Fatalf("bootstrap status: %+v", bootstrap)
+	}
+	databasePath := filepath.Join(stateRoot, "slopomatic", "slopomatic.sqlite")
+	if info, err := os.Stat(databasePath); err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("database info=%v err=%v", info, err)
+	}
+
+	h.must("init", "--run", "first")
+	out = h.must("status", "--json", "--run", "first")
+	var initialized struct {
+		State string `json:"state"`
+	}
+	if err := json.Unmarshal([]byte(out), &initialized); err != nil || initialized.State != "INTAKE" {
+		t.Fatalf("initialized status: %v %s", err, out)
+	}
+}
+
+func TestCLIStoreFailureIncludesResolvedPathAndCause(t *testing.T) {
+	h := newCLIHarness(t)
+	blockingFile := filepath.Join(t.TempDir(), "not-a-directory")
+	mustWrite(t, blockingFile, "blocked")
+	databasePath := filepath.Join(blockingFile, "slopomatic.sqlite")
+	h.env = append(h.env, "SLOPOMATIC_DB="+databasePath)
+
+	out, code := h.run("init", "--run", "blocked")
+	if code != 10 || !strings.Contains(out, databasePath) || !strings.Contains(out, "create database directory") {
+		t.Fatalf("store failure exit=%d output=%s", code, out)
+	}
+}
+
 func TestDirectErrorMappingJSONAndServeBindFailure(t *testing.T) {
 	for err, want := range map[error]int{
 		machine.ErrBadArgs: 2, machine.ErrIllegalTransition: 3, machine.ErrUnmetGuard: 3,

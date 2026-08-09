@@ -13,6 +13,10 @@
 | `blocker` | Human-facing blocker reason when present |
 | `decision_question` | Pending ask; answer via `slopomatic decide` |
 
+Before the repository has a run, status returns `state: "UNINITIALIZED"`,
+`allowed_commands: ["init"]`, and `next_action: "slopomatic init"`. Run that
+command, then read status again before submitting intake.
+
 ## Parse example
 
 ```bash

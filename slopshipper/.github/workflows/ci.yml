@@ -292,4 +292,11 @@ jobs:
           brew tap uinaf/tap
           brew update
           brew install --cask uinaf/tap/slopomatic
+          scripts/check-install-path.sh "$(brew --prefix)/bin/slopomatic"
           slopomatic version | grep -F "slopomatic ${EXPECTED_TAG}"
+          first_run_state="$(mktemp -d)/xdg"
+          SLOPOMATIC_DB='' XDG_DATA_HOME="$first_run_state" \
+            slopomatic status --json | grep -F '"state": "UNINITIALIZED"'
+          SLOPOMATIC_DB='' XDG_DATA_HOME="$first_run_state" \
+            slopomatic init --run homebrew-first-run | grep -F 'state=INTAKE'
+          test -f "$first_run_state/slopomatic/slopomatic.sqlite"

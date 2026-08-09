@@ -35,12 +35,16 @@ description = "Run Go static analysis"
 run = "go vet ./..."
 
 [tasks.build]
-description = "Build the slopomatic CLI"
-run = "go build ./cmd/slopomatic"
+description = "Build the slopomatic CLI into ./bin"
+run = "mkdir -p bin && go build -o bin/slopomatic ./cmd/slopomatic"
 
 [tasks."installer:test"]
-description = "Run the offline Linux installer fixture tests"
-run = "bash scripts/test-install.sh"
+description = "Run the offline installer and PATH fixture tests"
+run = '''
+set -e
+bash scripts/test-install.sh
+bash scripts/test-install-path.sh
+'''
 
 [tasks."installer:check"]
 description = "Validate the Linux installer"
@@ -49,8 +53,12 @@ run = '''
 set -e
 sh -n install.sh
 bash -n scripts/test-install.sh
+bash -n scripts/check-install-path.sh
+bash -n scripts/test-install-path.sh
 shellcheck -s sh install.sh
 shellcheck -s bash scripts/test-install.sh
+shellcheck -s bash scripts/check-install-path.sh
+shellcheck -s bash scripts/test-install-path.sh
 '''
 
 [tasks."release:check"]
@@ -93,7 +101,7 @@ description = "Optional credit-burning Tessl cloud review at threshold 100"
 run = '''
 set -e
 TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopomatic
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopomatic-0.2.0 skills/slopomatic
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopomatic-0.2.1 skills/slopomatic
 '''
 
 [tasks.security]
