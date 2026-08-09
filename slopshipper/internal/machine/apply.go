@@ -3,6 +3,7 @@ package machine
 import (
 	"fmt"
 	"slices"
+	"strings"
 )
 
 // NewRun constructs an INTAKE run after init.
@@ -23,6 +24,9 @@ func NewRun(id, repoKey string) Run {
 func Apply(run Run, units []Unit, cmd Command, in ApplyInput) (ApplyResult, error) {
 	if in.ExpectedRevision != 0 && in.ExpectedRevision != run.Revision {
 		return ApplyResult{}, fmt.Errorf("%w: expected %d got %d", ErrRevisionConflict, in.ExpectedRevision, run.Revision)
+	}
+	if !slices.Contains(AllowedCommands(run, units), cmd) {
+		return ApplyResult{}, fmt.Errorf("%w: %s not allowed from %s", ErrIllegalTransition, cmd, run.State)
 	}
 
 	from := run.State
@@ -48,6 +52,8 @@ func Apply(run Run, units []Unit, cmd Command, in ApplyInput) (ApplyResult, erro
 		err = applyAsk(&run, in)
 	case CmdDecide:
 		err = applyDecide(&run, in)
+	case CmdRetry:
+		err = applyRetry(&run, units, in)
 	case CmdBlock:
 		err = applyBlock(&run, in)
 	default:
@@ -58,26 +64,17 @@ func Apply(run Run, units []Unit, cmd Command, in ApplyInput) (ApplyResult, erro
 	}
 
 	run.Revision++
-	allowed := AllowedCommands(run, units)
 	return ApplyResult{
-		Run:              run,
-		Units:            units,
-		EventFrom:        from,
-		EventTo:          run.State,
-		Command:          cmd,
-		AllowedCommands:  allowed,
-		NextAction:       nextActionCommand(allowed),
-		RequiredEvidence: requiredEvidence(run.State, allowed),
+		Run:       run,
+		Units:     units,
+		EventFrom: from,
+		EventTo:   run.State,
+		Command:   cmd,
+		Evidence:  canonicalEvidence(run, units, cmd, in),
 	}, nil
 }
 
 func applyIntake(run *Run, units *[]Unit, in ApplyInput) error {
-	if run.State != StateIntake && run.State != StateNeedsDecision {
-		return fmt.Errorf("%w: intake only from INTAKE or NEEDS_DECISION", ErrIllegalTransition)
-	}
-	if run.State == StateNeedsDecision && run.ReturnState != StateIntake && run.ReturnState != "" {
-		return fmt.Errorf("%w: intake while decision expects return to %s", ErrIllegalTransition, run.ReturnState)
-	}
 	if in.Intake == nil {
 		return fmt.Errorf("%w: intake patch required", ErrBadArgs)
 	}
@@ -122,9 +119,6 @@ func applyIntake(run *Run, units *[]Unit, in ApplyInput) error {
 }
 
 func applyRelease(run *Run, in ApplyInput) error {
-	if run.State != StateIntake {
-		return fmt.Errorf("%w: release only from INTAKE", ErrIllegalTransition)
-	}
 	if in.IntakeRevision == 0 {
 		return fmt.Errorf("%w: release requires --revision", ErrBadArgs)
 	}
@@ -142,16 +136,6 @@ func applyBuild(run *Run, units *[]Unit) error {
 	if !run.Released() {
 		return fmt.Errorf("%w: release required before build", ErrUnmetGuard)
 	}
-	switch run.State {
-	case StateIntake, StateRework:
-	case StateNeedsDecision:
-		if run.ReturnState != StateBuild && run.ReturnState != StateIntake && run.ReturnState != "" {
-			return fmt.Errorf("%w: cannot build from NEEDS_DECISION returning to %s", ErrIllegalTransition, run.ReturnState)
-		}
-	default:
-		return fmt.Errorf("%w: build not allowed from %s", ErrIllegalTransition, run.State)
-	}
-
 	if run.State == StateRework {
 		if run.CurrentUnitID == "" {
 			return fmt.Errorf("%w: rework requires current unit", ErrCorruptState)
@@ -161,6 +145,7 @@ func applyBuild(run *Run, units *[]Unit) error {
 			return fmt.Errorf("%w: current unit missing", ErrCorruptState)
 		}
 		u.Attempt++
+		run.CompletedReviewers = nil
 		run.State = StateBuild
 		run.DecisionQuestion = ""
 		run.ReturnState = ""
@@ -179,6 +164,7 @@ func applyBuild(run *Run, units *[]Unit) error {
 	}
 	run.CurrentUnitID = next.ID
 	next.Attempt++
+	run.CompletedReviewers = nil
 	run.State = StateBuild
 	run.BlockerReason = ""
 	run.DecisionQuestion = ""
@@ -187,20 +173,17 @@ func applyBuild(run *Run, units *[]Unit) error {
 }
 
 func applyVerify(run *Run, in ApplyInput) error {
-	if run.State != StateBuild && run.State != StateVerify {
-		return fmt.Errorf("%w: verify only from BUILD or VERIFY", ErrIllegalTransition)
-	}
 	if run.CurrentUnitID == "" {
 		return fmt.Errorf("%w: no current unit", ErrUnmetGuard)
 	}
+	if err := validateVerifyCommand(in.Verify); err != nil {
+		return err
+	}
 	// Failure path → BLOCKED
-	if in.Verify != nil && in.Verify.Command != "" && in.Verify.ExitCode != 0 {
+	if in.Verify.ExitCode != 0 {
 		run.State = StateBlocked
 		run.BlockerReason = fmt.Sprintf("verify failed: %s exit %d", in.Verify.Command, in.Verify.ExitCode)
 		return nil
-	}
-	if err := validateVerifyEvidence(in.Verify); err != nil {
-		return err
 	}
 	run.State = StateReview
 	run.BlockerReason = ""
@@ -208,28 +191,36 @@ func applyVerify(run *Run, in ApplyInput) error {
 }
 
 func applyReview(run *Run, in ApplyInput) error {
-	if run.State != StateReview {
-		return fmt.Errorf("%w: review only from REVIEW", ErrIllegalTransition)
-	}
 	if err := validateReviewEvidence(in.Review, run.ReviewConsent); err != nil {
 		return err
 	}
-	run.State = StateDeliver
+	switch in.Review.Verdict {
+	case ReviewClean:
+		if slices.Contains(run.CompletedReviewers, in.Review.Reviewer) {
+			return fmt.Errorf("%w: reviewer %q already recorded", ErrUnmetGuard, in.Review.Reviewer)
+		}
+		run.CompletedReviewers = append(run.CompletedReviewers, in.Review.Reviewer)
+		if reviewsSatisfied(run.ReviewConsent, run.CompletedReviewers) {
+			run.State = StateDeliver
+		}
+	case ReviewFindings:
+		run.CompletedReviewers = nil
+		run.State = StateRework
+	case ReviewAmbiguous:
+		run.ReturnState = StateReview
+		run.State = StateNeedsDecision
+		run.DecisionQuestion = "Review outcome is ambiguous; decide how to proceed"
+	}
 	return nil
 }
 
 func applyRework(run *Run) error {
-	if run.State != StateReview {
-		return fmt.Errorf("%w: rework only from REVIEW", ErrIllegalTransition)
-	}
+	run.CompletedReviewers = nil
 	run.State = StateRework
 	return nil
 }
 
 func applyDeliver(run *Run, units *[]Unit, in ApplyInput) error {
-	if run.State != StateDeliver {
-		return fmt.Errorf("%w: deliver only from DELIVER", ErrIllegalTransition)
-	}
 	if err := validateDeliverEvidence(in.Deliver, run.DeliveryMode); err != nil {
 		return err
 	}
@@ -240,6 +231,7 @@ func applyDeliver(run *Run, units *[]Unit, in ApplyInput) error {
 	u.Done = true
 	run.CompletedUnits++
 	run.CurrentUnitID = ""
+	run.CompletedReviewers = nil
 
 	if run.CompletedUnits >= run.SeriesBound {
 		run.State = StateRunDone
@@ -259,10 +251,6 @@ func applyDeliver(run *Run, units *[]Unit, in ApplyInput) error {
 }
 
 func applyAsk(run *Run, in ApplyInput) error {
-	switch run.State {
-	case StateBlocked, StateRunDone, StateNeedsDecision:
-		return fmt.Errorf("%w: ask not allowed from %s", ErrIllegalTransition, run.State)
-	}
 	if in.Question == "" {
 		return fmt.Errorf("%w: ask requires --question", ErrBadArgs)
 	}
@@ -273,9 +261,6 @@ func applyAsk(run *Run, in ApplyInput) error {
 }
 
 func applyDecide(run *Run, in ApplyInput) error {
-	if run.State != StateNeedsDecision {
-		return fmt.Errorf("%w: decide only from NEEDS_DECISION", ErrIllegalTransition)
-	}
 	if in.Decision == nil || in.Decision.Answer == "" {
 		return fmt.Errorf("%w: decision.answer required", ErrBadArgs)
 	}
@@ -289,40 +274,30 @@ func applyDecide(run *Run, in ApplyInput) error {
 	return nil
 }
 
-func applyBlock(run *Run, in ApplyInput) error {
-	if run.State == StateRunDone || run.State == StateBlocked {
-		return fmt.Errorf("%w: cannot block from %s", ErrIllegalTransition, run.State)
+func applyRetry(run *Run, units []Unit, in ApplyInput) error {
+	if strings.TrimSpace(in.RetryReason) == "" {
+		return fmt.Errorf("%w: retry reason required", ErrBadArgs)
 	}
+	if run.CurrentUnitID == "" {
+		return fmt.Errorf("%w: blocked run has no current unit", ErrCorruptState)
+	}
+	unit := findUnit(units, run.CurrentUnitID)
+	if unit == nil || unit.Done {
+		return fmt.Errorf("%w: blocked run current unit %q is missing or complete", ErrCorruptState, run.CurrentUnitID)
+	}
+	run.State = StateBuild
+	run.BlockerReason = ""
+	run.CompletedReviewers = nil
+	return nil
+}
+
+func applyBlock(run *Run, in ApplyInput) error {
 	if in.BlockReason == "" {
 		return fmt.Errorf("%w: block reason required", ErrBadArgs)
 	}
 	run.State = StateBlocked
 	run.BlockerReason = in.BlockReason
 	return nil
-}
-
-// NeedsDecision parks the run for a human question.
-func NeedsDecision(run Run, units []Unit, question string, returnState State) (ApplyResult, error) {
-	if question == "" {
-		return ApplyResult{}, fmt.Errorf("%w: question required", ErrBadArgs)
-	}
-	from := run.State
-	run.ReturnState = returnState
-	if run.ReturnState == "" {
-		run.ReturnState = from
-	}
-	run.State = StateNeedsDecision
-	run.DecisionQuestion = question
-	run.Revision++
-	allowed := AllowedCommands(run, units)
-	return ApplyResult{
-		Run:             run,
-		Units:           cloneUnits(units),
-		EventFrom:       from,
-		EventTo:         StateNeedsDecision,
-		AllowedCommands: allowed,
-		NextAction:      nextActionCommand(allowed),
-	}, nil
 }
 
 func AllowedCommands(run Run, units []Unit) []Command {
@@ -333,7 +308,7 @@ func AllowedCommands(run Run, units []Unit) []Command {
 			if u, _ := frontierUnit(units); u != nil && run.CompletedUnits < run.SeriesBound {
 				out = append(out, CmdBuild)
 			}
-		} else {
+		} else if len(units) > 0 {
 			out = append(out, CmdRelease)
 		}
 		return out
@@ -348,40 +323,14 @@ func AllowedCommands(run Run, units []Unit) []Command {
 	case StateRework:
 		return []Command{CmdBuild, CmdAsk}
 	case StateNeedsDecision:
-		return []Command{CmdDecide, CmdIntake}
-	case StateBlocked, StateRunDone:
+		return []Command{CmdDecide}
+	case StateBlocked:
+		return []Command{CmdRetry}
+	case StateRunDone:
 		return nil
 	default:
 		return nil
 	}
-}
-
-func nextActionCommand(allowed []Command) string {
-	if len(allowed) == 0 {
-		return ""
-	}
-	// Prefer forward progress order.
-	priority := []Command{CmdRelease, CmdBuild, CmdVerify, CmdReview, CmdDeliver, CmdRework, CmdDecide, CmdIntake}
-	for _, p := range priority {
-		if slices.Contains(allowed, p) {
-			return "slopomatic " + string(p)
-		}
-	}
-	return "slopomatic " + string(allowed[0])
-}
-
-func requiredEvidence(state State, allowed []Command) []string {
-	if slices.Contains(allowed, CmdVerify) {
-		return []string{"verify.command", "verify.exit_code"}
-	}
-	if slices.Contains(allowed, CmdReview) {
-		return []string{"review.reviewer", "review.verdict", "review.artifact_ref"}
-	}
-	if slices.Contains(allowed, CmdDeliver) {
-		return []string{"deliver.delivery_mode", "deliver.pr_url|deliver.commit_sha"}
-	}
-	_ = state
-	return nil
 }
 
 func validDelivery(m DeliveryMode) error {
@@ -455,14 +404,14 @@ func validateGraph(units []Unit) error {
 	return nil
 }
 
-func frontierUnit(units []Unit) (*Unit, error) {
+func Frontier(units []Unit) []string {
 	done := map[string]bool{}
 	for i := range units {
 		if units[i].Done {
 			done[units[i].ID] = true
 		}
 	}
-	var frontier []*Unit
+	frontier := make([]string, 0)
 	for i := range units {
 		u := &units[i]
 		if u.Done {
@@ -476,14 +425,18 @@ func frontierUnit(units []Unit) (*Unit, error) {
 			}
 		}
 		if ready {
-			frontier = append(frontier, u)
+			frontier = append(frontier, u.ID)
 		}
 	}
+	return frontier
+}
+
+func frontierUnit(units []Unit) (*Unit, error) {
+	frontier := Frontier(units)
 	if len(frontier) == 0 {
 		return nil, nil
 	}
-	// Deterministic: first ready in slice order.
-	return frontier[0], nil
+	return findUnit(units, frontier[0]), nil
 }
 
 func findUnit(units []Unit, id string) *Unit {
@@ -504,4 +457,50 @@ func cloneUnits(units []Unit) []Unit {
 		}
 	}
 	return out
+}
+
+func reviewsSatisfied(consent ReviewConsent, completed []ReviewerIdentity) bool {
+	switch consent {
+	case ReviewAutoreview:
+		return slices.Contains(completed, ReviewerAutoreview)
+	case ReviewBugbot:
+		return slices.Contains(completed, ReviewerBugbot)
+	case ReviewHuman:
+		return slices.Contains(completed, ReviewerHuman)
+	case ReviewBoth:
+		return slices.Contains(completed, ReviewerAutoreview) && slices.Contains(completed, ReviewerBugbot)
+	default:
+		return false
+	}
+}
+
+func canonicalEvidence(run Run, units []Unit, cmd Command, in ApplyInput) any {
+	switch cmd {
+	case CmdIntake:
+		return IntakeEvidence{
+			IntakeRevision: run.IntakeRevision,
+			DeliveryMode:   run.DeliveryMode,
+			ReviewConsent:  run.ReviewConsent,
+			SeriesBound:    run.SeriesBound,
+			Units:          cloneUnits(units),
+		}
+	case CmdRelease:
+		return ReleaseEvidence{IntakeRevision: in.IntakeRevision}
+	case CmdVerify:
+		return *in.Verify
+	case CmdReview:
+		return *in.Review
+	case CmdDeliver:
+		return *in.Deliver
+	case CmdAsk:
+		return QuestionEvidence{Question: in.Question}
+	case CmdDecide:
+		return DecisionEvidence{Answer: in.Decision.Answer}
+	case CmdRetry:
+		return RetryEvidence{Reason: in.RetryReason}
+	case CmdBlock:
+		return BlockEvidence{Reason: in.BlockReason}
+	default:
+		return nil
+	}
 }

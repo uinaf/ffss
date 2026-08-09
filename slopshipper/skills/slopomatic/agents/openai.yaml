@@ -7,9 +7,11 @@ interface:
     Goal: structured slop-cannoning — clarify intake, human release, then obey
     slopomatic status next_action through build → verify → review → deliver.
 
-    Require the installed slopomatic binary. Confirm review approach once at
-    intake (autoreview CLI and/or Cursor Bugbot). Prefer strong models for
-    build and cheaper review. Do not invent a second runtime or narrate phases.
+    Require the installed slopomatic binary. If no run exists, init and submit
+    a concrete intake via stdin, then wait for the exact human release. Confirm
+    review approach once at intake (autoreview CLI and/or Cursor Bugbot). Obey
+    actionable next_action; never silently retry BLOCKED work. Prefer strong
+    models for build and cheaper review. Do not invent a second runtime.
 
     Output: compact status-driven updates only.
 

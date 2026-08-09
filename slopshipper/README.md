@@ -28,7 +28,7 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 ~/.local/bin/slopomatic version
 ```
 
-Pass `--version v0.1.0` or `--dest /chosen/bin` after `sh -s --` to pin a
+Pass `--version "$TAG"` or `--dest /chosen/bin` after `sh -s --` to pin a
 release or override `${HOME}/.local/bin`. The installer downloads the archive
 and `checksums.txt` from the same GitHub Release, verifies the exact SHA-256,
 and atomically replaces the destination binary. See
@@ -49,20 +49,35 @@ State lives in `$XDG_DATA_HOME/slopomatic/slopomatic.sqlite` (default
 
 ```bash
 slopomatic init --run demo
-slopomatic intake --file examples/intake.example.json --run demo
-slopomatic status --json --run demo   # note intake_revision + next_action
-slopomatic release --revision "$INTAKE_REVISION" --run demo
+slopomatic intake --file - --run demo <<'JSON'
+{
+  "delivery_mode": "pr-hold",
+  "review_consent": "autoreview",
+  "series_bound": 1,
+  "units": [{"id": "u1", "title": "Ship the change", "blockers": []}]
+}
+JSON
+slopomatic status --json --run demo   # note intake_revision and next_action
+slopomatic release --revision N --run demo
 slopomatic build --run demo
 slopomatic verify --cmd 'go test ./...' --run demo
-slopomatic review --evidence examples/review.example.json --run demo
-slopomatic deliver --evidence examples/deliver.example.json --run demo
+slopomatic review --evidence - --run demo <<'JSON'
+{"reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://local"}
+JSON
+slopomatic deliver --evidence - --run demo <<'JSON'
+{"delivery_mode":"pr-hold","pr_url":"https://github.com/example/repo/pull/1"}
+JSON
 slopomatic status --json --run demo
 ```
 
-Default `status` is one compact line with `next_action`. Use `--json` for agents.
+Replace `N` with the exact `intake_revision` printed by status. Default
+`status` is one compact line with an executable `next_action`; use `--json` for
+agents. Every command has focused help, for example `slopomatic review --help`.
 
 Park a human question with `slopomatic ask --question "…"`, then
-`slopomatic decide --answer "…"`. Multi-unit intake:
+`slopomatic decide --answer "…"`. Record an external blocker with
+`slopomatic block --reason "…"`; after the human confirms recovery, resume with
+`slopomatic retry --reason "…"`. Multi-unit intake:
 [`examples/intake.multi.example.json`](examples/intake.multi.example.json).
 
 ## Control plane

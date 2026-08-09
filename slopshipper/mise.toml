@@ -3,7 +3,7 @@ jobs = 1
 
 [tools]
 actionlint = "1.7.12"
-go = "1.26.2"
+go = "1.26.5"
 goreleaser = "2.17.1"
 shellcheck = "0.11.0"
 
@@ -21,6 +21,14 @@ run = "test -z \"$(gofmt -l .)\""
 [tasks.test]
 description = "Run unit tests"
 run = "go test -p 4 -parallel 4 ./..."
+
+[tasks."test:coverage"]
+description = "Enforce package and CLI integration coverage floors"
+run = "bash scripts/test-coverage.sh"
+
+[tasks."test:race"]
+description = "Run the Go race detector"
+run = "go test -race -p 4 -parallel 4 ./..."
 
 [tasks.vet]
 description = "Run Go static analysis"
@@ -85,9 +93,13 @@ description = "Optional credit-burning Tessl cloud review at threshold 100"
 run = '''
 set -e
 TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopomatic
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopomatic-0.1.0 skills/slopomatic
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopomatic-0.2.0 skills/slopomatic
 '''
+
+[tasks.security]
+description = "Scan reachable Go dependencies for known vulnerabilities"
+run = "go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./..."
 
 [tasks.verify]
 description = "Run deterministic repository verification"
-depends = ["fmt:check", "test", "vet", "build", "installer:check", "release:check"]
+depends = ["fmt:check", "test", "test:coverage", "test:race", "vet", "build", "installer:check", "release:check"]

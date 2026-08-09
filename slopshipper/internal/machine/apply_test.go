@@ -2,6 +2,7 @@ package machine_test
 
 import (
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/uinaf/slopomatic/internal/machine"
@@ -108,7 +109,7 @@ func TestHappyPathMultiUnit(t *testing.T) {
 	res, err = machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 		ExpectedRevision: run.Revision,
 		Review: &machine.ReviewEvidence{
-			Reviewer: machine.ReviewerBugbot, Verdict: "ok", ArtifactRef: "bugbot://2",
+			Reviewer: machine.ReviewerBugbot, Verdict: machine.ReviewClean, ArtifactRef: "bugbot://2",
 		},
 	})
 	if err != nil {
@@ -203,7 +204,7 @@ func TestBuildBeforeReleaseFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = machine.Apply(res.Run, res.Units, machine.CmdBuild, machine.ApplyInput{ExpectedRevision: res.Run.Revision})
-	if !errors.Is(err, machine.ErrUnmetGuard) {
+	if !errors.Is(err, machine.ErrIllegalTransition) {
 		t.Fatalf("got %v", err)
 	}
 }
@@ -391,6 +392,169 @@ func TestIllegalTransition(t *testing.T) {
 	if !errors.Is(err, machine.ErrIllegalTransition) {
 		t.Fatalf("got %v", err)
 	}
+}
+
+func TestReviewBothRequiresDistinctCleanReviews(t *testing.T) {
+	run, units := reviewRun(machine.ReviewBoth)
+	first, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
+		ExpectedRevision: run.Revision,
+		Review: &machine.ReviewEvidence{
+			Reviewer: machine.ReviewerAutoreview, Verdict: machine.ReviewClean, ArtifactRef: "autoreview://1",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Run.State != machine.StateReview || len(first.Run.CompletedReviewers) != 1 {
+		t.Fatalf("first review: %+v", first.Run)
+	}
+	if _, err := machine.Apply(first.Run, first.Units, machine.CmdReview, machine.ApplyInput{
+		ExpectedRevision: first.Run.Revision,
+		Review: &machine.ReviewEvidence{
+			Reviewer: machine.ReviewerAutoreview, Verdict: machine.ReviewClean, ArtifactRef: "autoreview://2",
+		},
+	}); !errors.Is(err, machine.ErrUnmetGuard) {
+		t.Fatalf("duplicate reviewer: %v", err)
+	}
+	second, err := machine.Apply(first.Run, first.Units, machine.CmdReview, machine.ApplyInput{
+		ExpectedRevision: first.Run.Revision,
+		Review: &machine.ReviewEvidence{
+			Reviewer: machine.ReviewerBugbot, Verdict: machine.ReviewClean, ArtifactRef: "bugbot://1",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Run.State != machine.StateDeliver || len(second.Run.CompletedReviewers) != 2 {
+		t.Fatalf("second review: %+v", second.Run)
+	}
+}
+
+func TestReviewOutcomesRouteWithoutUnlockingDelivery(t *testing.T) {
+	for _, tt := range []struct {
+		verdict machine.ReviewVerdict
+		state   machine.State
+	}{
+		{machine.ReviewFindings, machine.StateRework},
+		{machine.ReviewAmbiguous, machine.StateNeedsDecision},
+	} {
+		t.Run(string(tt.verdict), func(t *testing.T) {
+			run, units := reviewRun(machine.ReviewAutoreview)
+			res, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
+				ExpectedRevision: run.Revision,
+				Review: &machine.ReviewEvidence{
+					Reviewer: machine.ReviewerAutoreview, Verdict: tt.verdict, ArtifactRef: "autoreview://1",
+				},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.Run.State != tt.state {
+				t.Fatalf("got %s want %s", res.Run.State, tt.state)
+			}
+		})
+	}
+}
+
+func TestNeedsDecisionOnlyAllowsDecide(t *testing.T) {
+	run := machine.NewRun("r", "repo")
+	run.State = machine.StateNeedsDecision
+	run.ReturnState = machine.StateBuild
+	units := []machine.Unit{{ID: "u1"}}
+	allowed := machine.AllowedCommands(run, units)
+	if len(allowed) != 1 || allowed[0] != machine.CmdDecide {
+		t.Fatalf("allowed: %v", allowed)
+	}
+	for _, cmd := range []machine.Command{machine.CmdIntake, machine.CmdBuild} {
+		if _, err := machine.Apply(run, units, cmd, machine.ApplyInput{ExpectedRevision: run.Revision}); !errors.Is(err, machine.ErrIllegalTransition) {
+			t.Fatalf("%s: %v", cmd, err)
+		}
+	}
+}
+
+func TestBlockedRetryRequiresReason(t *testing.T) {
+	run := machine.NewRun("r", "repo")
+	run.State = machine.StateBlocked
+	run.CurrentUnitID = "u1"
+	run.BlockerReason = "verify failed"
+	units := []machine.Unit{{ID: "u1", Attempt: 1}}
+	if _, err := machine.Apply(run, units, machine.CmdRetry, machine.ApplyInput{ExpectedRevision: run.Revision}); !errors.Is(err, machine.ErrBadArgs) {
+		t.Fatalf("missing reason: %v", err)
+	}
+	res, err := machine.Apply(run, units, machine.CmdRetry, machine.ApplyInput{ExpectedRevision: run.Revision, RetryReason: "fixed dependency"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Run.State != machine.StateBuild || res.Run.BlockerReason != "" {
+		t.Fatalf("retry: %+v", res.Run)
+	}
+	if _, ok := res.Evidence.(machine.RetryEvidence); !ok {
+		t.Fatalf("retry evidence: %T", res.Evidence)
+	}
+}
+
+func TestBlockedRetryRejectsInvalidCurrentUnit(t *testing.T) {
+	for _, units := range [][]machine.Unit{
+		{{ID: "other"}},
+		{{ID: "u1", Done: true}},
+	} {
+		run := machine.NewRun("r", "repo")
+		run.State = machine.StateBlocked
+		run.CurrentUnitID = "u1"
+		if _, err := machine.Apply(run, units, machine.CmdRetry, machine.ApplyInput{
+			ExpectedRevision: run.Revision, RetryReason: "dependency restored",
+		}); !errors.Is(err, machine.ErrCorruptState) {
+			t.Fatalf("units=%+v err=%v", units, err)
+		}
+	}
+}
+
+func TestRetryClearsReviewProgress(t *testing.T) {
+	run, units := reviewRun(machine.ReviewBoth)
+	res, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
+		ExpectedRevision: run.Revision,
+		Review: &machine.ReviewEvidence{
+			Reviewer: machine.ReviewerAutoreview, Verdict: machine.ReviewClean, ArtifactRef: "autoreview://1",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err = machine.Apply(res.Run, res.Units, machine.CmdBlock, machine.ApplyInput{
+		ExpectedRevision: res.Run.Revision, BlockReason: "dependency unavailable",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err = machine.Apply(res.Run, res.Units, machine.CmdRetry, machine.ApplyInput{
+		ExpectedRevision: res.Run.Revision, RetryReason: "dependency restored",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Run.State != machine.StateBuild || len(res.Run.CompletedReviewers) != 0 {
+		t.Fatalf("retry retained review progress: %+v", res.Run)
+	}
+}
+
+func TestEmptyRunCannotRelease(t *testing.T) {
+	run := machine.NewRun("r", "repo")
+	if slices.Contains(machine.AllowedCommands(run, nil), machine.CmdRelease) {
+		t.Fatal("empty run advertised release")
+	}
+	if _, err := machine.Apply(run, nil, machine.CmdRelease, machine.ApplyInput{
+		ExpectedRevision: run.Revision, IntakeRevision: run.IntakeRevision,
+	}); !errors.Is(err, machine.ErrIllegalTransition) {
+		t.Fatalf("release: %v", err)
+	}
+}
+
+func reviewRun(consent machine.ReviewConsent) (machine.Run, []machine.Unit) {
+	run := machine.NewRun("r", "repo")
+	run.State = machine.StateReview
+	run.ReviewConsent = consent
+	run.CurrentUnitID = "u1"
+	return run, []machine.Unit{{ID: "u1", Attempt: 1}}
 }
 
 func releasedAtBuild(t *testing.T) (machine.Run, []machine.Unit) {

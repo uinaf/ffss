@@ -16,11 +16,23 @@
   <div class="meta-row">
     <span>state <strong>{{.Run.State}}</strong></span>
     <span>released <strong>{{if .Released}}yes{{else}}no{{end}}</strong></span>
-    <span>next <strong title="{{.NextAction}}">{{if .NextAction}}{{.NextAction}}{{else}}—{{end}}</strong></span>
     <span>completed <strong>{{.Run.CompletedUnits}}/{{.Run.SeriesBound}}</strong></span>
+    <span>review <strong>{{.ReviewConsent}}</strong></span>
   </div>
+  {{if .NextAction}}
+  <div class="next-command">
+    <span class="u-label">next command</span>
+    <code>{{.NextAction}}</code>
+  </div>
+  {{end}}
+  {{if .ReviewRequired}}
+  <p class="u-meta">reviewers: {{if .ReviewCompleted}}{{join .ReviewCompleted ", "}}{{else}}none completed{{end}} / required {{join .ReviewRequired ", "}}</p>
+  {{end}}
   {{if .Blocker}}
   <p class="u-meta">blocker: {{.Blocker}}</p>
+  {{end}}
+  {{if .DecisionQuestion}}
+  <p class="decision"><strong>decision needed:</strong> {{.DecisionQuestion}}</p>
   {{end}}
 </section>
 

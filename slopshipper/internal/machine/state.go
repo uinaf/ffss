@@ -29,6 +29,7 @@ const (
 	CmdDeliver Command = "deliver"
 	CmdAsk     Command = "ask"
 	CmdDecide  Command = "decide"
+	CmdRetry   Command = "retry"
 	CmdBlock   Command = "block"
 )
 
@@ -58,4 +59,13 @@ const (
 	ReviewerAutoreview ReviewerIdentity = "autoreview"
 	ReviewerBugbot     ReviewerIdentity = "bugbot"
 	ReviewerHuman      ReviewerIdentity = "human"
+)
+
+// ReviewVerdict is the normalized outcome of one independent review.
+type ReviewVerdict string
+
+const (
+	ReviewClean     ReviewVerdict = "clean"
+	ReviewFindings  ReviewVerdict = "findings"
+	ReviewAmbiguous ReviewVerdict = "ambiguous"
 )

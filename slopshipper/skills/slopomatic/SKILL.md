@@ -23,27 +23,48 @@ If missing, stop and ask the user to install the CLI through their approved host
 package or release workflow. Do not download or run installers from this skill.
 Do not invent a second runtime.
 
-## Commands
+## Bootstrap the run
 
 ```bash
 slopomatic status --json
-slopomatic release --revision "$INTAKE_REVISION"
-slopomatic build
-slopomatic verify --cmd 'go test ./...'
-slopomatic review --evidence ./review.evidence.json
-slopomatic deliver --evidence ./deliver.evidence.json
-slopomatic ask --question "Should we merge or hold the PR?"
-slopomatic decide --answer "Merge when CI is green"
-slopomatic version
 ```
 
-## Leash
+If status exits 5 and stderr contains `not found: no run for repo`, create one
+with `slopomatic init`.
+If it reports multiple open runs, show their IDs and ask which one to resume.
+Do not replace a blocked run. If status shows `RUN_DONE` and the user requested
+new work, create a new run; otherwise report the completed run.
+
+Turn the agreed plan into intake immediately after init. Keep units concrete,
+bounded, and dependency-ordered; use stdin so the workflow does not leave
+evidence scratch files in the repository:
+
+```bash
+slopomatic intake --file - <<'JSON'
+{
+  "delivery_mode": "pr-hold",
+  "review_consent": "autoreview",
+  "series_bound": 1,
+  "units": [
+    {"id": "u1", "title": "Implement and verify the agreed change", "blockers": []}
+  ]
+}
+JSON
+slopomatic status --json
+```
+
+Show the human a compact intake summary: units, delivery mode, review consent,
+and exact `intake_revision`. Wait for explicit release approval, then run the
+exact `slopomatic release --revision N` command printed by `next_action`.
+
+## Status leash
 
 1. Run `slopomatic status --json` and obey its next step. See
    [status.md](references/status.md) for the full status field contract.
 2. Advance only through named CLI commands with the evidence status requires.
 3. Re-read status after every advance. Do not invent transitions or narrate
    phase theater.
+4. Treat placeholders in `next_action` as fields to fill, not literal text.
 
 ## Machine loop
 
@@ -51,15 +72,20 @@ After the human releases: build → verify → review → deliver, always driven
 status.
 
 ```bash
-# after verify succeeds and status asks for review:
-cat > ./review.evidence.json <<'EOF'
+# after verify succeeds and status asks for review
+slopomatic review --evidence - <<'JSON'
 {"reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://local"}
-EOF
-slopomatic review --evidence ./review.evidence.json
+JSON
 ```
 
-Deliver only after a recorded review, with `./deliver.evidence.json` covering
-the delivery mode and PR/commit fields status requires.
+Deliver only after every required reviewer is present in `completed_reviewers`.
+Use stdin evidence and match the intake delivery mode:
+
+```bash
+slopomatic deliver --evidence - <<'JSON'
+{"delivery_mode":"pr-hold","pr_url":"https://github.com/example/repo/pull/1"}
+JSON
+```
 
 ## Talk to the human
 
@@ -77,16 +103,23 @@ what you need — never a wall of CLI JSON. Plain words over machine dumps.
 
 ## Error recovery
 
-Non-zero exit: show stderr, re-read status, surface the `blocker` field
-verbatim when present, stop, and ask how to proceed. Never retry silently.
-Empty/illegal next step: tell the human and wait.
+Failed verification records `BLOCKED` and exits 6. Show the compact failure,
+re-read status, surface `blocker` verbatim, and ask how to recover. After the
+human confirms the recovery, record it with `slopomatic retry --reason "…"`;
+never retry silently. For a known external blocker before verification, use
+`slopomatic block --reason "…"` and follow the same recovery rule.
+
+Malformed input exits 2; illegal transitions or unmet guards exit 3. Fix the
+input or re-read status instead of bypassing the gate. Empty next action means
+the run is done or needs human inspection.
 
 ## Post-review flow
 
-- `verdict: clean` → summarize, then deliver when status says so.
-- Findings / non-clean → summarize, ask whether to `slopomatic rework` (when
-  allowed) or decide.
-- Ambiguous verdict → **Decide** moment.
+- `clean` records that reviewer. Consent `both` requires distinct clean
+  `autoreview` and `bugbot` evidence before delivery.
+- `findings` moves directly to `REWORK`; summarize findings, then obey the next
+  build command.
+- `ambiguous` moves to `NEEDS_DECISION`; ask the human and record the answer.
 
 ## Mindful spend
 
@@ -100,4 +133,5 @@ local option with consent.
 
 ## Done
 
-Stop when finished, blocked, or waiting on the human. Sqlite holds the event log.
+Stop when `RUN_DONE`, blocked pending human recovery, or waiting at release or
+decision. Sqlite holds the canonical event log.

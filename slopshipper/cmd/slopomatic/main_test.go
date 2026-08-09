@@ -2,12 +2,19 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/uinaf/slopomatic/internal/machine"
+	"github.com/uinaf/slopomatic/internal/repo"
+	"github.com/uinaf/slopomatic/internal/store"
 )
 
 type cliHarness struct {
@@ -20,7 +27,11 @@ type cliHarness struct {
 func newCLIHarness(t *testing.T) *cliHarness {
 	t.Helper()
 	bin := filepath.Join(t.TempDir(), "slopomatic")
-	build := exec.Command("go", "build", "-o", bin, ".")
+	buildArgs := []string{"build", "-o", bin, "."}
+	if os.Getenv("SLOPOMATIC_COVERAGE_DIR") != "" {
+		buildArgs = []string{"build", "-cover", "-covermode=atomic", "-coverpkg=github.com/uinaf/slopomatic/...", "-o", bin, "."}
+	}
+	build := exec.Command("go", buildArgs...)
 	build.Dir = "."
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
@@ -46,10 +57,17 @@ func newCLIHarness(t *testing.T) *cliHarness {
 }
 
 func (h *cliHarness) run(args ...string) (string, int) {
+	return h.runInput("", args...)
+}
+
+func (h *cliHarness) runInput(input string, args ...string) (string, int) {
 	h.t.Helper()
 	cmd := exec.Command(h.bin, args...)
 	cmd.Dir = h.repoDir
 	cmd.Env = h.env
+	if input != "" {
+		cmd.Stdin = strings.NewReader(input)
+	}
 	out, err := cmd.CombinedOutput()
 	code := 0
 	if err != nil {
@@ -209,15 +227,22 @@ func TestCLIFailClosedGuards(t *testing.T) {
 		t.Fatalf("build before release want exit 3 got %d", code)
 	}
 
-	// Spoofed done/attempt in intake JSON must not skip the unit.
-	spoof := filepath.Join(t.TempDir(), "spoof.json")
-	mustWrite(t, spoof, `{
-		"review_consent":"autoreview",
-		"series_bound":1,
-		"units":[{"id":"u1","title":"one","done":true,"attempt":9}]
-	}`)
-	h.must("intake", "--file", spoof, "--run", "a")
-	out := h.must("status", "--json", "--run", "a")
+	// Internal state fields are rejected at the intake boundary.
+	var out string
+	for _, spoofed := range []struct{ field, value string }{{"attempt", "9"}, {"done", "true"}} {
+		field, value := spoofed.field, spoofed.value
+		spoof := filepath.Join(t.TempDir(), "spoof-"+field+".json")
+		mustWrite(t, spoof, fmt.Sprintf(`{
+			"review_consent":"autoreview",
+			"series_bound":1,
+			"units":[{"id":"u1","title":"one",%q:%s}]
+		}`, field, value))
+		out, code = h.run("intake", "--file", spoof, "--run", "a")
+		if code != 2 || !strings.Contains(out, fmt.Sprintf(`unknown JSON field %q`, field)) {
+			t.Fatalf("spoofed %s: want strict rejection, got exit %d %s", field, code, out)
+		}
+	}
+	out = h.must("status", "--json", "--run", "a")
 	var after struct {
 		Released       bool     `json:"released"`
 		Frontier       []string `json:"frontier"`
@@ -230,7 +255,7 @@ func TestCLIFailClosedGuards(t *testing.T) {
 		t.Fatal("intake should leave run unreleased")
 	}
 	if len(after.Frontier) != 1 || after.Frontier[0] != "u1" {
-		t.Fatalf("spoofed done kept unit off frontier: %s", out)
+		t.Fatalf("rejected intake changed frontier: %s", out)
 	}
 
 	h.must("release", "--revision", itoa(after.IntakeRevision), "--run", "a")
@@ -254,26 +279,30 @@ func TestCLIFailClosedGuards(t *testing.T) {
 }
 
 func TestParseFlags(t *testing.T) {
-	_, err := parseFlags([]string{"--revision", "--run", "smoke"})
+	_, err := parseFlagsWith([]string{"--revision", "--run", "smoke"}, commandFlags["release"])
 	if err == nil {
 		t.Fatal("expected error when --revision has no value")
 	}
-	got, err := parseFlags([]string{"--run=smoke", "--revision=2"})
+	got, err := parseFlagsWith([]string{"--run=smoke", "--revision=2"}, commandFlags["release"])
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got["run"] != "smoke" || got["revision"] != "2" {
 		t.Fatalf("got %#v", got)
 	}
-	_, err = parseFlags([]string{"--nope", "x"})
+	got, err = parseFlagsWith([]string{"--run=--json"}, commandFlags["build"])
+	if err != nil || got["run"] != "--json" {
+		t.Fatalf("flag-like run value: %#v %v", got, err)
+	}
+	_, err = parseFlagsWith([]string{"--nope", "x"}, commandFlags["release"])
 	if err == nil {
 		t.Fatal("expected unknown flag error")
 	}
-	_, err = parseFlags([]string{"--addr", "127.0.0.1:7780"})
+	_, err = parseFlagsWith([]string{"--addr", "127.0.0.1:7780"}, commandFlags["status"])
 	if err == nil {
 		t.Fatal("expected --addr unknown outside serve")
 	}
-	got, err = parseFlagsWith([]string{"--addr", "127.0.0.1:7780"}, serveFlags)
+	got, err = parseFlagsWith([]string{"--addr", "127.0.0.1:7780"}, commandFlags["serve"])
 	if err != nil || got["addr"] != "127.0.0.1:7780" {
 		t.Fatalf("serve flags: %#v %v", got, err)
 	}
@@ -304,4 +333,373 @@ func TestUsageMentionsServe(t *testing.T) {
 	if !strings.Contains(got, "slopomatic serve") {
 		t.Fatalf("usage missing serve:\n%s", got)
 	}
+}
+
+func TestCommandHelpAndScopedFlags(t *testing.T) {
+	help, ok := commandUsage("review")
+	if !ok || !strings.Contains(help, "Verdicts: clean, findings, ambiguous") {
+		t.Fatalf("review help: %q", help)
+	}
+	if _, err := parseFlagsWith([]string{"--evidence", "x"}, commandFlags["init"]); err == nil {
+		t.Fatal("init accepted review evidence")
+	}
+	if _, err := parseFlagsWith([]string{"--json=false"}, commandFlags["status"]); err == nil {
+		t.Fatal("boolean flag accepted a value")
+	}
+}
+
+func TestVerifyPreflightAndRecovery(t *testing.T) {
+	h := newCLIHarness(t)
+	h.must("init", "--run", "verify")
+	marker := filepath.Join(t.TempDir(), "should-not-exist")
+	out, code := h.run("verify", "--cmd", "touch "+marker, "--run", "verify")
+	if code != 3 || !strings.Contains(out, "not allowed from INTAKE") {
+		t.Fatalf("preflight: exit %d %s", code, out)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("illegal verify executed command: %v", err)
+	}
+
+}
+
+func TestVerifyFailureReturnsNonzeroAndCanRetry(t *testing.T) {
+	h := newCLIHarness(t)
+	h.must("init", "--run", "retry")
+	intake := `{"series_bound":1,"units":[{"id":"u1","title":"one","blockers":[]}]}`
+	out, code := h.runInput(intake, "intake", "--file", "-", "--run", "retry")
+	if code != 0 {
+		t.Fatalf("stdin intake: %d %s", code, out)
+	}
+	statusJSON := h.must("status", "--json", "--run", "retry")
+	var statusDoc struct {
+		IntakeRevision int64 `json:"intake_revision"`
+	}
+	if err := json.Unmarshal([]byte(statusJSON), &statusDoc); err != nil {
+		t.Fatal(err)
+	}
+	h.must("release", "--revision", itoa(statusDoc.IntakeRevision), "--run", "retry")
+	h.must("build", "--run", "retry")
+	out, code = h.run("verify", "--cmd", "false", "--run", "retry")
+	if code != 6 || !strings.Contains(out, "state=BLOCKED") || !strings.Contains(out, "slopomatic retry") {
+		t.Fatalf("failed verify: exit %d %s", code, out)
+	}
+	out = h.must("retry", "--reason", "fixed the failure", "--run", "retry")
+	if !strings.Contains(out, "state=BUILD") {
+		t.Fatalf("retry: %s", out)
+	}
+}
+
+func TestVerifyEvidenceRequiresExplicitExitCode(t *testing.T) {
+	h := newCLIHarness(t)
+	h.must("init", "--run", "evidence")
+	intake := filepath.Join(t.TempDir(), "intake.json")
+	mustWrite(t, intake, `{"units":[{"id":"u1","title":"one"}]}`)
+	h.must("intake", "--file", intake, "--run", "evidence")
+	out := h.must("status", "--json", "--run", "evidence")
+	var statusDoc struct {
+		IntakeRevision int64 `json:"intake_revision"`
+	}
+	if err := json.Unmarshal([]byte(out), &statusDoc); err != nil {
+		t.Fatal(err)
+	}
+	h.must("release", "--revision", itoa(statusDoc.IntakeRevision), "--run", "evidence")
+	h.must("build", "--run", "evidence")
+	missing := filepath.Join(t.TempDir(), "verify.json")
+	mustWrite(t, missing, `{"command":"true"}`)
+	out, code := h.run("verify", "--evidence", missing, "--run", "evidence")
+	if code != 2 || !strings.Contains(out, "verify.exit_code is required") {
+		t.Fatalf("missing exit code: %d %s", code, out)
+	}
+}
+
+func TestVerifyEvidenceRejectsBlankFailedCommandWithoutBlocking(t *testing.T) {
+	h := newCLIHarness(t)
+	h.must("init", "--run", "blank-failure")
+	intake := filepath.Join(t.TempDir(), "intake.json")
+	mustWrite(t, intake, `{"units":[{"id":"u1","title":"one"}]}`)
+	h.must("intake", "--file", intake, "--run", "blank-failure")
+	h.must("release", "--revision", "2", "--run", "blank-failure")
+	h.must("build", "--run", "blank-failure")
+	evidence := filepath.Join(t.TempDir(), "verify.json")
+	mustWrite(t, evidence, `{"command":"   ","exit_code":1}`)
+	out, code := h.run("verify", "--evidence", evidence, "--run", "blank-failure")
+	if code != 3 || !strings.Contains(out, "verify.command required") {
+		t.Fatalf("blank failure: exit %d %s", code, out)
+	}
+	out = h.must("status", "--json", "--run", "blank-failure")
+	var statusDoc struct {
+		State string `json:"state"`
+	}
+	if err := json.Unmarshal([]byte(out), &statusDoc); err != nil || statusDoc.State != "BUILD" {
+		t.Fatalf("blank failure changed state: err=%v %s", err, out)
+	}
+}
+
+func TestRunEntryPointsAndFullRecoveryFlow(t *testing.T) {
+	for _, args := range [][]string{
+		nil, {"--help"}, {"help"}, {"version"}, {"--version"},
+		{"init", "--help"}, {"intake", "-h"}, {"release", "--help"},
+		{"build", "--help"}, {"verify", "--help"}, {"review", "--help"},
+		{"rework", "--help"}, {"deliver", "--help"}, {"ask", "--help"},
+		{"decide", "--help"}, {"retry", "--help"}, {"block", "--help"},
+		{"status", "--help"}, {"serve", "--help"},
+		{"version", "--help"},
+	} {
+		if code := run(args); code != 0 {
+			t.Fatalf("run(%v)=%d", args, code)
+		}
+	}
+	if code := run([]string{"unknown", "--help"}); code != 2 {
+		t.Fatalf("unknown help=%d", code)
+	}
+	if code := run([]string{"version", "--run", "unexpected"}); code != 2 {
+		t.Fatalf("version accepted scoped flag: %d", code)
+	}
+	if code := run([]string{"--version", "unexpected"}); code != 2 {
+		t.Fatalf("--version accepted argument: %d", code)
+	}
+
+	repoDir := t.TempDir()
+	runGit(t, repoDir, "init")
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldDir) })
+	t.Setenv("SLOPOMATIC_DB", filepath.Join(t.TempDir(), "direct.sqlite"))
+
+	if code := run([]string{"unknown"}); code != 2 {
+		t.Fatalf("unknown=%d", code)
+	}
+	if code := run([]string{"init", "--run", "direct"}); code != 0 {
+		t.Fatalf("init=%d", code)
+	}
+	for _, args := range [][]string{
+		{"intake", "--run", "direct"},
+		{"release", "--run", "direct"},
+		{"release", "--revision", "nope", "--run", "direct"},
+		{"verify", "--run", "direct"},
+		{"verify", "--cmd", "true", "--evidence", "x", "--run", "direct"},
+		{"review", "--run", "direct"}, {"deliver", "--run", "direct"},
+		{"ask", "--run", "direct"}, {"decide", "--run", "direct"},
+		{"retry", "--run", "direct"}, {"block", "--run", "direct"},
+	} {
+		if code := run(args); code != 2 {
+			t.Fatalf("missing args %v=%d", args, code)
+		}
+	}
+
+	intake := filepath.Join(t.TempDir(), "intake.json")
+	mustWrite(t, intake, `{"delivery_mode":"direct-trunk","review_consent":"both","series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	if code := run([]string{"intake", "--file", intake, "--run", "direct"}); code != 0 {
+		t.Fatalf("intake=%d", code)
+	}
+	if code := run([]string{"status", "--json", "--run", "direct"}); code != 0 {
+		t.Fatalf("status=%d", code)
+	}
+	if code := run([]string{"release", "--revision", "2", "--run", "direct"}); code != 0 {
+		t.Fatalf("release=%d", code)
+	}
+	if code := run([]string{"build", "--run", "direct"}); code != 0 {
+		t.Fatalf("build=%d", code)
+	}
+	if code := run([]string{"block", "--reason", "dependency unavailable", "--run", "direct"}); code != 0 {
+		t.Fatalf("block=%d", code)
+	}
+	if code := run([]string{"retry", "--reason", "dependency restored", "--run", "direct"}); code != 0 {
+		t.Fatalf("retry=%d", code)
+	}
+	verify := filepath.Join(t.TempDir(), "verify.json")
+	mustWrite(t, verify, `{"command":"go test ./...","exit_code":0,"output_digest":"sha256:test"}`)
+	if code := run([]string{"verify", "--evidence", verify, "--run", "direct"}); code != 0 {
+		t.Fatalf("verify=%d", code)
+	}
+	if code := run([]string{"rework", "--run", "direct"}); code != 0 {
+		t.Fatalf("rework=%d", code)
+	}
+	if code := run([]string{"build", "--run", "direct"}); code != 0 {
+		t.Fatalf("rebuild=%d", code)
+	}
+	if code := run([]string{"verify", "--cmd", "true", "--run", "direct"}); code != 0 {
+		t.Fatalf("reverify=%d", code)
+	}
+	if code := runReviewInput(t, "direct", `{"reviewer":"autoreview","verdict":"ambiguous","artifact_ref":"review://ambiguous"}`); code != 0 {
+		t.Fatalf("ambiguous review=%d", code)
+	}
+	if code := run([]string{"decide", "--answer", "continue review", "--run", "direct"}); code != 0 {
+		t.Fatalf("decide=%d", code)
+	}
+	if code := runReviewInput(t, "direct", `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"review://autoreview"}`); code != 0 {
+		t.Fatalf("autoreview=%d", code)
+	}
+	if code := runReviewInput(t, "direct", `{"reviewer":"bugbot","verdict":"clean","artifact_ref":"review://bugbot"}`); code != 0 {
+		t.Fatalf("bugbot=%d", code)
+	}
+	delivery := filepath.Join(t.TempDir(), "delivery.json")
+	mustWrite(t, delivery, `{"delivery_mode":"direct-trunk","commit_sha":"abc123"}`)
+	if code := run([]string{"deliver", "--evidence", delivery, "--run", "direct"}); code != 0 {
+		t.Fatalf("deliver=%d", code)
+	}
+}
+
+func TestRunAutoIDAndDefaultDataPath(t *testing.T) {
+	repoDir := t.TempDir()
+	runGit(t, repoDir, "init")
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldDir) })
+	t.Setenv("SLOPOMATIC_DB", "")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	if code := run([]string{"init"}); code != 0 {
+		t.Fatalf("auto init=%d", code)
+	}
+}
+
+func TestDirectErrorMappingJSONAndServeBindFailure(t *testing.T) {
+	for err, want := range map[error]int{
+		machine.ErrBadArgs: 2, machine.ErrIllegalTransition: 3, machine.ErrUnmetGuard: 3,
+		machine.ErrRevisionConflict: 4, machine.ErrAmbiguousRun: 5, machine.ErrNotFound: 5,
+		machine.ErrCorruptState: 5, errors.New("storage failed"): 10,
+	} {
+		if got := mapErr(fmt.Errorf("context: %w", err)); got != want {
+			t.Errorf("mapErr(%v)=%d want %d", err, got, want)
+		}
+	}
+	if !flagHas([]string{"--json"}, "--json") || !flagHas([]string{"--json=true"}, "--json") || flagHas(nil, "--json") {
+		t.Fatal("flagHas contract")
+	}
+
+	repoDir := t.TempDir()
+	runGit(t, repoDir, "init")
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldDir) })
+	t.Setenv("SLOPOMATIC_DB", filepath.Join(t.TempDir(), "errors.sqlite"))
+
+	if code := run([]string{"status", "--run", "missing"}); code != 5 {
+		t.Fatalf("missing status=%d", code)
+	}
+	if code := run([]string{"init", "--run", "errors"}); code != 0 {
+		t.Fatalf("init=%d", code)
+	}
+	if code := run([]string{"status", "--run", "errors"}); code != 0 {
+		t.Fatalf("plain status=%d", code)
+	}
+	if code := run([]string{"build", "--run", "errors"}); code != 3 {
+		t.Fatalf("illegal build=%d", code)
+	}
+	if code := run([]string{"init", "--run", "errors"}); code != 10 {
+		t.Fatalf("duplicate init=%d", code)
+	}
+	for _, args := range [][]string{
+		{"intake", "--file", "missing.json", "--run", "errors"},
+		{"review", "--evidence", "missing.json", "--run", "errors"},
+		{"deliver", "--evidence", "missing.json", "--run", "errors"},
+	} {
+		if code := run(args); code != 2 {
+			t.Fatalf("missing JSON %v=%d", args, code)
+		}
+	}
+	badJSON := filepath.Join(t.TempDir(), "bad.json")
+	mustWrite(t, badJSON, `{} {}`)
+	if code := run([]string{"intake", "--file", badJSON, "--run", "errors"}); code != 2 {
+		t.Fatalf("trailing JSON=%d", code)
+	}
+	nullJSON := filepath.Join(t.TempDir(), "null.json")
+	mustWrite(t, nullJSON, `null`)
+	if code := run([]string{"intake", "--file", nullJSON, "--run", "errors"}); code != 2 {
+		t.Fatalf("null JSON=%d", code)
+	}
+	nestedNullJSON := filepath.Join(t.TempDir(), "nested-null.json")
+	mustWrite(t, nestedNullJSON, `{"series_bound": null}`)
+	if code := run([]string{"intake", "--file", nestedNullJSON, "--run", "errors"}); code != 2 {
+		t.Fatalf("nested null JSON=%d", code)
+	}
+	duplicateJSON := filepath.Join(t.TempDir(), "duplicate.json")
+	mustWrite(t, duplicateJSON, `{"series_bound": 1, "series_bound": 2}`)
+	if code := run([]string{"intake", "--file", duplicateJSON, "--run", "errors"}); code != 2 {
+		t.Fatalf("duplicate JSON=%d", code)
+	}
+	caseFoldedJSON := filepath.Join(t.TempDir(), "case-folded.json")
+	mustWrite(t, caseFoldedJSON, `{"Units": []}`)
+	if code := run([]string{"intake", "--file", caseFoldedJSON, "--run", "errors"}); code != 2 {
+		t.Fatalf("case-folded JSON=%d", code)
+	}
+	caseAliasJSON := filepath.Join(t.TempDir(), "case-alias.json")
+	mustWrite(t, caseAliasJSON, `{"units": [], "Units": []}`)
+	if code := run([]string{"intake", "--file", caseAliasJSON, "--run", "errors"}); code != 2 {
+		t.Fatalf("case-alias JSON=%d", code)
+	}
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	if code := run([]string{"serve", "--addr", ln.Addr().String()}); code != 10 {
+		t.Fatalf("serve bind failure=%d", code)
+	}
+	if code := run([]string{"serve", "--addr", "0.0.0.0:7780"}); code != 2 {
+		t.Fatalf("serve unsafe addr=%d", code)
+	}
+}
+
+func TestResolveRepoKeyMigratesMalformedVersionOneIdentity(t *testing.T) {
+	repoDir := t.TempDir()
+	runGit(t, repoDir, "init")
+	runGit(t, repoDir, "remote", "add", "origin", "https://TOKEN@host:bad?keep=yes")
+	key, root, err := repo.Keys(repoDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyKey := "https://TOKEN@host:bad?keep=yes|" + root
+	if strings.Contains(key, "TOKEN") {
+		t.Fatalf("key=%q", key)
+	}
+
+	st, err := store.Open(filepath.Join(t.TempDir(), "legacy.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	if err := st.CreateRun(machine.NewRun("legacy", legacyKey), nil); err != nil {
+		t.Fatal(err)
+	}
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldDir) })
+	if got, err := resolveRepoKey(st); err != nil || got != key {
+		t.Fatalf("resolveRepoKey=%q err=%v", got, err)
+	}
+	if got, _, err := st.ResolveStatusRun(key, "legacy"); err != nil || got.RepoKey != key {
+		t.Fatalf("migrated run=%+v err=%v", got, err)
+	}
+	if oldRuns, err := st.ListRuns(legacyKey); err != nil || len(oldRuns) != 0 {
+		t.Fatalf("legacy rows=%+v err=%v", oldRuns, err)
+	}
+}
+
+func runReviewInput(t *testing.T, runID, body string) int {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "review.json")
+	mustWrite(t, path, body)
+	return run([]string{"review", "--evidence", path, "--run", runID})
 }

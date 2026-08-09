@@ -1,15 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
+	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -31,7 +35,19 @@ func run(args []string) int {
 		fmt.Fprint(os.Stdout, usage())
 		return 0
 	}
+	if len(args) == 2 && (args[1] == "-h" || args[1] == "--help") {
+		help, ok := commandUsage(args[0])
+		if !ok {
+			fmt.Fprintf(os.Stderr, "slopomatic: unknown command %q\n", args[0])
+			return 2
+		}
+		fmt.Fprint(os.Stdout, help)
+		return 0
+	}
 	if args[0] == "version" || args[0] == "--version" {
+		if _, code := requireFlags("version", args[1:]); code != 0 {
+			return code
+		}
 		fmt.Fprintln(os.Stdout, buildinfo.Version())
 		return 0
 	}
@@ -66,6 +82,10 @@ func run(args []string) int {
 		return cmdAsk(st, rest)
 	case "decide":
 		return cmdDecide(st, rest)
+	case "retry":
+		return cmdRetry(st, rest)
+	case "block":
+		return cmdBlock(st, rest)
 	case "status":
 		return cmdStatus(st, rest)
 	case "serve":
@@ -90,10 +110,82 @@ Usage:
   slopomatic deliver --evidence file.json [--run ID]
   slopomatic ask --question TEXT [--run ID]
   slopomatic decide --answer TEXT [--run ID]
+  slopomatic retry --reason TEXT [--run ID]
+  slopomatic block --reason TEXT [--run ID]
   slopomatic status [--json] [--run ID]
   slopomatic serve [--addr 127.0.0.1:7780]
   slopomatic version
 `
+}
+
+func commandUsage(command string) (string, bool) {
+	usage := map[string]string{
+		"init": `Usage: slopomatic init [--run ID]
+
+Create a run for the current Git repository. The next action is intake.
+`,
+		"intake": `Usage: slopomatic intake --file PATH [--run ID]
+
+Load the released-work contract from JSON. Use --file - to read stdin.
+Fields: delivery_mode, review_consent, series_bound, units.
+`,
+		"release": `Usage: slopomatic release --revision N [--run ID]
+
+Human approval latch for the exact intake_revision shown by status.
+`,
+		"build": `Usage: slopomatic build [--run ID]
+
+Claim the next ready unit, or restart the current unit after rework.
+`,
+		"verify": `Usage: slopomatic verify (--cmd CMD | --evidence PATH) [--run ID]
+
+Run verification or load strict JSON evidence. Use --evidence - for stdin.
+A failed command is recorded as BLOCKED and exits with code 6.
+`,
+		"review": `Usage: slopomatic review --evidence PATH [--run ID]
+
+Record strict JSON review evidence. Use --evidence - for stdin.
+Verdicts: clean, findings, ambiguous. Reviewers: autoreview, bugbot, human.
+`,
+		"rework": `Usage: slopomatic rework [--run ID]
+
+Return the current unit from REVIEW to the build loop.
+`,
+		"deliver": `Usage: slopomatic deliver --evidence PATH [--run ID]
+
+Record strict JSON delivery evidence. Use --evidence - for stdin.
+`,
+		"ask": `Usage: slopomatic ask --question TEXT [--run ID]
+
+Park the run until a human decision is recorded.
+`,
+		"decide": `Usage: slopomatic decide --answer TEXT [--run ID]
+
+Record the human answer and resume the parked state.
+`,
+		"retry": `Usage: slopomatic retry --reason TEXT [--run ID]
+
+Record the recovery decision and return a blocked verification to BUILD.
+`,
+		"block": `Usage: slopomatic block --reason TEXT [--run ID]
+
+Record why active work cannot continue. Resume with retry after recovery.
+`,
+		"status": `Usage: slopomatic status [--json] [--run ID]
+
+Show the current state and an actionable next command.
+`,
+		"serve": `Usage: slopomatic serve [--addr 127.0.0.1:7780]
+
+Serve the read-only run projector on a loopback address.
+`,
+		"version": `Usage: slopomatic version
+
+Print the CLI version and source revision.
+`,
+	}
+	help, ok := usage[command]
+	return help, ok
 }
 
 func openStore() (*store.Store, error) {
@@ -108,16 +200,20 @@ func openStore() (*store.Store, error) {
 }
 
 func cmdInit(st *store.Store, args []string) int {
-	fs, code := requireFlags(args)
+	fs, code := requireFlags("init", args)
 	if code != 0 {
 		return code
 	}
 	runID := fs["run"]
 	if runID == "" {
-		runID = "run-" + randomID()
+		id, err := randomID()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "slopomatic: generate run id: %v\n", err)
+			return 10
+		}
+		runID = "run-" + id
 	}
-	cwd, _ := os.Getwd()
-	key, err := repo.Key(cwd)
+	key, err := resolveRepoKey(st)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 2
@@ -137,7 +233,7 @@ type intakeUnitDTO struct {
 }
 
 func cmdIntake(st *store.Store, args []string) int {
-	fs, code := requireFlags(args)
+	fs, code := requireFlags("intake", args)
 	if code != 0 {
 		return code
 	}
@@ -146,18 +242,13 @@ func cmdIntake(st *store.Store, args []string) int {
 		fmt.Fprintln(os.Stderr, "slopomatic: intake requires --file")
 		return 2
 	}
-	raw, err := os.ReadFile(file)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
-		return 2
-	}
 	var patch struct {
 		DeliveryMode  *string         `json:"delivery_mode"`
 		ReviewConsent *string         `json:"review_consent"`
 		SeriesBound   *int            `json:"series_bound"`
 		Units         []intakeUnitDTO `json:"units"`
 	}
-	if err := json.Unmarshal(raw, &patch); err != nil {
+	if err := readJSON(file, &patch); err != nil {
 		fmt.Fprintf(os.Stderr, "slopomatic: invalid intake json: %v\n", err)
 		return 2
 	}
@@ -177,11 +268,11 @@ func cmdIntake(st *store.Store, args []string) int {
 		c := machine.ReviewConsent(*patch.ReviewConsent)
 		ip.ReviewConsent = &c
 	}
-	return applyCmd(st, fs["run"], machine.CmdIntake, machine.ApplyInput{Intake: ip}, nil)
+	return applyCmd(st, fs["run"], machine.CmdIntake, machine.ApplyInput{Intake: ip})
 }
 
 func cmdRelease(st *store.Store, args []string) int {
-	fs, code := requireFlags(args)
+	fs, code := requireFlags("release", args)
 	if code != 0 {
 		return code
 	}
@@ -195,40 +286,67 @@ func cmdRelease(st *store.Store, args []string) int {
 		fmt.Fprintf(os.Stderr, "slopomatic: bad --revision: %v\n", err)
 		return 2
 	}
-	return applyCmd(st, fs["run"], machine.CmdRelease, machine.ApplyInput{IntakeRevision: rev}, map[string]any{"intake_revision": rev})
+	return applyCmd(st, fs["run"], machine.CmdRelease, machine.ApplyInput{IntakeRevision: rev})
 }
 
 func cmdBuild(st *store.Store, args []string) int {
-	fs, code := requireFlags(args)
+	fs, code := requireFlags("build", args)
 	if code != 0 {
 		return code
 	}
-	return applyCmd(st, fs["run"], machine.CmdBuild, machine.ApplyInput{}, nil)
+	return applyCmd(st, fs["run"], machine.CmdBuild, machine.ApplyInput{})
 }
 
 func cmdVerify(st *store.Store, args []string) int {
-	fs, code := requireFlags(args)
+	fs, code := requireFlags("verify", args)
 	if code != 0 {
 		return code
 	}
-	var ev machine.VerifyEvidence
-	if f := fs["evidence"]; f != "" {
-		if err := readJSON(f, &ev); err != nil {
-			fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
-			return 2
-		}
-	} else if c := fs["cmd"]; c != "" {
-		code := runShell(c)
-		ev = machine.VerifyEvidence{Command: c, ExitCode: code}
-	} else {
+	if fs["evidence"] != "" && fs["cmd"] != "" {
+		fmt.Fprintln(os.Stderr, "slopomatic: verify accepts exactly one of --cmd or --evidence")
+		return 2
+	}
+	if fs["evidence"] == "" && fs["cmd"] == "" {
 		fmt.Fprintln(os.Stderr, "slopomatic: verify requires --cmd or --evidence")
 		return 2
 	}
-	return applyCmd(st, fs["run"], machine.CmdVerify, machine.ApplyInput{Verify: &ev}, ev)
+	var ev machine.VerifyEvidence
+	if f := fs["evidence"]; f != "" {
+		var dto struct {
+			Command      string `json:"command"`
+			ExitCode     *int   `json:"exit_code"`
+			OutputDigest string `json:"output_digest,omitempty"`
+		}
+		if err := readJSON(f, &dto); err != nil {
+			fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
+			return 2
+		}
+		if dto.ExitCode == nil {
+			fmt.Fprintln(os.Stderr, "slopomatic: verify.exit_code is required")
+			return 2
+		}
+		ev = machine.VerifyEvidence{Command: dto.Command, ExitCode: *dto.ExitCode, OutputDigest: dto.OutputDigest}
+	}
+	prepared, code := prepareApply(st, fs["run"], machine.CmdVerify)
+	if code != 0 {
+		return code
+	}
+	if c := fs["cmd"]; c != "" {
+		code := runShell(c)
+		ev = machine.VerifyEvidence{Command: c, ExitCode: code}
+	}
+	_, code = applyPrepared(st, prepared, machine.CmdVerify, machine.ApplyInput{Verify: &ev})
+	if code != 0 {
+		return code
+	}
+	if ev.ExitCode != 0 {
+		return 6
+	}
+	return 0
 }
 
 func cmdReview(st *store.Store, args []string) int {
-	fs, code := requireFlags(args)
+	fs, code := requireFlags("review", args)
 	if code != 0 {
 		return code
 	}
@@ -241,19 +359,19 @@ func cmdReview(st *store.Store, args []string) int {
 		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 2
 	}
-	return applyCmd(st, fs["run"], machine.CmdReview, machine.ApplyInput{Review: &ev}, ev)
+	return applyCmd(st, fs["run"], machine.CmdReview, machine.ApplyInput{Review: &ev})
 }
 
 func cmdRework(st *store.Store, args []string) int {
-	fs, code := requireFlags(args)
+	fs, code := requireFlags("rework", args)
 	if code != 0 {
 		return code
 	}
-	return applyCmd(st, fs["run"], machine.CmdRework, machine.ApplyInput{}, nil)
+	return applyCmd(st, fs["run"], machine.CmdRework, machine.ApplyInput{})
 }
 
 func cmdDeliver(st *store.Store, args []string) int {
-	fs, code := requireFlags(args)
+	fs, code := requireFlags("deliver", args)
 	if code != 0 {
 		return code
 	}
@@ -266,11 +384,11 @@ func cmdDeliver(st *store.Store, args []string) int {
 		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 2
 	}
-	return applyCmd(st, fs["run"], machine.CmdDeliver, machine.ApplyInput{Deliver: &ev}, ev)
+	return applyCmd(st, fs["run"], machine.CmdDeliver, machine.ApplyInput{Deliver: &ev})
 }
 
 func cmdAsk(st *store.Store, args []string) int {
-	fs, code := requireFlags(args)
+	fs, code := requireFlags("ask", args)
 	if code != 0 {
 		return code
 	}
@@ -280,11 +398,11 @@ func cmdAsk(st *store.Store, args []string) int {
 	}
 	return applyCmd(st, fs["run"], machine.CmdAsk, machine.ApplyInput{
 		Question: fs["question"],
-	}, map[string]any{"question": fs["question"]})
+	})
 }
 
 func cmdDecide(st *store.Store, args []string) int {
-	fs, code := requireFlags(args)
+	fs, code := requireFlags("decide", args)
 	if code != 0 {
 		return code
 	}
@@ -294,17 +412,40 @@ func cmdDecide(st *store.Store, args []string) int {
 	}
 	return applyCmd(st, fs["run"], machine.CmdDecide, machine.ApplyInput{
 		Decision: &machine.Decision{Answer: fs["answer"]},
-	}, map[string]any{"answer": fs["answer"]})
+	})
+}
+
+func cmdRetry(st *store.Store, args []string) int {
+	fs, code := requireFlags("retry", args)
+	if code != 0 {
+		return code
+	}
+	if strings.TrimSpace(fs["reason"]) == "" {
+		fmt.Fprintln(os.Stderr, "slopomatic: retry requires --reason")
+		return 2
+	}
+	return applyCmd(st, fs["run"], machine.CmdRetry, machine.ApplyInput{RetryReason: fs["reason"]})
+}
+
+func cmdBlock(st *store.Store, args []string) int {
+	fs, code := requireFlags("block", args)
+	if code != 0 {
+		return code
+	}
+	if strings.TrimSpace(fs["reason"]) == "" {
+		fmt.Fprintln(os.Stderr, "slopomatic: block requires --reason")
+		return 2
+	}
+	return applyCmd(st, fs["run"], machine.CmdBlock, machine.ApplyInput{BlockReason: fs["reason"]})
 }
 
 func cmdStatus(st *store.Store, args []string) int {
-	fs, code := requireFlags(args)
+	fs, code := requireFlags("status", args)
 	if code != 0 {
 		return code
 	}
 	jsonOut := fs["json"] == "1" || flagHas(args, "--json")
-	cwd, _ := os.Getwd()
-	key, err := repo.Key(cwd)
+	key, err := resolveRepoKey(st)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 2
@@ -312,26 +453,48 @@ func cmdStatus(st *store.Store, args []string) int {
 	return printStatus(st, key, fs["run"], jsonOut)
 }
 
-func applyCmd(st *store.Store, runID string, cmd machine.Command, in machine.ApplyInput, evidence any) int {
-	cwd, _ := os.Getwd()
-	key, err := repo.Key(cwd)
+type preparedApply struct {
+	repoKey string
+	run     machine.Run
+	units   []machine.Unit
+}
+
+func prepareApply(st *store.Store, runID string, cmd machine.Command) (preparedApply, int) {
+	key, err := resolveRepoKey(st)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
-		return 2
+		return preparedApply{}, 2
 	}
 	run, units, err := st.ResolveActiveRun(key, runID)
 	if err != nil {
-		return mapErr(err)
+		return preparedApply{}, mapErr(err)
 	}
+	if !slices.Contains(machine.AllowedCommands(run, units), cmd) {
+		return preparedApply{}, mapErr(fmt.Errorf("%w: %s not allowed from %s", machine.ErrIllegalTransition, cmd, run.State))
+	}
+	return preparedApply{repoKey: key, run: run, units: units}, 0
+}
+
+func applyPrepared(st *store.Store, prepared preparedApply, cmd machine.Command, in machine.ApplyInput) (machine.ApplyResult, int) {
+	run := prepared.run
 	in.ExpectedRevision = run.Revision
-	res, err := machine.Apply(run, units, cmd, in)
+	res, err := machine.Apply(run, prepared.units, cmd, in)
 	if err != nil {
-		return mapErr(err)
+		return machine.ApplyResult{}, mapErr(err)
 	}
-	if err := st.SaveApply(res, evidence); err != nil {
-		return mapErr(err)
+	if err := st.SaveApply(res); err != nil {
+		return machine.ApplyResult{}, mapErr(err)
 	}
-	return printStatus(st, key, res.Run.ID, false)
+	return res, printStatus(st, prepared.repoKey, res.Run.ID, false)
+}
+
+func applyCmd(st *store.Store, runID string, cmd machine.Command, in machine.ApplyInput) int {
+	prepared, code := prepareApply(st, runID, cmd)
+	if code != 0 {
+		return code
+	}
+	_, code = applyPrepared(st, prepared, cmd, in)
+	return code
 }
 
 func printStatus(st *store.Store, repoKey, runID string, asJSON bool) int {
@@ -369,27 +532,31 @@ func mapErr(err error) int {
 	}
 }
 
-var knownFlags = map[string]bool{
-	"run": true, "file": true, "revision": true, "cmd": true, "evidence": true,
-	"answer": true, "question": true, "json": true,
-}
-
-var serveFlags = map[string]bool{
-	"addr": true,
+var commandFlags = map[string]map[string]bool{
+	"init":    {"run": true},
+	"intake":  {"file": true, "run": true},
+	"release": {"revision": true, "run": true},
+	"build":   {"run": true},
+	"verify":  {"cmd": true, "evidence": true, "run": true},
+	"review":  {"evidence": true, "run": true},
+	"rework":  {"run": true},
+	"deliver": {"evidence": true, "run": true},
+	"ask":     {"question": true, "run": true},
+	"decide":  {"answer": true, "run": true},
+	"retry":   {"reason": true, "run": true},
+	"block":   {"reason": true, "run": true},
+	"status":  {"json": true, "run": true},
+	"serve":   {"addr": true},
+	"version": {},
 }
 
 func cmdServe(st *store.Store, args []string) int {
-	fs, err := parseFlagsWith(args, serveFlags)
+	fs, err := parseFlagsWith(args, commandFlags["serve"])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 2
 	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
-		return 2
-	}
-	key, err := repo.Key(cwd)
+	key, err := resolveRepoKey(st)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return 2
@@ -412,17 +579,13 @@ func cmdServe(st *store.Store, args []string) int {
 	return 0
 }
 
-func requireFlags(args []string) (map[string]string, int) {
-	fs, err := parseFlags(args)
+func requireFlags(command string, args []string) (map[string]string, int) {
+	fs, err := parseFlagsWith(args, commandFlags[command])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
 		return nil, 2
 	}
 	return fs, 0
-}
-
-func parseFlags(args []string) (map[string]string, error) {
-	return parseFlagsWith(args, knownFlags)
 }
 
 func parseFlagsWith(args []string, allowed map[string]bool) (map[string]string, error) {
@@ -444,6 +607,9 @@ func parseFlagsWith(args []string, allowed map[string]bool) (map[string]string, 
 			return nil, fmt.Errorf("unknown flag --%s", key)
 		}
 		if key == "json" {
+			if hasVal {
+				return nil, fmt.Errorf("flag --json does not accept a value")
+			}
 			out["json"] = "1"
 			continue
 		}
@@ -469,11 +635,152 @@ func flagHas(args []string, name string) bool {
 }
 
 func readJSON(path string, dest any) error {
-	b, err := os.ReadFile(path)
-	if err != nil {
+	var r io.Reader
+	if path == "-" {
+		r = os.Stdin
+	} else {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		r = bytes.NewReader(b)
+	}
+	decoder := json.NewDecoder(r)
+	var raw json.RawMessage
+	if err := decoder.Decode(&raw); err != nil {
 		return err
 	}
-	return json.Unmarshal(b, dest)
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return fmt.Errorf("unexpected trailing JSON value")
+		}
+		return err
+	}
+	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return fmt.Errorf("JSON object required, got null")
+	}
+	if err := rejectDuplicateJSONKeys(raw); err != nil {
+		return err
+	}
+	if err := validateExactJSONFields(raw, reflect.TypeOf(dest)); err != nil {
+		return err
+	}
+	strict := json.NewDecoder(bytes.NewReader(raw))
+	strict.DisallowUnknownFields()
+	if err := strict.Decode(dest); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateExactJSONFields(raw []byte, typ reflect.Type) error {
+	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return fmt.Errorf("null JSON value not allowed")
+	}
+	for typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
+	}
+	switch typ.Kind() {
+	case reflect.Struct:
+		var object map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &object); err != nil {
+			return err
+		}
+		fields := make(map[string]reflect.Type)
+		for i := 0; i < typ.NumField(); i++ {
+			field := typ.Field(i)
+			if !field.IsExported() {
+				continue
+			}
+			name := strings.Split(field.Tag.Get("json"), ",")[0]
+			if name == "-" {
+				continue
+			}
+			if name == "" {
+				name = field.Name
+			}
+			fields[name] = field.Type
+		}
+		for name, value := range object {
+			fieldType, ok := fields[name]
+			if !ok {
+				return fmt.Errorf("unknown JSON field %q", name)
+			}
+			if err := validateExactJSONFields(value, fieldType); err != nil {
+				return fmt.Errorf("JSON field %q: %w", name, err)
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		var values []json.RawMessage
+		if err := json.Unmarshal(raw, &values); err != nil {
+			return err
+		}
+		for i, value := range values {
+			if err := validateExactJSONFields(value, typ.Elem()); err != nil {
+				return fmt.Errorf("JSON item %d: %w", i, err)
+			}
+		}
+	case reflect.Map:
+		var values map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &values); err != nil {
+			return err
+		}
+		for key, value := range values {
+			if err := validateExactJSONFields(value, typ.Elem()); err != nil {
+				return fmt.Errorf("JSON map value %q: %w", key, err)
+			}
+		}
+	}
+	return nil
+}
+
+func rejectDuplicateJSONKeys(raw []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	var walk func() error
+	walk = func() error {
+		token, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		delim, ok := token.(json.Delim)
+		if !ok {
+			return nil
+		}
+		switch delim {
+		case '{':
+			seen := make(map[string]struct{})
+			for decoder.More() {
+				keyToken, err := decoder.Token()
+				if err != nil {
+					return err
+				}
+				key, ok := keyToken.(string)
+				if !ok {
+					return fmt.Errorf("JSON object key must be a string")
+				}
+				if _, exists := seen[key]; exists {
+					return fmt.Errorf("duplicate JSON key %q", key)
+				}
+				seen[key] = struct{}{}
+				if err := walk(); err != nil {
+					return err
+				}
+			}
+			_, err = decoder.Token()
+			return err
+		case '[':
+			for decoder.More() {
+				if err := walk(); err != nil {
+					return err
+				}
+			}
+			_, err = decoder.Token()
+			return err
+		default:
+			return fmt.Errorf("unexpected JSON delimiter %q", delim)
+		}
+	}
+	return walk()
 }
 
 func runShell(command string) int {
@@ -490,8 +797,25 @@ func runShell(command string) int {
 	return 0
 }
 
-func randomID() string {
+func randomID() (string, error) {
 	var b [4]byte
-	_, _ = rand.Read(b[:])
-	return hex.EncodeToString(b[:])
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b[:]), nil
+}
+
+func resolveRepoKey(st *store.Store) (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	key, root, err := repo.Keys(cwd)
+	if err != nil {
+		return "", err
+	}
+	if err := st.RekeyRepo(key, root); err != nil {
+		return "", fmt.Errorf("sanitize repo identity: %w", err)
+	}
+	return key, nil
 }

@@ -2,29 +2,30 @@ package machine
 
 // Run is the durable orchestration record for one slopomatic run.
 type Run struct {
-	ID               string
-	RepoKey          string
-	State            State
-	IntakeRevision   int64
-	ReleasedRevision *int64
-	Revision         int64
-	DeliveryMode     DeliveryMode
-	ReviewConsent    ReviewConsent
-	SeriesBound      int
-	CompletedUnits   int
-	CurrentUnitID    string
-	BlockerReason    string
-	DecisionQuestion string
-	ReturnState      State // resume target after NEEDS_DECISION; empty defaults to INTAKE
+	ID                 string
+	RepoKey            string
+	State              State
+	IntakeRevision     int64
+	ReleasedRevision   *int64
+	Revision           int64
+	DeliveryMode       DeliveryMode
+	ReviewConsent      ReviewConsent
+	SeriesBound        int
+	CompletedUnits     int
+	CurrentUnitID      string
+	CompletedReviewers []ReviewerIdentity
+	BlockerReason      string
+	DecisionQuestion   string
+	ReturnState        State // resume target after NEEDS_DECISION; empty defaults to INTAKE
 }
 
 // Unit is one graph node.
 type Unit struct {
-	ID       string
-	Title    string
-	Blockers []string
-	Attempt  int
-	Done     bool
+	ID       string   `json:"id"`
+	Title    string   `json:"title"`
+	Blockers []string `json:"blockers"`
+	Attempt  int      `json:"attempt"`
+	Done     bool     `json:"done"`
 }
 
 // Released reports whether the human release latch is valid for the current intake.
@@ -42,7 +43,7 @@ type VerifyEvidence struct {
 // ReviewEvidence gates REVIEW → DELIVER.
 type ReviewEvidence struct {
 	Reviewer    ReviewerIdentity `json:"reviewer"`
-	Verdict     string           `json:"verdict"`
+	Verdict     ReviewVerdict    `json:"verdict"`
 	ArtifactRef string           `json:"artifact_ref"`
 }
 
@@ -66,6 +67,41 @@ type Decision struct {
 	Answer string
 }
 
+// IntakeEvidence is the complete contract snapshot created by an intake event.
+type IntakeEvidence struct {
+	IntakeRevision int64         `json:"intake_revision"`
+	DeliveryMode   DeliveryMode  `json:"delivery_mode"`
+	ReviewConsent  ReviewConsent `json:"review_consent"`
+	SeriesBound    int           `json:"series_bound"`
+	Units          []Unit        `json:"units"`
+}
+
+type InitEvidence struct {
+	DeliveryMode  DeliveryMode  `json:"delivery_mode"`
+	ReviewConsent ReviewConsent `json:"review_consent"`
+	SeriesBound   int           `json:"series_bound"`
+}
+
+type ReleaseEvidence struct {
+	IntakeRevision int64 `json:"intake_revision"`
+}
+
+type QuestionEvidence struct {
+	Question string `json:"question"`
+}
+
+type DecisionEvidence struct {
+	Answer string `json:"answer"`
+}
+
+type RetryEvidence struct {
+	Reason string `json:"reason"`
+}
+
+type BlockEvidence struct {
+	Reason string `json:"reason"`
+}
+
 // ApplyInput carries command-specific payloads.
 type ApplyInput struct {
 	ExpectedRevision int64 // 0 means "use current" for tests; store always passes real revision
@@ -75,18 +111,17 @@ type ApplyInput struct {
 	Review           *ReviewEvidence
 	Deliver          *DeliverEvidence
 	Decision         *Decision
+	RetryReason      string
 	BlockReason      string
 	Question         string // when forcing NEEDS_DECISION from a command path
 }
 
 // ApplyResult is the post-transition snapshot hint for status/next_action.
 type ApplyResult struct {
-	Run              Run
-	Units            []Unit
-	EventFrom        State
-	EventTo          State
-	Command          Command
-	AllowedCommands  []Command
-	NextAction       string
-	RequiredEvidence []string
+	Run       Run
+	Units     []Unit
+	EventFrom State
+	EventTo   State
+	Command   Command
+	Evidence  any
 }

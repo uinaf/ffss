@@ -43,7 +43,7 @@ func TestIndexAndRunProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := st.SaveApply(res, map[string]any{"series_bound": 1}); err != nil {
+	if err := st.SaveApply(res); err != nil {
 		t.Fatal(err)
 	}
 
@@ -61,7 +61,7 @@ func TestIndexAndRunProjection(t *testing.T) {
 
 	detail := httptest.NewRecorder()
 	handler.ServeHTTP(detail, loopbackGet("/runs/demo"))
-	if detail.Code != 200 || !strings.Contains(detail.Body.String(), "evidence timeline") || !strings.Contains(detail.Body.String(), "intake") {
+	if detail.Code != 200 || !strings.Contains(detail.Body.String(), "evidence timeline") || !strings.Contains(detail.Body.String(), "intake") || !strings.Contains(detail.Body.String(), "next command") {
 		t.Fatalf("run: code=%d body=%s", detail.Code, detail.Body.String())
 	}
 

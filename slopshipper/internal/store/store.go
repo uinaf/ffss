@@ -11,11 +11,12 @@ import (
 	"time"
 
 	"github.com/uinaf/slopomatic/internal/machine"
+	"github.com/uinaf/slopomatic/internal/repo"
 
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 1
+const schemaVersion = 2
 
 // Store is the global sqlite-backed run database.
 type Store struct {
@@ -54,6 +55,60 @@ func DefaultPath(xdgDataHome, home string) string {
 func (s *Store) Close() error { return s.db.Close() }
 
 func (s *Store) migrate() error {
+	tx, err := s.beginImmediate()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var hasMeta int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM sqlite_schema WHERE type='table' AND name='meta'`).Scan(&hasMeta); err != nil {
+		return err
+	}
+	if hasMeta == 0 {
+		if err := createCurrentSchema(tx); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`INSERT INTO meta(key, value) VALUES ('schema_version', ?)`, fmt.Sprintf("%d", schemaVersion)); err != nil {
+			return err
+		}
+		return tx.Commit()
+	}
+
+	var version int
+	if err := tx.QueryRow(`SELECT value FROM meta WHERE key = 'schema_version'`).Scan(&version); err != nil {
+		return fmt.Errorf("read schema version: %w", err)
+	}
+	if version > schemaVersion {
+		return fmt.Errorf("unsupported schema version %d (want <= %d)", version, schemaVersion)
+	}
+	for version < schemaVersion {
+		switch version {
+		case 1:
+			if _, err := tx.Exec(`ALTER TABLE runs ADD COLUMN completed_reviewers_json TEXT NOT NULL DEFAULT '[]'`); err != nil {
+				return fmt.Errorf("migrate schema 1 to 2: %w", err)
+			}
+			if _, err := tx.Exec(`UPDATE runs SET state = 'REVIEW', open = 1 WHERE state = 'DELIVER'`); err != nil {
+				return fmt.Errorf("reset unverifiable reviews from schema 1: %w", err)
+			}
+			if _, err := tx.Exec(`UPDATE runs SET return_state = 'REVIEW', open = 1 WHERE return_state = 'DELIVER'`); err != nil {
+				return fmt.Errorf("reset parked unverifiable reviews from schema 1: %w", err)
+			}
+			if _, err := tx.Exec(`UPDATE runs SET open = 1 WHERE state = 'BLOCKED'`); err != nil {
+				return fmt.Errorf("reopen blocked schema 1 runs: %w", err)
+			}
+			version = 2
+		default:
+			return fmt.Errorf("unsupported schema version %d", version)
+		}
+		if _, err := tx.Exec(`UPDATE meta SET value = ? WHERE key = 'schema_version'`, fmt.Sprintf("%d", version)); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func createCurrentSchema(tx *sql.Tx) error {
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS meta (
 			key TEXT PRIMARY KEY,
@@ -74,8 +129,9 @@ func (s *Store) migrate() error {
 			review_consent TEXT NOT NULL,
 			series_bound INTEGER NOT NULL,
 			completed_units INTEGER NOT NULL,
-			current_unit_id TEXT NOT NULL DEFAULT '',
-			blocker_reason TEXT NOT NULL DEFAULT '',
+				current_unit_id TEXT NOT NULL DEFAULT '',
+				completed_reviewers_json TEXT NOT NULL DEFAULT '[]',
+				blocker_reason TEXT NOT NULL DEFAULT '',
 			decision_question TEXT NOT NULL DEFAULT '',
 			return_state TEXT NOT NULL DEFAULT '',
 			open INTEGER NOT NULL DEFAULT 1,
@@ -106,20 +162,9 @@ func (s *Store) migrate() error {
 		)`,
 	}
 	for _, q := range stmts {
-		if err := s.exec(q); err != nil {
+		if _, err := tx.Exec(q); err != nil {
 			return err
 		}
-	}
-	var v string
-	err := s.db.QueryRow(`SELECT value FROM meta WHERE key = 'schema_version'`).Scan(&v)
-	if errors.Is(err, sql.ErrNoRows) {
-		return s.exec(`INSERT INTO meta(key, value) VALUES ('schema_version', ?)`, fmt.Sprintf("%d", schemaVersion))
-	}
-	if err != nil {
-		return err
-	}
-	if v != fmt.Sprintf("%d", schemaVersion) {
-		return fmt.Errorf("unsupported schema version %s (want %d)", v, schemaVersion)
 	}
 	return nil
 }
@@ -138,6 +183,10 @@ func (s *Store) CreateRun(run machine.Run, units []machine.Unit) error {
 	defer func() { _ = tx.Rollback() }()
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
+	completedReviewers, err := json.Marshal(run.CompletedReviewers)
+	if err != nil {
+		return err
+	}
 	var released any
 	if run.ReleasedRevision != nil {
 		released = *run.ReleasedRevision
@@ -145,18 +194,28 @@ func (s *Store) CreateRun(run machine.Run, units []machine.Unit) error {
 	_, err = tx.Exec(`INSERT INTO runs(
 		id, repo_key, state, intake_revision, released_revision, revision,
 		delivery_mode, review_consent, series_bound, completed_units,
-		current_unit_id, blocker_reason, decision_question, return_state,
+		current_unit_id, completed_reviewers_json, blocker_reason, decision_question, return_state,
 		open, created_at, updated_at
-	) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)`,
+	) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)`,
 		run.ID, run.RepoKey, string(run.State), run.IntakeRevision, released, run.Revision,
 		string(run.DeliveryMode), string(run.ReviewConsent), run.SeriesBound, run.CompletedUnits,
-		run.CurrentUnitID, run.BlockerReason, run.DecisionQuestion, string(run.ReturnState),
+		run.CurrentUnitID, string(completedReviewers), run.BlockerReason, run.DecisionQuestion, string(run.ReturnState),
 		now, now,
 	)
 	if err != nil {
 		return err
 	}
 	if err := replaceUnitsTx(tx, run.ID, units); err != nil {
+		return err
+	}
+	initEvidence, err := json.Marshal(machine.InitEvidence{
+		DeliveryMode: run.DeliveryMode, ReviewConsent: run.ReviewConsent, SeriesBound: run.SeriesBound,
+	})
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`INSERT INTO events(run_id, seq, at, command, from_state, to_state, evidence_json)
+		VALUES (?,?,?,?,?,?,?)`, run.ID, 1, now, string(machine.CmdInit), "", string(run.State), string(initEvidence)); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -249,7 +308,7 @@ func (s *Store) GetRun(runID string) (machine.Run, []machine.Unit, error) {
 	row := s.db.QueryRow(`SELECT
 		id, repo_key, state, intake_revision, released_revision, revision,
 		delivery_mode, review_consent, series_bound, completed_units,
-		current_unit_id, blocker_reason, decision_question, return_state
+		current_unit_id, completed_reviewers_json, blocker_reason, decision_question, return_state
 	FROM runs WHERE id = ?`, runID)
 	run, err := scanRun(row)
 	if err != nil {
@@ -268,12 +327,12 @@ type scannable interface {
 
 func scanRun(row scannable) (machine.Run, error) {
 	var run machine.Run
-	var state, delivery, consent, returnState string
+	var state, delivery, consent, returnState, completedReviewers string
 	var released sql.NullInt64
 	err := row.Scan(
 		&run.ID, &run.RepoKey, &state, &run.IntakeRevision, &released, &run.Revision,
 		&delivery, &consent, &run.SeriesBound, &run.CompletedUnits,
-		&run.CurrentUnitID, &run.BlockerReason, &run.DecisionQuestion, &returnState,
+		&run.CurrentUnitID, &completedReviewers, &run.BlockerReason, &run.DecisionQuestion, &returnState,
 	)
 	if err != nil {
 		return machine.Run{}, err
@@ -282,6 +341,9 @@ func scanRun(row scannable) (machine.Run, error) {
 	run.DeliveryMode = machine.DeliveryMode(delivery)
 	run.ReviewConsent = machine.ReviewConsent(consent)
 	run.ReturnState = machine.State(returnState)
+	if err := json.Unmarshal([]byte(completedReviewers), &run.CompletedReviewers); err != nil {
+		return machine.Run{}, fmt.Errorf("decode completed reviewers: %w", err)
+	}
 	if released.Valid {
 		v := released.Int64
 		run.ReleasedRevision = &v
@@ -313,7 +375,7 @@ func (s *Store) loadUnits(runID string) ([]machine.Unit, error) {
 }
 
 // SaveApply persists an ApplyResult with CAS on revision-1 (pre-apply).
-func (s *Store) SaveApply(result machine.ApplyResult, evidence any) error {
+func (s *Store) SaveApply(result machine.ApplyResult) error {
 	tx, err := s.beginImmediate()
 	if err != nil {
 		return err
@@ -321,25 +383,29 @@ func (s *Store) SaveApply(result machine.ApplyResult, evidence any) error {
 	defer func() { _ = tx.Rollback() }()
 
 	run := result.Run
+	completedReviewers, err := json.Marshal(run.CompletedReviewers)
+	if err != nil {
+		return err
+	}
 	prev := run.Revision - 1
 	var released any
 	if run.ReleasedRevision != nil {
 		released = *run.ReleasedRevision
 	}
 	open := 1
-	if run.State == machine.StateRunDone || run.State == machine.StateBlocked {
+	if run.State == machine.StateRunDone {
 		open = 0
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	res, err := tx.Exec(`UPDATE runs SET
 		state=?, intake_revision=?, released_revision=?, revision=?,
 		delivery_mode=?, review_consent=?, series_bound=?, completed_units=?,
-		current_unit_id=?, blocker_reason=?, decision_question=?, return_state=?,
+		current_unit_id=?, completed_reviewers_json=?, blocker_reason=?, decision_question=?, return_state=?,
 		open=?, updated_at=?
 	WHERE id=? AND revision=?`,
 		string(run.State), run.IntakeRevision, released, run.Revision,
 		string(run.DeliveryMode), string(run.ReviewConsent), run.SeriesBound, run.CompletedUnits,
-		run.CurrentUnitID, run.BlockerReason, run.DecisionQuestion, string(run.ReturnState),
+		run.CurrentUnitID, string(completedReviewers), run.BlockerReason, run.DecisionQuestion, string(run.ReturnState),
 		open, now, run.ID, prev,
 	)
 	if err != nil {
@@ -355,11 +421,11 @@ func (s *Store) SaveApply(result machine.ApplyResult, evidence any) error {
 	if err := replaceUnitsTx(tx, run.ID, result.Units); err != nil {
 		return err
 	}
-	evJSON, err := json.Marshal(evidence)
+	evJSON, err := json.Marshal(result.Evidence)
 	if err != nil {
 		return err
 	}
-	if evidence == nil {
+	if result.Evidence == nil {
 		evJSON = []byte("{}")
 	}
 	var seq int
@@ -418,4 +484,48 @@ func (s *Store) GetPref(key string) (string, bool, error) {
 		return "", false, nil
 	}
 	return v, err == nil, err
+}
+
+// RekeyRepo replaces persisted identities for this checkout with the sanitized form.
+func (s *Store) RekeyRepo(newKey, root string) error {
+	if newKey == "" || root == "" {
+		return nil
+	}
+	tx, err := s.beginImmediate()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	suffix := "|" + root
+	rows, err := tx.Query(`SELECT id, repo_key FROM runs WHERE repo_key = ? OR substr(repo_key, -length(?)) = ?`, root, suffix, suffix)
+	if err != nil {
+		return err
+	}
+	targets := make(map[string]string)
+	for rows.Next() {
+		var id, candidate string
+		if err := rows.Scan(&id, &candidate); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		if sanitized, ok := repo.SanitizeKey(candidate, root); ok {
+			if repo.MatchesKey(candidate, newKey, root) {
+				sanitized = newKey
+			}
+			targets[id] = sanitized
+		}
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for id, target := range targets {
+		if _, err := tx.Exec(`UPDATE runs SET repo_key = ? WHERE id = ?`, target, id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }

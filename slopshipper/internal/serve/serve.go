@@ -151,15 +151,19 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 	}
 	doc := status.From(run, units)
 	s.render(w, "run.html", map[string]any{
-		"Title":         run.ID,
-		"Run":           run,
-		"Units":         units,
-		"Events":        events,
-		"Released":      run.Released(),
-		"NextAction":    doc.NextAction,
-		"StatusLine":    doc.CompactLine(),
-		"Blocker":       run.BlockerReason,
-		"CurrentUnitID": run.CurrentUnitID,
+		"Title":            run.ID,
+		"Run":              run,
+		"Units":            units,
+		"Events":           events,
+		"Released":         run.Released(),
+		"NextAction":       doc.NextAction,
+		"ReviewConsent":    doc.ReviewConsent,
+		"ReviewRequired":   doc.RequiredReviewers,
+		"ReviewCompleted":  doc.CompletedReviewers,
+		"DecisionQuestion": doc.DecisionQuestion,
+		"StatusLine":       doc.CompactLine(),
+		"Blocker":          run.BlockerReason,
+		"CurrentUnitID":    run.CurrentUnitID,
 	})
 }
 

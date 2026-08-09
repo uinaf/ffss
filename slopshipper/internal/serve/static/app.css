@@ -133,6 +133,26 @@ a.row-link:hover {
   font-weight: 500;
   overflow-wrap: anywhere;
 }
+.next-command,
+.decision {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.next-command {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.next-command code {
+  color: var(--fg);
+  user-select: all;
+}
+.decision {
+  margin: 0;
+  border-left: 3px solid var(--accent);
+}
 .empty {
   color: var(--fg-muted);
   font-family: var(--font-mono);

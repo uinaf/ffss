@@ -2,94 +2,72 @@ package status
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/uinaf/slopomatic/internal/machine"
 )
 
 // Document is the compact agent-facing status contract.
 type Document struct {
-	SchemaVersion    int      `json:"schema_version"`
-	Revision         int64    `json:"revision"`
-	RunID            string   `json:"run_id"`
-	RepoKey          string   `json:"repo_key"`
-	State            string   `json:"state"`
-	IntakeRevision   int64    `json:"intake_revision"`
-	Released         bool     `json:"released"`
-	ReleasedRevision *int64   `json:"released_revision,omitempty"`
-	DeliveryMode     string   `json:"delivery_mode"`
-	ReviewConsent    string   `json:"review_consent"`
-	SeriesBound      int      `json:"series_bound"`
-	CompletedUnits   int      `json:"completed_units"`
-	CurrentUnitID    string   `json:"current_unit_id,omitempty"`
-	Frontier         []string `json:"frontier"`
-	AllowedCommands  []string `json:"allowed_commands"`
-	RequiredEvidence []string `json:"required_evidence"`
-	NextAction       string   `json:"next_action"`
-	Blocker          string   `json:"blocker,omitempty"`
-	DecisionQuestion string   `json:"decision_question,omitempty"`
+	SchemaVersion      int      `json:"schema_version"`
+	Revision           int64    `json:"revision"`
+	RunID              string   `json:"run_id"`
+	RepoKey            string   `json:"repo_key"`
+	State              string   `json:"state"`
+	IntakeRevision     int64    `json:"intake_revision"`
+	Released           bool     `json:"released"`
+	ReleasedRevision   *int64   `json:"released_revision,omitempty"`
+	DeliveryMode       string   `json:"delivery_mode"`
+	ReviewConsent      string   `json:"review_consent"`
+	SeriesBound        int      `json:"series_bound"`
+	CompletedUnits     int      `json:"completed_units"`
+	CurrentUnitID      string   `json:"current_unit_id,omitempty"`
+	Frontier           []string `json:"frontier"`
+	RequiredReviewers  []string `json:"required_reviewers"`
+	CompletedReviewers []string `json:"completed_reviewers"`
+	AllowedCommands    []string `json:"allowed_commands"`
+	RequiredEvidence   []string `json:"required_evidence"`
+	NextAction         string   `json:"next_action"`
+	Blocker            string   `json:"blocker,omitempty"`
+	DecisionQuestion   string   `json:"decision_question,omitempty"`
 }
 
 func From(run machine.Run, units []machine.Unit) Document {
-	allowed := filterCLICommands(machine.AllowedCommands(run, units))
+	allowed := machine.AllowedCommands(run, units)
 	cmds := make([]string, 0, len(allowed))
 	for _, c := range allowed {
 		cmds = append(cmds, string(c))
 	}
-	frontier := make([]string, 0)
-	done := map[string]bool{}
-	for _, u := range units {
-		if u.Done {
-			done[u.ID] = true
-		}
+	completedReviewers := make([]string, 0, len(run.CompletedReviewers))
+	for _, reviewer := range run.CompletedReviewers {
+		completedReviewers = append(completedReviewers, string(reviewer))
 	}
-	for _, u := range units {
-		if u.Done {
-			continue
-		}
-		ready := true
-		for _, b := range u.Blockers {
-			if !done[b] {
-				ready = false
-				break
-			}
-		}
-		if ready {
-			frontier = append(frontier, u.ID)
-		}
-	}
+	requiredReviewers := requiredReviewers(run.ReviewConsent)
+	requiredEvidence := requiredEvidence(allowed)
 	return Document{
-		SchemaVersion:    1,
-		Revision:         run.Revision,
-		RunID:            run.ID,
-		RepoKey:          run.RepoKey,
-		State:            string(run.State),
-		IntakeRevision:   run.IntakeRevision,
-		Released:         run.Released(),
-		ReleasedRevision: run.ReleasedRevision,
-		DeliveryMode:     string(run.DeliveryMode),
-		ReviewConsent:    string(run.ReviewConsent),
-		SeriesBound:      run.SeriesBound,
-		CompletedUnits:   run.CompletedUnits,
-		CurrentUnitID:    run.CurrentUnitID,
-		Frontier:         frontier,
-		AllowedCommands:  cmds,
-		RequiredEvidence: requiredEvidence(allowed),
-		NextAction:       nextAction(allowed),
-		Blocker:          run.BlockerReason,
-		DecisionQuestion: run.DecisionQuestion,
+		SchemaVersion:      2,
+		Revision:           run.Revision,
+		RunID:              run.ID,
+		RepoKey:            run.RepoKey,
+		State:              string(run.State),
+		IntakeRevision:     run.IntakeRevision,
+		Released:           run.Released(),
+		ReleasedRevision:   run.ReleasedRevision,
+		DeliveryMode:       string(run.DeliveryMode),
+		ReviewConsent:      string(run.ReviewConsent),
+		SeriesBound:        run.SeriesBound,
+		CompletedUnits:     run.CompletedUnits,
+		CurrentUnitID:      run.CurrentUnitID,
+		Frontier:           machine.Frontier(units),
+		RequiredReviewers:  requiredReviewers,
+		CompletedReviewers: completedReviewers,
+		AllowedCommands:    cmds,
+		RequiredEvidence:   requiredEvidence,
+		NextAction:         nextAction(run, allowed),
+		Blocker:            run.BlockerReason,
+		DecisionQuestion:   run.DecisionQuestion,
 	}
-}
-
-// filterCLICommands drops machine commands the CLI does not expose yet.
-func filterCLICommands(allowed []machine.Command) []machine.Command {
-	out := make([]machine.Command, 0, len(allowed))
-	for _, c := range allowed {
-		if c == machine.CmdBlock {
-			continue
-		}
-		out = append(out, c)
-	}
-	return out
 }
 
 func (d Document) CompactLine() string {
@@ -108,22 +86,52 @@ func (d Document) JSON() ([]byte, error) {
 	return json.MarshalIndent(d, "", "  ")
 }
 
-func nextAction(allowed []machine.Command) string {
+func nextAction(run machine.Run, allowed []machine.Command) string {
 	priority := []machine.Command{
 		machine.CmdRelease, machine.CmdBuild, machine.CmdVerify, machine.CmdReview,
-		machine.CmdDeliver, machine.CmdRework, machine.CmdDecide, machine.CmdIntake,
+		machine.CmdDeliver, machine.CmdRework, machine.CmdDecide, machine.CmdRetry, machine.CmdIntake,
 	}
 	for _, p := range priority {
 		for _, a := range allowed {
 			if a == p {
-				return "slopomatic " + string(p)
+				var command string
+				switch p {
+				case machine.CmdIntake:
+					command = "slopomatic intake --file <intake.json>"
+				case machine.CmdRelease:
+					command = fmt.Sprintf("slopomatic release --revision %d", run.IntakeRevision)
+				case machine.CmdVerify:
+					command = "slopomatic verify --cmd '<verification command>'"
+				case machine.CmdReview:
+					command = "slopomatic review --evidence <review.json>"
+				case machine.CmdDeliver:
+					command = "slopomatic deliver --evidence <deliver.json>"
+				case machine.CmdDecide:
+					command = "slopomatic decide --answer '<answer>'"
+				case machine.CmdRetry:
+					command = "slopomatic retry --reason '<reason>'"
+				default:
+					command = "slopomatic " + string(p)
+				}
+				return withRun(command, run.ID)
 			}
 		}
 	}
 	if len(allowed) == 0 {
 		return ""
 	}
-	return "slopomatic " + string(allowed[0])
+	return withRun("slopomatic "+string(allowed[0]), run.ID)
+}
+
+func withRun(command, runID string) string {
+	if runID == "" {
+		return command
+	}
+	return command + " --run=" + shellQuote(runID)
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
 }
 
 func requiredEvidence(allowed []machine.Command) []string {
@@ -135,7 +143,24 @@ func requiredEvidence(allowed []machine.Command) []string {
 			return []string{"review.reviewer", "review.verdict", "review.artifact_ref"}
 		case machine.CmdDeliver:
 			return []string{"deliver.delivery_mode", "deliver.pr_url|deliver.commit_sha"}
+		case machine.CmdRetry:
+			return []string{"retry.reason"}
 		}
 	}
-	return nil
+	return []string{}
+}
+
+func requiredReviewers(consent machine.ReviewConsent) []string {
+	switch consent {
+	case machine.ReviewAutoreview:
+		return []string{string(machine.ReviewerAutoreview)}
+	case machine.ReviewBugbot:
+		return []string{string(machine.ReviewerBugbot)}
+	case machine.ReviewBoth:
+		return []string{string(machine.ReviewerAutoreview), string(machine.ReviewerBugbot)}
+	case machine.ReviewHuman:
+		return []string{string(machine.ReviewerHuman)}
+	default:
+		return []string{}
+	}
 }

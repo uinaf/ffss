@@ -31,8 +31,9 @@ the workflow on the tagged HEAD instead.
 
 Skill publication uses a separate `skill-release` Environment with
 `TESSL_TOKEN` (Tessl workspace `uinaf` publisher). GitHub Actions runs Tessl
-plugin lint via `uinaf/tessl-publish-action`, then publishes the
-manifest version and smokes a Codex install. Locally:
+plugin lint before merge, then `uinaf/tessl-publish-action` publishes the
+manifest version and smokes a Codex install. Local skill lint additionally
+requires Tessl CLI 0.94.0:
 
 ```bash
 mise run skill:lint
@@ -40,6 +41,12 @@ mise run skill:lint
 
 Bump `skills/slopomatic/.tessl-plugin/plugin.json` when the skill should ship a
 new immutable revision.
+
+Coverage is enforced per production package: 80% minimum, with the state
+machine and status contract held to 90%. The CLI child-process integration
+surface has a separate floor. `mise run verify` also runs the race detector.
+A scheduled `govulncheck` scan covers changes in the vulnerability database
+without making the deterministic local gate depend on the network.
 
 ## Security
 

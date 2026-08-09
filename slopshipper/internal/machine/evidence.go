@@ -5,15 +5,12 @@ import (
 	"strings"
 )
 
-func validateVerifyEvidence(ev *VerifyEvidence) error {
+func validateVerifyCommand(ev *VerifyEvidence) error {
 	if ev == nil {
 		return fmt.Errorf("%w: verify evidence required", ErrUnmetGuard)
 	}
 	if strings.TrimSpace(ev.Command) == "" {
 		return fmt.Errorf("%w: verify.command required", ErrUnmetGuard)
-	}
-	if ev.ExitCode != 0 {
-		return fmt.Errorf("%w: verify.exit_code must be 0 for success path", ErrUnmetGuard)
 	}
 	return nil
 }
@@ -22,8 +19,10 @@ func validateReviewEvidence(ev *ReviewEvidence, consent ReviewConsent) error {
 	if ev == nil {
 		return fmt.Errorf("%w: review evidence required", ErrUnmetGuard)
 	}
-	if strings.TrimSpace(ev.Verdict) == "" {
-		return fmt.Errorf("%w: review.verdict required", ErrUnmetGuard)
+	switch ev.Verdict {
+	case ReviewClean, ReviewFindings, ReviewAmbiguous:
+	default:
+		return fmt.Errorf("%w: review.verdict must be clean|findings|ambiguous", ErrUnmetGuard)
 	}
 	if strings.TrimSpace(ev.ArtifactRef) == "" {
 		return fmt.Errorf("%w: review.artifact_ref required", ErrUnmetGuard)
