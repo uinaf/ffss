@@ -145,6 +145,28 @@ func TestReviewCommandRejectsInvalidFindingBoundaries(t *testing.T) {
 	}
 }
 
+func TestReviewCommandRejectsIncompleteLowConfidenceCleanResult(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepository(t)
+	incomplete := cleanResult()
+	incomplete.Review.OverallExplanation = "Review is still in progress."
+	incomplete.Review.OverallConfidence = 0.01
+	reviewer := &scriptedReviewer{results: []reviewStep{{result: incomplete}, {result: incomplete}}}
+	var stdout bytes.Buffer
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+	if exit != 2 || len(reviewer.prompts) != 2 {
+		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
+	}
+	var result protocol.Report
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Failure == nil || result.Failure.Class != protocol.FailureProtocol || len(result.Metadata.Attempts) != 2 || result.Metadata.Attempts[0].Outcome != protocol.AttemptMalformed {
+		t.Fatalf("result = %+v", result)
+	}
+}
+
 func TestReviewCommandClassifiesSecretTimeoutAndCancellation(t *testing.T) {
 	t.Parallel()
 

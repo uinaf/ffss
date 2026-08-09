@@ -9,6 +9,8 @@ import (
 	"unicode/utf8"
 )
 
+const minimumCleanConfidence = 0.5
+
 func (report Report) Validate() error {
 	if report.SchemaVersion != SchemaVersion {
 		return fmt.Errorf("unsupported schema_version %q", report.SchemaVersion)
@@ -87,6 +89,9 @@ func (review Review) Validate() error {
 	}
 	if !confidence(review.OverallConfidence) {
 		return fmt.Errorf("overall_confidence must be between 0 and 1")
+	}
+	if len(review.Findings) == 0 && review.OverallConfidence < minimumCleanConfidence {
+		return fmt.Errorf("clean review requires overall_confidence of at least %.1f", minimumCleanConfidence)
 	}
 	for index, finding := range review.Findings {
 		if err := finding.validate(); err != nil {

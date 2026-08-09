@@ -192,6 +192,7 @@ func TestGrokReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 		{name: "missing structured output", output: `{"text":"{\"findings\":[]}","stopReason":"end_turn","sessionId":"s","requestId":"r","structuredOutput":null}`},
 		{name: "duplicate envelope key", output: `{"text":"x","text":"x","stopReason":"end_turn","sessionId":"s","requestId":"r","structuredOutput":{}}`},
 		{name: "invalid canonical review", output: grokEnvelope(`{"findings":[]}`)},
+		{name: "incomplete low-confidence clean review", output: grokEnvelope(`{"findings":[],"overall_explanation":"Review is still in progress.","overall_confidence":0.01}`)},
 		{name: "duplicate review key", output: `{"text":"` + escapeJSONString(`{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`) + `","stopReason":"end_turn","sessionId":"s","requestId":"r","structuredOutput":{"findings":[],"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}}`},
 		{name: "text mismatch", output: grokMismatchedEnvelope(validReview, `{"findings":[],"overall_explanation":"Different.","overall_confidence":0.95}`)},
 		{name: "valid control", output: grokEnvelope(validReview)},

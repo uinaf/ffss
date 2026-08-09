@@ -35,6 +35,11 @@ surrounding whitespace is removed. A clean review must briefly explain why no
 actionable defect was found; a non-empty placeholder such as `"I"` fails the
 canonical contract.
 
+A review with no findings must have overall confidence of at least `0.5`.
+Lower confidence cannot substantiate a clean result, so the response is treated
+as malformed provider output and follows the configured protocol-retry policy.
+This threshold applies only to empty-finding reviews.
+
 Each finding contains:
 
 - a title of at most 140 Unicode characters
@@ -44,7 +49,8 @@ Each finding contains:
 - category `bug`, `security`, `regression`, `test_gap`, or `maintainability`
 - a normalized repository-relative POSIX path and inclusive start/end lines
 
-No confidence threshold suppresses a valid finding.
+No confidence threshold suppresses a valid finding, including when overall
+confidence is below `0.5`.
 
 ## Metadata
 

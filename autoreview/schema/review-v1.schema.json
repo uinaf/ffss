@@ -24,6 +24,7 @@
     },
     "overall_confidence": {
       "type": "number",
+      "description": "Confidence in the overall review. Local semantic validation requires at least 0.5 when findings is empty; low-confidence findings remain valid.",
       "minimum": 0,
       "maximum": 1
     }

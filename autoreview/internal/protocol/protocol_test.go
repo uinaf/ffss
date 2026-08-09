@@ -531,6 +531,34 @@ func TestReviewValidateRejectsShortOverallExplanation(t *testing.T) {
 	}
 }
 
+func TestReviewValidateRejectsLowConfidenceCleanResult(t *testing.T) {
+	t.Parallel()
+
+	for _, confidence := range []float64{0, 0.01, 0.49} {
+		review := Review{
+			Findings:           []Finding{},
+			OverallExplanation: "Review is still in progress.",
+			OverallConfidence:  confidence,
+		}
+		if err := review.Validate(); err == nil || !strings.Contains(err.Error(), "clean review requires overall_confidence") {
+			t.Errorf("Validate() error = %v for confidence %v", err, confidence)
+		}
+	}
+
+	clean := Review{Findings: []Finding{}, OverallExplanation: "No actionable defects found.", OverallConfidence: 0.5}
+	if err := clean.Validate(); err != nil {
+		t.Fatalf("Validate() rejected minimum clean confidence: %v", err)
+	}
+	findings := Review{
+		Findings:           []Finding{{Title: "Possible defect", Body: "This behavior may be incorrect.", Priority: PriorityP2, Confidence: 0.01, Category: CategoryBug, Location: Location{FilePath: "app.go", StartLine: 1, EndLine: 1}}},
+		OverallExplanation: "One low-confidence finding requires maintainer validation.",
+		OverallConfidence:  0.01,
+	}
+	if err := findings.Validate(); err != nil {
+		t.Fatalf("Validate() filtered a low-confidence finding: %v", err)
+	}
+}
+
 func TestValidatedFixturesMarshalRoundTrip(t *testing.T) {
 	t.Parallel()
 
