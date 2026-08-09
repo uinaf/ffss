@@ -132,6 +132,28 @@ func TestBinaryEndToEndWithFakeCodex(t *testing.T) {
 	}
 }
 
+func TestBinarySchemaCommandsAreStandalone(t *testing.T) {
+	binary := buildAutoreviewBinary(t)
+	for _, name := range []string{"review", "result"} {
+		t.Run(name, func(t *testing.T) {
+			command := exec.Command(binary, "schema", name)
+			command.Dir = t.TempDir()
+			command.Env = []string{"PATH=/usr/bin:/bin"}
+			output, err := command.Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var document map[string]any
+			if err := json.Unmarshal(output, &document); err != nil {
+				t.Fatalf("output is not JSON: %v", err)
+			}
+			if document["$schema"] != "https://json-schema.org/draft/2020-12/schema" {
+				t.Fatalf("unexpected JSON Schema draft: %v", document["$schema"])
+			}
+		})
+	}
+}
+
 func TestBinaryConfigCommandReportsNativeAndCursorWebDefaults(t *testing.T) {
 	binary := buildAutoreviewBinary(t)
 	repository := cliRepository(t)

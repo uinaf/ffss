@@ -84,6 +84,17 @@ autoreview review --mode branch --base origin/main --engine codex \
 Exit 0 means a valid clean review, exit 1 means valid findings, and exit 2 means
 no trustworthy review result.
 
+The installed binary also exposes its exact canonical contracts:
+
+```bash
+autoreview schema review > review-v1.schema.json
+autoreview schema result > result-v1.schema.json
+```
+
+`review` describes the structured output expected from a review provider;
+`result` describes the CLI's final machine report. These are output contracts,
+not a generic schema for CLI request parameters.
+
 ## Agent skill
 
 The bundled [agent skill](skills/autoreview/SKILL.md) delegates one independent

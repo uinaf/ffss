@@ -9,8 +9,15 @@ import (
 //go:embed review-v1.schema.json
 var reviewV1 []byte
 
+//go:embed result-v1.schema.json
+var resultV1 []byte
+
 func ReviewV1() []byte {
 	return append([]byte(nil), reviewV1...)
+}
+
+func ResultV1() []byte {
+	return append([]byte(nil), resultV1...)
 }
 
 func CodexReviewV1() ([]byte, error) {

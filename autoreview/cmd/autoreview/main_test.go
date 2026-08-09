@@ -17,6 +17,7 @@ import (
 	"github.com/uinaf/autoreview/internal/protocol"
 	"github.com/uinaf/autoreview/internal/provider"
 	"github.com/uinaf/autoreview/internal/target"
+	contractschema "github.com/uinaf/autoreview/schema"
 )
 
 func TestReviewCommandCleanJSON(t *testing.T) {
@@ -218,16 +219,67 @@ func TestReviewCommandReportsOutputFailure(t *testing.T) {
 	}
 }
 
-func TestTopLevelAndReviewHelp(t *testing.T) {
+func TestTopLevelAndCommandHelp(t *testing.T) {
 	t.Parallel()
 
 	var stdout bytes.Buffer
-	if exit := run(t.Context(), []string{"--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "autoreview <review|config|version>") {
+	if exit := run(t.Context(), []string{"--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "autoreview <review|config|schema|version>") || !strings.Contains(stdout.String(), "canonical review or result JSON Schema") {
 		t.Fatalf("top-level help exit=%d output=%q", exit, stdout.String())
 	}
 	stdout.Reset()
 	if exit := run(t.Context(), []string{"review", "--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "Usage of autoreview review") {
 		t.Fatalf("review help exit=%d output=%q", exit, stdout.String())
+	}
+	stdout.Reset()
+	if exit := run(t.Context(), []string{"schema", "--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "schema <review|result>") {
+		t.Fatalf("schema help exit=%d output=%q", exit, stdout.String())
+	}
+}
+
+func TestSchemaCommandWritesCanonicalDocuments(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name string
+		want []byte
+	}{
+		{name: "review", want: contractschema.ReviewV1()},
+		{name: "result", want: contractschema.ResultV1()},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout bytes.Buffer
+			if exit := run(t.Context(), []string{"schema", test.name}, &stdout, io.Discard, dependencies{}); exit != 0 {
+				t.Fatalf("run() exit = %d", exit)
+			}
+			if !bytes.Equal(stdout.Bytes(), test.want) {
+				t.Fatalf("schema output does not match embedded %s schema", test.name)
+			}
+			var document map[string]any
+			if err := json.Unmarshal(stdout.Bytes(), &document); err != nil {
+				t.Fatalf("schema output is not JSON: %v", err)
+			}
+		})
+	}
+}
+
+func TestSchemaCommandRejectsInvalidArguments(t *testing.T) {
+	t.Parallel()
+
+	for _, arguments := range [][]string{{"schema"}, {"schema", "unknown"}, {"schema", "review", "extra"}} {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		if exit := run(t.Context(), arguments, &stdout, &stderr, dependencies{}); exit != 2 || stdout.Len() != 0 || stderr.Len() == 0 {
+			t.Fatalf("arguments=%q exit/output = %d/%q/%q", arguments, exit, stdout.String(), stderr.String())
+		}
+	}
+}
+
+func TestSchemaCommandReportsOutputFailure(t *testing.T) {
+	t.Parallel()
+
+	var stderr bytes.Buffer
+	if exit := run(t.Context(), []string{"schema", "review"}, failingWriter{}, &stderr, dependencies{}); exit != 2 || !strings.Contains(stderr.String(), "write review schema") {
+		t.Fatalf("run() exit = %d, stderr = %q", exit, stderr.String())
 	}
 }
 
