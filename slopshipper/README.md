@@ -2,25 +2,35 @@
 
 # slopomatic
 
-`slopomatic` is a Go CLI and thin agent skill for evidence-gated loop×graph
-execution. Coding agents build, verify, and deliver work one auditable
-transition at a time — mindful token spend, without sacrificing quality.
+`slopomatic` turns an approved implementation plan into a resumable,
+evidence-gated workflow for coding agents. Humans release the work; the CLI
+then enforces each build, verification, review, and delivery transition.
 
 ```text
-make a plan  →  /slopomatic  →  clarify with the human  →  human releases  →  machine runs
+plan  →  /slopomatic  →  clarify  →  human releases  →  machine runs
 ```
+
+- **Human-controlled:** scope, release, review consent, and recovery stay
+  explicit.
+- **Deterministic:** a Go state machine decides what can happen next.
+- **Auditable:** structured evidence and an SQLite event log make every
+  transition inspectable.
 
 ## Install
 
-On macOS, install the signed CLI from the `uinaf/tap` Homebrew tap:
+### macOS
+
+Install the signed CLI from the `uinaf/tap` Homebrew tap:
 
 ```bash
 brew install --cask uinaf/tap/slopomatic
 slopomatic version
 ```
 
-On Linux amd64 or arm64, install the latest released binary without Go,
-Homebrew, `jq`, or `sudo`:
+### Linux
+
+Install the latest amd64 or arm64 release without Go, Homebrew, `jq`, or
+`sudo`:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -fsSL \
@@ -28,24 +38,28 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 ~/.local/bin/slopomatic version
 ```
 
-Pass `--version "$TAG"` or `--dest /chosen/bin` after `sh -s --` to pin a
-release or override `${HOME}/.local/bin`. The installer downloads the archive
-and `checksums.txt` from the same GitHub Release, verifies the exact SHA-256,
-and atomically replaces the destination binary. See
-[Release verification](docs/RELEASES.md#linux-installer-trust-boundary) for the
-HTTPS trust boundary and independent Cosign and GitHub attestation checks.
+To pin a release or choose an install directory, pass `--version "$TAG"` or
+`--dest /chosen/bin` after `sh -s --`. The installer verifies the archive
+against the release checksum before atomically replacing the binary. See
+[Release verification](docs/RELEASES.md#linux-installer-trust-boundary) for
+independent Cosign and GitHub attestation checks.
 
-Consumers that prefer Go tooling can instead install with Go 1.26 or newer:
+### Go
+
+With Go 1.26 or newer:
 
 ```bash
 go install github.com/uinaf/slopomatic/cmd/slopomatic@latest
 slopomatic version
 ```
 
-State lives in `$XDG_DATA_HOME/slopomatic/slopomatic.sqlite` (default
-`~/.local/share/slopomatic/slopomatic.sqlite`). Override with `SLOPOMATIC_DB`.
+State is stored at `$XDG_DATA_HOME/slopomatic/slopomatic.sqlite`, or
+`~/.local/share/slopomatic/slopomatic.sqlite` when `XDG_DATA_HOME` is unset.
+Set `SLOPOMATIC_DB` to use a different database.
 
-## Quick use
+## Quick start
+
+### 1. Define and release the work
 
 ```bash
 slopomatic init --run demo
@@ -54,11 +68,21 @@ slopomatic intake --file - --run demo <<'JSON'
   "delivery_mode": "pr-hold",
   "review_consent": "autoreview",
   "series_bound": 1,
-  "units": [{"id": "u1", "title": "Ship the change", "blockers": []}]
+  "units": [
+    {"id": "u1", "title": "Ship the change", "blockers": []}
+  ]
 }
 JSON
-slopomatic status --json --run demo   # note intake_revision and next_action
+slopomatic status --json --run demo
 slopomatic release --revision N --run demo
+```
+
+Replace `N` with the exact `intake_revision` returned by `status`. Release is
+the human approval boundary: the machine loop cannot begin without it.
+
+### 2. Run the machine loop
+
+```bash
 slopomatic build --run demo
 slopomatic verify --cmd 'go test ./...' --run demo
 slopomatic review --evidence - --run demo <<'JSON'
@@ -70,43 +94,56 @@ JSON
 slopomatic status --json --run demo
 ```
 
-Replace `N` with the exact `intake_revision` printed by status. Default
-`status` is one compact line with an executable `next_action`; use `--json` for
-agents. Every command has focused help, for example `slopomatic review --help`.
+`status` is the compass. Its default output is one compact line with an
+executable `next_action`; `--json` exposes the full contract for agents. Check
+it after every transition instead of guessing the next command.
 
-Park a human question with `slopomatic ask --question "…"`, then
-`slopomatic decide --answer "…"`. Record an external blocker with
-`slopomatic block --reason "…"`; after the human confirms recovery, resume with
-`slopomatic retry --reason "…"`. Multi-unit intake:
+For multi-unit intake, start with
 [`examples/intake.multi.example.json`](examples/intake.multi.example.json).
+Every command also has focused help, such as `slopomatic review --help`.
 
-## Control plane
+## Common operations
 
-Project the same sqlite store in a loopback browser UI (Go templates +
-`@uinaf/design` tables). Read-only — not a second state authority.
+| Need | Command |
+| --- | --- |
+| Inspect a run or find its next action | `slopomatic status [--json]` |
+| Pause for a human answer | `slopomatic ask --question "…"` |
+| Record the answer | `slopomatic decide --answer "…"` |
+| Record an external blocker | `slopomatic block --reason "…"` |
+| Resume after confirmed recovery | `slopomatic retry --reason "…"` |
+| Re-enter the build loop after findings | `slopomatic rework` |
+| Inspect all runs in a browser | `slopomatic serve` |
+
+Commands that act on a run accept `--run ID`. When the repository has exactly
+one open run, the CLI selects it automatically.
+
+## Browser view
+
+Project the same SQLite state in a read-only local browser view:
 
 ```bash
 slopomatic serve                 # http://127.0.0.1:7780
 slopomatic serve --addr 127.0.0.1:9000
 ```
 
-Smoke: start `serve`, open `/`, click a run, confirm units + evidence timeline
-match `slopomatic status --json --run <id>`.
+The browser is a projector, not a second state authority; workflow changes
+still go through the CLI.
 
 ## Agent skill
 
-The bundled [agent skill](skills/slopomatic/SKILL.md) drives the CLI. It does
-not contain a second runtime. Manual invocation only.
+The bundled [agent skill](skills/slopomatic/SKILL.md) teaches agents to drive
+the installed CLI and obey `next_action`. It is intentionally thin: the binary
+owns the state machine, schemas, and store.
 
-## Companion tools
-
-- [`autoreview`](https://github.com/uinaf/autoreview) — preferred portable independent review CLI
-- On Cursor: `/review-bugbot` as a cheap local review option (confirm before use)
+Independent review remains a companion step. Use the installed
+[`autoreview`](https://github.com/uinaf/autoreview) CLI, or Cursor's
+`/review-bugbot` when the intake grants consent.
 
 ## Documentation
 
 - [Release artifacts and verification](docs/RELEASES.md)
-- [Contributing](CONTRIBUTING.md) — setup, gates, and pull-request expectations
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)
 
 ## License
 
