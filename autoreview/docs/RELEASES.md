@@ -75,16 +75,19 @@ verifier checks the certificate trust, matching signing private key, and
 identifiers and rejects a certificate outside the Team ID pinned by
 `APPLE_TEAM_ID`.
 
-Semantic Release owns version selection, release notes, the Git tag, and the
-initial GitHub Release. GoReleaser Developer ID signs both macOS binaries,
-waits for Apple to accept both notarization submissions, appends all archives,
-the checksum manifest, and the Sigstore bundle, then updates the Homebrew cask.
-No release commit is pushed to `main`.
+Semantic Release owns version selection, release notes, the Git tag, and a
+mutable draft GitHub Release. GoReleaser adopts that draft, Developer ID signs
+both macOS binaries, waits for Apple to accept both notarization submissions,
+uploads all archives, the checksum manifest, and the Sigstore bundle, then
+updates the Homebrew cask. The workflow verifies those outputs and provenance
+before publishing the draft; publication makes the release assets and tag
+immutable. No release commit is pushed to `main`.
 
 If publication fails after the tag is created, rerunning the failed workflow is
-safe: a release tag at `HEAD` resumes GoReleaser publication without choosing a
-new version. This includes Apple service failures before artifact publication.
-Never delete a published tag merely to retry a partial release.
+safe: a release tag at `HEAD` resumes the mutable draft without choosing a new
+version. If publication already succeeded and only the downstream Homebrew
+smoke failed, the rerun detects the published release and skips every mutating
+release step. Never delete or move a published tag to retry a release.
 
 ## Version tracks
 
