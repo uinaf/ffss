@@ -10,7 +10,7 @@
     {"name": "Provider web default understood", "description": "The plan keeps web off for Codex, Claude, or Grok, or records Cursor's implicit web capability if Cursor is selected", "max_score": 10},
     {"name": "No capability prompt", "description": "The plan does not ask for separate permission to use the documented native or Cursor web defaults", "max_score": 10},
     {"name": "Correct branch target", "description": "The exact command uses review --mode branch --base main or an equivalent resolved main reference", "max_score": 10},
-    {"name": "Prompt passed", "description": "The command passes the distilled task contract using --prompt", "max_score": 10},
+    {"name": "Prompt passed", "description": "The command pipes the distilled task contract through standard input using --prompt-file -", "max_score": 10},
     {"name": "No fallback or panel", "description": "Failure handling reports the blocker without automatically switching provider, running a panel, or claiming consensus", "max_score": 10}
   ]
 }

@@ -8,7 +8,7 @@
     {"name": "Native override", "description": "The command adds --isolation native explicitly so the previous strict selection cannot persist", "max_score": 10},
     {"name": "No web flag", "description": "The command does not add --web-access", "max_score": 10},
     {"name": "Web-off stated", "description": "The plan explicitly states that web access remains disabled", "max_score": 10},
-    {"name": "Task contract retained", "description": "The rerun command includes --prompt with the same authoritative task contract", "max_score": 10},
+    {"name": "Task contract retained", "description": "The rerun pipes the same authoritative task contract through standard input using --prompt-file -", "max_score": 10},
     {"name": "Native boundary explained", "description": "The plan notes that native preserves user provider state while the CLI still uses an empty provider workspace and frozen bundle", "max_score": 10},
     {"name": "No repeated auth loop", "description": "If authentication fails again, the plan reports an operational blocker rather than retrying indefinitely", "max_score": 10},
     {"name": "No fallback", "description": "The plan does not automatically switch to Claude or Cursor after another failure", "max_score": 10}

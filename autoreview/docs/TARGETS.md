@@ -28,6 +28,14 @@ sections are explicitly labeled as untrusted data. Providers receive the same
 immutable payload as streamed input plus typed metadata, not a path to the live
 checkout.
 
+Task prompts are trusted instructions. Pass them directly with `--prompt`, from
+an explicitly selected regular file with `--prompt-file <path>`, or through
+stdin with `--prompt-file -`. The two flags are mutually exclusive, no prompt
+file is discovered implicitly, and file or stdin content is bounded by the
+effective bundle limit before target collection. Explicit selection authorizes
+the content as trusted; do not promote repository-controlled text through this
+boundary without first distilling and authorizing it.
+
 The aggregate bundle limit defaults to 1 MiB and is configurable up to 128 MiB.
 An oversized target fails before provider execution, reports the largest byte
 contributors from a bounded streaming count, and is never chunked. Deleted,

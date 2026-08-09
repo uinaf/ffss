@@ -10,7 +10,7 @@
     {"name": "Acceptance proof refreshed", "description": "The plan reruns relevant builder tests and the affected built-CLI cancellation smoke after the fix", "max_score": 10},
     {"name": "Same provider retained", "description": "The next review keeps the original provider rather than switching reviewers", "max_score": 10},
     {"name": "Fix included in branch target", "description": "The plan commits the accepted fix on the branch before reviewing the same branch/base semantics against a newly frozen source", "max_score": 10},
-    {"name": "Same contract retained", "description": "The rerun passes the original acceptance criteria with --prompt", "max_score": 10},
+    {"name": "Same contract retained", "description": "The rerun pipes the original acceptance criteria through standard input using --prompt-file -", "max_score": 10},
     {"name": "Completion status valid", "description": "The completion condition accepts exit 0 with no findings or exit 1 only when every rerun finding is explicitly rejected, and never calls exit 1 clean", "max_score": 10}
   ]
 }

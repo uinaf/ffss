@@ -33,6 +33,7 @@ func TestBinaryEndToEndWithFakeCodex(t *testing.T) {
 		wantAttempts int
 		wantCalls    string
 		output       string
+		stdin        string
 	}{
 		{name: "clean", scenario: "clean", retries: "0", wantExit: 0, wantStatus: protocol.StatusClean, wantAttempts: 1, wantCalls: "1"},
 		{name: "findings", scenario: "findings", retries: "0", wantExit: 1, wantStatus: protocol.StatusFindings, wantAttempts: 1, wantCalls: "1"},
@@ -40,6 +41,7 @@ func TestBinaryEndToEndWithFakeCodex(t *testing.T) {
 		{name: "provider failure", scenario: "failure", retries: "1", wantExit: 2, wantStatus: protocol.StatusFailure, wantFailure: protocol.FailureProvider, wantAttempts: 1, wantCalls: "1"},
 		{name: "provider failure terminal", scenario: "failure", retries: "1", output: "terminal", wantExit: 2, wantStatus: protocol.StatusFailure, wantFailure: protocol.FailureProvider, wantAttempts: 1, wantCalls: "1"},
 		{name: "interrupt", scenario: "delay", retries: "1", interrupt: true, wantExit: 2, wantStatus: protocol.StatusFailure, wantFailure: protocol.FailureCancelled, wantAttempts: 1, wantCalls: "1"},
+		{name: "stdin prompt", scenario: "clean", retries: "0", stdin: "Review this multiline task.\nKeep the boundary intact.\n", wantExit: 0, wantStatus: protocol.StatusClean, wantAttempts: 1, wantCalls: "1"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -53,7 +55,13 @@ func TestBinaryEndToEndWithFakeCodex(t *testing.T) {
 				"review", "--repository", repository, "--mode", "local", "--engine", "codex",
 				"--retries", test.retries, "--timeout", "8s", "--output", test.output,
 			}
+			if test.stdin != "" {
+				arguments = append(arguments, "--prompt-file", "-")
+			}
 			command := exec.Command(binary, arguments...)
+			if test.stdin != "" {
+				command.Stdin = strings.NewReader(test.stdin)
+			}
 			command.Env = replaceEnvironment(os.Environ(), map[string]string{
 				"PATH":            toolsDirectory + ":/usr/bin:/bin",
 				"OPENAI_API_KEY":  "fake-provider-credential",

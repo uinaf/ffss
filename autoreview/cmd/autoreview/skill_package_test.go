@@ -43,7 +43,7 @@ func TestSkillPackageIsStandaloneAndPrivateDataFree(t *testing.T) {
 
 	var manifest skillManifest
 	decodeJSONFile(t, filepath.Join(root, ".tessl-plugin", "plugin.json"), &manifest)
-	if manifest.Name != "uinaf/autoreview" || manifest.Description != description || !slices.Equal(manifest.Skills, []string{"."}) || manifest.Version != "2.1.1" {
+	if manifest.Name != "uinaf/autoreview" || manifest.Description != description || !slices.Equal(manifest.Skills, []string{"."}) || manifest.Version != "2.2.0" {
 		t.Fatalf("manifest drifted from SKILL.md: %+v", manifest)
 	}
 
@@ -260,7 +260,7 @@ func TestSkillAutoreviewCommandsUseBuiltCLIFlags(t *testing.T) {
 			}
 		}
 	}
-	for _, deprecated := range []string{"--panel", "--reviewers", "--prompt-file", "--dataset"} {
+	for _, deprecated := range []string{"--panel", "--reviewers", "--dataset"} {
 		if strings.Contains(readFile(t, filepath.Join(root, "SKILL.md")), deprecated) {
 			t.Fatalf("standalone skill retained legacy flag %s", deprecated)
 		}

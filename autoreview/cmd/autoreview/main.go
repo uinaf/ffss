@@ -19,6 +19,7 @@ import (
 )
 
 type dependencies struct {
+	stdin        io.Reader
 	lookupEnv    func(string) (string, bool)
 	homeDir      func() (string, error)
 	newCollector func() (*target.Collector, error)
@@ -29,6 +30,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	os.Exit(run(ctx, os.Args[1:], os.Stdout, os.Stderr, dependencies{
+		stdin:     os.Stdin,
 		lookupEnv: os.LookupEnv,
 	}))
 }

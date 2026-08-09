@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/uinaf/autoreview/internal/config"
@@ -36,6 +37,7 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	base := flags.String("base", "", "base revision for branch mode")
 	commit := flags.String("commit", "", "revision for commit mode")
 	prompt := flags.String("prompt", "", "trusted review instructions")
+	promptFile := flags.String("prompt-file", "", "trusted review instructions file, or - for stdin")
 	var contextFiles stringList
 	flags.Var(&contextFiles, "context-file", "repository-relative context file (repeatable)")
 	output := flags.String("output", "terminal", "output format: terminal or json")
@@ -56,6 +58,15 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	if *output != "terminal" && *output != "json" {
 		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, errors.New("flag output must be terminal or json"))
 	}
+	promptSet := false
+	promptFileSet := false
+	flags.Visit(func(item *flag.Flag) {
+		promptSet = promptSet || item.Name == "prompt"
+		promptFileSet = promptFileSet || item.Name == "prompt-file"
+	})
+	if promptSet && promptFileSet {
+		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, errors.New("flags prompt and prompt-file are mutually exclusive"))
+	}
 	overrides, err := configFlags.overrides(flags)
 	if err != nil {
 		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, err)
@@ -68,6 +79,13 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	})
 	if err != nil {
 		return writeReviewResult(stdout, stderr, *output, orchestrator.Failure(protocol.FailureConfig, fmt.Errorf("config: %w", err)))
+	}
+	resolvedPrompt := *prompt
+	if promptFileSet {
+		resolvedPrompt, err = readReviewPrompt(*promptFile, dependencies.stdin, effective.MaxBytes.Value)
+		if err != nil {
+			return writeReviewResult(stdout, stderr, *output, orchestrator.Failure(protocol.FailureTarget, err))
+		}
 	}
 
 	newCollector := dependencies.newCollector
@@ -92,7 +110,7 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 			Mode:         protocol.TargetMode(*mode),
 			Base:         *base,
 			Commit:       *commit,
-			Prompt:       *prompt,
+			Prompt:       resolvedPrompt,
 			ContextFiles: append([]string(nil), contextFiles...),
 			MaxBytes:     effective.MaxBytes.Value,
 		},
@@ -149,6 +167,7 @@ func reviewFlagConsumesNext(argument string) bool {
 		"--base", "-base",
 		"--commit", "-commit",
 		"--prompt", "-prompt",
+		"--prompt-file", "-prompt-file",
 		"--context-file", "-context-file",
 		"--engine", "-engine",
 		"--model", "-model",
@@ -160,6 +179,56 @@ func reviewFlagConsumesNext(argument string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func readReviewPrompt(path string, stdin io.Reader, maxBytes int64) (string, error) {
+	var reader io.Reader
+	if path == "-" {
+		if stdin == nil {
+			return "", errors.New("prompt stdin is unavailable")
+		}
+		reader = stdin
+	} else {
+		file, err := os.Open(path)
+		if err != nil {
+			return "", safePromptFileError(err)
+		}
+		defer func() { _ = file.Close() }()
+		info, err := file.Stat()
+		if err != nil {
+			return "", errors.New("inspect prompt file: operation failed")
+		}
+		if !info.Mode().IsRegular() {
+			return "", errors.New("prompt file must be a regular file")
+		}
+		if info.Size() > maxBytes {
+			return "", fmt.Errorf("prompt exceeds max_bytes limit of %d", maxBytes)
+		}
+		reader = file
+	}
+	content, err := io.ReadAll(io.LimitReader(reader, maxBytes+1))
+	if err != nil {
+		return "", errors.New("read prompt input: operation failed")
+	}
+	if int64(len(content)) > maxBytes {
+		return "", fmt.Errorf("prompt exceeds max_bytes limit of %d", maxBytes)
+	}
+	prompt := string(content)
+	if err := target.ValidatePrompt(prompt); err != nil {
+		return "", err
+	}
+	return prompt, nil
+}
+
+func safePromptFileError(err error) error {
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		return errors.New("prompt file does not exist")
+	case errors.Is(err, os.ErrPermission):
+		return errors.New("prompt file is not readable")
+	default:
+		return errors.New("open prompt file: operation failed")
 	}
 }
 

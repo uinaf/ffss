@@ -125,8 +125,8 @@ func validateRequest(request *Request) error {
 	if request.MaxBytes < 1 || request.MaxBytes > MaximumMaxBytes {
 		return fmt.Errorf("max bundle bytes must be between 1 and %d", MaximumMaxBytes)
 	}
-	if !utf8.ValidString(request.Prompt) || strings.ContainsRune(request.Prompt, 0) {
-		return fmt.Errorf("prompt must be valid UTF-8 without NUL")
+	if err := ValidatePrompt(request.Prompt); err != nil {
+		return err
 	}
 	switch request.Mode {
 	case protocol.TargetLocal:
@@ -166,6 +166,13 @@ func validateRequest(request *Request) error {
 			return fmt.Errorf("duplicate context file %q", path)
 		}
 		seen[path] = struct{}{}
+	}
+	return nil
+}
+
+func ValidatePrompt(prompt string) error {
+	if !utf8.ValidString(prompt) || strings.ContainsRune(prompt, 0) {
+		return fmt.Errorf("prompt must be valid UTF-8 without NUL")
 	}
 	return nil
 }

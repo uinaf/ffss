@@ -10,7 +10,7 @@
     {"name": "User choice requested or honored", "description": "The response asks the maintainer to select one provider or clearly states one transparent pragmatic choice", "max_score": 10},
     {"name": "One engine flag", "description": "The command shape contains exactly one --engine value", "max_score": 10},
     {"name": "Branch target", "description": "The command shape uses review --mode branch with the real base placeholder", "max_score": 10},
-    {"name": "Task contract passed", "description": "The command shape includes --prompt with the authoritative acceptance criteria", "max_score": 10},
+    {"name": "Task contract passed", "description": "The command shape pipes the authoritative acceptance criteria through standard input using --prompt-file -", "max_score": 10},
     {"name": "No fallback sequence", "description": "The plan does not queue other providers if the selected one fails", "max_score": 10}
   ]
 }

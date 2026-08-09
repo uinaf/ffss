@@ -299,6 +299,140 @@ func TestReviewCommandWithoutUnambiguousJSONStaysTerminal(t *testing.T) {
 	}
 }
 
+func TestReviewCommandLoadsEquivalentPromptSources(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepository(t)
+	prompt := "Review the first line.\nThen review the second line.\n"
+	promptPath := filepath.Join(t.TempDir(), "task contract.md")
+	if err := os.WriteFile(promptPath, []byte(prompt), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name      string
+		arguments []string
+		stdin     io.Reader
+	}{
+		{name: "flag", arguments: []string{"--prompt", prompt}},
+		{name: "file", arguments: []string{"--prompt-file", promptPath}},
+		{name: "stdin", arguments: []string{"--prompt-file", "-"}, stdin: strings.NewReader(prompt)},
+	}
+	var providerPrompts []string
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
+			dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+			dependencies.stdin = test.stdin
+			arguments := []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--output", "json"}
+			arguments = append(arguments, test.arguments...)
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			if exit := run(t.Context(), arguments, &stdout, &stderr, dependencies); exit != 0 {
+				t.Fatalf("exit=%d stdout=%q stderr=%q", exit, stdout.String(), stderr.String())
+			}
+			if len(reviewer.prompts) != 1 {
+				t.Fatalf("provider calls=%d", len(reviewer.prompts))
+			}
+			providerPrompts = append(providerPrompts, reviewer.prompts[0])
+		})
+	}
+	for index := 1; index < len(providerPrompts); index++ {
+		if providerPrompts[index] != providerPrompts[0] {
+			t.Fatalf("prompt source changed provider payload")
+		}
+	}
+}
+
+func TestReviewCommandKeepsEmptyPromptBehaviorAcrossSources(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepository(t)
+	promptPath := filepath.Join(t.TempDir(), "empty task contract.md")
+	if err := os.WriteFile(promptPath, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sources := [][]string{
+		nil,
+		{"--prompt", ""},
+		{"--prompt-file", promptPath},
+	}
+	var providerPrompts []string
+	for _, source := range sources {
+		reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
+		arguments := []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--output", "json"}
+		arguments = append(arguments, source...)
+		var stdout bytes.Buffer
+		if exit := run(t.Context(), arguments, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer)); exit != 0 {
+			t.Fatalf("source=%v exit=%d stdout=%q", source, exit, stdout.String())
+		}
+		providerPrompts = append(providerPrompts, reviewer.prompts[0])
+	}
+	for index := 1; index < len(providerPrompts); index++ {
+		if providerPrompts[index] != providerPrompts[0] {
+			t.Fatalf("empty prompt source changed provider payload")
+		}
+	}
+}
+
+func TestReviewCommandRejectsInvalidPromptInputBeforeProvider(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepository(t)
+	temporary := t.TempDir()
+	missing := filepath.Join(temporary, "missing prompt.md")
+	oversized := filepath.Join(temporary, "oversized prompt.md")
+	invalidUTF8 := filepath.Join(temporary, "invalid utf8.md")
+	nulPrompt := filepath.Join(temporary, "nul prompt.md")
+	if err := os.WriteFile(oversized, bytes.Repeat([]byte("x"), 33), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(invalidUTF8, []byte{0xff}, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(nulPrompt, []byte("before\x00after"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name        string
+		arguments   []string
+		wantClass   protocol.FailureClass
+		privatePath string
+	}{
+		{name: "mutually exclusive", arguments: []string{"--prompt", "trusted", "--prompt-file", "-"}, wantClass: protocol.FailureConfig},
+		{name: "missing file", arguments: []string{"--prompt-file", missing}, wantClass: protocol.FailureTarget, privatePath: missing},
+		{name: "oversized file", arguments: []string{"--prompt-file", oversized, "--max-bytes", "32"}, wantClass: protocol.FailureTarget, privatePath: oversized},
+		{name: "invalid UTF-8", arguments: []string{"--prompt-file", invalidUTF8}, wantClass: protocol.FailureTarget, privatePath: invalidUTF8},
+		{name: "NUL", arguments: []string{"--prompt-file", nulPrompt}, wantClass: protocol.FailureTarget, privatePath: nulPrompt},
+		{name: "stdin unavailable", arguments: []string{"--prompt-file", "-"}, wantClass: protocol.FailureTarget},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			reviewer := &scriptedReviewer{}
+			dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+			arguments := []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--output", "json"}
+			arguments = append(arguments, test.arguments...)
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
+			if exit := run(t.Context(), arguments, &stdout, &stderr, dependencies); exit != 2 {
+				t.Fatalf("exit=%d stdout=%q stderr=%q", exit, stdout.String(), stderr.String())
+			}
+			var result protocol.Report
+			if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+				t.Fatalf("decode result: %v: %s", err, stdout.String())
+			}
+			if result.Failure == nil || result.Failure.Class != test.wantClass {
+				t.Fatalf("failure=%+v", result.Failure)
+			}
+			if len(reviewer.prompts) != 0 {
+				t.Fatalf("provider was invoked %d times", len(reviewer.prompts))
+			}
+			if test.privatePath != "" && (strings.Contains(stdout.String(), test.privatePath) || strings.Contains(stderr.String(), test.privatePath)) {
+				t.Fatalf("diagnostic leaked prompt path: stdout=%q stderr=%q", stdout.String(), stderr.String())
+			}
+		})
+	}
+}
+
 func TestConfigCommandPrintsSourceAwareJSON(t *testing.T) {
 	t.Parallel()
 
