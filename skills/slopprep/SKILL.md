@@ -62,9 +62,10 @@ profile switching, copied secrets, and printed tokens are runner gaps.
 
 For React or existing Effect repos, apply
 [references/react-enforcement.md](references/react-enforcement.md) and
-[references/effect-readiness.md](references/effect-readiness.md). Effect
-implementation task classes need repository-local Effect guidance; do not add
-Effect solely for readiness.
+[references/effect-readiness.md](references/effect-readiness.md). Effect work
+needs the upstream `effect-ts` guidance available to the declared agent; when
+the execution environment does not provide it, make it repository-local. Do not
+add Effect solely for readiness.
 
 ### 2. Build the missing contract
 

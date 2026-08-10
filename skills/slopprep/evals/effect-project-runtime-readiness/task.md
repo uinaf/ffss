@@ -3,41 +3,36 @@
 ## Problem/Feature Description
 
 A Node.js worker already uses Effect, but agents cannot work on it reliably.
-The upstream `effect-ts` skill is available only in a developer's global agent
-home, and the repository's Effect guidance expects source at `.repos/effect`,
-yet a fresh checkout has no setup path for either. Effect package versions have
-drifted, tests call `Effect.runPromise` from plain Vitest tests and wait on real
-timers, and the `verify` script runs only TypeScript. The worker has a Layer
-graph, but no smoke command proves that it boots, invalid configuration is
-actionable, or scoped resources close during interruption.
+The declared runner does not provide the upstream `effect-ts` skill, the
+repository has no local fallback, and its stale agent guidance points at a
+hand-maintained `.repos/effect` checkout. The `verify` script runs only
+TypeScript, and no smoke command proves that the worker boots or that invalid
+configuration fails usefully.
 
-The team has selected the ignored local clone plus checked-in prepare task for
-`.repos/effect`. Add the smallest readiness infrastructure that gives agents a
-reproducible research source, deterministic Effect tests, a real runtime smoke,
-observable failures, and cleanup proof. Do not redesign the worker's business
-logic or introduce a second dependency-injection system.
+Add the smallest readiness infrastructure that makes the upstream guidance
+available to the runner and gives the existing service a canonical verification
+path. Do not copy Effect implementation conventions into repository docs,
+maintain a separate Effect source checkout, redesign the worker's business
+logic, or introduce a second dependency-injection system.
 
 ## Output Specification
 
 Produce:
 
-1. A repository-local installation of `effect-ts` from `Effect-TS/skills`,
-   owned by checked-in skill files or a reproducible setup and lock contract,
-   and discoverable by the repository's declared agents without global state.
-2. `.gitignore` and `scripts/prepare-effect.sh` for the selected Effect source
-   setup, wired into the repository's existing prepare/bootstrap contract. Use
-   the canonical Effect repository, own an exact source ref in checked-in
-   configuration, use a narrow `.worktreeinclude` entry as an optional seed,
-   and safely align clean stale checkouts without overwriting local changes.
-3. Aligned `effect` and `@effect/*` dependencies in `package.json` and its
-   lockfile.
-4. Effect-native tests using `@effect/vitest`, Layers, and `TestClock`, including
-   typed failure and interrupted-resource cleanup coverage.
-5. A real-process smoke command that boots the production Layer graph, checks a
+1. A repository-local fallback for `effect-ts` from `Effect-TS/skills`, owned by
+   checked-in skill files or a reproducible setup and lock contract, and
+   discoverable by the repository's declared agents.
+2. Agent guidance that follows the upstream skill and points agents to the
+   guidance and source shipped with the installed `effect` package, with the
+   stale `.repos/effect` requirement removed.
+3. The repository's ordinary dependency bootstrap proves that the installed
+   Effect guidance is present.
+4. A real-process smoke command that boots the production Layer graph, checks a
    machine-readable ready signal, and verifies invalid configuration exits
    non-zero with redacted, actionable output.
-6. A canonical `verify` command reused by CI.
-7. `effect-readiness.md` recording the proof and remaining gaps.
+5. A canonical `verify` command that runs typecheck, tests, and the smoke check,
+   reused by CI.
+6. `effect-readiness.md` recording the proof and remaining gaps.
 
 ## Input Files
 

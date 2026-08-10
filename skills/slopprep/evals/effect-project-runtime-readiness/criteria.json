@@ -3,69 +3,39 @@
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Effect guidance is repository-local",
-      "max_score": 8,
-      "description": "effect-ts comes from Effect-TS/skills through checked-in skill files or a reproducible repository-owned setup and lock contract, and declared agents discover it without relying on a machine-global installation"
+      "name": "Missing environment guidance has a repository fallback",
+      "max_score": 25,
+      "description": "Because the declared runner does not provide effect-ts, the repository installs it from Effect-TS/skills through checked-in files or a reproducible setup and lock contract, and declared agents discover it"
     },
     {
-      "name": "Effect source bootstrap is reproducible",
-      "max_score": 8,
-      "description": ".repos/effect is ignored, .worktreeinclude uses only the narrow /.repos/effect/ seed, and an idempotent checked-in prepare script clones https://github.com/Effect-TS/effect at an exact checked-in ref when missing"
+      "name": "Upstream guidance remains authoritative",
+      "max_score": 20,
+      "description": "Repository agent instructions follow effect-ts and point to the guidance and source shipped with the installed effect package instead of copying Effect implementation conventions locally"
     },
     {
-      "name": "Existing source checkout is handled safely",
-      "max_score": 6,
-      "description": "The prepare path validates the remote and ref, aligns a clean stale checkout to the owned ref, and reports an actionable mismatch instead of overwriting local source changes"
+      "name": "Dependency bootstrap proves guidance availability",
+      "max_score": 15,
+      "description": "The ordinary clean-checkout bootstrap installs Effect dependencies and verifies that the installed guidance expected by effect-ts is present"
     },
     {
-      "name": "Effect package versions are aligned",
-      "max_score": 9,
-      "description": "effect and all @effect/* packages use compatible aligned versions owned by package.json and the lockfile"
+      "name": "No separate Effect source contract is introduced",
+      "max_score": 10,
+      "description": "The stale .repos/effect requirement is removed and the solution does not add a bespoke source clone, submodule, subtree, or worktree seed"
     },
     {
-      "name": "Effect-native test harness is used",
-      "max_score": 9,
-      "description": "Effect tests use @effect/vitest rather than plain Vitest with ad hoc Effect.runPromise calls"
-    },
-    {
-      "name": "Time is deterministic",
-      "max_score": 8,
-      "description": "Retry or delay coverage uses TestClock and does not wait on real wall-clock sleeps"
-    },
-    {
-      "name": "Layer setup is explicit",
-      "max_score": 7,
-      "description": "Tests use layer(...) or isolated Layer setup at the test boundary instead of repeated local Effect.provide calls"
-    },
-    {
-      "name": "Typed failures are exercised",
-      "max_score": 7,
-      "description": "Tests assert an expected typed failure classification and its recovery or surfaced diagnostic"
-    },
-    {
-      "name": "Scoped cleanup is proved",
-      "max_score": 9,
-      "description": "A test interrupts or fails a scoped resource and proves its finalizer ran"
-    },
-    {
-      "name": "Real runtime smoke exists",
-      "max_score": 9,
-      "description": "A smoke command starts the production Layer graph through a real process and checks a machine-readable ready signal"
-    },
-    {
-      "name": "Invalid configuration fails usefully",
-      "max_score": 7,
-      "description": "The smoke proof includes invalid configuration, non-zero process exit, actionable field context, and no secret value disclosure"
+      "name": "Runtime success and failure are exercised",
+      "max_score": 15,
+      "description": "A real-process smoke check starts the production runtime, observes readiness, and confirms invalid configuration exits non-zero with actionable redacted output"
     },
     {
       "name": "Canonical gate and CI agree",
-      "max_score": 8,
-      "description": "One canonical verify command runs typecheck, Effect-native tests, and runtime smoke, and CI reuses that command"
+      "max_score": 10,
+      "description": "One canonical verify command runs typecheck, tests, and runtime smoke, and CI reuses that command"
     },
     {
       "name": "Proof boundaries are honest",
       "max_score": 5,
-      "description": "effect-readiness.md distinguishes in-memory Layer tests from real adapter or process evidence and records remaining gaps"
+      "description": "effect-readiness.md records the exercised guidance, bootstrap, and runtime proof plus any remaining gaps"
     }
   ]
 }
