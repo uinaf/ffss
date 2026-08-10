@@ -1,6 +1,6 @@
 {
   "name": "uinaf/agent-readiness",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Audit and improve repository and runner infrastructure for dependable autonomous implementation, QA, and unattended task execution. Covers reproducible bootstrap, noninteractive machine identities, real-surface verification, artifacts, CI, observability, isolation, recovery, and result submission. Use when making a repo agent-ready, agents cannot boot or verify, setup still needs a human, credentials or worktrees block automation, AGENTS.md lacks a cold-start path, runner setup is broken, automation still needs babysitting, or a devbox/orchestrator must finish tasks unsupervised. Do not use for reviewing an existing diff or documentation-only cleanup.",
   "private": false,
   "skills": [
