@@ -129,6 +129,11 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 	if model == "" {
 		model = DefaultCodexModel
 	}
+	resolvedExecution := Execution{
+		Provider:  protocol.Provider{Name: protocol.ProviderCodex, Model: model, Version: version},
+		Isolation: request.Config.Isolation.Value,
+		WebAccess: request.Config.WebAccess.Value,
+	}
 	arguments := codexArguments(request.Config, runtime.Workspace, schemaPath, outputPath, model)
 	process, processErr := runProcess(reviewContext, processSpec{
 		Path:        executable,
@@ -145,47 +150,46 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
-		return Result{}, processFailure("Codex review", class, processErr, process, runtime.Environment(), &attempt, strictCredentialRecovery(request.Config, protocol.ProviderCodex))
+		return Result{}, processFailure("Codex review", class, processErr, process, runtime.Environment(), &attempt, strictCredentialRecovery(request.Config, protocol.ProviderCodex)).withExecution(resolvedExecution)
 	}
 	message, err := decodeCodexEnvelope(process.Stdout)
 	if err != nil {
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
-		return Result{}, invalidProviderOutput("Codex", "event envelope", runtime.Environment(), &attempt)
+		return Result{}, invalidProviderOutput("Codex", "event envelope", protocol.ProtocolReasonInvalidEnvelope, runtime.Environment(), &attempt).withExecution(resolvedExecution)
 	}
 	output, err := readProviderResult(outputFile)
 	if err != nil {
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
-		return Result{}, newFailure(class, fmt.Sprintf("read Codex result: %v", err), runtime.Environment(), &attempt)
+		failure := newFailure(class, fmt.Sprintf("read Codex result: %v", err), runtime.Environment(), &attempt)
+		return Result{}, failure.withExecution(resolvedExecution)
 	}
 	if !bytes.Equal(bytes.TrimSpace(output), bytes.TrimSpace([]byte(message))) {
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
-		return Result{}, newFailure(class, "Codex envelope and last-message output disagree", runtime.Environment(), &attempt)
+		failure := newFailure(class, "Codex envelope and last-message output disagree", runtime.Environment(), &attempt)
+		failure.Reason = protocol.ProtocolReasonInvalidEnvelope
+		return Result{}, failure.withExecution(resolvedExecution)
 	}
 	review, err := protocol.DecodeReview(output)
 	if err != nil {
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
-		return Result{}, invalidProviderOutput("Codex", "review document", runtime.Environment(), &attempt)
+		return Result{}, invalidProviderOutput("Codex", "review document", reviewDocumentReason(output), runtime.Environment(), &attempt).withExecution(resolvedExecution)
 	}
 	attempt.Outcome = protocol.AttemptValid
 	return Result{
-		Review: review,
-		Provider: protocol.Provider{
-			Name:    protocol.ProviderCodex,
-			Model:   model,
-			Version: version,
-		},
+		Review:    review,
+		Provider:  resolvedExecution.Provider,
 		Attempt:   attempt,
 		Duration:  time.Since(started),
-		Isolation: request.Config.Isolation.Value,
-		WebAccess: request.Config.WebAccess.Value,
+		Isolation: resolvedExecution.Isolation,
+		WebAccess: resolvedExecution.WebAccess,
 		ProtocolRecovery: protocol.ProtocolRecovery{
 			Applied: false,
 		},
@@ -460,6 +464,8 @@ func newFailure(class protocol.FailureClass, message string, environment []strin
 	return &Error{Class: class, Message: sanitizeDiagnostic(message, environment), Attempt: attempt}
 }
 
-func invalidProviderOutput(name, phase string, environment []string, attempt *protocol.Attempt) *Error {
-	return newFailure(protocol.FailureProtocol, fmt.Sprintf("%s returned an invalid %s; retry or inspect the provider CLI directly for private diagnostics", name, phase), environment, attempt)
+func invalidProviderOutput(name, phase string, reason protocol.ProtocolReason, environment []string, attempt *protocol.Attempt) *Error {
+	failure := newFailure(protocol.FailureProtocol, fmt.Sprintf("%s returned an invalid %s (%s); retry or inspect the provider CLI directly for private diagnostics", name, phase, reason), environment, attempt)
+	failure.Reason = reason
+	return failure
 }

@@ -84,8 +84,8 @@ func TestReviewCommandRetriesOnlyProtocolFailures(t *testing.T) {
 	if exit != 0 {
 		t.Fatalf("run() exit = %d, stderr = %s, stdout = %s", exit, stderr.String(), stdout.String())
 	}
-	var result protocol.Report
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+	result, err := protocol.DecodeReport(stdout.Bytes())
+	if err != nil {
 		t.Fatal(err)
 	}
 	if len(reviewer.prompts) != 2 || len(result.Metadata.Attempts) != 2 || result.Metadata.Attempts[0].Outcome != protocol.AttemptMalformed {
@@ -121,6 +121,9 @@ func TestReviewCommandClassifiesPlainReviewerError(t *testing.T) {
 	if result.Failure == nil || result.Failure.Class != protocol.FailureProvider || len(result.Metadata.Attempts) != 1 || result.Metadata.Attempts[0].Outcome != protocol.AttemptFailed {
 		t.Fatalf("result=%+v", result)
 	}
+	if result.Metadata.Provider != nil || result.Metadata.Isolation != nil || result.Metadata.WebAccess || result.Metadata.ProtocolRecovery.Applied {
+		t.Fatalf("unresolved execution metadata = %+v", result.Metadata)
+	}
 }
 
 func TestReviewCommandRejectsInvalidFindingBoundaries(t *testing.T) {
@@ -136,12 +139,137 @@ func TestReviewCommandRejectsInvalidFindingBoundaries(t *testing.T) {
 	if exit != 2 || len(reviewer.prompts) != 2 {
 		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
 	}
+	retry := strings.TrimPrefix(reviewer.prompts[1], reviewer.prompts[0])
+	if !strings.Contains(retry, "Correction category: finding_location") || !strings.Contains(retry, "must cite a reviewed file") {
+		t.Fatalf("retry guidance = %q", retry)
+	}
 	var result protocol.Report
 	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result.Failure == nil || result.Failure.Class != protocol.FailureProtocol || len(result.Metadata.Attempts) != 2 {
+	if result.Failure == nil || result.Failure.Class != protocol.FailureProtocol || !strings.Contains(result.Failure.Message, string(protocol.ProtocolReasonFindingLocation)) || len(result.Metadata.Attempts) != 2 {
 		t.Fatalf("result = %+v", result)
+	}
+}
+
+func TestReviewCommandRecoversDiscontiguousFindingLocation(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepositoryWithDiscontiguousRanges(t)
+	invalid := cleanResult()
+	invalid.Review.Findings = []protocol.Finding{finding("cross-hunk location", 0.9)}
+	invalid.Review.Findings[0].Location.StartLine = 10
+	invalid.Review.Findings[0].Location.EndLine = 50
+	valid := cleanResult()
+	valid.Review.Findings = []protocol.Finding{finding("narrowed location", 0.9)}
+	valid.Review.Findings[0].Location.StartLine = 30
+	valid.Review.Findings[0].Location.EndLine = 30
+	reviewer := &scriptedReviewer{results: []reviewStep{{result: invalid}, {result: valid}}}
+	var stdout bytes.Buffer
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+	if exit != 1 || len(reviewer.prompts) != 2 {
+		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
+	}
+	if !strings.HasPrefix(reviewer.prompts[1], reviewer.prompts[0]) {
+		t.Fatalf("retry did not preserve frozen prompt")
+	}
+	retry := strings.TrimPrefix(reviewer.prompts[1], reviewer.prompts[0])
+	if !strings.Contains(retry, "Correction category: finding_location") || !strings.Contains(retry, "one individual line_ranges entry") || !strings.Contains(retry, "split it into findings") {
+		t.Fatalf("retry guidance = %q", retry)
+	}
+	var result protocol.Report
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != protocol.StatusFindings || len(result.Metadata.Attempts) != 2 || result.Metadata.Attempts[0].Outcome != protocol.AttemptMalformed || result.Metadata.Attempts[1].Outcome != protocol.AttemptValid {
+		t.Fatalf("result = %+v", result)
+	}
+}
+
+func TestReviewCommandRetriesMetadataMismatchWithGenericCorrection(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepository(t)
+	mismatched := cleanResult()
+	mismatched.Provider.Name = protocol.ProviderClaude
+	reviewer := &scriptedReviewer{results: []reviewStep{{result: mismatched}, {result: cleanResult()}}}
+	var stdout bytes.Buffer
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+	if exit != 0 || len(reviewer.prompts) != 2 {
+		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
+	}
+	retry := strings.TrimPrefix(reviewer.prompts[1], reviewer.prompts[0])
+	if !strings.Contains(retry, "Correction category: metadata_mismatch") || !strings.Contains(retry, "Return exactly one review object matching the supplied schema") || strings.Contains(retry, "provider execution metadata") {
+		t.Fatalf("retry guidance = %q", retry)
+	}
+}
+
+func TestReviewCommandPreservesExecutionMetadataAfterProtocolRetryExhausts(t *testing.T) {
+	t.Parallel()
+
+	execution := &provider.Execution{
+		Provider:  protocol.Provider{Name: protocol.ProviderCursor, Model: "cursor-grok-4.5-high-fast", Version: "2026.08.04-aaa8809"},
+		Isolation: protocol.IsolationNative,
+		WebAccess: true,
+	}
+	reviewer := &scriptedReviewer{results: []reviewStep{{err: cursorProtocolError(execution, protocol.ProtocolReasonMultipleDocuments)}, {err: cursorProtocolError(execution, protocol.ProtocolReasonMultipleDocuments)}}}
+	var stdout bytes.Buffer
+	exit := run(t.Context(), []string{"review", "--repository", reviewRepository(t), "--mode", "local", "--engine", "cursor", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+	if exit != 2 || len(reviewer.prompts) != 2 {
+		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
+	}
+	retry := strings.TrimPrefix(reviewer.prompts[1], reviewer.prompts[0])
+	if !strings.Contains(retry, "Correction category: multiple_documents") || !strings.Contains(retry, "exactly one review object") {
+		t.Fatalf("retry guidance = %q", retry)
+	}
+	result, err := protocol.DecodeReport(stdout.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Failure == nil || !strings.Contains(result.Failure.Message, string(protocol.ProtocolReasonMultipleDocuments)) || result.Metadata.Provider == nil || *result.Metadata.Provider != execution.Provider || result.Metadata.Isolation == nil || *result.Metadata.Isolation != execution.Isolation || !result.Metadata.WebAccess {
+		t.Fatalf("result = %+v", result)
+	}
+}
+
+func TestReviewCommandPreservesRecoveryAcrossProtocolRetry(t *testing.T) {
+	t.Parallel()
+
+	strategy := protocol.RecoveryCursorTrailingObject
+	recovered := cleanResult()
+	recovered.Provider = protocol.Provider{Name: protocol.ProviderCursor, Model: "cursor-grok-4.5-high-fast", Version: "2026.08.04-aaa8809"}
+	recovered.WebAccess = true
+	recovered.ProtocolRecovery = protocol.ProtocolRecovery{Applied: true, Strategy: &strategy}
+	recovered.Review.Findings = []protocol.Finding{finding("outside target", 0.9)}
+	recovered.Review.Findings[0].Location.FilePath = "other.go"
+	execution := &provider.Execution{
+		Provider:  recovered.Provider,
+		Isolation: recovered.Isolation,
+		WebAccess: recovered.WebAccess,
+	}
+	unrecovered := recovered
+	unrecovered.ProtocolRecovery = protocol.ProtocolRecovery{}
+	for _, test := range []struct {
+		name  string
+		retry reviewStep
+	}{
+		{name: "provider error", retry: reviewStep{err: cursorProtocolError(execution, protocol.ProtocolReasonMultipleDocuments)}},
+		{name: "invalid result", retry: reviewStep{result: unrecovered}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			reviewer := &scriptedReviewer{results: []reviewStep{{result: recovered}, test.retry}}
+			var stdout bytes.Buffer
+			exit := run(t.Context(), []string{"review", "--repository", reviewRepository(t), "--mode", "local", "--engine", "cursor", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+			if exit != 2 {
+				t.Fatalf("run() exit = %d, output = %s", exit, stdout.String())
+			}
+			result, err := protocol.DecodeReport(stdout.Bytes())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !result.Metadata.ProtocolRecovery.Applied || result.Metadata.ProtocolRecovery.Strategy == nil || *result.Metadata.ProtocolRecovery.Strategy != strategy {
+				t.Fatalf("protocol recovery = %+v", result.Metadata.ProtocolRecovery)
+			}
+		})
 	}
 }
 
@@ -761,6 +889,17 @@ func providerError(class protocol.FailureClass, outcome protocol.AttemptOutcome)
 	}
 }
 
+func cursorProtocolError(execution *provider.Execution, reason protocol.ProtocolReason) error {
+	class := protocol.FailureProtocol
+	return &provider.Error{
+		Class:     class,
+		Message:   "Cursor returned an invalid review document (" + string(reason) + ")",
+		Attempt:   &protocol.Attempt{Number: 1, Outcome: protocol.AttemptMalformed, DurationMS: 1, ErrorClass: &class},
+		Reason:    reason,
+		Execution: execution,
+	}
+}
+
 func reviewDependencies(t *testing.T, scanner target.Scanner, reviewer provider.Reviewer) dependencies {
 	t.Helper()
 	xdg := t.TempDir()
@@ -791,6 +930,28 @@ func reviewRepository(t *testing.T) string {
 	gitCommand(t, repository, "add", "app.go", "CONTEXT.md")
 	gitCommand(t, repository, "-c", "user.name=Autoreview Test", "-c", "user.email=test@example.invalid", "commit", "-q", "-m", "initial")
 	if err := os.WriteFile(filepath.Join(repository, "app.go"), []byte("new application content\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return repository
+}
+
+func reviewRepositoryWithDiscontiguousRanges(t *testing.T) string {
+	t.Helper()
+	repository := cliRepository(t)
+	lines := make([]string, 60)
+	for index := range lines {
+		lines[index] = "unchanged line"
+	}
+	path := filepath.Join(repository, "app.go")
+	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitCommand(t, repository, "add", "app.go")
+	gitCommand(t, repository, "-c", "user.name=Autoreview Test", "-c", "user.email=test@example.invalid", "commit", "-q", "-m", "initial")
+	for _, line := range []int{10, 30, 50} {
+		lines[line-1] = "changed line"
+	}
+	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return repository

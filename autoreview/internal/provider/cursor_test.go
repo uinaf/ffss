@@ -48,6 +48,7 @@ func TestCursorReviewStrictUsesAPIKeyWithoutStatusAndDenyConfig(t *testing.T) {
 		!strings.HasPrefix(prompt, bundle) ||
 		prompt[len(bundle):] != reviewProtocol ||
 		!strings.HasPrefix(reviewProtocol, "\nAUTOREVIEW-TRUSTED-REVIEW-PROTOCOL-V1\n") ||
+		!strings.Contains(reviewProtocol, "must cite a reviewed file") ||
 		!strings.Contains(reviewProtocol, schemaBoundary) ||
 		!strings.HasSuffix(reviewProtocol, "Return only the review JSON object now.\n") {
 		t.Fatalf("provider stdin omitted trusted review protocol: input bytes=%d, bundle bytes=%d, protocol bytes=%d", len(prompt), len(bundle), len(reviewProtocol))
@@ -236,6 +237,44 @@ func TestCursorReviewRecordsTrailingObjectRecovery(t *testing.T) {
 	}
 	if !result.ProtocolRecovery.Applied || result.ProtocolRecovery.Strategy == nil || *result.ProtocolRecovery.Strategy != protocol.RecoveryCursorTrailingObject {
 		t.Fatalf("protocol recovery = %+v", result.ProtocolRecovery)
+	}
+}
+
+func TestCursorReviewClassifiesMalformedDocuments(t *testing.T) {
+	t.Parallel()
+
+	valid := `{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`
+	fencedBody := "{\"findings\":[{\"title\":\"Example\",\"body\":\"Use ```go code``` here.\",\"priority\":\"P3\",\"confidence\":0.5,\"category\":\"maintainability\",\"location\":{\"file_path\":\"main.go\",\"start_line\":1,\"end_line\":1}}],\"overall_explanation\":\"One maintainability finding.\",\"overall_confidence\":0.8}"
+	for _, test := range []struct {
+		name   string
+		input  string
+		reason protocol.ProtocolReason
+	}{
+		{name: "invalid JSON", input: "not-json", reason: protocol.ProtocolReasonInvalidJSON},
+		{name: "non-object JSON", input: `[]`, reason: protocol.ProtocolReasonInvalidDocumentShape},
+		{name: "array-wrapped object", input: `[` + valid + `]`, reason: protocol.ProtocolReasonInvalidDocumentShape},
+		{name: "fenced object", input: "```json\n" + valid + "\n```", reason: protocol.ProtocolReasonFencedOutput},
+		{name: "prose-prefixed fenced object", input: "Here is the review:\n```json\n" + valid + "\n```", reason: protocol.ProtocolReasonFencedOutput},
+		{name: "multiple objects", input: valid + ` {}`, reason: protocol.ProtocolReasonMultipleDocuments},
+		{name: "suffix prose", input: valid + " trailing", reason: protocol.ProtocolReasonSuffixContent},
+		{name: "schema mismatch", input: `{"findings":[]}`, reason: protocol.ProtocolReasonSchemaMismatch},
+		{name: "JSON prefix", input: `"prefix" ` + valid, reason: protocol.ProtocolReasonMultipleDocuments},
+		{name: "fenced string with suffix prose", input: fencedBody + " trailing", reason: protocol.ProtocolReasonSuffixContent},
+		{name: "fenced string with second object", input: fencedBody + ` {}`, reason: protocol.ProtocolReasonMultipleDocuments},
+		{name: "truncated JSON with fenced string", input: "{\"findings\":\"```\"", reason: protocol.ProtocolReasonInvalidJSON},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fake := newFakeCursor(t, fakeCursorOptions{output: cursorEnvelope(test.input)})
+			reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+			failure := assertProviderError(t, err, protocol.FailureProtocol)
+			if failure.Reason != test.reason || !strings.Contains(failure.Message, string(test.reason)) {
+				t.Fatalf("protocol failure = %+v, want reason %q", failure, test.reason)
+			}
+			if failure.Execution == nil || failure.Execution.Provider.Name != protocol.ProviderCursor || failure.Execution.Provider.Model != "test-model" || failure.Execution.Provider.Version != "2026.07.23-e383d2b" || failure.Execution.Isolation != protocol.IsolationStrict || !failure.Execution.WebAccess {
+				t.Fatalf("execution metadata = %+v", failure.Execution)
+			}
+		})
 	}
 }
 

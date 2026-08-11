@@ -217,6 +217,7 @@ func TestGrokReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 			if failure.Attempt == nil || failure.Attempt.Outcome != expectedOutcome {
 				t.Fatalf("attempt = %+v", failure.Attempt)
 			}
+			assertExecutionMetadata(t, failure, protocol.ProviderGrok, "0.2.118", protocol.IsolationStrict, false)
 			if test.wantMessage != "" && !strings.Contains(failure.Message, test.wantMessage) {
 				t.Fatalf("failure message = %q, want %q", failure.Message, test.wantMessage)
 			}
@@ -268,6 +269,7 @@ func TestGrokReviewEnforcesOutputBounds(t *testing.T) {
 	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 		t.Fatalf("attempt = %+v", failure.Attempt)
 	}
+	assertExecutionMetadata(t, failure, protocol.ProviderGrok, "0.2.118", protocol.IsolationStrict, false)
 }
 
 func TestGrokReviewUsesExplicitDefaultModel(t *testing.T) {

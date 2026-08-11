@@ -108,6 +108,11 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 	if model == "" {
 		model = DefaultCursorModel
 	}
+	resolvedExecution := Execution{
+		Provider:  protocol.Provider{Name: protocol.ProviderCursor, Model: model, Version: version},
+		Isolation: request.Config.Isolation.Value,
+		WebAccess: request.Config.WebAccess.Value,
+	}
 	process, processErr := runProcess(reviewContext, processSpec{
 		Path:        executable,
 		Arguments:   cursorArguments(request.Config, runtime.Workspace, model),
@@ -123,21 +128,21 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
-		return Result{}, processFailure("Cursor review", class, processErr, process, environment, &attempt, strictCredentialRecovery(request.Config, protocol.ProviderCursor))
+		return Result{}, processFailure("Cursor review", class, processErr, process, environment, &attempt, strictCredentialRecovery(request.Config, protocol.ProviderCursor)).withExecution(resolvedExecution)
 	}
 	inner, err := decodeCursorEnvelope(process.Stdout)
 	if err != nil {
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
-		return Result{}, invalidProviderOutput("Cursor", "result envelope", environment, &attempt)
+		return Result{}, invalidProviderOutput("Cursor", "result envelope", protocol.ProtocolReasonInvalidEnvelope, environment, &attempt).withExecution(resolvedExecution)
 	}
 	review, recovered, err := decodeCursorReview(inner)
 	if err != nil {
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
-		return Result{}, invalidProviderOutput("Cursor", "review document", environment, &attempt)
+		return Result{}, invalidProviderOutput("Cursor", "review document", cursorReviewReason(inner), environment, &attempt).withExecution(resolvedExecution)
 	}
 	attempt.Outcome = protocol.AttemptValid
 	recovery := protocol.ProtocolRecovery{Applied: recovered}
@@ -146,16 +151,12 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 		recovery.Strategy = &strategy
 	}
 	return Result{
-		Review: review,
-		Provider: protocol.Provider{
-			Name:    protocol.ProviderCursor,
-			Model:   model,
-			Version: version,
-		},
+		Review:           review,
+		Provider:         resolvedExecution.Provider,
 		Attempt:          attempt,
 		Duration:         time.Since(started),
-		Isolation:        request.Config.Isolation.Value,
-		WebAccess:        request.Config.WebAccess.Value,
+		Isolation:        resolvedExecution.Isolation,
+		WebAccess:        resolvedExecution.WebAccess,
 		ProtocolRecovery: recovery,
 	}, nil
 }
@@ -323,6 +324,36 @@ func decodeCursorReview(inner string) (protocol.Review, bool, error) {
 		return protocol.Review{}, false, fmt.Errorf("trailing object recovery failed: %w", err)
 	}
 	return recovered, true, nil
+}
+
+func cursorReviewReason(inner string) protocol.ProtocolReason {
+	trimmed := strings.TrimSpace(inner)
+	reason := reviewDocumentReason([]byte(trimmed))
+	switch reason {
+	case protocol.ProtocolReasonMultipleDocuments, protocol.ProtocolReasonSuffixContent, protocol.ProtocolReasonSchemaMismatch:
+		return reason
+	}
+	objectStart := strings.IndexByte(trimmed, '{')
+	if objectStart <= 0 {
+		if reason == protocol.ProtocolReasonInvalidJSON && strings.HasPrefix(trimmed, "```") {
+			return protocol.ProtocolReasonFencedOutput
+		}
+		return reason
+	}
+	prefix := strings.TrimSpace(trimmed[:objectStart])
+	if startsWithJSONValue(prefix) {
+		return protocol.ProtocolReasonMultipleDocuments
+	}
+	if strings.ContainsRune(prefix, '}') {
+		return protocol.ProtocolReasonInvalidDocumentShape
+	}
+	if strings.Contains(prefix, "```") {
+		return protocol.ProtocolReasonFencedOutput
+	}
+	if reason == protocol.ProtocolReasonInvalidDocumentShape {
+		return reason
+	}
+	return reviewDocumentReason([]byte(strings.TrimSpace(trimmed[objectStart:])))
 }
 
 func startsWithJSONValue(text string) bool {

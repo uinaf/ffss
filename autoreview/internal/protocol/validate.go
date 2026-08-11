@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"path"
@@ -10,6 +11,19 @@ import (
 )
 
 const minimumCleanConfidence = 0.5
+
+type findingLocationError struct {
+	message string
+}
+
+func (failure *findingLocationError) Error() string {
+	return failure.message
+}
+
+func IsFindingLocationError(err error) bool {
+	var failure *findingLocationError
+	return errors.As(err, &failure)
+}
 
 func (report Report) Validate() error {
 	if report.SchemaVersion != SchemaVersion {
@@ -267,7 +281,7 @@ func validateFindingBoundaries(findings []Finding, files []ReviewedFile) error {
 	for index, finding := range findings {
 		ranges, ok := byPath[finding.Location.FilePath]
 		if !ok {
-			return fmt.Errorf("finding %d references unreviewed file %q", index, finding.Location.FilePath)
+			return &findingLocationError{message: fmt.Sprintf("finding %d references unreviewed file %q", index, finding.Location.FilePath)}
 		}
 		inside := false
 		for _, lineRange := range ranges {
@@ -277,7 +291,7 @@ func validateFindingBoundaries(findings []Finding, files []ReviewedFile) error {
 			}
 		}
 		if !inside {
-			return fmt.Errorf("finding %d references unreviewed lines %s:%d-%d", index, finding.Location.FilePath, finding.Location.StartLine, finding.Location.EndLine)
+			return &findingLocationError{message: fmt.Sprintf("finding %d references unreviewed lines %s:%d-%d", index, finding.Location.FilePath, finding.Location.StartLine, finding.Location.EndLine)}
 		}
 	}
 	return nil

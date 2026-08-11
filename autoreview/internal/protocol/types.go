@@ -83,6 +83,21 @@ const (
 	FailureInternal      FailureClass = "internal"
 )
 
+type ProtocolReason string
+
+const (
+	ProtocolReasonInvalidEnvelope      ProtocolReason = "invalid_envelope"
+	ProtocolReasonInvalidJSON          ProtocolReason = "invalid_json"
+	ProtocolReasonInvalidDocumentShape ProtocolReason = "invalid_document_shape"
+	ProtocolReasonFencedOutput         ProtocolReason = "fenced_output"
+	ProtocolReasonMultipleDocuments    ProtocolReason = "multiple_documents"
+	ProtocolReasonSuffixContent        ProtocolReason = "suffix_content"
+	ProtocolReasonSchemaMismatch       ProtocolReason = "schema_mismatch"
+	ProtocolReasonFindingLocation      ProtocolReason = "finding_location"
+	ProtocolReasonMetadataMismatch     ProtocolReason = "metadata_mismatch"
+	ProtocolReasonReviewValidation     ProtocolReason = "review_validation"
+)
+
 type RecoveryStrategy string
 
 const (

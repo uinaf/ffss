@@ -56,7 +56,10 @@ confidence is below `0.5`.
 
 A successful report identifies the frozen target, provider, model, provider
 version, isolation mode, web-access state, attempts, total duration, and any
-protocol recovery.
+protocol recovery. Once provider execution metadata has been resolved, a
+failure report preserves the same provider, model, version, isolation, and
+web-access values plus any applicable protocol recovery. Failures before that
+boundary leave the nullable provider and isolation fields unset.
 
 Target modes are `local`, `branch`, and `commit`. The target carries a snapshot
 hash plus the exact reviewed files and inclusive line ranges. A provider cannot
@@ -93,7 +96,11 @@ Failure classes are:
 - `source_changed`
 - `internal`
 
-Failure messages are sanitized diagnostics, not raw provider output.
+Failure messages are sanitized diagnostics, not raw provider output. Protocol
+failures include a stable correction category such as `finding_location`,
+`multiple_documents`, or `schema_mismatch` when the malformed response can be
+classified without exposing its contents. A configured protocol retry receives
+category-specific trusted guidance against the same frozen target.
 
 ## Compatibility
 

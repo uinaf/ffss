@@ -60,14 +60,28 @@ type Result struct {
 	ProtocolRecovery protocol.ProtocolRecovery
 }
 
+type Execution struct {
+	Provider         protocol.Provider
+	Isolation        protocol.Isolation
+	WebAccess        bool
+	ProtocolRecovery protocol.ProtocolRecovery
+}
+
 type Reviewer interface {
 	Review(context.Context, Request) (Result, error)
 }
 
 type Error struct {
-	Class   protocol.FailureClass
-	Message string
-	Attempt *protocol.Attempt
+	Class     protocol.FailureClass
+	Message   string
+	Attempt   *protocol.Attempt
+	Reason    protocol.ProtocolReason
+	Execution *Execution
+}
+
+func (failure *Error) withExecution(execution Execution) *Error {
+	failure.Execution = &execution
+	return failure
 }
 
 func strictCredentialFailure(effective config.Effective, provider protocol.ProviderName, environment []string) *Error {

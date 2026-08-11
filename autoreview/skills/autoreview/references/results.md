@@ -25,11 +25,20 @@ a clean review.
 Autoreview performs at most one configured retry, only for a malformed protocol
 response, using the same frozen bundle and provider. Authentication,
 capability, timeout, cancellation, and provider failures are not retried.
+When the malformed response can be classified safely, the retry receives a
+rule-specific correction without provider output or repository content. Every
+finding location must fit within one individual reviewed line range; a concern
+that spans discontiguous hunks must be narrowed or split.
 
 Cursor first requires one canonical review object. Its only recovery accepts
 plain prose followed by exactly one canonical trailing object. Fences,
 ambiguous braces, JSON-value prefixes, multiple objects, and suffix prose fail
 closed. Successful local recovery is recorded as `cursor_trailing_object`.
+
+After provider execution metadata is resolved, operational failures preserve
+the provider, model, harness version, isolation mode, and effective web-access
+state plus any applicable protocol recovery in the canonical report. Earlier
+failures keep nullable metadata unset.
 
 After any provider return, autoreview recollects the target. A changed snapshot
 produces `source_changed`; discard the findings and rerun from a new freeze.

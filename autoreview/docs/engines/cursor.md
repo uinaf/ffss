@@ -36,7 +36,10 @@ that fails, the only recovery accepts non-JSON prose followed by one complete
 canonical object that consumes the remaining suffix. Fences, ambiguous braces,
 JSON-value prefixes, malformed or multiple objects, suffix prose, and
 non-canonical reviews fail closed. Successful recovery is recorded as
-`cursor_trailing_object`.
+`cursor_trailing_object`. Rejected documents receive a sanitized category such
+as invalid JSON, invalid document shape, multiple documents, suffix content,
+fenced output, or schema mismatch. The one shared retry converts that category
+into trusted correction guidance without echoing provider output.
 
 ## Verify
 

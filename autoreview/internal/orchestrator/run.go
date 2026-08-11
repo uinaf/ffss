@@ -15,7 +15,7 @@ import (
 	"github.com/uinaf/autoreview/internal/target"
 )
 
-const retryInstruction = "\nAUTOREVIEW-TRUSTED-PROTOCOL-RETRY-V1\nThe previous response did not satisfy the required review protocol. Return exactly one review object matching the supplied schema. Do not add prose, fences, or findings outside the frozen target boundaries.\n"
+const retryHeader = "\nAUTOREVIEW-TRUSTED-PROTOCOL-RETRY-V1\nThe previous response did not satisfy the required review protocol. "
 
 type ReviewerFactory func(protocol.ProviderName, string) provider.Reviewer
 
@@ -29,8 +29,37 @@ type Options struct {
 	Now         func() time.Time
 }
 
+func protocolRetryInstruction(reason protocol.ProtocolReason) string {
+	correction := "Return exactly one review object matching the supplied schema."
+	category := string(reason)
+	if category == "" {
+		category = "unspecified"
+	}
+	switch reason {
+	case protocol.ProtocolReasonFindingLocation:
+		correction = "Every finding must cite a reviewed file from TRUSTED-TARGET-IDENTITY, and its start_line and end_line must fit entirely within one individual line_ranges entry for that file. Narrow a cross-hunk concern to the smallest single reviewed range that establishes it, or split it into findings whose locations each fit one range."
+	case protocol.ProtocolReasonInvalidJSON:
+		correction = "Return one syntactically valid JSON object matching the supplied schema."
+	case protocol.ProtocolReasonInvalidDocumentShape:
+		correction = "Return a JSON object, not an array, scalar, or prose response."
+	case protocol.ProtocolReasonFencedOutput:
+		correction = "Return the review object without Markdown fences."
+	case protocol.ProtocolReasonMultipleDocuments:
+		correction = "Return exactly one review object, not multiple JSON values or documents."
+	case protocol.ProtocolReasonSuffixContent:
+		correction = "End the response immediately after the single review object; do not append prose or another value."
+	case protocol.ProtocolReasonSchemaMismatch:
+		correction = "Return every required review field with the exact names and value types from the supplied schema, with no unknown fields."
+	case protocol.ProtocolReasonInvalidEnvelope:
+		correction = "Return exactly one review object as the complete final response so the provider can produce one successful result envelope."
+	case protocol.ProtocolReasonReviewValidation:
+		correction = "Return one review object whose values satisfy every semantic constraint in the supplied schema and frozen target."
+	}
+	return retryHeader + "Correction category: " + category + ". " + correction + " Do not include repository content, prose, or fences outside the review object.\n"
+}
+
 func Failure(class protocol.FailureClass, err error) protocol.Report {
-	return failureReport(class, safeMessage(err), nil, []protocol.Attempt{}, 0)
+	return failureReport(class, safeMessage(err), nil, []protocol.Attempt{}, 0, nil)
 }
 
 func Run(ctx context.Context, options Options) protocol.Report {
@@ -39,12 +68,14 @@ func Run(ctx context.Context, options Options) protocol.Report {
 		now = time.Now
 	}
 	started := now()
+	var resolvedExecution *provider.Execution
+	var retryReason protocol.ProtocolReason
 	progress := options.Progress
 	if progress == nil {
 		progress = func(string) {}
 	}
 	failure := func(class protocol.FailureClass, err error, reviewedTarget *protocol.Target, attempts []protocol.Attempt) protocol.Report {
-		return failureReport(class, safeMessage(err), reviewedTarget, attempts, elapsedMilliseconds(started, now()))
+		return failureReport(class, safeMessage(err), reviewedTarget, attempts, elapsedMilliseconds(started, now()), resolvedExecution)
 	}
 
 	if options.Collector == nil {
@@ -73,7 +104,7 @@ func Run(ctx context.Context, options Options) protocol.Report {
 			progress("reviewing with " + string(options.Config.Engine.Value))
 		} else {
 			progress("retrying malformed provider response")
-			trustedSuffix = retryInstruction
+			trustedSuffix = protocolRetryInstruction(retryReason)
 		}
 
 		attemptStarted := now()
@@ -81,6 +112,11 @@ func Run(ctx context.Context, options Options) protocol.Report {
 		attemptDuration := elapsedMilliseconds(attemptStarted, now())
 
 		if reviewErr != nil {
+			reason, execution := providerFailureDetails(reviewErr)
+			if execution != nil {
+				merged := mergeExecution(resolvedExecution, *execution)
+				resolvedExecution = &merged
+			}
 			class, attempt := providerFailure(reviewErr, attemptNumber, attemptDuration)
 			if attempt != nil {
 				attempts = append(attempts, *attempt)
@@ -92,6 +128,7 @@ func Run(ctx context.Context, options Options) protocol.Report {
 				if attempt == nil {
 					attempts = append(attempts, malformedAttempt(attemptNumber, attemptDuration))
 				}
+				retryReason = reason
 				continue
 			}
 			return failure(class, reviewErr, &reviewedTarget, attempts)
@@ -99,23 +136,33 @@ func Run(ctx context.Context, options Options) protocol.Report {
 
 		attempt := normalizeAttempt(result.Attempt, attemptNumber, attemptDuration)
 		attempts = append(attempts, attempt)
+		metadataMatches := result.Provider.Name == options.Config.Engine.Value && result.Isolation == options.Config.Isolation.Value && result.WebAccess == options.Config.WebAccess.Value
+		if metadataMatches {
+			execution := mergeExecution(resolvedExecution, result.ResolvedExecution())
+			resolvedExecution = &execution
+		}
 		if unchangedErr := bundle.VerifyUnchanged(ctx); unchangedErr != nil {
 			return failure(classify(unchangedErr), unchangedErr, &reviewedTarget, attempts)
 		}
-		if result.Provider.Name != options.Config.Engine.Value || result.Isolation != options.Config.Isolation.Value || result.WebAccess != options.Config.WebAccess.Value {
+		if !metadataMatches {
 			attempts[len(attempts)-1] = malformedAttempt(attemptNumber, attempt.DurationMS)
+			retryReason = protocol.ProtocolReasonMetadataMismatch
 			if attemptNumber <= options.Config.Retries.Value {
 				continue
 			}
-			return failure(protocol.FailureProtocol, errors.New("provider result metadata does not match the configured engine capabilities"), &reviewedTarget, attempts)
+			return failure(protocol.FailureProtocol, fmt.Errorf("provider result metadata does not match the configured engine capabilities (%s)", retryReason), &reviewedTarget, attempts)
 		}
 		report := successReport(reviewedTarget, result, attempts, elapsedMilliseconds(started, now()))
 		if validateErr := report.Validate(); validateErr != nil {
 			attempts[len(attempts)-1] = malformedAttempt(attemptNumber, attempt.DurationMS)
+			retryReason = protocol.ProtocolReasonReviewValidation
+			if protocol.IsFindingLocationError(validateErr) {
+				retryReason = protocol.ProtocolReasonFindingLocation
+			}
 			if attemptNumber <= options.Config.Retries.Value {
 				continue
 			}
-			return failure(protocol.FailureProtocol, fmt.Errorf("provider result failed report validation: %w", validateErr), &reviewedTarget, attempts)
+			return failure(protocol.FailureProtocol, fmt.Errorf("provider result failed report validation (%s): %w", retryReason, validateErr), &reviewedTarget, attempts)
 		}
 		return report
 	}
@@ -146,8 +193,8 @@ func successReport(reviewedTarget protocol.Target, result provider.Result, attem
 	}
 }
 
-func failureReport(class protocol.FailureClass, message string, reviewedTarget *protocol.Target, attempts []protocol.Attempt, durationMS int64) protocol.Report {
-	return protocol.Report{
+func failureReport(class protocol.FailureClass, message string, reviewedTarget *protocol.Target, attempts []protocol.Attempt, durationMS int64, execution *provider.Execution) protocol.Report {
+	report := protocol.Report{
 		SchemaVersion: protocol.SchemaVersion,
 		Status:        protocol.StatusFailure,
 		Failure:       &protocol.Failure{Class: class, Message: message},
@@ -157,6 +204,30 @@ func failureReport(class protocol.FailureClass, message string, reviewedTarget *
 			DurationMS: durationMS,
 		},
 	}
+	if execution != nil {
+		providerMetadata := execution.Provider
+		isolation := execution.Isolation
+		report.Metadata.Provider = &providerMetadata
+		report.Metadata.Isolation = &isolation
+		report.Metadata.WebAccess = execution.WebAccess
+		report.Metadata.ProtocolRecovery = execution.ProtocolRecovery
+	}
+	return report
+}
+
+func providerFailureDetails(err error) (protocol.ProtocolReason, *provider.Execution) {
+	var failure *provider.Error
+	if !errors.As(err, &failure) {
+		return "", nil
+	}
+	return failure.Reason, failure.Execution
+}
+
+func mergeExecution(current *provider.Execution, next provider.Execution) provider.Execution {
+	if current != nil && current.ProtocolRecovery.Applied && !next.ProtocolRecovery.Applied {
+		next.ProtocolRecovery = current.ProtocolRecovery
+	}
+	return next
 }
 
 func providerFailure(err error, number int, durationMS int64) (protocol.FailureClass, *protocol.Attempt) {

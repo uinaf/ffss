@@ -122,6 +122,11 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 	if model == "" {
 		model = DefaultGrokModel
 	}
+	resolvedExecution := Execution{
+		Provider:  protocol.Provider{Name: protocol.ProviderGrok, Model: model, Version: version},
+		Isolation: request.Config.Isolation.Value,
+		WebAccess: request.Config.WebAccess.Value,
+	}
 	process, processErr := runProcess(reviewContext, processSpec{
 		Path:        executable,
 		Arguments:   grokArguments(request.Config, runtime.Workspace, promptPath, string(providerSchema), model),
@@ -136,7 +141,7 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
-		return Result{}, processFailure("Grok review", class, processErr, process, runtime.Environment(), &attempt, strictCredentialRecovery(request.Config, protocol.ProviderGrok))
+		return Result{}, processFailure("Grok review", class, processErr, process, runtime.Environment(), &attempt, strictCredentialRecovery(request.Config, protocol.ProviderGrok)).withExecution(resolvedExecution)
 	}
 	review, err := decodeGrokEnvelope(process.Stdout)
 	if err != nil {
@@ -148,22 +153,18 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		}
 		attempt.ErrorClass = &class
 		if class == protocol.FailureProvider {
-			return Result{}, newFailure(class, err.Error(), runtime.Environment(), &attempt)
+			return Result{}, newFailure(class, err.Error(), runtime.Environment(), &attempt).withExecution(resolvedExecution)
 		}
-		return Result{}, invalidProviderOutput("Grok", "result envelope", runtime.Environment(), &attempt)
+		return Result{}, invalidProviderOutput("Grok", "result envelope", protocol.ProtocolReasonInvalidEnvelope, runtime.Environment(), &attempt).withExecution(resolvedExecution)
 	}
 	attempt.Outcome = protocol.AttemptValid
 	return Result{
-		Review: review,
-		Provider: protocol.Provider{
-			Name:    protocol.ProviderGrok,
-			Model:   model,
-			Version: version,
-		},
+		Review:    review,
+		Provider:  resolvedExecution.Provider,
 		Attempt:   attempt,
 		Duration:  time.Since(started),
-		Isolation: request.Config.Isolation.Value,
-		WebAccess: request.Config.WebAccess.Value,
+		Isolation: resolvedExecution.Isolation,
+		WebAccess: resolvedExecution.WebAccess,
 		ProtocolRecovery: protocol.ProtocolRecovery{
 			Applied: false,
 		},

@@ -13,6 +13,7 @@ import (
 
 	"github.com/uinaf/autoreview/internal/config"
 	"github.com/uinaf/autoreview/internal/protocol"
+	"github.com/uinaf/autoreview/internal/reviewpolicy"
 	contractschema "github.com/uinaf/autoreview/schema"
 )
 
@@ -65,9 +66,10 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 		return Result{}, newFailure(protocol.FailureConfig, "provider prompt must be non-empty valid UTF-8", nil, nil)
 	}
 	maximumPrompt := request.Config.MaxBytes.Value + providerPromptAllowance
+	protocolBytes := int64(len(reviewpolicy.ClaudeReviewProtocol()))
 	promptBytes, validLength := request.promptBytes()
-	if !validLength || maximumPrompt < request.Config.MaxBytes.Value || promptBytes > maximumPrompt {
-		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("provider prompt exceeds %d bytes", maximumPrompt), nil, nil)
+	if !validLength || maximumPrompt < request.Config.MaxBytes.Value || protocolBytes > maximumPrompt || promptBytes > maximumPrompt-protocolBytes {
+		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("Claude combined review input exceeds %d bytes (bundle plus trusted policy)", maximumPrompt), nil, nil)
 	}
 	reviewContext, cancelReview := context.WithTimeout(ctx, time.Duration(request.Config.Timeout.Value))
 	defer cancelReview()
@@ -108,12 +110,17 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	if model == "" {
 		model = DefaultClaudeModel
 	}
+	resolvedExecution := Execution{
+		Provider:  protocol.Provider{Name: protocol.ProviderClaude, Model: model, Version: version},
+		Isolation: request.Config.Isolation.Value,
+		WebAccess: request.Config.WebAccess.Value,
+	}
 	process, processErr := runProcess(reviewContext, processSpec{
 		Path:        executable,
 		Arguments:   claudeArguments(request.Config, string(providerSchema), model),
 		Directory:   runtime.Workspace,
 		Environment: environment,
-		Input:       request.promptReader(""),
+		Input:       request.promptReader(reviewpolicy.ClaudeReviewProtocol()),
 		Timeout:     time.Duration(request.Config.Timeout.Value),
 		StdoutLimit: providerStdoutLimit,
 		StderrLimit: providerStderrLimit,
@@ -123,34 +130,30 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
-		return Result{}, processFailure("Claude review", class, processErr, process, environment, &attempt, strictCredentialRecovery(request.Config, protocol.ProviderClaude))
+		return Result{}, processFailure("Claude review", class, processErr, process, environment, &attempt, strictCredentialRecovery(request.Config, protocol.ProviderClaude)).withExecution(resolvedExecution)
 	}
 	reviewData, err := decodeClaudeEnvelope(process.Stdout)
 	if err != nil {
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
-		return Result{}, invalidProviderOutput("Claude", "result envelope", environment, &attempt)
+		return Result{}, invalidProviderOutput("Claude", "result envelope", protocol.ProtocolReasonInvalidEnvelope, environment, &attempt).withExecution(resolvedExecution)
 	}
 	review, err := protocol.DecodeReview(reviewData)
 	if err != nil {
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
-		return Result{}, invalidProviderOutput("Claude", "review document", environment, &attempt)
+		return Result{}, invalidProviderOutput("Claude", "review document", reviewDocumentReason(reviewData), environment, &attempt).withExecution(resolvedExecution)
 	}
 	attempt.Outcome = protocol.AttemptValid
 	return Result{
-		Review: review,
-		Provider: protocol.Provider{
-			Name:    protocol.ProviderClaude,
-			Model:   model,
-			Version: version,
-		},
+		Review:    review,
+		Provider:  resolvedExecution.Provider,
 		Attempt:   attempt,
 		Duration:  time.Since(started),
-		Isolation: request.Config.Isolation.Value,
-		WebAccess: request.Config.WebAccess.Value,
+		Isolation: resolvedExecution.Isolation,
+		WebAccess: resolvedExecution.WebAccess,
 		ProtocolRecovery: protocol.ProtocolRecovery{
 			Applied: false,
 		},

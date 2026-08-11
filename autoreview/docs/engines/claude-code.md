@@ -12,7 +12,10 @@ explicit model and effort, a fixed tool inventory, `dontAsk` permissions, and
 disabled Chrome integration. Strict mode also requires `--safe-mode`, user-only
 setting sources, strict MCP configuration, and an MCP-tool deny rule.
 
-The frozen prompt is delivered on standard input.
+The frozen prompt is delivered on standard input followed by a trusted review
+policy. Each finding location must fit completely within one individual
+reviewed line range; cross-hunk concerns must be narrowed to one establishing
+range or split into separately valid findings.
 
 ## Isolation and web access
 
@@ -30,7 +33,9 @@ unavailable.
 The adapter accepts one Claude `result` envelope with `subtype: success`,
 `is_error: false`, and an object in `structured_output`. The inner object must
 pass the complete canonical Go decoder. Prose extraction and engine-local
-protocol recovery are not accepted.
+protocol recovery are not accepted. The shared orchestration retry adds a
+sanitized correction for the specific rejected rule without including the
+previous response or repository content.
 
 ## Verify
 

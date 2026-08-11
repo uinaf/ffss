@@ -12,6 +12,7 @@ import (
 
 	"github.com/uinaf/autoreview/internal/config"
 	"github.com/uinaf/autoreview/internal/protocol"
+	"github.com/uinaf/autoreview/internal/reviewpolicy"
 )
 
 func TestClaudeReviewStrictUsesFrozenStdinAndSafeMode(t *testing.T) {
@@ -37,8 +38,10 @@ func TestClaudeReviewStrictUsesFrozenStdinAndSafeMode(t *testing.T) {
 	if result.Attempt.Outcome != protocol.AttemptValid || result.ProtocolRecovery.Applied || len(result.Review.Findings) != 0 {
 		t.Fatalf("result = %+v", result)
 	}
-	if prompt := readTestFile(t, fake.prompt); prompt != "frozen review bundle" {
-		t.Fatalf("provider stdin = %q", prompt)
+	prompt := readTestFile(t, fake.prompt)
+	policy := reviewpolicy.ClaudeReviewProtocol()
+	if prompt != "frozen review bundle"+policy || !strings.Contains(policy, "must cite a reviewed file") || !strings.Contains(policy, "one individual line_ranges entry") || !strings.Contains(policy, "split it into findings") {
+		t.Fatalf("provider stdin omitted trusted review policy: %q", prompt)
 	}
 	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
 	for _, required := range []string{"--safe-mode", "--setting-sources", "user", "--strict-mcp-config", "--disallowedTools", "mcp__*", "--print", "--no-session-persistence", "--output-format", "json", "--json-schema", "--permission-mode", "dontAsk", "--no-chrome", "--tools", "--model", "test-model", "--effort", "high"} {
@@ -56,6 +59,22 @@ func TestClaudeReviewStrictUsesFrozenStdinAndSafeMode(t *testing.T) {
 	environment := readTestFile(t, fake.environment)
 	if !strings.Contains(environment, "ANTHROPIC_API_KEY=test-provider-secret") || !strings.Contains(environment, "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1") || strings.Contains(environment, "OPENAI_API_KEY") || strings.Contains(environment, "HOME=/private/home") {
 		t.Fatalf("strict environment = %s", environment)
+	}
+}
+
+func TestClaudeReviewRejectsCombinedPromptBeforeDiscovery(t *testing.T) {
+	t.Parallel()
+
+	policyBytes := int64(len(reviewpolicy.ClaudeReviewProtocol()))
+	effective := claudeConfig(protocol.IsolationStrict, false, 5*time.Second)
+	effective.MaxBytes = config.Value[int64]{Value: policyBytes, Source: config.SourceFlag}
+	maximumPrompt := effective.MaxBytes.Value + providerPromptAllowance
+	prompt := strings.Repeat("x", int(maximumPrompt-policyBytes+1))
+	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: "missing-claude"})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: prompt, Config: effective})
+	failure := assertProviderError(t, err, protocol.FailureConfig)
+	if !strings.Contains(failure.Message, "Claude combined review input exceeds") {
+		t.Fatalf("failure = %q", failure.Message)
 	}
 }
 
@@ -236,6 +255,7 @@ func TestClaudeReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptMalformed {
 				t.Fatalf("attempt = %+v", failure.Attempt)
 			}
+			assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", protocol.IsolationStrict, false)
 		})
 	}
 }
@@ -250,6 +270,7 @@ func TestClaudeReviewEnforcesOutputBounds(t *testing.T) {
 	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 		t.Fatalf("attempt = %+v", failure.Attempt)
 	}
+	assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", protocol.IsolationStrict, false)
 }
 
 func TestClaudeReviewRejectsUnsupportedEffort(t *testing.T) {

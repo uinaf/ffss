@@ -308,6 +308,7 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptMalformed {
 				t.Fatalf("attempt = %+v", failure.Attempt)
 			}
+			assertExecutionMetadata(t, failure, protocol.ProviderCodex, "0.146.0", protocol.IsolationStrict, false)
 		})
 	}
 }
@@ -349,6 +350,10 @@ func TestCodexReviewEnforcesOutputBounds(t *testing.T) {
 			failure := assertProviderError(t, err, test.class)
 			if failure.Attempt == nil || failure.Attempt.Outcome != test.outcome {
 				t.Fatalf("attempt = %+v", failure.Attempt)
+			}
+			assertExecutionMetadata(t, failure, protocol.ProviderCodex, "0.146.0", protocol.IsolationStrict, false)
+			if test.name == "last message" && failure.Reason != "" {
+				t.Fatalf("result-file failure reason = %q, want generic retry", failure.Reason)
 			}
 		})
 	}
@@ -521,6 +526,13 @@ func assertProviderError(t *testing.T, err error, class protocol.FailureClass) *
 		t.Fatalf("error class = %q, want %q: %v", failure.Class, class, failure)
 	}
 	return failure
+}
+
+func assertExecutionMetadata(t *testing.T, failure *Error, name protocol.ProviderName, version string, isolation protocol.Isolation, webAccess bool) {
+	t.Helper()
+	if failure.Execution == nil || failure.Execution.Provider.Name != name || failure.Execution.Provider.Model != "test-model" || failure.Execution.Provider.Version != version || failure.Execution.Isolation != isolation || failure.Execution.WebAccess != webAccess {
+		t.Fatalf("execution metadata = %+v", failure.Execution)
+	}
 }
 
 func readTestFile(t *testing.T, path string) string {
