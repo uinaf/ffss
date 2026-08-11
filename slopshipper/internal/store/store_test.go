@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/slopomatic/internal/machine"
-	"github.com/uinaf/slopomatic/internal/store"
+	"github.com/uinaf/slopshipper/internal/machine"
+	"github.com/uinaf/slopshipper/internal/store"
 )
 
 func TestOpenReadOnlyRejectsEmptyPath(t *testing.T) {
@@ -314,13 +314,12 @@ func TestPersistsCanonicalEvidenceAndReviewProgress(t *testing.T) {
 }
 
 func TestDefaultsPreferencesRekeyAndMissingRuns(t *testing.T) {
-	if got := store.DefaultPath("/data", "/home/example"); got != filepath.Join("/data", "slopomatic", "slopomatic.sqlite") {
+	if got := store.DefaultPath("/data", "/home/example"); got != filepath.Join("/data", "slopshipper", "slopshipper.sqlite") {
 		t.Fatalf("xdg path: %q", got)
 	}
-	if got := store.DefaultPath("", "/home/example"); got != filepath.Join("/home/example", ".local", "share", "slopomatic", "slopomatic.sqlite") {
+	if got := store.DefaultPath("", "/home/example"); got != filepath.Join("/home/example", ".local", "share", "slopshipper", "slopshipper.sqlite") {
 		t.Fatalf("home path: %q", got)
 	}
-
 	s, err := store.Open(filepath.Join(t.TempDir(), "nested", "t.sqlite"))
 	if err != nil {
 		t.Fatal(err)
@@ -394,7 +393,7 @@ func TestDefaultsPreferencesRekeyAndMissingRuns(t *testing.T) {
 
 func TestOpenCreatesPrivateStateAndReportsResolvedFailures(t *testing.T) {
 	root := t.TempDir()
-	databasePath := filepath.Join(root, "missing", "slopomatic", "state.sqlite")
+	databasePath := filepath.Join(root, "missing", "slopshipper", "state.sqlite")
 	s, err := store.Open(databasePath)
 	if err != nil {
 		t.Fatal(err)

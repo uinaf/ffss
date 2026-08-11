@@ -16,15 +16,15 @@ verify_dir="$(mktemp -d)"
 trap 'rm -rf "$verify_dir"' EXIT
 
 for arch in amd64 arm64; do
-  archive="dist/slopomatic_${GORELEASER_CURRENT_TAG}_darwin_${arch}.tar.gz"
+  archive="dist/slopshipper_${GORELEASER_CURRENT_TAG}_darwin_${arch}.tar.gz"
   target_dir="$verify_dir/$arch"
   mkdir "$target_dir"
   tar -xzf "$archive" -C "$target_dir"
 
-  binary="$target_dir/slopomatic"
+  binary="$target_dir/slopshipper"
   codesign --verify --strict "$binary"
   details="$(codesign --display --verbose=4 "$binary" 2>&1)"
-  grep -q '^Identifier=slopomatic$' <<<"$details"
+  grep -q '^Identifier=slopshipper$' <<<"$details"
   grep -q "^TeamIdentifier=${EXPECTED_APPLE_TEAM_ID}$" <<<"$details"
   grep -Eq '^CodeDirectory .*flags=.*runtime' <<<"$details"
   grep -q '^Timestamp=' <<<"$details"

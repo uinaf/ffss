@@ -17,7 +17,7 @@ document. Failures return:
 
 ## Discover inputs
 
-Run `slopomatic schema --command <name>` before composing an unfamiliar raw
+Run `slopshipper schema --command <name>` before composing an unfamiliar raw
 payload. The runtime schema lists flags, required properties, nested types, and
 enums. Do not infer enum spellings from prose.
 
@@ -53,11 +53,11 @@ Put human prose in title, question, answer, or reason fields.
 ## State location
 
 The default database lives under the user's XDG data directory, outside the
-repository. A sandbox may set `SLOPOMATIC_DB` to an explicit writable path.
+repository. A sandbox may set `SLOPSHIPPER_DB` to an explicit writable path.
 Relative overrides resolve from the Git worktree root. There is no automatic
-repository-local fallback; use `.slopomatic/` only when the environment
+repository-local fallback; use `.slopshipper/` only when the environment
 requires it and the database, WAL, and shared-memory paths are untracked and
-ignored. Run `slopomatic storage --json` to inspect the resolved path and Git
+ignored. Run `slopshipper storage --json` to inspect the resolved path and Git
 safety. The CLI never edits ignore files.
 
 An existing caller-selected run ID returns `run_exists`; an invalid XDG or

@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/uinaf/slopomatic/internal/repo"
-	"github.com/uinaf/slopomatic/internal/store"
+	"github.com/uinaf/slopshipper/internal/repo"
+	"github.com/uinaf/slopshipper/internal/store"
 )
 
 var (
@@ -26,7 +26,7 @@ type storageDocument struct {
 }
 
 func resolveStorage(requireGitSafe bool) (storageDocument, error) {
-	override := os.Getenv("SLOPOMATIC_DB")
+	override := os.Getenv("SLOPSHIPPER_DB")
 	if override == "" {
 		xdgDataHome := os.Getenv("XDG_DATA_HOME")
 		if xdgDataHome != "" && !filepath.IsAbs(xdgDataHome) {
@@ -60,13 +60,13 @@ func resolveStorage(requireGitSafe bool) (storageDocument, error) {
 	_, root, repoErr := repo.Keys(cwd)
 	if !filepath.IsAbs(override) {
 		if repoErr != nil {
-			return storageDocument{}, fmt.Errorf("%w: resolve relative SLOPOMATIC_DB: %v", errInvalidStateConfig, repoErr)
+			return storageDocument{}, fmt.Errorf("%w: resolve relative SLOPSHIPPER_DB: %v", errInvalidStateConfig, repoErr)
 		}
 		override = filepath.Join(root, override)
 	}
 	path, err := physicalPath(override)
 	if err != nil {
-		return storageDocument{}, fmt.Errorf("resolve SLOPOMATIC_DB %q: %w", override, err)
+		return storageDocument{}, fmt.Errorf("resolve SLOPSHIPPER_DB %q: %w", override, err)
 	}
 	exists, err := pathExists(path)
 	if err != nil {
@@ -102,7 +102,7 @@ func resolveStorage(requireGitSafe bool) (storageDocument, error) {
 	doc.GitIgnored = &ignored
 	if requireGitSafe && !ignored {
 		return storageDocument{}, fmt.Errorf(
-			"%w: database path %q is inside Git worktree %q but %q is tracked or not ignored; use a path outside the worktree, or set SLOPOMATIC_DB=.slopomatic/slopomatic.sqlite after adding /.slopomatic/ to $(git rev-parse --git-path info/exclude)",
+			"%w: database path %q is inside Git worktree %q but %q is tracked or not ignored; use a path outside the worktree, or set SLOPSHIPPER_DB=.slopshipper/slopshipper.sqlite after adding /.slopshipper/ to $(git rev-parse --git-path info/exclude)",
 			errUnsafeStatePath, path, root, unsafePath,
 		)
 	}
@@ -253,9 +253,9 @@ func cmdStorage(args []string, opts runOptions) int {
 	if doc.GitIgnored != nil {
 		ignored = fmt.Sprintf("%t", *doc.GitIgnored)
 	}
-	fmt.Fprintf(os.Stdout, "slopomatic storage path=%q source=%s scope=%s exists=%t git_ignored=%s\n", doc.Path, doc.Source, doc.Scope, doc.Exists, ignored)
+	fmt.Fprintf(os.Stdout, "slopshipper storage path=%q source=%s scope=%s exists=%t git_ignored=%s\n", doc.Path, doc.Source, doc.Scope, doc.Exists, ignored)
 	if doc.GitIgnored != nil && !*doc.GitIgnored {
-		fmt.Fprintln(os.Stdout, "recovery=use a path outside the worktree, or set SLOPOMATIC_DB=.slopomatic/slopomatic.sqlite after adding /.slopomatic/ to $(git rev-parse --git-path info/exclude)")
+		fmt.Fprintln(os.Stdout, "recovery=use a path outside the worktree, or set SLOPSHIPPER_DB=.slopshipper/slopshipper.sqlite after adding /.slopshipper/ to $(git rev-parse --git-path info/exclude)")
 	}
 	return 0
 }

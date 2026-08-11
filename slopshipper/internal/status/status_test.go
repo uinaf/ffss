@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/slopomatic/internal/machine"
+	"github.com/uinaf/slopshipper/internal/machine"
 )
 
 func TestJSONFieldsAndDryRunMetadata(t *testing.T) {
@@ -32,7 +32,7 @@ func TestJSONFieldsAndDryRunMetadata(t *testing.T) {
 	if _, err := doc.JSONFields([]string{"missing"}); err == nil {
 		t.Fatal("unknown field accepted")
 	}
-	if got := doc.CompactLine(); !strings.HasPrefix(got, "slopomatic dry-run dry ") {
+	if got := doc.CompactLine(); !strings.HasPrefix(got, "slopshipper dry-run dry ") {
 		t.Fatalf("compact dry-run=%q", got)
 	}
 }
@@ -52,51 +52,51 @@ func TestFromContracts(t *testing.T) {
 		{
 			name: "empty intake requires intake",
 			run:  machine.Run{State: machine.StateIntake, IntakeRevision: 3, ReviewConsent: machine.ReviewAutoreview},
-			next: "slopomatic intake --file -", allowed: []string{"intake", "ask"},
+			next: "slopshipper intake --file -", allowed: []string{"intake", "ask"},
 			required: []string{}, frontier: []string{}, completed: []string{},
 		},
 		{
 			name:  "populated intake requires exact release",
 			run:   machine.Run{State: machine.StateIntake, IntakeRevision: 3, ReviewConsent: machine.ReviewBugbot},
 			units: []machine.Unit{{ID: "u1"}},
-			next:  "slopomatic release --revision 3", allowed: []string{"intake", "ask", "release"},
+			next:  "slopshipper release --revision 3", allowed: []string{"intake", "ask", "release"},
 			required: []string{}, frontier: []string{"u1"}, completed: []string{},
 		},
 		{
 			name:  "released intake builds",
 			run:   machine.Run{State: machine.StateIntake, IntakeRevision: 3, ReleasedRevision: &released, ReviewConsent: machine.ReviewHuman, SeriesBound: 1},
 			units: []machine.Unit{{ID: "u1"}},
-			next:  "slopomatic build", allowed: []string{"intake", "ask", "build"},
+			next:  "slopshipper build", allowed: []string{"intake", "ask", "build"},
 			required: []string{}, frontier: []string{"u1"}, completed: []string{},
 		},
 		{
 			name: "build requires verification",
 			run:  machine.Run{State: machine.StateBuild, ReviewConsent: machine.ReviewAutoreview},
-			next: "slopomatic verify --cmd '<verification command>'", allowed: []string{"verify", "ask", "block"},
+			next: "slopshipper verify --cmd '<verification command>'", allowed: []string{"verify", "ask", "block"},
 			required: []string{"verify.command", "verify.exit_code"}, frontier: []string{}, completed: []string{},
 		},
 		{
 			name: "both reviews shows progress",
 			run:  machine.Run{State: machine.StateReview, ReviewConsent: machine.ReviewBoth, CompletedReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview}},
-			next: "slopomatic review --evidence -", allowed: []string{"review", "rework", "ask", "block"},
+			next: "slopshipper review --evidence -", allowed: []string{"review", "rework", "ask", "block"},
 			required: []string{"review.reviewer", "review.verdict", "review.artifact_ref"}, frontier: []string{}, completed: []string{"autoreview"},
 		},
 		{
 			name: "blocked requires explicit retry",
 			run:  machine.Run{State: machine.StateBlocked, ReviewConsent: machine.ReviewAutoreview},
-			next: "slopomatic retry --reason '<reason>'", allowed: []string{"retry"},
+			next: "slopshipper retry --reason '<reason>'", allowed: []string{"retry"},
 			required: []string{"retry.reason"}, frontier: []string{}, completed: []string{},
 		},
 		{
 			name: "decision uses an answer placeholder",
 			run:  machine.Run{State: machine.StateNeedsDecision, ReviewConsent: machine.ReviewAutoreview, DecisionQuestion: "continue?"},
-			next: "slopomatic decide --answer '<answer>'", allowed: []string{"decide"},
+			next: "slopshipper decide --answer '<answer>'", allowed: []string{"decide"},
 			required: []string{}, frontier: []string{}, completed: []string{},
 		},
 		{
 			name: "delivery names its evidence",
 			run:  machine.Run{State: machine.StateDeliver, ReviewConsent: machine.ReviewAutoreview},
-			next: "slopomatic deliver --evidence -", allowed: []string{"deliver", "ask"},
+			next: "slopshipper deliver --evidence -", allowed: []string{"deliver", "ask"},
 			required: []string{"deliver.delivery_mode", "deliver.pr_url|deliver.commit_sha"}, frontier: []string{}, completed: []string{},
 		},
 		{
@@ -146,10 +146,10 @@ func TestBootstrapDirectsFirstRunToInit(t *testing.T) {
 	assertStrings(t, "required reviewers", doc.RequiredReviewers, []string{})
 	assertStrings(t, "completed reviewers", doc.CompletedReviewers, []string{})
 	assertStrings(t, "required evidence", doc.RequiredEvidence, []string{})
-	if doc.NextAction != "slopomatic init" || doc.Blocker == "" {
+	if doc.NextAction != "slopshipper init" || doc.Blocker == "" {
 		t.Fatalf("bootstrap action: %+v", doc)
 	}
-	if got := doc.CompactLine(); got != "slopomatic state=UNINITIALIZED next=slopomatic init" {
+	if got := doc.CompactLine(); got != "slopshipper state=UNINITIALIZED next=slopshipper init" {
 		t.Fatalf("bootstrap compact line=%q", got)
 	}
 	b, err := doc.JSON()
@@ -168,7 +168,7 @@ func TestNextActionSelectsAndQuotesRun(t *testing.T) {
 		ID: "run with ' quote", State: machine.StateNeedsDecision,
 		ReviewConsent: machine.ReviewAutoreview, DecisionQuestion: "continue?",
 	}, nil)
-	want := `slopomatic decide --answer '<answer>' --run='run with '"'"' quote'`
+	want := `slopshipper decide --answer '<answer>' --run='run with '"'"' quote'`
 	if doc.NextAction != want {
 		t.Fatalf("next_action=%q want %q", doc.NextAction, want)
 	}

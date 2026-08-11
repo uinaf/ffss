@@ -7,13 +7,13 @@ import (
 )
 
 func TestFormat(t *testing.T) {
-	if got := format("v1.2.3", "abc1234deadbeef"); got != "slopomatic v1.2.3 (abc1234deadbeef)" {
+	if got := format("v1.2.3", "abc1234deadbeef"); got != "slopshipper v1.2.3 (abc1234deadbeef)" {
 		t.Fatalf("got %q", got)
 	}
-	if got := format("v1.2.3", "unknown"); got != "slopomatic v1.2.3" {
+	if got := format("v1.2.3", "unknown"); got != "slopshipper v1.2.3" {
 		t.Fatalf("omit unknown commit: %q", got)
 	}
-	if got := format("dev", "unknown"); got != "slopomatic dev (unknown)" {
+	if got := format("dev", "unknown"); got != "slopshipper dev (unknown)" {
 		t.Fatalf("dev keeps unknown: %q", got)
 	}
 }
@@ -43,7 +43,7 @@ func TestResolveKeepsLinkedReleaseFields(t *testing.T) {
 }
 
 func TestVersionAndReleaseClassification(t *testing.T) {
-	if got := Version(); !strings.HasPrefix(got, "slopomatic ") {
+	if got := Version(); !strings.HasPrefix(got, "slopshipper ") {
 		t.Fatalf("Version=%q", got)
 	}
 	tests := map[string]bool{

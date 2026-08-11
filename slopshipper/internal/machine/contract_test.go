@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/slopomatic/internal/machine"
+	"github.com/uinaf/slopshipper/internal/machine"
 )
 
 func TestResourceIDHardening(t *testing.T) {

@@ -1,13 +1,13 @@
-![slopomatic — deterministic and structured approach to slop cannoning.](https://uinaf.dev/og/banner/slopomatic.png)
+![slopshipper — deterministic and structured approach to slop cannoning.](https://uinaf.dev/og/banner/slopshipper.png)
 
-# slopomatic
+# slopshipper
 
-`slopomatic` turns an approved implementation plan into a resumable,
+`slopshipper` turns an approved implementation plan into a resumable,
 evidence-gated workflow for coding agents. Humans release the work; the CLI
 then enforces each build, verification, review, and delivery transition.
 
 ```text
-plan  →  /slopomatic  →  clarify  →  human releases  →  machine runs
+plan  →  /slopshipper  →  clarify  →  human releases  →  machine runs
 ```
 
 - **Human-controlled:** scope, release, review consent, and recovery stay
@@ -23,8 +23,8 @@ plan  →  /slopomatic  →  clarify  →  human releases  →  machine runs
 Install the signed CLI from the `uinaf/tap` Homebrew tap:
 
 ```bash
-brew install --cask uinaf/tap/slopomatic
-slopomatic version
+brew install --cask uinaf/tap/slopshipper
+slopshipper version
 ```
 
 #### Troubleshoot mixed installations
@@ -33,8 +33,8 @@ After installing or upgrading, an unexpected `0.0.0-dev` version means an
 older Go build may appear before Homebrew on `PATH`:
 
 ```bash
-type -a slopomatic
-test "$(command -v slopomatic)" = "$(brew --prefix)/bin/slopomatic"
+type -a slopshipper
+test "$(command -v slopshipper)" = "$(brew --prefix)/bin/slopshipper"
 ```
 
 If the check fails, follow the guarded
@@ -47,8 +47,8 @@ Install the latest amd64 or arm64 release without Go, Homebrew, `jq`, or
 
 ```bash
 curl --proto '=https' --tlsv1.2 -fsSL \
-  https://raw.githubusercontent.com/uinaf/slopomatic/main/install.sh | sh
-~/.local/bin/slopomatic version
+  https://raw.githubusercontent.com/uinaf/slopshipper/main/install.sh | sh
+~/.local/bin/slopshipper version
 ```
 
 To pin a release or choose an install directory, pass `--version "$TAG"` or
@@ -60,12 +60,12 @@ independent Cosign and GitHub attestation checks.
 To build from source without replacing the packaged CLI on `PATH`, see
 [Run locally](CONTRIBUTING.md#run-locally).
 
-State is stored at `$XDG_DATA_HOME/slopomatic/slopomatic.sqlite`, or
-`~/.local/share/slopomatic/slopomatic.sqlite` when `XDG_DATA_HOME` is unset.
+State is stored at `$XDG_DATA_HOME/slopshipper/slopshipper.sqlite`, or
+`~/.local/share/slopshipper/slopshipper.sqlite` when `XDG_DATA_HOME` is unset.
 The CLI creates the state directory and database on first use with private
-permissions. Set `SLOPOMATIC_DB` to use a different writable database path.
+permissions. Set `SLOPSHIPPER_DB` to use a different writable database path.
 Relative overrides resolve from the Git worktree root. Inspect the selected
-location with `slopomatic storage --json`; repository-local databases are
+location with `slopshipper storage --json`; repository-local databases are
 rejected unless the database and its SQLite sidecars are untracked and ignored.
 
 ## Quick start
@@ -73,8 +73,8 @@ rejected unless the database and its SQLite sidecars are untracked and ignored.
 ### 1. Define and release the work
 
 ```bash
-slopomatic init --run demo
-slopomatic intake --file - --run demo <<'JSON'
+slopshipper init --run demo
+slopshipper intake --file - --run demo <<'JSON'
 {
   "delivery_mode": "pr-hold",
   "review_consent": "autoreview",
@@ -84,8 +84,8 @@ slopomatic intake --file - --run demo <<'JSON'
   ]
 }
 JSON
-slopomatic status --json --run demo
-slopomatic release --revision N --run demo
+slopshipper status --json --run demo
+slopshipper release --revision N --run demo
 ```
 
 Replace `N` with the exact `intake_revision` returned by `status`. Release is
@@ -94,15 +94,15 @@ the human approval boundary: the machine loop cannot begin without it.
 ### 2. Run the machine loop
 
 ```bash
-slopomatic build --run demo
-slopomatic verify --cmd 'go test ./...' --run demo
-slopomatic review --evidence - --run demo <<'JSON'
+slopshipper build --run demo
+slopshipper verify --cmd 'go test ./...' --run demo
+slopshipper review --evidence - --run demo <<'JSON'
 {"reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://local"}
 JSON
-slopomatic deliver --evidence - --run demo <<'JSON'
+slopshipper deliver --evidence - --run demo <<'JSON'
 {"delivery_mode":"pr-hold","pr_url":"https://github.com/example/repo/pull/1"}
 JSON
-slopomatic status --json --run demo
+slopshipper status --json --run demo
 ```
 
 `status` is the compass. Its default output is one compact line with an
@@ -115,9 +115,9 @@ Agents should discover the live schema, keep status reads narrow, and validate
 each mutation before applying it:
 
 ```bash
-slopomatic schema --command intake
-slopomatic status --json --fields state,next_action,allowed_commands,required_evidence
-slopomatic release --revision N --run demo --dry-run --json
+slopshipper schema --command intake
+slopshipper status --json --fields state,next_action,allowed_commands,required_evidence
+slopshipper release --revision N --run demo --dry-run --json
 ```
 
 Pass raw command payloads with `--input -` and convenience evidence with
@@ -127,22 +127,22 @@ dry runs, state storage, sandbox overrides, and error recovery.
 
 For multi-unit intake, start with
 [`examples/intake.multi.example.json`](examples/intake.multi.example.json).
-Every command also has focused help, such as `slopomatic review --help`.
+Every command also has focused help, such as `slopshipper review --help`.
 
 ## Common operations
 
 | Need | Command |
 | --- | --- |
-| Inspect a run or find its next action | `slopomatic status [--json]` |
-| Discover commands and raw payloads | `slopomatic schema [--command NAME]` |
-| Inspect state location and Git safety | `slopomatic storage --json` |
-| Validate a mutation without applying it | `slopomatic COMMAND --dry-run --json` |
-| Pause for a human answer | `slopomatic ask --question "…"` |
-| Record the answer | `slopomatic decide --answer "…"` |
-| Record an external blocker | `slopomatic block --reason "…"` |
-| Resume after confirmed recovery | `slopomatic retry --reason "…"` |
-| Re-enter the build loop after findings | `slopomatic rework` |
-| Inspect all runs in a browser | `slopomatic serve` |
+| Inspect a run or find its next action | `slopshipper status [--json]` |
+| Discover commands and raw payloads | `slopshipper schema [--command NAME]` |
+| Inspect state location and Git safety | `slopshipper storage --json` |
+| Validate a mutation without applying it | `slopshipper COMMAND --dry-run --json` |
+| Pause for a human answer | `slopshipper ask --question "…"` |
+| Record the answer | `slopshipper decide --answer "…"` |
+| Record an external blocker | `slopshipper block --reason "…"` |
+| Resume after confirmed recovery | `slopshipper retry --reason "…"` |
+| Re-enter the build loop after findings | `slopshipper rework` |
+| Inspect all runs in a browser | `slopshipper serve` |
 
 Commands that act on a run accept `--run ID`. When the repository has exactly
 one open run, the CLI selects it automatically.
@@ -152,8 +152,8 @@ one open run, the CLI selects it automatically.
 Project the same SQLite state in a read-only local browser view:
 
 ```bash
-slopomatic serve                 # http://127.0.0.1:7780
-slopomatic serve --addr 127.0.0.1:9000
+slopshipper serve                 # http://127.0.0.1:7780
+slopshipper serve --addr 127.0.0.1:9000
 ```
 
 The browser is a projector, not a second state authority; workflow changes
@@ -161,7 +161,7 @@ still go through the CLI.
 
 ## Agent skill
 
-The bundled [agent skill](skills/slopomatic/SKILL.md) teaches agents to drive
+The bundled [agent skill](skills/slopshipper/SKILL.md) teaches agents to drive
 the installed CLI and obey `next_action`. It is intentionally thin: the binary
 owns the state machine, schemas, and store.
 

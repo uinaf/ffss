@@ -14,10 +14,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/slopomatic/internal/machine"
-	"github.com/uinaf/slopomatic/internal/repo"
-	"github.com/uinaf/slopomatic/internal/status"
-	"github.com/uinaf/slopomatic/internal/store"
+	"github.com/uinaf/slopshipper/internal/machine"
+	"github.com/uinaf/slopshipper/internal/repo"
+	"github.com/uinaf/slopshipper/internal/status"
+	"github.com/uinaf/slopshipper/internal/store"
 )
 
 type cliHarness struct {
@@ -30,10 +30,10 @@ type cliHarness struct {
 
 func newCLIHarness(t *testing.T) *cliHarness {
 	t.Helper()
-	bin := filepath.Join(t.TempDir(), "slopomatic")
+	bin := filepath.Join(t.TempDir(), "slopshipper")
 	buildArgs := []string{"build", "-o", bin, "."}
-	if os.Getenv("SLOPOMATIC_COVERAGE_DIR") != "" {
-		buildArgs = []string{"build", "-cover", "-covermode=atomic", "-coverpkg=github.com/uinaf/slopomatic/...", "-o", bin, "."}
+	if os.Getenv("SLOPSHIPPER_COVERAGE_DIR") != "" {
+		buildArgs = []string{"build", "-cover", "-covermode=atomic", "-coverpkg=github.com/uinaf/slopshipper/...", "-o", bin, "."}
 	}
 	build := exec.Command("go", buildArgs...)
 	build.Dir = "."
@@ -57,7 +57,7 @@ func newCLIHarness(t *testing.T) *cliHarness {
 		bin:     bin,
 		db:      db,
 		repoDir: repoDir,
-		env:     append(os.Environ(), "SLOPOMATIC_DB="+db),
+		env:     append(os.Environ(), "SLOPSHIPPER_DB="+db),
 	}
 }
 
@@ -348,8 +348,8 @@ func TestAgentDXProtocolHelperBranches(t *testing.T) {
 func TestAgentDocsUseCanonicalStatusMask(t *testing.T) {
 	for _, path := range []string{
 		filepath.Join("..", "..", "docs", "AGENT_INTERFACE.md"),
-		filepath.Join("..", "..", "skills", "slopomatic", "SKILL.md"),
-		filepath.Join("..", "..", "skills", "slopomatic", "references", "status.md"),
+		filepath.Join("..", "..", "skills", "slopshipper", "SKILL.md"),
+		filepath.Join("..", "..", "skills", "slopshipper", "references", "status.md"),
 	} {
 		contents, err := os.ReadFile(path)
 		if err != nil {
@@ -363,7 +363,7 @@ func TestAgentDocsUseCanonicalStatusMask(t *testing.T) {
 
 func TestDryRunStoreOpeningBranches(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "nested", "state.sqlite")
-	t.Setenv("SLOPOMATIC_DB", missing)
+	t.Setenv("SLOPSHIPPER_DB", missing)
 	st, err := openStoreForCommand("init", runOptions{dryRun: true})
 	if err != nil || st != nil {
 		t.Fatalf("fresh dry-run store=%v err=%v", st, err)
@@ -399,7 +399,7 @@ func TestAgentDXDirectRuntimeBranches(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldDir) })
 	database := filepath.Join(t.TempDir(), "agent.sqlite")
-	t.Setenv("SLOPOMATIC_DB", database)
+	t.Setenv("SLOPSHIPPER_DB", database)
 
 	output, code := captureStdoutResult(t, func() int {
 		return run([]string{"init", "--run", "preview", "--dry-run", "--json"})
@@ -837,7 +837,7 @@ func itoa(v int64) string {
 
 func TestUsageMentionsStorageAndServe(t *testing.T) {
 	got := usage()
-	for _, command := range []string{"slopomatic storage", "slopomatic serve"} {
+	for _, command := range []string{"slopshipper storage", "slopshipper serve"} {
 		if !strings.Contains(got, command) {
 			t.Fatalf("usage missing %s:\n%s", command, got)
 		}
@@ -889,7 +889,7 @@ func TestVerifyFailureReturnsNonzeroAndCanRetry(t *testing.T) {
 	h.must("release", "--revision", itoa(statusDoc.IntakeRevision), "--run", "retry")
 	h.must("build", "--run", "retry")
 	out, code = h.run("verify", "--cmd", "false", "--run", "retry")
-	if code != 6 || !strings.Contains(out, "state=BLOCKED") || !strings.Contains(out, "slopomatic retry") {
+	if code != 6 || !strings.Contains(out, "state=BLOCKED") || !strings.Contains(out, "slopshipper retry") {
 		t.Fatalf("failed verify: exit %d %s", code, out)
 	}
 	out = h.must("retry", "--reason", "fixed the failure", "--run", "retry")
@@ -981,7 +981,7 @@ func TestRunEntryPointsAndFullRecoveryFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldDir) })
-	t.Setenv("SLOPOMATIC_DB", filepath.Join(t.TempDir(), "direct.sqlite"))
+	t.Setenv("SLOPSHIPPER_DB", filepath.Join(t.TempDir(), "direct.sqlite"))
 
 	if code := run([]string{"unknown"}); code != 2 {
 		t.Fatalf("unknown=%d", code)
@@ -1068,7 +1068,7 @@ func TestRunAutoIDAndDefaultDataPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldDir) })
-	t.Setenv("SLOPOMATIC_DB", "")
+	t.Setenv("SLOPSHIPPER_DB", "")
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	if code := run([]string{"init"}); code != 0 {
 		t.Fatalf("auto init=%d", code)
@@ -1079,7 +1079,7 @@ func TestCLIFirstRunCreatesDefaultStateAndReturnsBootstrapStatus(t *testing.T) {
 	h := newCLIHarness(t)
 	stateRoot := filepath.Join(t.TempDir(), "new", "xdg")
 	h.env = append(h.env,
-		"SLOPOMATIC_DB=",
+		"SLOPSHIPPER_DB=",
 		"XDG_DATA_HOME="+stateRoot,
 		"HOME="+filepath.Join(t.TempDir(), "home"),
 	)
@@ -1097,11 +1097,11 @@ func TestCLIFirstRunCreatesDefaultStateAndReturnsBootstrapStatus(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &bootstrap); err != nil {
 		t.Fatalf("bootstrap JSON: %v\n%s", err, out)
 	}
-	if bootstrap.State != "UNINITIALIZED" || bootstrap.NextAction != "slopomatic init" ||
+	if bootstrap.State != "UNINITIALIZED" || bootstrap.NextAction != "slopshipper init" ||
 		len(bootstrap.AllowedCommands) != 1 || bootstrap.AllowedCommands[0] != "init" || bootstrap.Blocker == "" {
 		t.Fatalf("bootstrap status: %+v", bootstrap)
 	}
-	databasePath := filepath.Join(stateRoot, "slopomatic", "slopomatic.sqlite")
+	databasePath := filepath.Join(stateRoot, "slopshipper", "slopshipper.sqlite")
 	if info, err := os.Stat(databasePath); err != nil || info.Mode().Perm() != 0o600 {
 		t.Fatalf("database info=%v err=%v", info, err)
 	}
@@ -1120,8 +1120,8 @@ func TestCLIStoreFailureIncludesResolvedPathAndCause(t *testing.T) {
 	h := newCLIHarness(t)
 	blockingFile := filepath.Join(t.TempDir(), "not-a-directory")
 	mustWrite(t, blockingFile, "blocked")
-	databasePath := filepath.Join(blockingFile, "slopomatic.sqlite")
-	h.env = append(h.env, "SLOPOMATIC_DB="+databasePath)
+	databasePath := filepath.Join(blockingFile, "slopshipper.sqlite")
+	h.env = append(h.env, "SLOPSHIPPER_DB="+databasePath)
 
 	out, code := h.run("init", "--run", "blocked")
 	if code != 10 || !strings.Contains(out, databasePath) || !strings.Contains(out, "not a directory") {
@@ -1153,7 +1153,7 @@ func TestDirectErrorMappingJSONAndServeBindFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chdir(oldDir) })
-	t.Setenv("SLOPOMATIC_DB", filepath.Join(t.TempDir(), "errors.sqlite"))
+	t.Setenv("SLOPSHIPPER_DB", filepath.Join(t.TempDir(), "errors.sqlite"))
 
 	if code := run([]string{"status", "--run", "missing"}); code != 5 {
 		t.Fatalf("missing status=%d", code)

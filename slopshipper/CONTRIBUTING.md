@@ -5,8 +5,8 @@
 Requirements: Go 1.26+ and [mise](https://mise.jdx.dev/).
 
 ```bash
-git clone https://github.com/uinaf/slopomatic.git
-cd slopomatic
+git clone https://github.com/uinaf/slopshipper.git
+cd slopshipper
 mise trust
 mise install
 ```
@@ -17,10 +17,10 @@ Build and invoke the development binary from the checkout:
 
 ```bash
 mise run build
-./bin/slopomatic version
+./bin/slopshipper version
 ```
 
-The build task never installs an unversioned `slopomatic` into the active Go
+The build task never installs an unversioned `slopshipper` into the active Go
 toolchain or replaces a packaged CLI on `PATH`.
 
 ## Remove a legacy Go-installed binary
@@ -29,20 +29,20 @@ An older `go install` workflow may have left a development binary ahead of a
 packaged release on `PATH`. List every copy before removing anything:
 
 ```bash
-type -a slopomatic
+type -a slopshipper
 ```
 
-After confirming `command -v slopomatic` points into a Go or mise installation,
+After confirming `command -v slopshipper` points into a Go or mise installation,
 remove that exact copy and refresh the shell command cache:
 
 ```bash
-legacy_slopomatic="$(command -v slopomatic)"
-case "$legacy_slopomatic" in
-  */mise/installs/go/*/bin/slopomatic|*/go/bin/slopomatic)
-    rm -- "$legacy_slopomatic"
+legacy_slopshipper="$(command -v slopshipper)"
+case "$legacy_slopshipper" in
+  */mise/installs/go/*/bin/slopshipper|*/go/bin/slopshipper)
+    rm -- "$legacy_slopshipper"
     hash -r
     ;;
-  *) printf 'Refusing to remove non-Go path: %s\n' "$legacy_slopomatic" >&2 ;;
+  *) printf 'Refusing to remove non-Go path: %s\n' "$legacy_slopshipper" >&2 ;;
 esac
 ```
 
@@ -70,12 +70,12 @@ Control plane UI lives in `internal/serve` (Go `html/template` + embedded
 mutations that bypass the CLI state machine.
 
 Agent-facing command schemas live with the binary in
-`cmd/slopomatic/schema.go`; strict raw payload DTOs live in
-`cmd/slopomatic/input.go`; state-location policy lives in
-`cmd/slopomatic/storage.go`. When adding or changing a command, keep its
+`cmd/slopshipper/schema.go`; strict raw payload DTOs live in
+`cmd/slopshipper/input.go`; state-location policy lives in
+`cmd/slopshipper/storage.go`. When adding or changing a command, keep its
 parser, runtime schema, JSON output, dry-run behavior, and child-process
 contract in sync. Tests require every parsed command to appear in
-`slopomatic schema`.
+`slopshipper schema`.
 Keep the checked-in [agent CLI contract](docs/AGENT_INTERFACE.md) aligned with
 observable behavior, but do not duplicate runtime schemas in prose.
 
@@ -83,7 +83,7 @@ observable behavior, but do not duplicate runtime schemas in prose.
 
 Publication uses the protected `release` Environment (shared Apple signing
 secrets with other uinaf CLIs) and the `uinaf-releaser` GitHub App scoped to
-`slopomatic` + `homebrew-tap`. Do not delete published tags to retry; re-run
+`slopshipper` + `homebrew-tap`. Do not delete published tags to retry; re-run
 the workflow on the tagged HEAD instead.
 
 Skill publication uses a separate `skill-release` Environment with
@@ -96,7 +96,7 @@ requires Tessl CLI 0.94.0:
 mise run skill:lint
 ```
 
-Bump `skills/slopomatic/.tessl-plugin/plugin.json` when the skill should ship a
+Bump `skills/slopshipper/.tessl-plugin/plugin.json` when the skill should ship a
 new immutable revision.
 
 A scheduled `govulncheck` scan covers changes in the vulnerability database

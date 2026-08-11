@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/uinaf/slopomatic/internal/machine"
-	"github.com/uinaf/slopomatic/internal/repo"
+	"github.com/uinaf/slopshipper/internal/machine"
+	"github.com/uinaf/slopshipper/internal/repo"
 
 	_ "modernc.org/sqlite"
 )
@@ -98,7 +98,7 @@ func DefaultPath(xdgDataHome, home string) string {
 	if base == "" {
 		base = filepath.Join(home, ".local", "share")
 	}
-	return filepath.Join(base, "slopomatic", "slopomatic.sqlite")
+	return filepath.Join(base, "slopshipper", "slopshipper.sqlite")
 }
 
 func (s *Store) Close() error { return s.db.Close() }

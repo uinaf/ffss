@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/slopomatic/internal/store"
+	"github.com/uinaf/slopshipper/internal/store"
 )
 
 type stubListener struct {

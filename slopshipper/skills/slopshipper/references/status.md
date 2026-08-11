@@ -3,44 +3,44 @@
 Use a field mask as the agent leash:
 
 ```bash
-slopomatic status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivery_mode,blocker,decision_question
+slopshipper status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivery_mode,blocker,decision_question
 ```
 
 Prefer these fields:
 
 | Field | Use |
 | --- | --- |
-| `next_action` | Preferred next CLI invocation (e.g. `slopomatic build`) |
+| `next_action` | Preferred next CLI invocation (e.g. `slopshipper build`) |
 | `allowed_commands` | Only run commands from this list |
 | `required_evidence` | Evidence keys needed for verify / review / deliver |
 | `required_reviewers` | Review identities required by intake consent |
 | `completed_reviewers` | Distinct clean reviews already recorded |
-| `intake_revision` | Pass to `slopomatic release --revision` |
+| `intake_revision` | Pass to `slopshipper release --revision` |
 | `blocker` | Human-facing blocker reason when present |
-| `decision_question` | Pending ask; answer via `slopomatic decide` |
+| `decision_question` | Pending ask; answer via `slopshipper decide` |
 
 Before the repository has a run, status returns `state: "UNINITIALIZED"`,
-`allowed_commands: ["init"]`, and `next_action: "slopomatic init"`. Run that
+`allowed_commands: ["init"]`, and `next_action: "slopshipper init"`. Run that
 command, then read status again before submitting intake.
 
 ## Parse example
 
 ```bash
-slopomatic status --json
+slopshipper status --json
 # → {
 #   "schema_version": 2,
-#   "next_action": "slopomatic build --run='demo'",
+#   "next_action": "slopshipper build --run='demo'",
 #   "allowed_commands": ["intake", "ask", "build"],
 #   "required_evidence": [],
 #   "intake_revision": 1
 # }
-slopomatic build --run demo
-slopomatic status --json
+slopshipper build --run demo
+slopshipper status --json
 # → {
-#   "next_action": "slopomatic verify --cmd '<verification command>' --run='demo'",
+#   "next_action": "slopshipper verify --cmd '<verification command>' --run='demo'",
 #   "required_evidence": ["verify.command", "verify.exit_code"]
 # }
-slopomatic verify --cmd 'go test ./...' --run demo
+slopshipper verify --cmd 'go test ./...' --run demo
 ```
 
 A successful mutation invoked with `--json` already returns its resulting

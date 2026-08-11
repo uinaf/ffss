@@ -3,7 +3,7 @@
 set -euo pipefail
 
 repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-manifest=$repository_root/skills/slopomatic/.tessl-plugin/plugin.json
+manifest=$repository_root/skills/slopshipper/.tessl-plugin/plugin.json
 requested_version=${1:-}
 
 if [ -z "$requested_version" ]; then
@@ -33,7 +33,7 @@ if [ "$requested_version" != "$version" ]; then
   exit 1
 fi
 
-verification_root=$(mktemp -d "${TMPDIR:-/tmp}/slopomatic-skill-release.XXXXXX")
+verification_root=$(mktemp -d "${TMPDIR:-/tmp}/slopshipper-skill-release.XXXXXX")
 cleanup() {
   rm -rf -- "$verification_root"
 }

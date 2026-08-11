@@ -4,13 +4,13 @@ set -euo pipefail
 
 repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 installer=$repository_root/install.sh
-scratch=$(mktemp -d "${TMPDIR:-/tmp}/slopomatic-installer-test.XXXXXX")
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/slopshipper-installer-test.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
 
 grep -F 'name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"' \
   "$repository_root/.goreleaser.yaml" >/dev/null
 grep -F 'name_template: checksums.txt' "$repository_root/.goreleaser.yaml" >/dev/null
-grep -F "archive=slopomatic_\${release_tag}_linux_\${architecture}.tar.gz" \
+grep -F "archive=slopshipper_\${release_tag}_linux_\${architecture}.tar.gz" \
   "$installer" >/dev/null
 
 fixtures=$scratch/fixtures
@@ -23,13 +23,13 @@ make_archive() {
   local architecture=$1
   local payload=$scratch/payload-$architecture
   mkdir -p "$payload"
-  printf '#!/bin/sh\nprintf '\''slopomatic v1.2.3 (fixture-%s)\\n'\''\n' \
-    "$architecture" > "$payload/slopomatic"
-  chmod 755 "$payload/slopomatic"
+  printf '#!/bin/sh\nprintf '\''slopshipper v1.2.3 (fixture-%s)\\n'\''\n' \
+    "$architecture" > "$payload/slopshipper"
+  chmod 755 "$payload/slopshipper"
   printf 'fixture license\n' > "$payload/LICENSE"
   printf 'fixture readme\n' > "$payload/README.md"
-  tar -czf "$fixtures/slopomatic_v1.2.3_linux_${architecture}.tar.gz" \
-    -C "$payload" slopomatic LICENSE README.md
+  tar -czf "$fixtures/slopshipper_v1.2.3_linux_${architecture}.tar.gz" \
+    -C "$payload" slopshipper LICENSE README.md
 }
 
 make_archive amd64
@@ -37,11 +37,11 @@ make_archive arm64
 (
   cd "$fixtures"
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum slopomatic_v1.2.3_linux_amd64.tar.gz \
-      slopomatic_v1.2.3_linux_arm64.tar.gz > checksums.txt
+    sha256sum slopshipper_v1.2.3_linux_amd64.tar.gz \
+      slopshipper_v1.2.3_linux_arm64.tar.gz > checksums.txt
   else
-    shasum -a 256 slopomatic_v1.2.3_linux_amd64.tar.gz \
-      slopomatic_v1.2.3_linux_arm64.tar.gz > checksums.txt
+    shasum -a 256 slopshipper_v1.2.3_linux_amd64.tar.gz \
+      slopshipper_v1.2.3_linux_arm64.tar.gz > checksums.txt
   fi
 )
 
@@ -90,7 +90,7 @@ done
 case "$url" in
   */releases/latest)
     if [ "${FAKE_CURL_MODE:-}" = malformed-latest ]; then
-      printf '%s' 'https://github.com/uinaf/slopomatic/issues/61'
+      printf '%s' 'https://github.com/uinaf/slopshipper/issues/61'
     else
       printf '%s' 'https://fixture.invalid/releases/tag/v1.2.3'
     fi
@@ -133,7 +133,7 @@ run_installer() {
     FIXTURE_SHA256SUM="$fixture_sha256sum" \
     FIXTURE_SHASUM="$fixture_shasum" \
     FAKE_CURL_LOG="$case_log" \
-    SLOPOMATIC_INSTALL_REPOSITORY_URL="${TEST_REPOSITORY_URL:-https://fixture.invalid}" \
+    SLOPSHIPPER_INSTALL_REPOSITORY_URL="${TEST_REPOSITORY_URL:-https://fixture.invalid}" \
     TEST_UNAME_S="${TEST_UNAME_S:-Linux}" \
     TEST_UNAME_M="${TEST_UNAME_M:-x86_64}" \
     FAKE_CURL_MODE="${FAKE_CURL_MODE:-}" \
@@ -148,7 +148,7 @@ run_installer_without_home() {
     FIXTURE_SHA256SUM="$fixture_sha256sum" \
     FIXTURE_SHASUM="$fixture_shasum" \
     FAKE_CURL_LOG="$case_log" \
-    SLOPOMATIC_INSTALL_REPOSITORY_URL="${TEST_REPOSITORY_URL:-https://fixture.invalid}" \
+    SLOPSHIPPER_INSTALL_REPOSITORY_URL="${TEST_REPOSITORY_URL:-https://fixture.invalid}" \
     TEST_UNAME_S="${TEST_UNAME_S:-Linux}" \
     TEST_UNAME_M="${TEST_UNAME_M:-x86_64}" \
     FAKE_CURL_MODE="${FAKE_CURL_MODE:-}" \
@@ -174,11 +174,11 @@ expect_failure() {
 
 assert_no_residue() {
   if find "$case_tmp" "$case_home" \
-      \( -name 'slopomatic-install.*' -o -name '.slopomatic.*' \) \
+      \( -name 'slopshipper-install.*' -o -name '.slopshipper.*' \) \
       -print -quit | grep -q .; then
     printf 'installer left temporary files behind\n' >&2
     find "$case_tmp" "$case_home" \
-      \( -name 'slopomatic-install.*' -o -name '.slopomatic.*' \) >&2
+      \( -name 'slopshipper-install.*' -o -name '.slopshipper.*' \) >&2
     exit 1
   fi
 }
@@ -188,16 +188,16 @@ env -u HOME /bin/sh "$installer" --help >/dev/null
 new_case
 destination_without_home=$case_root/no-home-bin
 run_installer_without_home --dest "$destination_without_home" >/dev/null
-test "$("$destination_without_home/slopomatic" --version)" = \
-  'slopomatic v1.2.3 (fixture-amd64)'
+test "$("$destination_without_home/slopshipper" --version)" = \
+  'slopshipper v1.2.3 (fixture-amd64)'
 assert_no_residue
 
 new_case
 run_installer >/dev/null
-test "$("$case_home/.local/bin/slopomatic" --version)" = \
-  'slopomatic v1.2.3 (fixture-amd64)'
+test "$("$case_home/.local/bin/slopshipper" --version)" = \
+  'slopshipper v1.2.3 (fixture-amd64)'
 grep -Fx \
-  'https://fixture.invalid/releases/download/v1.2.3/slopomatic_v1.2.3_linux_amd64.tar.gz' \
+  'https://fixture.invalid/releases/download/v1.2.3/slopshipper_v1.2.3_linux_amd64.tar.gz' \
   "$case_log" >/dev/null
 grep -Fx \
   'https://fixture.invalid/releases/download/v1.2.3/checksums.txt' \
@@ -207,7 +207,7 @@ assert_no_residue
 new_case
 TEST_REPOSITORY_URL=https://fixture.invalid/ run_installer >/dev/null
 grep -Fx \
-  'https://fixture.invalid/releases/download/v1.2.3/slopomatic_v1.2.3_linux_amd64.tar.gz' \
+  'https://fixture.invalid/releases/download/v1.2.3/slopshipper_v1.2.3_linux_amd64.tar.gz' \
   "$case_log" >/dev/null
 assert_no_residue
 
@@ -215,10 +215,10 @@ new_case
 custom_destination=$case_root/custom-bin-with-space/'chosen bin'
 TEST_UNAME_M=aarch64 run_installer --version 1.2.3 \
   --dest "$custom_destination" >/dev/null
-test "$("$custom_destination/slopomatic" --version)" = \
-  'slopomatic v1.2.3 (fixture-arm64)'
+test "$("$custom_destination/slopshipper" --version)" = \
+  'slopshipper v1.2.3 (fixture-arm64)'
 grep -Fx \
-  'https://fixture.invalid/releases/download/v1.2.3/slopomatic_v1.2.3_linux_arm64.tar.gz' \
+  'https://fixture.invalid/releases/download/v1.2.3/slopshipper_v1.2.3_linux_arm64.tar.gz' \
   "$case_log" >/dev/null
 assert_no_residue
 
@@ -243,14 +243,14 @@ expect_failure 'invalid release version: vnightly' \
 assert_no_residue
 
 new_case
-awk '$2 != "slopomatic_v1.2.3_linux_amd64.tar.gz"' \
+awk '$2 != "slopshipper_v1.2.3_linux_amd64.tar.gz"' \
   "$case_fixtures/checksums.txt" > "$case_fixtures/checksums.new"
 mv "$case_fixtures/checksums.new" "$case_fixtures/checksums.txt"
 expect_failure 'checksums.txt must contain exactly one entry' run_installer
 assert_no_residue
 
 new_case
-awk '{ if ($2 == "slopomatic_v1.2.3_linux_amd64.tar.gz") $1 = sprintf("%064d", 0); print }' \
+awk '{ if ($2 == "slopshipper_v1.2.3_linux_amd64.tar.gz") $1 = sprintf("%064d", 0); print }' \
   "$case_fixtures/checksums.txt" > "$case_fixtures/checksums.new"
 mv "$case_fixtures/checksums.new" "$case_fixtures/checksums.txt"
 expect_failure 'checksum mismatch' run_installer
@@ -258,24 +258,24 @@ assert_no_residue
 
 new_case
 mkdir -p "$case_home/.local/bin"
-printf '#!/bin/sh\nprintf '\''old slopomatic\\n'\''\n' > \
-  "$case_home/.local/bin/slopomatic"
-chmod 755 "$case_home/.local/bin/slopomatic"
+printf '#!/bin/sh\nprintf '\''old slopshipper\\n'\''\n' > \
+  "$case_home/.local/bin/slopshipper"
+chmod 755 "$case_home/.local/bin/slopshipper"
 FAKE_CURL_MODE=fail-download expect_failure 'failed to download' run_installer
-test "$("$case_home/.local/bin/slopomatic")" = 'old slopomatic'
+test "$("$case_home/.local/bin/slopshipper")" = 'old slopshipper'
 assert_no_residue
 
 new_case
-mkdir -p "$case_home/.local/bin/slopomatic"
+mkdir -p "$case_home/.local/bin/slopshipper"
 expect_failure 'destination path is a directory' run_installer
-test -d "$case_home/.local/bin/slopomatic"
+test -d "$case_home/.local/bin/slopshipper"
 assert_no_residue
 
 new_case
 mkdir -p "$case_home/.local/bin"
-printf '#!/bin/sh\nprintf '\''old slopomatic\\n'\''\n' > \
-  "$case_home/.local/bin/slopomatic"
-chmod 755 "$case_home/.local/bin/slopomatic"
+printf '#!/bin/sh\nprintf '\''old slopshipper\\n'\''\n' > \
+  "$case_home/.local/bin/slopshipper"
+chmod 755 "$case_home/.local/bin/slopshipper"
 if FAKE_CURL_MODE=interrupt run_installer >/dev/null 2>&1; then
   printf 'expected interrupted installer to fail\n' >&2
   exit 1
@@ -283,7 +283,7 @@ else
   interrupt_status=$?
 fi
 test "$interrupt_status" -eq 143
-test "$("$case_home/.local/bin/slopomatic")" = 'old slopomatic'
+test "$("$case_home/.local/bin/slopshipper")" = 'old slopshipper'
 assert_no_residue
 
 printf 'installer tests passed\n'

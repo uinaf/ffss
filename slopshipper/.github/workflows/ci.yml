@@ -108,7 +108,7 @@ jobs:
       - name: Lint skill package
         env:
           TESSL_AUTO_UPDATE_INTERVAL_MINUTES: "0"
-        run: tessl plugin lint skills/slopomatic
+        run: tessl plugin lint skills/slopshipper
 
   gate:
     name: CI / gate
@@ -185,7 +185,7 @@ jobs:
           private-key: ${{ secrets.UINAF_RELEASE_APP_PRIVATE_KEY }}
           owner: uinaf
           repositories: |
-            slopomatic
+            slopshipper
             homebrew-tap
           permission-contents: write
 
@@ -293,7 +293,7 @@ jobs:
           (cd dist && shasum -a 256 -c checksums.txt)
           cosign verify-blob \
             --bundle dist/checksums.txt.sigstore.json \
-            --certificate-identity "https://github.com/uinaf/slopomatic/.github/workflows/ci.yml@refs/heads/main" \
+            --certificate-identity "https://github.com/uinaf/slopshipper/.github/workflows/ci.yml@refs/heads/main" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             dist/checksums.txt
 
@@ -313,7 +313,7 @@ jobs:
           set -euo pipefail
           asset_count="$(
             gh release view "$RELEASE_TAG" --json assets \
-              --jq '[.assets[].name | select(test("^(slopomatic_v[0-9]+\\.[0-9]+\\.[0-9]+_(darwin|linux)_(arm64|amd64)\\.tar\\.gz|checksums\\.txt|checksums\\.txt\\.sigstore\\.json)$"))] | length'
+              --jq '[.assets[].name | select(test("^(slopshipper_v[0-9]+\\.[0-9]+\\.[0-9]+_(darwin|linux)_(arm64|amd64)\\.tar\\.gz|checksums\\.txt|checksums\\.txt\\.sigstore\\.json)$"))] | length'
           )"
           if [[ "$asset_count" != "6" ]]; then
             echo "expected four archives, checksums, and signature bundle; found $asset_count matching assets" >&2
@@ -325,7 +325,7 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
-            dist/slopomatic_*.tar.gz
+            dist/slopshipper_*.tar.gz
             dist/checksums.txt
             dist/checksums.txt.sigstore.json
 
@@ -360,12 +360,12 @@ jobs:
           set -euo pipefail
           brew tap uinaf/tap
           brew update
-          brew install --cask uinaf/tap/slopomatic
-          scripts/check-install-path.sh "$(brew --prefix)/bin/slopomatic"
-          slopomatic version | grep -F "slopomatic ${EXPECTED_TAG}"
+          brew install --cask uinaf/tap/slopshipper
+          scripts/check-install-path.sh "$(brew --prefix)/bin/slopshipper"
+          slopshipper version | grep -F "slopshipper ${EXPECTED_TAG}"
           first_run_state="$(mktemp -d)/xdg"
-          SLOPOMATIC_DB='' XDG_DATA_HOME="$first_run_state" \
-            slopomatic status --json | grep -F '"state": "UNINITIALIZED"'
-          SLOPOMATIC_DB='' XDG_DATA_HOME="$first_run_state" \
-            slopomatic init --run homebrew-first-run | grep -F 'state=INTAKE'
-          test -f "$first_run_state/slopomatic/slopomatic.sqlite"
+          SLOPSHIPPER_DB='' XDG_DATA_HOME="$first_run_state" \
+            slopshipper status --json | grep -F '"state": "UNINITIALIZED"'
+          SLOPSHIPPER_DB='' XDG_DATA_HOME="$first_run_state" \
+            slopshipper init --run homebrew-first-run | grep -F 'state=INTAKE'
+          test -f "$first_run_state/slopshipper/slopshipper.sqlite"

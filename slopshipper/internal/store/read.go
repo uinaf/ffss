@@ -3,7 +3,7 @@ package store
 import (
 	"database/sql"
 
-	"github.com/uinaf/slopomatic/internal/machine"
+	"github.com/uinaf/slopshipper/internal/machine"
 )
 
 // Event is one persisted machine transition for a run.

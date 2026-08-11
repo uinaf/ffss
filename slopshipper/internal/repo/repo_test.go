@@ -7,12 +7,12 @@ import (
 )
 
 func TestRedactRemoteStripsUserinfo(t *testing.T) {
-	got := redactRemote("https://TOKEN@github.com/uinaf/slopomatic.git")
-	want := "https://github.com/uinaf/slopomatic.git"
+	got := redactRemote("https://TOKEN@github.com/uinaf/slopshipper.git")
+	want := "https://github.com/uinaf/slopshipper.git"
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}
-	if got := redactRemote("git@github.com:uinaf/slopomatic.git"); got != "github.com:uinaf/slopomatic.git" {
+	if got := redactRemote("git@github.com:uinaf/slopshipper.git"); got != "github.com:uinaf/slopshipper.git" {
 		t.Fatalf("scp form changed: %q", got)
 	}
 	if got := redactRemote("TOKEN@github.com:org/repo.git?secret=yes#fragment"); got != "github.com:org/repo.git" {

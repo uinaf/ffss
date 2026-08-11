@@ -19,12 +19,12 @@ import (
 	"syscall"
 
 	"github.com/mattn/go-isatty"
-	"github.com/uinaf/slopomatic/internal/buildinfo"
-	"github.com/uinaf/slopomatic/internal/machine"
-	"github.com/uinaf/slopomatic/internal/repo"
-	"github.com/uinaf/slopomatic/internal/serve"
-	"github.com/uinaf/slopomatic/internal/status"
-	"github.com/uinaf/slopomatic/internal/store"
+	"github.com/uinaf/slopshipper/internal/buildinfo"
+	"github.com/uinaf/slopshipper/internal/machine"
+	"github.com/uinaf/slopshipper/internal/repo"
+	"github.com/uinaf/slopshipper/internal/serve"
+	"github.com/uinaf/slopshipper/internal/status"
+	"github.com/uinaf/slopshipper/internal/store"
 )
 
 func main() {
@@ -167,26 +167,26 @@ func isMutatingCommand(command string) bool {
 }
 
 func usage() string {
-	return `slopomatic — deterministic structured slop cannoning
+	return `slopshipper — deterministic structured slop cannoning
 
 Usage:
-  slopomatic init [--run ID]
-  slopomatic intake --file PATH|- [--run ID]
-  slopomatic release --revision N [--run ID]
-  slopomatic build [--run ID]
-  slopomatic verify --cmd CMD | --evidence PATH|- [--run ID]
-  slopomatic review --evidence PATH|- [--run ID]
-  slopomatic rework [--run ID]
-  slopomatic deliver --evidence PATH|- [--run ID]
-  slopomatic ask --question TEXT [--run ID]
-  slopomatic decide --answer TEXT [--run ID]
-  slopomatic retry --reason TEXT [--run ID]
-  slopomatic block --reason TEXT [--run ID]
-  slopomatic status [--json] [--run ID]
-  slopomatic schema [--command NAME] [--json]
-  slopomatic storage [--json]
-  slopomatic serve [--addr 127.0.0.1:7780]
-  slopomatic version
+  slopshipper init [--run ID]
+  slopshipper intake --file PATH|- [--run ID]
+  slopshipper release --revision N [--run ID]
+  slopshipper build [--run ID]
+  slopshipper verify --cmd CMD | --evidence PATH|- [--run ID]
+  slopshipper review --evidence PATH|- [--run ID]
+  slopshipper rework [--run ID]
+  slopshipper deliver --evidence PATH|- [--run ID]
+  slopshipper ask --question TEXT [--run ID]
+  slopshipper decide --answer TEXT [--run ID]
+  slopshipper retry --reason TEXT [--run ID]
+  slopshipper block --reason TEXT [--run ID]
+  slopshipper status [--json] [--run ID]
+  slopshipper schema [--command NAME] [--json]
+  slopshipper storage [--json]
+  slopshipper serve [--addr 127.0.0.1:7780]
+  slopshipper version
 
 All mutating commands accept --input PATH and --dry-run.
 Use --json before or after a command for structured success and error output.
@@ -195,74 +195,74 @@ Use --json before or after a command for structured success and error output.
 
 func commandUsage(command string) (string, bool) {
 	usage := map[string]string{
-		"init": `Usage: slopomatic init [--run ID]
+		"init": `Usage: slopshipper init [--run ID]
 
 Create a run for the current Git repository. The next action is intake.
 `,
-		"intake": `Usage: slopomatic intake --file PATH [--run ID]
+		"intake": `Usage: slopshipper intake --file PATH [--run ID]
 
 Load the released-work contract from JSON. Use --file - to read stdin.
 Fields: delivery_mode, review_consent, series_bound, units.
 `,
-		"release": `Usage: slopomatic release --revision N [--run ID]
+		"release": `Usage: slopshipper release --revision N [--run ID]
 
 Human approval latch for the exact intake_revision shown by status.
 `,
-		"build": `Usage: slopomatic build [--run ID]
+		"build": `Usage: slopshipper build [--run ID]
 
 Claim the next ready unit, or restart the current unit after rework.
 `,
-		"verify": `Usage: slopomatic verify (--cmd CMD | --evidence PATH) [--run ID]
+		"verify": `Usage: slopshipper verify (--cmd CMD | --evidence PATH) [--run ID]
 
 Run verification or load strict JSON evidence. Use --evidence - for stdin.
 A failed command is recorded as BLOCKED and exits with code 6.
 `,
-		"review": `Usage: slopomatic review --evidence PATH [--run ID]
+		"review": `Usage: slopshipper review --evidence PATH [--run ID]
 
 Record strict JSON review evidence. Use --evidence - for stdin.
 Verdicts: clean, findings, ambiguous. Reviewers: autoreview, bugbot, human.
 `,
-		"rework": `Usage: slopomatic rework [--run ID]
+		"rework": `Usage: slopshipper rework [--run ID]
 
 Return the current unit from REVIEW to the build loop.
 `,
-		"deliver": `Usage: slopomatic deliver --evidence PATH [--run ID]
+		"deliver": `Usage: slopshipper deliver --evidence PATH [--run ID]
 
 Record strict JSON delivery evidence. Use --evidence - for stdin.
 `,
-		"ask": `Usage: slopomatic ask --question TEXT [--run ID]
+		"ask": `Usage: slopshipper ask --question TEXT [--run ID]
 
 Park the run until a human decision is recorded.
 `,
-		"decide": `Usage: slopomatic decide --answer TEXT [--run ID]
+		"decide": `Usage: slopshipper decide --answer TEXT [--run ID]
 
 Record the human answer and resume the parked state.
 `,
-		"retry": `Usage: slopomatic retry --reason TEXT [--run ID]
+		"retry": `Usage: slopshipper retry --reason TEXT [--run ID]
 
 Record the recovery decision and return a blocked verification to BUILD.
 `,
-		"block": `Usage: slopomatic block --reason TEXT [--run ID]
+		"block": `Usage: slopshipper block --reason TEXT [--run ID]
 
 Record why active work cannot continue. Resume with retry after recovery.
 `,
-		"status": `Usage: slopomatic status [--json] [--fields LIST] [--run ID]
+		"status": `Usage: slopshipper status [--json] [--fields LIST] [--run ID]
 
 Show the current state and an actionable next command.
 `,
-		"schema": `Usage: slopomatic schema [--command NAME] [--json]
+		"schema": `Usage: slopshipper schema [--command NAME] [--json]
 
 Describe commands, flags, strict input schemas, enums, and outputs as JSON.
 `,
-		"storage": `Usage: slopomatic storage [--json]
+		"storage": `Usage: slopshipper storage [--json]
 
 Show the resolved database path, source, scope, existence, and Git safety.
 `,
-		"serve": `Usage: slopomatic serve [--addr 127.0.0.1:7780]
+		"serve": `Usage: slopshipper serve [--addr 127.0.0.1:7780]
 
 Serve the read-only run projector on a loopback address.
 `,
-		"version": `Usage: slopomatic version
+		"version": `Usage: slopshipper version
 
 Print the CLI version and source revision.
 `,
@@ -293,7 +293,7 @@ func openStoreForCommand(command string, opts runOptions) (*store.Store, error) 
 	if _, err := os.Stat(path); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			if command != "init" {
-				return nil, fmt.Errorf("%w: canonical state does not exist at %q; run slopomatic init first", machine.ErrNotFound, path)
+				return nil, fmt.Errorf("%w: canonical state does not exist at %q; run slopshipper init first", machine.ErrNotFound, path)
 			}
 			return nil, nil
 		}
@@ -962,7 +962,7 @@ func readJSONFrom(path string, dest any, stdin io.Reader, stdinInteractive bool)
 	var r io.Reader
 	if path == "-" {
 		if stdinInteractive {
-			return fmt.Errorf("stdin is an interactive terminal; pipe or redirect JSON when using -, or inspect slopomatic schema for the command contract")
+			return fmt.Errorf("stdin is an interactive terminal; pipe or redirect JSON when using -, or inspect slopshipper schema for the command contract")
 		}
 		r = stdin
 	} else {

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/uinaf/slopomatic/internal/status"
+	"github.com/uinaf/slopshipper/internal/status"
 )
 
 type introspectionDocument struct {
@@ -61,7 +61,7 @@ func schemaDocument(command string) (introspectionDocument, error) {
 	}
 	return introspectionDocument{
 		SchemaVersion: 1,
-		CLI:           "slopomatic",
+		CLI:           "slopshipper",
 		GlobalFlags: []flagSchema{
 			{Name: "--json", Type: "boolean", Description: "Emit structured JSON success and error output."},
 			{Name: "--dry-run", Type: "boolean", Description: "Validate a mutating command without shell execution or persistence."},

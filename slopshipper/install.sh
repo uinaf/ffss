@@ -2,7 +2,7 @@
 
 set -eu
 
-repository_url=${SLOPOMATIC_INSTALL_REPOSITORY_URL:-https://github.com/uinaf/slopomatic}
+repository_url=${SLOPSHIPPER_INSTALL_REPOSITORY_URL:-https://github.com/uinaf/slopshipper}
 while [ "${repository_url%/}" != "$repository_url" ]; do
   repository_url=${repository_url%/}
 done
@@ -13,7 +13,7 @@ destination_temporary=
 
 usage() {
   cat <<'EOF'
-Install slopomatic on Linux.
+Install slopshipper on Linux.
 
 Usage: install.sh [--version VERSION] [--dest DIRECTORY]
 
@@ -25,7 +25,7 @@ EOF
 }
 
 fail() {
-  printf 'slopomatic installer: %s\n' "$*" >&2
+  printf 'slopshipper installer: %s\n' "$*" >&2
   exit 1
 }
 
@@ -139,9 +139,9 @@ fi
 
 valid_release_tag "$release_tag" || fail "invalid release version: $release_tag"
 
-temporary_directory=$(mktemp -d "${TMPDIR:-/tmp}/slopomatic-install.XXXXXX") ||
+temporary_directory=$(mktemp -d "${TMPDIR:-/tmp}/slopshipper-install.XXXXXX") ||
   fail "could not create a temporary directory"
-archive=slopomatic_${release_tag}_linux_${architecture}.tar.gz
+archive=slopshipper_${release_tag}_linux_${architecture}.tar.gz
 archive_path=$temporary_directory/$archive
 checksums_path=$temporary_directory/checksums.txt
 release_url=$repository_url/releases/download/$release_tag
@@ -175,20 +175,20 @@ actual_checksum=${actual_checksum_output%% *}
 
 extract_directory=$temporary_directory/extract
 mkdir "$extract_directory" || fail "could not create the extraction directory"
-tar -xzf "$archive_path" -C "$extract_directory" slopomatic ||
-  fail "could not extract slopomatic from $archive"
-[ -f "$extract_directory/slopomatic" ] || fail "archive does not contain slopomatic"
+tar -xzf "$archive_path" -C "$extract_directory" slopshipper ||
+  fail "could not extract slopshipper from $archive"
+[ -f "$extract_directory/slopshipper" ] || fail "archive does not contain slopshipper"
 
 mkdir -p "$destination" || fail "could not create destination: $destination"
-[ ! -d "$destination/slopomatic" ] ||
-  fail "destination path is a directory: $destination/slopomatic"
-destination_temporary=$(mktemp "$destination/.slopomatic.XXXXXX") ||
+[ ! -d "$destination/slopshipper" ] ||
+  fail "destination path is a directory: $destination/slopshipper"
+destination_temporary=$(mktemp "$destination/.slopshipper.XXXXXX") ||
   fail "could not create an atomic destination file"
-cp "$extract_directory/slopomatic" "$destination_temporary" ||
-  fail "could not copy slopomatic into the destination"
-chmod 755 "$destination_temporary" || fail "could not make slopomatic executable"
-mv -f "$destination_temporary" "$destination/slopomatic" ||
-  fail "could not replace $destination/slopomatic"
+cp "$extract_directory/slopshipper" "$destination_temporary" ||
+  fail "could not copy slopshipper into the destination"
+chmod 755 "$destination_temporary" || fail "could not make slopshipper executable"
+mv -f "$destination_temporary" "$destination/slopshipper" ||
+  fail "could not replace $destination/slopshipper"
 destination_temporary=
 
-printf 'Installed slopomatic %s to %s/slopomatic\n' "$release_tag" "$destination"
+printf 'Installed slopshipper %s to %s/slopshipper\n' "$release_tag" "$destination"

@@ -1,19 +1,19 @@
 version: 2
 
-project_name: slopomatic
+project_name: slopshipper
 
 builds:
-  - id: slopomatic
-    main: ./cmd/slopomatic
-    binary: slopomatic
+  - id: slopshipper
+    main: ./cmd/slopshipper
+    binary: slopshipper
     env:
       - CGO_ENABLED=0
     flags:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/uinaf/slopomatic/internal/buildinfo.version={{ if .IsSnapshot }}v{{ .Version }}{{ else }}{{ .Tag }}{{ end }}
-      - -X github.com/uinaf/slopomatic/internal/buildinfo.commit={{ .FullCommit }}
+      - -X github.com/uinaf/slopshipper/internal/buildinfo.version={{ if .IsSnapshot }}v{{ .Version }}{{ else }}{{ .Tag }}{{ end }}
+      - -X github.com/uinaf/slopshipper/internal/buildinfo.commit={{ .FullCommit }}
     goos:
       - darwin
       - linux
@@ -22,7 +22,7 @@ builds:
       - arm64
 
 archives:
-  - id: slopomatic
+  - id: slopshipper
     name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"
     formats: [tar.gz]
     files:
@@ -37,7 +37,7 @@ notarize:
   macos:
     - enabled: '{{ isEnvSet "APPLE_DEVELOPER_ID_CERTIFICATE_P12_BASE64" }}'
       ids:
-        - slopomatic
+        - slopshipper
       sign:
         certificate: "{{ .Env.APPLE_DEVELOPER_ID_CERTIFICATE_P12_BASE64 }}"
         password: "{{ .Env.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}"
@@ -67,7 +67,7 @@ changelog:
 release:
   github:
     owner: uinaf
-    name: slopomatic
+    name: slopshipper
   draft: true
   use_existing_draft: true
   mode: keep-existing
@@ -75,11 +75,11 @@ release:
   prerelease: auto
 
 homebrew_casks:
-  - name: slopomatic
+  - name: slopshipper
     ids:
-      - slopomatic
+      - slopshipper
     binaries:
-      - slopomatic
+      - slopshipper
     repository:
       owner: uinaf
       name: homebrew-tap
@@ -88,9 +88,9 @@ homebrew_casks:
     directory: Casks
     commit_author:
       use_github_app_token: true
-    commit_msg_template: "chore(slopomatic): update to {{ .Tag }}"
-    homepage: https://github.com/uinaf/slopomatic
+    commit_msg_template: "chore(slopshipper): update to {{ .Tag }}"
+    homepage: https://github.com/uinaf/slopshipper
     description: Deterministic and structured approach to slop cannoning
     license: MIT
     url:
-      verified: github.com/uinaf/slopomatic/
+      verified: github.com/uinaf/slopshipper/

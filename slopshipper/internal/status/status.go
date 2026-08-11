@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/uinaf/slopomatic/internal/machine"
+	"github.com/uinaf/slopshipper/internal/machine"
 )
 
 const (
@@ -92,13 +92,13 @@ func Bootstrap(repoKey string) Document {
 		CompletedReviewers: []string{},
 		AllowedCommands:    []string{string(machine.CmdInit)},
 		RequiredEvidence:   []string{},
-		NextAction:         "slopomatic init",
+		NextAction:         "slopshipper init",
 		Blocker:            "no run exists for this repository",
 	}
 }
 
 func (d Document) CompactLine() string {
-	prefix := "slopomatic"
+	prefix := "slopshipper"
 	if d.DryRun {
 		prefix += " dry-run"
 	}
@@ -185,21 +185,21 @@ func nextAction(run machine.Run, allowed []machine.Command) string {
 				var command string
 				switch p {
 				case machine.CmdIntake:
-					command = "slopomatic intake --file -"
+					command = "slopshipper intake --file -"
 				case machine.CmdRelease:
-					command = fmt.Sprintf("slopomatic release --revision %d", run.IntakeRevision)
+					command = fmt.Sprintf("slopshipper release --revision %d", run.IntakeRevision)
 				case machine.CmdVerify:
-					command = "slopomatic verify --cmd '<verification command>'"
+					command = "slopshipper verify --cmd '<verification command>'"
 				case machine.CmdReview:
-					command = "slopomatic review --evidence -"
+					command = "slopshipper review --evidence -"
 				case machine.CmdDeliver:
-					command = "slopomatic deliver --evidence -"
+					command = "slopshipper deliver --evidence -"
 				case machine.CmdDecide:
-					command = "slopomatic decide --answer '<answer>'"
+					command = "slopshipper decide --answer '<answer>'"
 				case machine.CmdRetry:
-					command = "slopomatic retry --reason '<reason>'"
+					command = "slopshipper retry --reason '<reason>'"
 				default:
-					command = "slopomatic " + string(p)
+					command = "slopshipper " + string(p)
 				}
 				return withRun(command, run.ID)
 			}
@@ -208,7 +208,7 @@ func nextAction(run machine.Run, allowed []machine.Command) string {
 	if len(allowed) == 0 {
 		return ""
 	}
-	return withRun("slopomatic "+string(allowed[0]), run.ID)
+	return withRun("slopshipper "+string(allowed[0]), run.ID)
 }
 
 func withRun(command, runID string) string {

@@ -1,4 +1,4 @@
-module github.com/uinaf/slopomatic
+module github.com/uinaf/slopshipper
 
 go 1.26.0
 

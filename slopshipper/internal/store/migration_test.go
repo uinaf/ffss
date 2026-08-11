@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/slopomatic/internal/machine"
-	"github.com/uinaf/slopomatic/internal/store"
+	"github.com/uinaf/slopshipper/internal/machine"
+	"github.com/uinaf/slopshipper/internal/store"
 )
 
 func TestMigratesVersionOneTransactionally(t *testing.T) {

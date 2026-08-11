@@ -12,7 +12,7 @@ var (
 	commit  = "unknown"
 )
 
-// Version returns the human-facing version line for `slopomatic version`.
+// Version returns the human-facing version line for `slopshipper version`.
 func Version() string {
 	build, ok := debug.ReadBuildInfo()
 	v, c := resolve(version, commit, build, ok)
@@ -21,9 +21,9 @@ func Version() string {
 
 func format(resolvedVersion, resolvedCommit string) string {
 	if resolvedCommit == "unknown" && isReleaseVersion(resolvedVersion) {
-		return fmt.Sprintf("slopomatic %s", resolvedVersion)
+		return fmt.Sprintf("slopshipper %s", resolvedVersion)
 	}
-	return fmt.Sprintf("slopomatic %s (%s)", resolvedVersion, resolvedCommit)
+	return fmt.Sprintf("slopshipper %s (%s)", resolvedVersion, resolvedCommit)
 }
 
 func resolve(linkedVersion, linkedCommit string, build *debug.BuildInfo, ok bool) (string, string) {

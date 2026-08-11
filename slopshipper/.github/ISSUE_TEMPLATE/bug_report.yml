@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible slopomatic defect with sanitized diagnostics
+description: Report a reproducible slopshipper defect with sanitized diagnostics
 title: "bug: "
 labels:
   - bug
@@ -32,7 +32,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: slopomatic version
-      placeholder: slopomatic vX.Y.Z
+      label: slopshipper version
+      placeholder: slopshipper vX.Y.Z
     validations:
       required: true

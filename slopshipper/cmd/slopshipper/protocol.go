@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/uinaf/slopomatic/internal/machine"
+	"github.com/uinaf/slopshipper/internal/machine"
 )
 
 type outputDigester struct {
@@ -143,12 +143,12 @@ func writeFailure(opts runOptions, code int, err error) int {
 			},
 		}
 		if encodeErr := writeJSON(doc); encodeErr != nil {
-			fmt.Fprintf(os.Stderr, "slopomatic: encode error response: %v\n", encodeErr)
+			fmt.Fprintf(os.Stderr, "slopshipper: encode error response: %v\n", encodeErr)
 			return 10
 		}
 		return code
 	}
-	fmt.Fprintf(os.Stderr, "slopomatic: %v\n", err)
+	fmt.Fprintf(os.Stderr, "slopshipper: %v\n", err)
 	return code
 }
 

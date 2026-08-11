@@ -35,8 +35,8 @@ description = "Run Go static analysis"
 run = "go vet ./..."
 
 [tasks.build]
-description = "Build the slopomatic CLI into ./bin"
-run = "mkdir -p bin && go build -o bin/slopomatic ./cmd/slopomatic"
+description = "Build the slopshipper CLI into ./bin"
+run = "mkdir -p bin && go build -o bin/slopshipper ./cmd/slopshipper"
 
 [tasks."installer:test"]
 description = "Run the offline installer and PATH fixture tests"
@@ -81,11 +81,11 @@ depends = ["release:check"]
 run = '''
 set -e
 goreleaser release --snapshot --clean --skip=publish,sign
-test "$(find dist -maxdepth 1 -name 'slopomatic_*.tar.gz' -type f | wc -l | tr -d ' ')" = "4"
-test "$(find dist -maxdepth 1 -name 'slopomatic_*_linux_amd64.tar.gz' -type f | wc -l | tr -d ' ')" = "1"
-test "$(find dist -maxdepth 1 -name 'slopomatic_*_linux_arm64.tar.gz' -type f | wc -l | tr -d ' ')" = "1"
-for archive in dist/slopomatic_*.tar.gz; do
-  test "$(tar -tzf "$archive" | LC_ALL=C sort | tr '\n' ' ')" = "LICENSE README.md slopomatic "
+test "$(find dist -maxdepth 1 -name 'slopshipper_*.tar.gz' -type f | wc -l | tr -d ' ')" = "4"
+test "$(find dist -maxdepth 1 -name 'slopshipper_*_linux_amd64.tar.gz' -type f | wc -l | tr -d ' ')" = "1"
+test "$(find dist -maxdepth 1 -name 'slopshipper_*_linux_arm64.tar.gz' -type f | wc -l | tr -d ' ')" = "1"
+for archive in dist/slopshipper_*.tar.gz; do
+  test "$(tar -tzf "$archive" | LC_ALL=C sort | tr '\n' ' ')" = "LICENSE README.md slopshipper "
 done
 '''
 
@@ -93,15 +93,15 @@ done
 description = "Free Tessl plugin lint for the skill package"
 run = '''
 set -e
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopomatic
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopshipper
 '''
 
 [tasks."skill:review"]
 description = "Optional credit-burning Tessl cloud review at threshold 100"
 run = '''
 set -e
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopomatic
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopomatic-0.3.0 skills/slopomatic
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopshipper
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopshipper-0.3.0 skills/slopshipper
 '''
 
 [tasks.security]

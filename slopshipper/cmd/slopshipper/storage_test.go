@@ -16,13 +16,13 @@ func TestStorageResolutionDefaultsAndRelativeOverrides(t *testing.T) {
 	withWorkingDirectory(t, repoDir)
 
 	xdg := t.TempDir()
-	t.Setenv("SLOPOMATIC_DB", "")
+	t.Setenv("SLOPSHIPPER_DB", "")
 	t.Setenv("XDG_DATA_HOME", xdg)
 	doc, err := resolveStorage(true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantDefault, err := physicalPath(filepath.Join(xdg, "slopomatic", "slopomatic.sqlite"))
+	wantDefault, err := physicalPath(filepath.Join(xdg, "slopshipper", "slopshipper.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,23 +39,23 @@ func TestStorageResolutionDefaultsAndRelativeOverrides(t *testing.T) {
 	}
 	t.Setenv("XDG_DATA_HOME", xdg)
 
-	t.Setenv("SLOPOMATIC_DB", filepath.Join(".slopomatic", "slopomatic.sqlite"))
+	t.Setenv("SLOPSHIPPER_DB", filepath.Join(".slopshipper", "slopshipper.sqlite"))
 	doc, err = resolveStorage(false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantLocal, err := physicalPath(filepath.Join(repoDir, ".slopomatic", "slopomatic.sqlite"))
+	wantLocal, err := physicalPath(filepath.Join(repoDir, ".slopshipper", "slopshipper.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if doc.Path != wantLocal || doc.Source != "environment" || doc.Scope != "repository" || doc.GitIgnored == nil || *doc.GitIgnored {
 		t.Fatalf("unsafe local storage=%+v want path=%q", doc, wantLocal)
 	}
-	if _, err := resolveStorage(true); !errors.Is(err, errUnsafeStatePath) || !strings.Contains(err.Error(), "/.slopomatic/") {
+	if _, err := resolveStorage(true); !errors.Is(err, errUnsafeStatePath) || !strings.Contains(err.Error(), "/.slopshipper/") {
 		t.Fatalf("unsafe storage error=%v", err)
 	}
 
-	mustWrite(t, filepath.Join(repoDir, ".git", "info", "exclude"), "/.slopomatic/\n")
+	mustWrite(t, filepath.Join(repoDir, ".git", "info", "exclude"), "/.slopshipper/\n")
 	doc, err = resolveStorage(true)
 	if err != nil || doc.GitIgnored == nil || !*doc.GitIgnored {
 		t.Fatalf("ignored local storage=%+v err=%v", doc, err)
@@ -78,8 +78,8 @@ func TestPathWithinUsesFilesystemIdentity(t *testing.T) {
 	if _, err := os.Stat(caseVariant); err != nil {
 		t.Skip("filesystem is case-sensitive")
 	}
-	inside, relative, err := pathWithin(root, filepath.Join(caseVariant, ".slopomatic", "slopomatic.sqlite"))
-	if err != nil || !inside || filepath.ToSlash(relative) != ".slopomatic/slopomatic.sqlite" {
+	inside, relative, err := pathWithin(root, filepath.Join(caseVariant, ".slopshipper", "slopshipper.sqlite"))
+	if err != nil || !inside || filepath.ToSlash(relative) != ".slopshipper/slopshipper.sqlite" {
 		t.Fatalf("inside=%t relative=%q err=%v", inside, relative, err)
 	}
 }
@@ -88,11 +88,11 @@ func TestStorageRequiresSQLiteSidecarsToBeIgnored(t *testing.T) {
 	repoDir := t.TempDir()
 	runGit(t, repoDir, "init")
 	withWorkingDirectory(t, repoDir)
-	t.Setenv("SLOPOMATIC_DB", filepath.Join(".slopomatic", "slopomatic.sqlite"))
-	mustWrite(t, filepath.Join(repoDir, ".git", "info", "exclude"), "/.slopomatic/slopomatic.sqlite\n")
+	t.Setenv("SLOPSHIPPER_DB", filepath.Join(".slopshipper", "slopshipper.sqlite"))
+	mustWrite(t, filepath.Join(repoDir, ".git", "info", "exclude"), "/.slopshipper/slopshipper.sqlite\n")
 
 	_, err := resolveStorage(true)
-	if !errors.Is(err, errUnsafeStatePath) || !strings.Contains(err.Error(), "slopomatic.sqlite-wal") {
+	if !errors.Is(err, errUnsafeStatePath) || !strings.Contains(err.Error(), "slopshipper.sqlite-wal") {
 		t.Fatalf("sidecar error=%v", err)
 	}
 }
@@ -102,19 +102,19 @@ func TestStorageRejectsTrackedDatabaseEvenWhenPatternMatches(t *testing.T) {
 	runGit(t, repoDir, "init")
 	runGit(t, repoDir, "config", "user.email", "t@example.com")
 	runGit(t, repoDir, "config", "user.name", "t")
-	if err := os.Mkdir(filepath.Join(repoDir, ".slopomatic"), 0o700); err != nil {
+	if err := os.Mkdir(filepath.Join(repoDir, ".slopshipper"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	database := filepath.Join(repoDir, ".slopomatic", "slopomatic.sqlite")
+	database := filepath.Join(repoDir, ".slopshipper", "slopshipper.sqlite")
 	mustWrite(t, database, "tracked")
-	runGit(t, repoDir, "add", ".slopomatic/slopomatic.sqlite")
+	runGit(t, repoDir, "add", ".slopshipper/slopshipper.sqlite")
 	runGit(t, repoDir, "commit", "-m", "track unsafe state")
-	mustWrite(t, filepath.Join(repoDir, ".git", "info", "exclude"), "/.slopomatic/\n")
+	mustWrite(t, filepath.Join(repoDir, ".git", "info", "exclude"), "/.slopshipper/\n")
 	withWorkingDirectory(t, repoDir)
-	t.Setenv("SLOPOMATIC_DB", filepath.Join(".slopomatic", "slopomatic.sqlite"))
+	t.Setenv("SLOPSHIPPER_DB", filepath.Join(".slopshipper", "slopshipper.sqlite"))
 
 	_, err := resolveStorage(true)
-	if !errors.Is(err, errUnsafeStatePath) || !strings.Contains(err.Error(), "slopomatic.sqlite") {
+	if !errors.Is(err, errUnsafeStatePath) || !strings.Contains(err.Error(), "slopshipper.sqlite") {
 		t.Fatalf("tracked database error=%v", err)
 	}
 }
@@ -128,9 +128,9 @@ func TestStorageUsesPhysicalPathForRepositoryScope(t *testing.T) {
 	if err := os.Symlink(external, filepath.Join(repoDir, "external-state")); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("SLOPOMATIC_DB", filepath.Join("external-state", "slopomatic.sqlite"))
+	t.Setenv("SLOPSHIPPER_DB", filepath.Join("external-state", "slopshipper.sqlite"))
 	doc, err := resolveStorage(true)
-	wantExternal, pathErr := physicalPath(filepath.Join(external, "slopomatic.sqlite"))
+	wantExternal, pathErr := physicalPath(filepath.Join(external, "slopshipper.sqlite"))
 	if pathErr != nil {
 		t.Fatal(pathErr)
 	}
@@ -138,7 +138,7 @@ func TestStorageUsesPhysicalPathForRepositoryScope(t *testing.T) {
 		t.Fatalf("outbound symlink storage=%+v err=%v", doc, err)
 	}
 
-	localDir := filepath.Join(repoDir, ".slopomatic")
+	localDir := filepath.Join(repoDir, ".slopshipper")
 	if err := os.Mkdir(localDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestStorageUsesPhysicalPathForRepositoryScope(t *testing.T) {
 	if err := os.Symlink(localDir, inbound); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("SLOPOMATIC_DB", filepath.Join(inbound, "slopomatic.sqlite"))
+	t.Setenv("SLOPSHIPPER_DB", filepath.Join(inbound, "slopshipper.sqlite"))
 	doc, err = resolveStorage(false)
 	if err != nil || doc.Scope != "repository" || doc.GitIgnored == nil || *doc.GitIgnored {
 		t.Fatalf("inbound symlink storage=%+v err=%v", doc, err)
@@ -168,16 +168,16 @@ func TestStorageCommandAndUnsafeJSONError(t *testing.T) {
 		t.Fatalf("storage human=%s", out)
 	}
 
-	h.env = replaceEnvironment(h.env, "SLOPOMATIC_DB", filepath.Join(".slopomatic", "slopomatic.sqlite"))
+	h.env = replaceEnvironment(h.env, "SLOPSHIPPER_DB", filepath.Join(".slopshipper", "slopshipper.sqlite"))
 	out, code := h.run("init", "--run", "unsafe", "--json")
 	if code != 2 || !strings.Contains(out, `"kind": "unsafe_state_path"`) {
 		t.Fatalf("unsafe init exit=%d output=%s", code, out)
 	}
-	if _, err := os.Stat(filepath.Join(h.repoDir, ".slopomatic")); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(h.repoDir, ".slopshipper")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("unsafe init created state: %v", err)
 	}
 
-	mustWrite(t, filepath.Join(h.repoDir, ".git", "info", "exclude"), "/.slopomatic/\n")
+	mustWrite(t, filepath.Join(h.repoDir, ".git", "info", "exclude"), "/.slopshipper/\n")
 	out = h.must("storage", "--json")
 	if err := json.Unmarshal([]byte(out), &doc); err != nil || doc.GitIgnored == nil || !*doc.GitIgnored || doc.Scope != "repository" {
 		t.Fatalf("safe storage JSON=%+v err=%v output=%s", doc, err, out)
@@ -198,10 +198,10 @@ func TestStorageHumanOutputIncludesUnsafeRecovery(t *testing.T) {
 	repoDir := t.TempDir()
 	runGit(t, repoDir, "init")
 	withWorkingDirectory(t, repoDir)
-	t.Setenv("SLOPOMATIC_DB", filepath.Join(".slopomatic", "slopomatic.sqlite"))
+	t.Setenv("SLOPSHIPPER_DB", filepath.Join(".slopshipper", "slopshipper.sqlite"))
 
 	out := captureStdout(t, func() int { return run([]string{"storage"}) })
-	if !strings.Contains(out, "git_ignored=false") || !strings.Contains(out, "recovery=use a path outside the worktree") || !strings.Contains(out, "/.slopomatic/") {
+	if !strings.Contains(out, "git_ignored=false") || !strings.Contains(out, "recovery=use a path outside the worktree") || !strings.Contains(out, "/.slopshipper/") {
 		t.Fatalf("unsafe storage recovery=%s", out)
 	}
 }
@@ -211,7 +211,7 @@ func TestStorageCommandDirectOutput(t *testing.T) {
 	runGit(t, repoDir, "init")
 	withWorkingDirectory(t, repoDir)
 	database := filepath.Join(t.TempDir(), "state.sqlite")
-	t.Setenv("SLOPOMATIC_DB", database)
+	t.Setenv("SLOPSHIPPER_DB", database)
 
 	out := captureStdout(t, func() int { return run([]string{"storage", "--json"}) })
 	var doc storageDocument
@@ -219,7 +219,7 @@ func TestStorageCommandDirectOutput(t *testing.T) {
 		t.Fatalf("direct storage JSON=%+v err=%v output=%s", doc, err, out)
 	}
 	out = captureStdout(t, func() int { return run([]string{"storage"}) })
-	if !strings.Contains(out, "slopomatic storage") || !strings.Contains(out, "git_ignored=n/a") {
+	if !strings.Contains(out, "slopshipper storage") || !strings.Contains(out, "git_ignored=n/a") {
 		t.Fatalf("direct storage human=%s", out)
 	}
 	if code := run([]string{"storage", "--unexpected", "value"}); code != 2 {
@@ -230,7 +230,7 @@ func TestStorageCommandDirectOutput(t *testing.T) {
 func TestReadJSONRejectsInteractiveStdin(t *testing.T) {
 	var input initInput
 	err := readJSONFrom("-", &input, strings.NewReader(`{"run":"terminal"}`), true)
-	if err == nil || !strings.Contains(err.Error(), "interactive terminal") || !strings.Contains(err.Error(), "slopomatic schema") {
+	if err == nil || !strings.Contains(err.Error(), "interactive terminal") || !strings.Contains(err.Error(), "slopshipper schema") {
 		t.Fatalf("interactive stdin error=%v", err)
 	}
 	if err := readJSONFrom("-", &input, strings.NewReader(`{"run":"pipe"}`), false); err != nil || input.Run != "pipe" {

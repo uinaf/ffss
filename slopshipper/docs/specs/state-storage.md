@@ -34,9 +34,9 @@ SQLite sidecars into worktrees, and make accidental commits more likely.
 `next_action` uses stdin for structured payloads:
 
 ```text
-slopomatic intake --file - --run='<run>'
-slopomatic review --evidence - --run='<run>'
-slopomatic deliver --evidence - --run='<run>'
+slopshipper intake --file - --run='<run>'
+slopshipper review --evidence - --run='<run>'
+slopshipper deliver --evidence - --run='<run>'
 ```
 
 Raw machine callers may continue to use `--input -`. Accepted evidence is
@@ -52,14 +52,14 @@ points to the command schema; it does not wait indefinitely for terminal EOF.
 
 The database path resolves in this order:
 
-1. Non-empty `SLOPOMATIC_DB`.
-2. `$XDG_DATA_HOME/slopomatic/slopomatic.sqlite`.
-3. `~/.local/share/slopomatic/slopomatic.sqlite` when `XDG_DATA_HOME` is
+1. Non-empty `SLOPSHIPPER_DB`.
+2. `$XDG_DATA_HOME/slopshipper/slopshipper.sqlite`.
+3. `~/.local/share/slopshipper/slopshipper.sqlite` when `XDG_DATA_HOME` is
    unset.
 
 `XDG_DATA_HOME`, when set, must be absolute as required by the XDG contract.
 
-Relative `SLOPOMATIC_DB` values resolve from the Git worktree root, not the
+Relative `SLOPSHIPPER_DB` values resolve from the Git worktree root, not the
 caller's current subdirectory. The resolved absolute path is fixed for the
 command. The CLI never falls back from one path to another after an open,
 permission, migration, or locking failure.
@@ -68,19 +68,18 @@ Scope checks use the physical location of the nearest existing ancestor, so a
 symlink cannot make a worktree path appear external or an external path appear
 repository-local.
 
-This change does not move the existing XDG data path. `XDG_STATE_HOME` is a
-reasonable semantic alternative, but changing defaults without a migration
-contract could split existing and new runs across two databases.
+`XDG_STATE_HOME` is a reasonable semantic alternative, but it remains outside
+the contract.
 
 ### Inspect storage without mutation
 
-`slopomatic storage --json` is read-only and does not require the database to
+`slopshipper storage --json` is read-only and does not require the database to
 exist. It returns:
 
 ```json
 {
   "schema_version": 1,
-  "path": "/absolute/path/slopomatic.sqlite",
+  "path": "/absolute/path/slopshipper.sqlite",
   "source": "environment",
   "scope": "repository",
   "exists": false,
@@ -108,21 +107,21 @@ the database:
 All three must be untracked and ignored. The check applies to existing and
 nonexistent paths using the equivalent of
 `git check-ignore --quiet --no-index`, so an ignored parent directory such as
-`/.slopomatic/` is sufficient. A local override therefore looks like:
+`/.slopshipper/` is sufficient. A local override therefore looks like:
 
 ```bash
-export SLOPOMATIC_DB=.slopomatic/slopomatic.sqlite
+export SLOPSHIPPER_DB=.slopshipper/slopshipper.sqlite
 ```
 
 If any path is not ignored, the command fails with structured kind
 `unsafe_state_path`. Its message identifies the path and offers two recoveries:
 choose a writable path outside the worktree, or select
-`.slopomatic/slopomatic.sqlite` after adding `/.slopomatic/` to the
+`.slopshipper/slopshipper.sqlite` after adding `/.slopshipper/` to the
 repository-local Git exclude file.
 
 The CLI does not edit `.gitignore`, `$GIT_COMMON_DIR/info/exclude`, or global
 Git configuration. Exclusion is a repository or user decision, and an
-explicit `SLOPOMATIC_DB` remains required on every process that uses the local
+explicit `SLOPSHIPPER_DB` remains required on every process that uses the local
 database.
 
 ### Preserve dry-run and output guarantees
@@ -147,15 +146,15 @@ a fallback database.
   worktree.
 - AC3: With no override, every command continues to use the existing XDG data
   path and does not inspect or modify Git ignore files.
-- AC4: The same relative `SLOPOMATIC_DB` resolves to one path from the worktree
+- AC4: The same relative `SLOPSHIPPER_DB` resolves to one path from the worktree
   root and any subdirectory.
 - AC5: A repository-local override fails before database creation unless the
   database, WAL, and shared-memory paths are all untracked and ignored.
-- AC6: An ignored `.slopomatic/` override supports normal commands, dry runs,
+- AC6: An ignored `.slopshipper/` override supports normal commands, dry runs,
   and concurrent read-only `serve` access.
 - AC7: An unwritable, invalid, or locked selected path returns a structured
   error without creating state elsewhere.
-- AC8: `slopomatic storage --json` reports path resolution and Git safety
+- AC8: `slopshipper storage --json` reports path resolution and Git safety
   without creating or migrating state.
 - AC9: A command selecting stdin exits immediately with actionable
   `invalid_input` when stdin is a terminal.
@@ -171,7 +170,7 @@ a fallback database.
 
 ## Non-goals
 
-- Automatically choosing `.slopomatic/` when user-level storage is
+- Automatically choosing `.slopshipper/` when user-level storage is
   unavailable.
 - Adding broad `*.evidence.json` patterns to repositories.
 - Treating payload files as durable evidence or recovery checkpoints.
@@ -184,7 +183,7 @@ a fallback database.
 | Alternative | Result | Reason |
 | --- | --- | --- |
 | Global XDG database | Chosen default | Keeps canonical audit state out of worktrees and available across commands. |
-| `.slopomatic/` database | Explicit override | Useful in constrained sandboxes, but unsafe as an invisible fallback. |
+| `.slopshipper/` database | Explicit override | Useful in constrained sandboxes, but unsafe as an invisible fallback. |
 | Automatic repo-local fallback | Rejected | A permission problem would silently select a different history. |
 | Project `.gitignore` mutation | Rejected | Storage selection must not create a shared repository policy change. |
 | `$GIT_COMMON_DIR/info/exclude` | Recommended local exclusion | Git defines it for repository-specific, user-local auxiliary files. |
@@ -204,7 +203,7 @@ a fallback database.
   rule. See [gitignore](https://git-scm.com/docs/gitignore).
 - Terraform demonstrates the valid alternative: per-working-directory data
   can default to a repository-local directory, with an environment override
-  that must remain consistent across commands. Slopomatic differs because its
+  that must remain consistent across commands. Slopshipper differs because its
   SQLite event log is canonical audit state, not a reproducible working cache.
   See [`TF_DATA_DIR`](https://developer.hashicorp.com/terraform/cli/config/environment-variables#tf_data_dir).
 - SQLite WAL mode can create persistent `-wal` and `-shm` files beside the
@@ -213,5 +212,5 @@ a fallback database.
   [SQLite WAL](https://sqlite.org/wal.html).
 - Hosted automation exposes explicit workspace, home, and temporary locations
   rather than making tools infer a fallback. Callers should route
-  `SLOPOMATIC_DB` to the environment's intended writable storage. See
+  `SLOPSHIPPER_DB` to the environment's intended writable storage. See
   [GitHub-hosted runner filesystems](https://docs.github.com/en/actions/reference/runners/github-hosted-runners#file-systems).

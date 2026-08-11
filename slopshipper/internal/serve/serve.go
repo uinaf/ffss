@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/uinaf/slopomatic/internal/machine"
-	"github.com/uinaf/slopomatic/internal/status"
-	"github.com/uinaf/slopomatic/internal/store"
+	"github.com/uinaf/slopshipper/internal/machine"
+	"github.com/uinaf/slopshipper/internal/status"
+	"github.com/uinaf/slopshipper/internal/store"
 )
 
 //go:embed templates/*.html static/*
@@ -107,7 +107,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 		errCh <- httpServer.Serve(ln)
 	}()
 
-	fmt.Printf("slopomatic serve listening on http://%s (repo projector)\n", ln.Addr().String())
+	fmt.Printf("slopshipper serve listening on http://%s (repo projector)\n", ln.Addr().String())
 
 	select {
 	case <-ctx.Done():
@@ -126,7 +126,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	runs, err := s.opts.Store.ListRuns(s.opts.RepoKey)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "slopomatic serve: list runs: %v\n", err)
+		fmt.Fprintf(os.Stderr, "slopshipper serve: list runs: %v\n", err)
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
 	}
@@ -145,7 +145,7 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "run not found", http.StatusNotFound)
 			return
 		}
-		fmt.Fprintf(os.Stderr, "slopomatic serve: run %s: %v\n", id, err)
+		fmt.Fprintf(os.Stderr, "slopshipper serve: run %s: %v\n", id, err)
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
 	}
@@ -170,7 +170,7 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 func (s *Server) render(w http.ResponseWriter, name string, data any) {
 	var buf bytes.Buffer
 	if err := s.tmpl.ExecuteTemplate(&buf, name, data); err != nil {
-		fmt.Fprintf(os.Stderr, "slopomatic serve: render %s: %v\n", name, err)
+		fmt.Fprintf(os.Stderr, "slopshipper serve: render %s: %v\n", name, err)
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}

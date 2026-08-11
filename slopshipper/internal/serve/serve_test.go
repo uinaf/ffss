@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/slopomatic/internal/machine"
-	"github.com/uinaf/slopomatic/internal/serve"
-	"github.com/uinaf/slopomatic/internal/store"
+	"github.com/uinaf/slopshipper/internal/machine"
+	"github.com/uinaf/slopshipper/internal/serve"
+	"github.com/uinaf/slopshipper/internal/store"
 )
 
 func TestRejectsNonLoopback(t *testing.T) {

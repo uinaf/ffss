@@ -1,22 +1,22 @@
 ---
-name: slopomatic
-description: "Runs a structured, deterministic implementation workflow via the installed slopomatic CLI: clarifies intake, gates human release, runs build and verify, records independent review evidence, and delivers a reviewed artifact. Use when the user says /slopomatic, run this plan, execute the task list, ship this in slices, implement with checkpoints, walk the plan end to end, build it with human gates, or do a governed multi-step implementation. Do not use for ad-hoc edits or planning-only work."
+name: slopshipper
+description: "Runs a structured, deterministic implementation workflow via the installed slopshipper CLI: clarifies intake, gates human release, runs build and verify, records independent review evidence, and delivers a reviewed artifact. Use when the user says /slopshipper, run this plan, execute the task list, ship this in slices, implement with checkpoints, walk the plan end to end, build it with human gates, or do a governed multi-step implementation. Do not use for ad-hoc edits or planning-only work."
 disable-model-invocation: true
 ---
 
-# Slopomatic
+# Slopshipper
 
 Deterministic and structured approach to slop cannoning.
 
 ```text
-plan → /slopomatic → clarify → human releases → machine runs
+plan → /slopshipper → clarify → human releases → machine runs
 ```
 
 ## Require the binary
 
 ```bash
-command -v slopomatic
-slopomatic version
+command -v slopshipper
+slopshipper version
 ```
 
 If missing, stop and ask the user to install the CLI through their approved host
@@ -26,10 +26,10 @@ Do not invent a second runtime.
 ## Bootstrap the run
 
 ```bash
-slopomatic status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivery_mode,blocker,decision_question
+slopshipper status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivery_mode,blocker,decision_question
 ```
 
-If status reports `UNINITIALIZED`, obey its `slopomatic init` next action.
+If status reports `UNINITIALIZED`, obey its `slopshipper init` next action.
 If it reports multiple open runs, show their IDs and ask which one to resume.
 Do not replace a blocked run. If status shows `RUN_DONE` and the user requested
 new work, create a new run; otherwise report the completed run.
@@ -39,7 +39,7 @@ bounded, and dependency-ordered; use stdin so the workflow does not leave
 evidence scratch files in the repository:
 
 ```bash
-slopomatic intake --input - --dry-run --json <<'JSON'
+slopshipper intake --input - --dry-run --json <<'JSON'
 {
   "run": "run-id-from-status",
   "delivery_mode": "pr-hold",
@@ -61,11 +61,11 @@ expecting a post-verification transition.
 
 Show the human a compact intake summary: units, delivery mode, review consent,
 and exact `intake_revision`. Wait for explicit release approval, then run the
-exact `slopomatic release --revision N` command printed by `next_action`.
+exact `slopshipper release --revision N` command printed by `next_action`.
 
 ## Status leash
 
-1. Run the field-masked `slopomatic status --json` command above and obey its
+1. Run the field-masked `slopshipper status --json` command above and obey its
    next step. See
    [status.md](references/status.md) for the full status field contract.
 2. Validate every mutation with `--dry-run --json`; apply only when the
@@ -77,7 +77,7 @@ exact `slopomatic release --revision N` command printed by `next_action`.
    Never materialize intake, review, delivery, or other evidence payloads in
    the repository; send them through stdin.
 5. Before guessing a payload field or enum, run
-   `slopomatic schema --command <name>`. See
+   `slopshipper schema --command <name>`. See
    [protocol.md](references/protocol.md) for raw input and error handling.
 
 ## Machine loop
@@ -87,7 +87,7 @@ status.
 
 ```bash
 # after verify succeeds and status asks for review
-slopomatic review --input - --dry-run --json <<'JSON'
+slopshipper review --input - --dry-run --json <<'JSON'
 {"run":"run-id-from-status","reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://local"}
 JSON
 ```
@@ -96,7 +96,7 @@ Deliver only after every required reviewer is present in `completed_reviewers`.
 Use stdin evidence and match the intake delivery mode:
 
 ```bash
-slopomatic deliver --input - --dry-run --json <<'JSON'
+slopshipper deliver --input - --dry-run --json <<'JSON'
 {"run":"run-id-from-status","delivery_mode":"pr-hold","pr_url":"https://github.com/example/repo/pull/1"}
 JSON
 ```
@@ -111,19 +111,19 @@ what you need — never a wall of CLI JSON. Plain words over machine dumps.
 ## Three human moments
 
 1. **Release** — confirm table (what/how/review), wait, then
-   `slopomatic release --revision` using `intake_revision` from status JSON.
+   `slopshipper release --revision` using `intake_revision` from status JSON.
 2. **Review consent** — once at intake: `autoreview` CLI, Cursor `/review-bugbot`,
    both, or human. Store via intake `review_consent`. Do not auto-fire reviewers.
-3. **Decide** — `slopomatic ask --question …`, then
-   `slopomatic decide --answer …`.
+3. **Decide** — `slopshipper ask --question …`, then
+   `slopshipper decide --answer …`.
 
 ## Error recovery
 
 Failed verification records `BLOCKED` and exits 6. Show the compact failure,
 re-read status, surface `blocker` verbatim, and ask how to recover. After the
-human confirms the recovery, record it with `slopomatic retry --reason "…"`;
+human confirms the recovery, record it with `slopshipper retry --reason "…"`;
 never retry silently. For a known external blocker before verification, use
-`slopomatic block --reason "…"` and follow the same recovery rule.
+`slopshipper block --reason "…"` and follow the same recovery rule.
 
 With `--json`, failures return `error.kind`, `error.message`, and
 `error.exit_code`. Malformed input exits 2; illegal transitions or unmet guards

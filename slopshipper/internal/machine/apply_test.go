@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/uinaf/slopomatic/internal/machine"
+	"github.com/uinaf/slopshipper/internal/machine"
 )
 
 func TestHappyPathMultiUnit(t *testing.T) {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-coverage_root=$(mktemp -d "${TMPDIR:-/tmp}/slopomatic-coverage.XXXXXX")
+coverage_root=$(mktemp -d "${TMPDIR:-/tmp}/slopshipper-coverage.XXXXXX")
 trap 'rm -rf "$coverage_root"' EXIT
 
 check_profile() {
@@ -20,7 +20,7 @@ check_profile() {
   echo "coverage: $label ${percent}% (minimum ${minimum}%)"
 }
 
-check_profile cli ./cmd/slopomatic 80
+check_profile cli ./cmd/slopshipper 80
 check_profile buildinfo ./internal/buildinfo 80
 check_profile machine ./internal/machine 90
 check_profile repo ./internal/repo 80
@@ -32,10 +32,10 @@ check_profile store ./internal/store 80
 # separately so those end-to-end paths cannot disappear behind parent test coverage.
 raw_dir="$coverage_root/cli-integration"
 mkdir "$raw_dir"
-SLOPOMATIC_COVERAGE_DIR="$raw_dir" GOCOVERDIR="$raw_dir" go test -count=1 ./cmd/slopomatic
+SLOPSHIPPER_COVERAGE_DIR="$raw_dir" GOCOVERDIR="$raw_dir" go test -count=1 ./cmd/slopshipper
 integration_percent=$(
   go tool covdata percent -i="$raw_dir" |
-    awk '$1 == "github.com/uinaf/slopomatic/cmd/slopomatic" { gsub(/%/, "", $3); print $3 }'
+    awk '$1 == "github.com/uinaf/slopshipper/cmd/slopshipper" { gsub(/%/, "", $3); print $3 }'
 )
 awk -v value="$integration_percent" 'BEGIN { exit !(value + 0 >= 55) }' || {
   echo "coverage: CLI integration is ${integration_percent}%, below 55%" >&2

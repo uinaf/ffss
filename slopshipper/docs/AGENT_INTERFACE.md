@@ -1,6 +1,6 @@
 # Agent CLI contract
 
-`slopomatic` is the workflow authority. Agents provide structured commands;
+`slopshipper` is the workflow authority. Agents provide structured commands;
 the binary validates them, applies the state machine, and stores the resulting
 event. Do not reproduce transition logic in a skill, prompt, or script.
 
@@ -9,8 +9,8 @@ event. Do not reproduce transition logic in a skill, prompt, or script.
 Inspect runtime schemas before composing an unfamiliar command:
 
 ```bash
-slopomatic schema
-slopomatic schema --command intake
+slopshipper schema
+slopshipper schema --command intake
 ```
 
 The schema describes accepted flags, raw input properties, required fields,
@@ -20,7 +20,7 @@ envelope. It is authoritative when prose and the installed binary differ.
 Use a field mask to keep the control loop compact:
 
 ```bash
-slopomatic status --json \
+slopshipper status --json \
   --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivery_mode,blocker,decision_question
 ```
 
@@ -34,7 +34,7 @@ Every mutation accepts a strict raw JSON object through `--input PATH`. Use
 `--input -` for stdin:
 
 ```bash
-slopomatic intake --input - --dry-run --json <<'JSON'
+slopshipper intake --input - --dry-run --json <<'JSON'
 {
   "run": "demo",
   "delivery_mode": "pr-hold",
@@ -51,16 +51,16 @@ Raw input cannot be mixed with convenience flags such as `--run`; the payload
 carries those values. Human-oriented convenience inputs also accept stdin:
 
 ```bash
-slopomatic intake --file - --run demo
-slopomatic review --evidence - --run demo
-slopomatic deliver --evidence - --run demo
+slopshipper intake --file - --run demo
+slopshipper review --evidence - --run demo
+slopshipper deliver --evidence - --run demo
 ```
 
 `next_action` uses `--file -` and `--evidence -` for structured payloads. Do
 not create `*.evidence.json` or other command payloads in the repository.
 
 When `-` selects stdin, pipe or redirect JSON. An interactive terminal fails
-immediately with a pointer to `slopomatic schema` instead of waiting for EOF.
+immediately with a pointer to `slopshipper schema` instead of waiting for EOF.
 
 Raw JSON is fail-closed: unknown, duplicate, and `null` fields are rejected.
 Run and unit IDs are at most 64 bytes, start with an ASCII letter or digit, and
@@ -72,7 +72,7 @@ question, answer, or reason fields.
 Add `--dry-run --json` to any mutation before applying it:
 
 ```bash
-slopomatic release --revision 1 --run demo --dry-run --json
+slopshipper release --revision 1 --run demo --dry-run --json
 ```
 
 A valid projection contains `dry_run: true` and `validated_command`. Confirm
@@ -95,32 +95,32 @@ construct it from untrusted text.
 
 By default, state is stored outside the repository:
 
-- `$XDG_DATA_HOME/slopomatic/slopomatic.sqlite` when `XDG_DATA_HOME` is set.
-- `~/.local/share/slopomatic/slopomatic.sqlite` otherwise.
+- `$XDG_DATA_HOME/slopshipper/slopshipper.sqlite` when `XDG_DATA_HOME` is set.
+- `~/.local/share/slopshipper/slopshipper.sqlite` otherwise.
 
 Accepted review, verification, and delivery evidence is canonicalized into the
 SQLite event log. JSON supplied through stdin or a file is command transport,
 not durable state, and can be discarded after the command succeeds.
 
-Set `SLOPOMATIC_DB` when a sandbox needs a different writable location:
+Set `SLOPSHIPPER_DB` when a sandbox needs a different writable location:
 
 ```bash
 sandbox_dir="$(mktemp -d)"
-export SLOPOMATIC_DB="$sandbox_dir/slopomatic.sqlite"
+export SLOPSHIPPER_DB="$sandbox_dir/slopshipper.sqlite"
 ```
 
 There is no automatic repository-local fallback. If a constrained environment
-requires repository-local state, explicitly point `SLOPOMATIC_DB` at
-`.slopomatic/slopomatic.sqlite`. Relative values resolve from the Git worktree
+requires repository-local state, explicitly point `SLOPSHIPPER_DB` at
+`.slopshipper/slopshipper.sqlite`. Relative values resolve from the Git worktree
 root. The CLI refuses repository-local state unless the database, `-wal`, and
-`-shm` paths are untracked and ignored. A `/.slopomatic/` entry in
+`-shm` paths are untracked and ignored. A `/.slopshipper/` entry in
 `$(git rev-parse --git-path info/exclude)` satisfies that boundary without a
 shared `.gitignore` change.
 
 Inspect resolution without creating or migrating state:
 
 ```bash
-slopomatic storage --json
+slopshipper storage --json
 ```
 
 The command reports the absolute path, resolution source, scope, existence,

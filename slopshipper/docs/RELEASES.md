@@ -1,6 +1,6 @@
 # Releases
 
-`slopomatic` evaluates a CLI release after every successful push to protected
+`slopshipper` evaluates a CLI release after every successful push to protected
 `main`. Conventional Commits determine whether that evaluation publishes a
 version; merges that contain no consumer-facing release type stop without a tag.
 
@@ -19,7 +19,7 @@ The checksum signature protects every archive named by the manifest. GitHub
 attestations independently bind each uploaded artifact to the release workflow.
 The macOS binaries are signed with hardened runtime and a secure timestamp
 before Apple accepts their notarization submissions. Their Apple signing ID is
-`slopomatic`; managed execution controls can combine that ID with the expected
+`slopshipper`; managed execution controls can combine that ID with the expected
 Apple Team ID. Apple creates tickets for standalone binaries but does not
 support stapling tickets to them, so Gatekeeper retrieves the ticket online.
 
@@ -42,12 +42,12 @@ Download one archive plus the manifest and signature bundle from the matching
 GitHub Release, then verify the workflow identity and checksum:
 
 ```bash
-archive=slopomatic_v0.1.2_darwin_arm64.tar.gz
+archive=slopshipper_v0.1.2_darwin_arm64.tar.gz
 
 cosign verify-blob \
   --bundle checksums.txt.sigstore.json \
   --certificate-identity \
-    "https://github.com/uinaf/slopomatic/.github/workflows/ci.yml@refs/heads/main" \
+    "https://github.com/uinaf/slopshipper/.github/workflows/ci.yml@refs/heads/main" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   checksums.txt
 
@@ -62,7 +62,7 @@ Replace the example archive version and target with the release being checked.
 Pull-request jobs receive read-only repository access and no release secrets.
 The main-only release job enters the protected `release` Environment only after
 macOS/Linux verification and snapshot packaging pass. It mints a short-lived
-`uinaf-releaser` installation token explicitly scoped to `slopomatic` and
+`uinaf-releaser` installation token explicitly scoped to `slopshipper` and
 `homebrew-tap` with Contents write permission.
 
 The protected `release` Environment stores the Developer ID certificate,
@@ -98,12 +98,12 @@ version numbers are not required to match.
 
 ## Skill publication
 
-Changes under `skills/slopomatic` publish only after they merge to protected
+Changes under `skills/slopshipper` publish only after they merge to protected
 `main` (or via `workflow_dispatch` on that workflow). The dedicated
 `skill-release` Environment exposes a Tessl API key with the workspace-scoped
 `publisher` role; pull-request jobs remain secretless. The pinned
 `uinaf/tessl-publish-action` runs free Tessl plugin lint (default) and publishes the
-explicit version from `skills/slopomatic/.tessl-plugin/plugin.json` without
+explicit version from `skills/slopshipper/.tessl-plugin/plugin.json` without
 mutating the repository.
 
 Publication is immutable and rerunnable. If the declared version already
@@ -117,5 +117,5 @@ response for up to five minutes; other install failures stop immediately, and an
 unapproved version remains a failure.
 
 The skill must not embed agent-executable install pipelines. Installation of
-the `slopomatic` CLI belongs to a user-approved host package or release
+the `slopshipper` CLI belongs to a user-approved host package or release
 workflow; the skill only requires the binary already on `PATH`.
