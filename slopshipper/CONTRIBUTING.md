@@ -23,29 +23,6 @@ mise run build
 The build task never installs an unversioned `slopshipper` into the active Go
 toolchain or replaces a packaged CLI on `PATH`.
 
-## Remove a legacy Go-installed binary
-
-An older `go install` workflow may have left a development binary ahead of a
-packaged release on `PATH`. List every copy before removing anything:
-
-```bash
-type -a slopshipper
-```
-
-After confirming `command -v slopshipper` points into a Go or mise installation,
-remove that exact copy and refresh the shell command cache:
-
-```bash
-legacy_slopshipper="$(command -v slopshipper)"
-case "$legacy_slopshipper" in
-  */mise/installs/go/*/bin/slopshipper|*/go/bin/slopshipper)
-    rm -- "$legacy_slopshipper"
-    hash -r
-    ;;
-  *) printf 'Refusing to remove non-Go path: %s\n' "$legacy_slopshipper" >&2 ;;
-esac
-```
-
 ## Validate
 
 Run the deterministic local gate before opening a pull request:

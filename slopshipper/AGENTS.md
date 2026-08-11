@@ -10,3 +10,5 @@ Contributor guidance for `slopshipper`.
 - Reference companion tools (`autoreview` CLI, Cursor Bugbot) as installed
   programs when needed — do not embed a review engine here.
 - Check reality before editing docs or examples; keep commands repo-valid.
+- Keep docs current-state only; omit upgrade, migration, compatibility, and
+  legacy-install troubleshooting guidance.

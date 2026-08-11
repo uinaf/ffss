@@ -27,19 +27,6 @@ brew install --cask uinaf/tap/slopshipper
 slopshipper version
 ```
 
-#### Troubleshoot mixed installations
-
-After installing or upgrading, an unexpected `0.0.0-dev` version means an
-older Go build may appear before Homebrew on `PATH`:
-
-```bash
-type -a slopshipper
-test "$(command -v slopshipper)" = "$(brew --prefix)/bin/slopshipper"
-```
-
-If the check fails, follow the guarded
-[legacy Go-install cleanup](CONTRIBUTING.md#remove-a-legacy-go-installed-binary).
-
 ### Linux
 
 Install the latest amd64 or arm64 release without Go, Homebrew, `jq`, or
