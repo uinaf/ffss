@@ -1,63 +1,64 @@
-/* Control-plane chrome on top of @uinaf/design tokens. */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-html, body {
+/* Control-plane chrome over the vendored @uinaf/design pair. Everything here is
+   either page frame (which the package leaves to the consumer) or table column
+   behaviour, which a projector over arbitrary ids and JSON needs and a static
+   reference table does not. */
+
+body {
   margin: 0;
-  padding: 0;
-  overflow-x: hidden;
+  min-height: 100vh;
 }
-body.uinaf {
-  padding: 32px 36px 48px;
-  max-width: 72rem; /* design "wide" shell for dashboards/tables */
-  min-width: 0;
-}
-.page-head {
+
+.page {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 28px;
-  min-width: 0;
 }
-.page-head h1 {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
+
+.main {
+  flex: 1;
+  padding-block: var(--sp-8) var(--sp-12);
 }
-.page-head p {
-  margin: 0;
-  color: var(--fg-muted);
-  font-family: var(--font-mono);
-  font-size: 0.95rem;
-  overflow-wrap: anywhere;
+
+.head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  margin-top: var(--sp-4);
 }
-.section {
-  margin-top: 28px;
+
+.lede,
+.u-crumbs + .head-row {
+  margin-top: var(--sp-2);
+}
+
+.band {
+  margin-top: var(--sp-10);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-width: 0;
+  gap: var(--sp-3);
 }
-.repo-key,
-.u-meta {
+
+.repo-key {
   overflow-wrap: anywhere;
-  word-break: break-word;
 }
+
+/* Tables carry run ids, unit titles, and raw evidence JSON of unbounded width.
+   Fixed layout plus per-column hints keeps the row readable; the wrapper takes
+   the overflow so the page itself never scrolls sideways. */
 .wrap {
   border: 1px solid var(--border);
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
 .wrap .u-table {
-  width: 100%;
   min-width: 36rem;
   table-layout: fixed;
 }
+
 .wrap .u-table th,
 .wrap .u-table td {
   overflow: hidden;
@@ -65,105 +66,86 @@ body.uinaf {
   vertical-align: top;
   white-space: nowrap;
 }
+
 .wrap .u-table td.cell-wrap {
   white-space: normal;
   overflow-wrap: anywhere;
-  word-break: break-word;
 }
-.wrap .u-table td.cell-mono,
-.wrap .u-table td.cell-mono code {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-}
-.wrap .u-table td.cell-mono code {
+
+.wrap .u-table td.cell-code code {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
 }
-/* Column hints */
-.col-run { width: 18%; }
-.col-state { width: 14%; }
-.col-flag { width: 8%; }
-.col-unit { width: 14%; }
-.col-num { width: 7%; }
-.col-time { width: 16%; }
-.col-id { width: 14%; }
-.col-title { width: 42%; }
-.col-done { width: 8%; }
-.col-attempt { width: 10%; }
-.col-blockers { width: 16%; }
-.col-seq { width: 6%; }
-.col-cmd { width: 10%; }
-.col-state-sm { width: 12%; }
-.col-evidence { width: 36%; }
+
+.col-run {
+  width: 18%;
+}
+.col-state {
+  width: 14%;
+}
+.col-flag {
+  width: 8%;
+}
+.col-unit {
+  width: 14%;
+}
+.col-num {
+  width: 7%;
+}
+.col-time {
+  width: 16%;
+}
+.col-id {
+  width: 14%;
+}
+.col-title {
+  width: 42%;
+}
+.col-done {
+  width: 8%;
+}
+.col-attempt {
+  width: 10%;
+}
+.col-blockers {
+  width: 16%;
+}
+.col-seq {
+  width: 6%;
+}
+.col-cmd {
+  width: 10%;
+}
+.col-state-sm {
+  width: 12%;
+}
+.col-evidence {
+  width: 36%;
+}
+
 .cell-status {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--sp-2);
   max-width: 100%;
-  min-width: 0;
 }
-.cell-status span {
+
+.cell-status span:last-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-a.row-link {
-  color: inherit;
-  text-decoration: none;
-}
-a.row-link:hover {
-  color: var(--accent);
-}
-.meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 20px;
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-}
-.meta-row span {
-  color: var(--fg-muted);
-  min-width: 0;
-}
-.meta-row strong {
-  color: var(--fg);
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
-.next-command,
-.decision {
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  font-family: var(--font-mono);
-  overflow-wrap: anywhere;
-}
+
 .next-command {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-2);
 }
-.next-command code {
-  color: var(--fg);
-  user-select: all;
-}
-.decision {
-  margin: 0;
-  border-left: 3px solid var(--accent);
-}
-.empty {
-  color: var(--fg-muted);
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  padding: 16px;
-  border: 1px dashed var(--border);
-}
+
 @media (max-width: 720px) {
-  body.uinaf {
-    padding: 20px 16px 36px;
-  }
   .wrap .u-table {
     min-width: 28rem;
   }

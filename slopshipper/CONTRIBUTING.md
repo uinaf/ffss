@@ -43,8 +43,18 @@ default on `main`. Conventional Commits on `main` drive Semantic Release
 (see [`docs/RELEASES.md`](docs/RELEASES.md)).
 
 Control plane UI lives in `internal/serve` (Go `html/template` + embedded
-`@uinaf/design` tokens). Keep it a read-only projector over sqlite; do not add
+`@uinaf/design` CSS). Keep it a read-only projector over sqlite; do not add
 mutations that bypass the CLI state machine.
+
+`internal/serve/static/{tokens,components}.css` is vendored from the npm
+registry, because the server is loopback-only and ships as one binary. Move the
+pin with `./scripts/sync-design-css.sh <version>`, which fetches the pair and
+records the version and digests in `internal/serve/design_css_test.go`; never
+hand-edit the two files. The sheet loads Berkeley Mono from `cdn.uinaf.dev` and
+falls back to the local monospace stack offline. `app.css` holds only page frame
+and table behavior. A second test fails when a template or a Go-built class
+names a class neither the vendored pair nor `app.css` defines, which is the
+check `design-check` performs in Node repos.
 
 Agent-facing command schemas live with the binary in
 `cmd/slopshipper/schema.go`; strict raw payload DTOs live in

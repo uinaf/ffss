@@ -1,10 +1,25 @@
-/* @uinaf/design tokens + styles (synced 2026-08-08 from design package main).
-   Loopback projector stays offline: CDN @import removed; system mono stack. */
+/* uinaf — colors & type · v2 "neat pass"
+   One typeface (Berkeley Mono), near-black canvas, hairline structure. */
+@import url("https://cdn.uinaf.dev/fonts/berkeley-mono/variable/font.css");
+/* Not `url("./components.css")`: vite resolves a url()-wrapped relative import
+   against the consumer's entry stylesheet instead of this file, so every vite
+   app that imports the package fails to build with `Unable to resolve
+   @import "./components.css" from <their>/src`. */
+@import "./components.css";
+/* v2: smaller-but-hierarchical type scale (10→40), uppercase micro-labels
+   as the hierarchy device, ONE ui accent (phosphor lime, distilled from
+   the slime artwork), corner-tick panels, shared-hairline panel grids,
+   ruled tables, real button/input polish, more air inside containers.
+   ===================================================================== */
+
+/* Fonts: Berkeley Mono is licensed — repos load it from the CDN, never bundle it:
+   <link rel="stylesheet" href="https://cdn.uinaf.dev/fonts/berkeley-mono/variable/font.css">
+   (@font-face lives in that file; this stylesheet only references var(--font-mono).) */
 
 :root {
   /* ---------- Type families — mono is the only face ---------- */
   --font-mono:
-    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    "Berkeley Mono", ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
   --font-sans: var(--font-mono); /* alias — there is no sans */
   --font-display: var(--font-mono);
 
@@ -70,7 +85,7 @@
   /* ---------- THE accent ----------
      One ui accent: phosphor lime, distilled from the slime artwork.
      Lives on: link hover, ::selection, caret, live dots, active markers,
-     primary chart series, and at most ONE .u-btn-accent per surface.
+     primary chart series, and at most ONE .u-btn--accent per surface.
      Never: body text, washes, resting borders. */
   --accent: #d4ff3f;
   --accent-ink: var(--neutral-950); /* text on accent */
@@ -111,16 +126,24 @@
 
   /* ---------- Spacing ---------- */
   --sp-0: 0; /* @kind spacing */
+  --sp-0-5: 2px; /* micro only — see spacing regimes */
   --sp-1: 4px;
+  --sp-1-5: 6px; /* micro only */
   --sp-2: 8px;
+  --sp-2-5: 10px; /* micro only */
   --sp-3: 12px;
+  --sp-3-5: 14px; /* micro only */
   --sp-4: 16px;
   --sp-5: 20px;
   --sp-6: 24px;
+  --sp-7: 28px;
   --sp-8: 32px;
+  --sp-9: 36px;
   --sp-10: 40px;
   --sp-12: 48px;
+  --sp-14: 56px;
   --sp-16: 64px;
+  --sp-18: 72px;
   --sp-20: 80px;
   --sp-24: 96px;
 
@@ -147,7 +170,7 @@
   --stagger-step: 45ms; /* @kind other */
 
   /* ---------- Layout ---------- */
-  --container-narrow: 36rem;
+  --container-narrow: 40rem;
   --container-base: 48rem;
   --container-wide: 72rem;
 }
@@ -155,6 +178,16 @@
 /* =====================================================================
    Base
    ===================================================================== */
+/* Border-box first: every padded primitive here declares a width or height next
+   to its padding, so under content-box `.u-shell-base` is 32px wider than the
+   viewport it centres in and `.u-menu-list a` overruns its own menu. */
+.uinaf,
+.uinaf *,
+.uinaf *::before,
+.uinaf *::after {
+  box-sizing: border-box;
+}
+
 .uinaf {
   background: var(--bg);
   color: var(--fg);
@@ -175,7 +208,10 @@
   border-radius: 0;
 }
 
-.uinaf h1,
+/* Element defaults go through `:where()` so they carry no specificity of their
+   own. Bare `.uinaf h1` is 0,1,1 and outranks every 0,1,0 `u-` class, which made
+   `<h1 class="u-display">` render at 24px and `<p class="u-meta">` at 14px. */
+.uinaf :where(h1),
 .u-h1 {
   font-family: var(--font-mono);
   font-size: var(--text-xl);
@@ -185,7 +221,7 @@
   letter-spacing: var(--tracking-base);
   margin: 0;
 }
-.uinaf h2,
+.uinaf :where(h2),
 .u-h2 {
   font-family: var(--font-mono);
   font-size: var(--text-lg);
@@ -194,7 +230,7 @@
   color: var(--fg);
   margin: 0;
 }
-.uinaf h3,
+.uinaf :where(h3),
 .u-h3 {
   font-family: var(--font-mono);
   font-size: var(--text-md);
@@ -202,7 +238,7 @@
   color: var(--fg);
   margin: 0;
 }
-.uinaf p,
+.uinaf :where(p),
 .u-p {
   color: var(--fg-muted);
   font-size: var(--text-base);
@@ -235,7 +271,7 @@
 }
 
 .u-code,
-.uinaf code {
+.uinaf :where(code) {
   font-family: var(--font-mono);
   font-size: 0.95em;
   color: var(--fg-strong);
@@ -284,7 +320,7 @@
   opacity: 0.8;
 }
 
-.uinaf hr,
+.uinaf :where(hr),
 .u-hr {
   background: var(--neutral-800);
   height: 1px;
@@ -433,39 +469,39 @@
 .u-btn:active {
   transform: scale(0.97);
 }
-.u-btn-primary {
+.u-btn--primary {
   background: var(--neutral-100);
   border-color: var(--neutral-100);
   color: var(--neutral-950);
 }
-.u-btn-primary:hover {
+.u-btn--primary:hover {
   background: var(--neutral-300);
   border-color: var(--neutral-300);
 }
-.u-btn-accent {
+.u-btn--accent {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-ink);
 }
-.u-btn-accent:hover {
+.u-btn--accent:hover {
   background: var(--accent-down);
   border-color: var(--accent-down);
 }
-.u-btn-ghost {
+.u-btn--ghost {
   border-color: transparent;
   color: var(--fg-muted);
 }
-.u-btn-ghost:hover {
+.u-btn--ghost:hover {
   border-color: transparent;
   background: var(--bg-raised);
   color: var(--fg);
 }
-.u-btn-sm {
+.u-btn--sm {
   height: 26px;
   padding: 0 var(--sp-3);
   font-size: var(--text-xs);
 }
-.u-btn-lg {
+.u-btn--lg {
   height: 38px;
   padding: 0 var(--sp-5);
   font-size: var(--text-base);
@@ -657,6 +693,57 @@
   user-select: none;
 }
 
+/* Topbar — app/product chrome. ONE row, never stacked: mark + product
+   name left, plain links right, at most one small button. Hairline
+   below, never sticky, no background. The stacked .u-header above is
+   uinaf.dev site chrome ONLY — product pages and dashboards use this. */
+.u-topbar {
+  border-bottom: 1px solid var(--border);
+}
+.u-topbar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  height: 56px;
+}
+.u-topbar-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--fg);
+  font-size: var(--text-base);
+  text-decoration: none;
+}
+.u-topbar-mark img {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  display: block;
+}
+.u-topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  margin-left: auto;
+  font-size: var(--text-sm);
+}
+.u-topbar-nav a {
+  color: var(--fg-muted);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-snappy);
+}
+.u-topbar-nav a:hover {
+  color: var(--fg);
+}
+.u-topbar-nav a[aria-current="page"] {
+  color: var(--fg);
+}
+.u-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
 /* Hero — kicker label, modest display, one sub line, actions. */
 .u-hero {
   display: flex;
@@ -775,7 +862,7 @@
 }
 
 /* Code blocks */
-.uinaf pre,
+.uinaf :where(pre),
 .u-pre {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
@@ -788,7 +875,7 @@
   overflow-x: auto;
   margin: 0;
 }
-.uinaf pre code,
+.uinaf :where(pre code),
 .u-pre code {
   background: transparent;
   border: 0;
