@@ -8,8 +8,8 @@ trusted configuration source.
 | --- | --- | --- | --- |
 | `codex` | Codex CLI | `gpt-5.6-sol` | [Codex CLI](codex.md) |
 | `claude` | Claude Code | `claude-opus-5` | [Claude Code](claude-code.md) |
-| `cursor` | Cursor Agent | `cursor-grok-4.5-high-fast` | [Cursor Agent](cursor.md) |
-| `grok` | Grok Build | `grok-4.5` | [Grok Build](grok-build.md) |
+| `cursor` | Cursor Agent | `cursor-grok-4.6-high-fast` | [Cursor Agent](cursor.md) |
+| `grok` | Grok Build | `grok-4.6` | [Grok Build](grok-build.md) |
 
 ## Shared runtime boundary
 

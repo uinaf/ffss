@@ -376,6 +376,9 @@ func TestCursorReviewUsesExplicitDefaultModel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if DefaultCursorModel != "cursor-grok-4.6-high-fast" {
+		t.Fatalf("DefaultCursorModel = %q", DefaultCursorModel)
+	}
 	if result.Provider.Model != DefaultCursorModel {
 		t.Fatalf("provider model = %q", result.Provider.Model)
 	}

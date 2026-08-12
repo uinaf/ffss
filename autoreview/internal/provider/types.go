@@ -15,8 +15,8 @@ import (
 const (
 	DefaultCodexModel  = "gpt-5.6-sol"
 	DefaultClaudeModel = "claude-opus-5"
-	DefaultCursorModel = "cursor-grok-4.5-high-fast"
-	DefaultGrokModel   = "grok-4.5"
+	DefaultCursorModel = "cursor-grok-4.6-high-fast"
+	DefaultGrokModel   = "grok-4.6"
 )
 
 type Request struct {

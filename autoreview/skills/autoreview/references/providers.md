@@ -11,8 +11,8 @@ or claim consensus.
 | --- | --- | --- | --- |
 | `codex` | `gpt-5.6-sol` | `CODEX_API_KEY` or `OPENAI_API_KEY` | Native mode uses normal session-backed login |
 | `claude` | `claude-opus-5` | `ANTHROPIC_API_KEY` | Effort supports `low`, `medium`, `high`, `xhigh`, or `max` |
-| `cursor` | `cursor-grok-4.5-high-fast` | `CURSOR_API_KEY` | Explicit CLI selection implies web when unset; effort is encoded in the model ID |
-| `grok` | `grok-4.5` | `XAI_API_KEY` | Native mode uses `grok login`; tools, memory, plans, and subagents stay disabled |
+| `cursor` | `cursor-grok-4.6-high-fast` | `CURSOR_API_KEY` | Explicit CLI selection implies web when unset; effort is encoded in the model ID |
+| `grok` | `grok-4.6` | `XAI_API_KEY` | Native mode uses `grok login`; tools, memory, plans, and subagents stay disabled |
 
 For Cursor, pass a requested compatible model with `--model` and never add
 `--reasoning-effort`. If the user requests Cursor plus a separate effort value

@@ -283,6 +283,9 @@ func TestGrokReviewUsesExplicitDefaultModel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if DefaultGrokModel != "grok-4.6" {
+		t.Fatalf("DefaultGrokModel = %q", DefaultGrokModel)
+	}
 	if result.Provider.Model != DefaultGrokModel {
 		t.Fatalf("provider model = %q", result.Provider.Model)
 	}
@@ -341,9 +344,9 @@ func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
 	if err := os.WriteFile(outputPath, []byte(options.output), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	authBlock := "printf '%s\\n' 'You are logged in with grok.com.\n\nDefault model: grok-4.5\n\nAvailable models:\n  * grok-4.5 (default)'\nexit 0"
+	authBlock := "printf '%s\\n' 'You are logged in with grok.com.\n\nDefault model: grok-4.6\n\nAvailable models:\n  * grok-4.6 (default)'\nexit 0"
 	if options.loggedOut {
-		authBlock = "printf '%s\\n' 'You are not authenticated.\n\nDefault model: grok-4.5\n\nAvailable models:\n  * grok-4.5 (default)'\nexit 0"
+		authBlock = "printf '%s\\n' 'You are not authenticated.\n\nDefault model: grok-4.6\n\nAvailable models:\n  * grok-4.6 (default)'\nexit 0"
 	}
 	if options.authStatus != "" {
 		authBlock = "printf '%s\\n' " + shellQuote(options.authStatus) + "\nexit 0"

@@ -72,7 +72,7 @@ func TestResultSchemaAcceptsGrokProvider(t *testing.T) {
 	report := findingsInstance(t)
 	provider := report["metadata"].(map[string]any)["provider"].(map[string]any)
 	provider["name"] = "grok"
-	provider["model"] = "grok-4.5"
+	provider["model"] = "grok-4.6"
 	provider["version"] = "0.2.118"
 	if err := schema.Validate(report); err != nil {
 		t.Fatalf("result schema rejected Grok provider: %v", err)
