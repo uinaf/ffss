@@ -44,6 +44,10 @@ against the release checksum before atomically replacing the binary. See
 [Release verification](docs/RELEASES.md#linux-installer-trust-boundary) for
 independent Cosign and GitHub attestation checks.
 
+The installer finishes with a non-fatal `PATH` check: it warns when `PATH`
+resolves a different `slopshipper` than the install destination and names
+the winning copy.
+
 To build from source without replacing the packaged CLI on `PATH`, see
 [Run locally](CONTRIBUTING.md#run-locally).
 

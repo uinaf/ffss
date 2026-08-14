@@ -192,3 +192,20 @@ mv -f "$destination_temporary" "$destination/slopshipper" ||
 destination_temporary=
 
 printf 'Installed slopshipper %s to %s/slopshipper\n' "$release_tag" "$destination"
+
+# Non-fatal PATH smoke check: warn when another copy shadows this install.
+resolved_binary=$(command -v slopshipper 2>/dev/null || true)
+if [ -z "$resolved_binary" ]; then
+  printf 'Note: %s is not on PATH in this shell; run %s/slopshipper directly or extend PATH.\n' \
+    "$destination" "$destination" >&2
+else
+  resolved_directory=$(CDPATH='' cd -- "$(dirname -- "$resolved_binary")" 2>/dev/null && pwd -P) ||
+    resolved_directory=
+  destination_directory=$(CDPATH='' cd -- "$destination" 2>/dev/null && pwd -P) ||
+    destination_directory=
+  if [ -z "$resolved_directory" ] || [ "$resolved_directory" != "$destination_directory" ]; then
+    printf 'Warning: PATH resolves slopshipper to %s, not %s/slopshipper.\n' \
+      "$resolved_binary" "$destination" >&2
+    printf 'Another copy wins PATH precedence; list every copy with: type -a slopshipper\n' >&2
+  fi
+fi

@@ -286,4 +286,52 @@ test "$interrupt_status" -eq 143
 test "$("$case_home/.local/bin/slopshipper")" = 'old slopshipper'
 assert_no_residue
 
+new_case
+decoy_bin=$case_root/decoy-bin
+mkdir -p "$decoy_bin"
+printf '#!/bin/sh\nexit 0\n' > "$decoy_bin/slopshipper"
+chmod 755 "$decoy_bin/slopshipper"
+shadow_destination=$case_root/shadowed-bin
+output=$(PATH="$decoy_bin:/usr/bin:/bin" run_installer --dest "$shadow_destination" 2>&1 >/dev/null)
+test -x "$shadow_destination/slopshipper"
+case "$output" in
+  *"Warning: PATH resolves slopshipper to $decoy_bin/slopshipper"*) ;;
+  *)
+    printf 'expected a shadowing warning, got:\n%s\n' "$output" >&2
+    exit 1
+    ;;
+esac
+case "$output" in
+  *'type -a slopshipper'*) ;;
+  *)
+    printf 'shadowing warning lacks the duplicate diagnostic:\n%s\n' "$output" >&2
+    exit 1
+    ;;
+esac
+assert_no_residue
+
+new_case
+clean_destination=$case_root/clean-bin
+mkdir -p "$clean_destination"
+output=$(PATH="$clean_destination:/usr/bin:/bin" run_installer --dest "$clean_destination" 2>&1 >/dev/null)
+case "$output" in
+  *Warning:*|*'is not on PATH'*)
+    printf 'unexpected PATH diagnostic for a clean install:\n%s\n' "$output" >&2
+    exit 1
+    ;;
+esac
+assert_no_residue
+
+new_case
+offpath_destination=$case_root/off-path-bin
+output=$(PATH="/usr/bin:/bin" run_installer --dest "$offpath_destination" 2>&1 >/dev/null)
+case "$output" in
+  *"Note: $offpath_destination is not on PATH"*) ;;
+  *)
+    printf 'expected an off-PATH note, got:\n%s\n' "$output" >&2
+    exit 1
+    ;;
+esac
+assert_no_residue
+
 printf 'installer tests passed\n'
