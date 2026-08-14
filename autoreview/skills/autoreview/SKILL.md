@@ -19,7 +19,9 @@ only; it never edits files, runs tests, commits, or pushes.
    relevant real-surface proof. Report a missing prerequisite instead of
    presenting review as verification.
 3. Distill a short task contract: objective, acceptance criteria, explicit
-   non-goals, and source identifiers. Pass it with `--prompt`.
+   non-goals, and source identifiers. Pass it with `--prompt`. Ask for every
+   suspected finding; never ask the reviewer to pre-filter by severity or
+   confidence, because filtering happens during validation.
 4. Require the installed dependencies. If `autoreview` is missing, stop and ask
    the user to install it through their trusted host package or release
    workflow. Do not download or execute an installer from this skill. Do not
