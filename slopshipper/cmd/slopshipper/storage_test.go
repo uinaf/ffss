@@ -39,6 +39,14 @@ func TestStorageResolutionDefaultsAndRelativeOverrides(t *testing.T) {
 	}
 	t.Setenv("XDG_DATA_HOME", xdg)
 
+	blockingFile := filepath.Join(t.TempDir(), "not-a-directory")
+	mustWrite(t, blockingFile, "blocked")
+	t.Setenv("SLOPSHIPPER_DB", filepath.Join(blockingFile, "slopshipper.sqlite"))
+	out, code = captureStdoutResult(t, func() int { return run([]string{"storage", "--json"}) })
+	if code != 2 || !strings.Contains(out, `"kind": "state_unavailable"`) || !strings.Contains(out, blockingFile) {
+		t.Fatalf("unpreparable storage exit=%d output=%s", code, out)
+	}
+
 	t.Setenv("SLOPSHIPPER_DB", filepath.Join(".slopshipper", "slopshipper.sqlite"))
 	doc, err = resolveStorage(false)
 	if err != nil {

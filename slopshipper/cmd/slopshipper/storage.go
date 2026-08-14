@@ -238,7 +238,14 @@ func cmdStorage(args []string, opts runOptions) int {
 	doc, err := resolveStorage(false)
 	if err != nil {
 		code := 10
-		if errors.Is(err, errInvalidStateConfig) {
+		switch {
+		case errors.Is(err, errInvalidStateConfig):
+			code = 2
+		default:
+			// Match databasePath: resolution failures outside the named
+			// config kinds are recoverable state unavailability everywhere,
+			// including this inspection command.
+			err = fmt.Errorf("%w: %w", store.ErrStateUnavailable, err)
 			code = 2
 		}
 		return writeFailure(opts, code, err)

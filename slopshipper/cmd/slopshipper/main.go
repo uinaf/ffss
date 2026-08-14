@@ -115,6 +115,9 @@ func runWithOptions(args []string, opts runOptions) int {
 		if errors.Is(err, errUnsafeStatePath) || errors.Is(err, errInvalidStateConfig) {
 			return writeFailure(opts, 2, err)
 		}
+		if errors.Is(err, store.ErrStateUnavailable) {
+			return writeFailure(opts, 2, fmt.Errorf("%w; set SLOPSHIPPER_DB to a writable path and inspect resolution with slopshipper storage --json", err))
+		}
 		return mapErr(err, opts)
 	}
 	if st != nil {
@@ -305,7 +308,13 @@ func openStoreForCommand(command string, opts runOptions) (*store.Store, error) 
 func databasePath() (string, error) {
 	doc, err := resolveStorage(true)
 	if err != nil {
-		return "", err
+		if errors.Is(err, errUnsafeStatePath) || errors.Is(err, errInvalidStateConfig) {
+			return "", err
+		}
+		// Resolution failures outside the named config kinds are environment
+		// problems (unreadable ancestors, non-directory parents); classify
+		// them as recoverable state unavailability, not internal defects.
+		return "", fmt.Errorf("%w: %w", store.ErrStateUnavailable, err)
 	}
 	return doc.Path, nil
 }

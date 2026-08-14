@@ -1124,8 +1124,29 @@ func TestCLIStoreFailureIncludesResolvedPathAndCause(t *testing.T) {
 	h.env = append(h.env, "SLOPSHIPPER_DB="+databasePath)
 
 	out, code := h.run("init", "--run", "blocked")
-	if code != 10 || !strings.Contains(out, databasePath) || !strings.Contains(out, "not a directory") {
+	if code != 2 || !strings.Contains(out, databasePath) || !strings.Contains(out, "not a directory") ||
+		!strings.Contains(out, "SLOPSHIPPER_DB") || !strings.Contains(out, "slopshipper storage --json") {
 		t.Fatalf("store failure exit=%d output=%s", code, out)
+	}
+
+	out, code = h.run("status", "--json")
+	if code != 2 {
+		t.Fatalf("json store failure exit=%d output=%s", code, out)
+	}
+	var failure struct {
+		OK    bool `json:"ok"`
+		Error struct {
+			Kind     string `json:"kind"`
+			Message  string `json:"message"`
+			ExitCode int    `json:"exit_code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(out), &failure); err != nil {
+		t.Fatalf("failure JSON: %v\n%s", err, out)
+	}
+	if failure.OK || failure.Error.Kind != "state_unavailable" || failure.Error.ExitCode != 2 ||
+		!strings.Contains(failure.Error.Message, databasePath) || !strings.Contains(failure.Error.Message, "SLOPSHIPPER_DB") {
+		t.Fatalf("failure envelope: %+v", failure)
 	}
 }
 

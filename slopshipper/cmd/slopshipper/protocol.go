@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/uinaf/slopshipper/internal/machine"
+	"github.com/uinaf/slopshipper/internal/store"
 )
 
 type outputDigester struct {
@@ -158,6 +159,8 @@ func errorKind(code int, err error) string {
 		return "unsafe_state_path"
 	case errors.Is(err, errInvalidStateConfig):
 		return "invalid_state_config"
+	case errors.Is(err, store.ErrStateUnavailable):
+		return "state_unavailable"
 	case errors.Is(err, machine.ErrRunExists):
 		return "run_exists"
 	case errors.Is(err, machine.ErrBadArgs), code == 2:

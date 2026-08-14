@@ -18,6 +18,11 @@ import (
 
 const schemaVersion = 2
 
+// ErrStateUnavailable marks a resolved state location that cannot be
+// prepared (directory or database file creation failed). Callers recover by
+// selecting a writable location, not by treating the failure as internal.
+var ErrStateUnavailable = errors.New("state storage unavailable")
+
 // Store is the global sqlite-backed run database.
 type Store struct {
 	db *sql.DB
@@ -31,14 +36,14 @@ func Open(path string) (*Store, error) {
 	}
 	directory := filepath.Dir(resolvedPath)
 	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return nil, fmt.Errorf("prepare database %q: create database directory %q: %w", resolvedPath, directory, err)
+		return nil, fmt.Errorf("%w: prepare database %q: create database directory %q: %w", ErrStateUnavailable, resolvedPath, directory, err)
 	}
 	databaseFile, err := os.OpenFile(resolvedPath, os.O_RDWR|os.O_CREATE, 0o600)
 	if err != nil {
-		return nil, fmt.Errorf("prepare database %q: %w", resolvedPath, err)
+		return nil, fmt.Errorf("%w: prepare database %q: %w", ErrStateUnavailable, resolvedPath, err)
 	}
 	if err := databaseFile.Close(); err != nil {
-		return nil, fmt.Errorf("prepare database %q: %w", resolvedPath, err)
+		return nil, fmt.Errorf("%w: prepare database %q: %w", ErrStateUnavailable, resolvedPath, err)
 	}
 	// WAL lets serve read while the CLI writes; -wal/-shm sidecars sit beside the db.
 	// _txlock=immediate makes database/sql Begin() acquire a write lock promptly.

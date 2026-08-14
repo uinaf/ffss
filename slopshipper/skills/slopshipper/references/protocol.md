@@ -61,5 +61,8 @@ ignored. Run `slopshipper storage --json` to inspect the resolved path and Git
 safety. The CLI never edits ignore files.
 
 An existing caller-selected run ID returns `run_exists`; an invalid XDG or
-relative database setting returns `invalid_state_config`. Both exit 2 so an
-agent can correct its input without treating the failure as an internal defect.
+relative database setting returns `invalid_state_config`; a state location
+that cannot be prepared (for example an unwritable directory) returns
+`state_unavailable` with the resolved path and a `SLOPSHIPPER_DB` recovery.
+All exit 2 so an agent can correct its input without treating the failure as
+an internal defect.

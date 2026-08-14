@@ -151,4 +151,7 @@ machine because a suggested transition failed.
 
 `run_exists` identifies a caller-selected run ID collision.
 `invalid_state_config` identifies a malformed XDG or relative database
-selection. Both exit 2 and are recoverable by changing caller input.
+selection. `state_unavailable` identifies a resolved state location that
+cannot be prepared, such as an unwritable directory; its message names the
+resolved path and the recovery is a writable `SLOPSHIPPER_DB`. All three
+exit 2 and are recoverable by changing caller input.
