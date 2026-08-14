@@ -81,9 +81,8 @@ both macOS binaries, waits for Apple to accept both notarization submissions,
 uploads all archives, the checksum manifest, and the Sigstore bundle, then
 updates the Homebrew cask. The workflow verifies those outputs and provenance
 before publishing the draft; publication makes the release assets and tag
-immutable. Draft discovery retries for up to one minute and then fails instead
-of skipping publication when GitHub has not exposed the expected release yet. No
-release commit is pushed to `main`.
+immutable. Exact-tag release discovery fails closed instead of skipping
+publication. No release commit is pushed to `main`.
 
 If publication fails after the tag is created, rerunning the failed workflow is
 safe: a release tag at `HEAD` resumes the mutable draft without choosing a new
