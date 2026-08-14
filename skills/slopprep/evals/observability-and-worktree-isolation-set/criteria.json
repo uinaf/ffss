@@ -1,5 +1,5 @@
 {
-  "context": "Tests whether the agent adds machine-readable health and request signals, implements collision-free worktree startup with bounded readiness and cleanup, and handles the explicitly required ignored local config without prescribing one port-allocation algorithm.",
+  "context": "Tests whether the agent adds machine-readable health and request signals, implements collision-free worktree lifecycle in a structured Python tool with bounded readiness and cleanup, and handles the explicitly required ignored local config without prescribing one allocation algorithm.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -25,37 +25,37 @@
     {
       "name": "Concurrent port allocation is collision-free",
       "max_score": 8,
-      "description": "worktree-start.sh obtains or computes an isolated port per worktree or task using a runner assignment, deterministic allocation, ephemeral-port protocol, or equivalent collision-resistant mechanism"
+      "description": "tools/dev_service.py obtains or computes an isolated port per worktree or task using a runner assignment, deterministic allocation, ephemeral-port protocol, or equivalent collision-resistant mechanism"
     },
     {
       "name": "No hardcoded port 5000",
       "max_score": 5,
-      "description": "worktree-start.sh does NOT use a hardcoded port 5000 (or any other fixed port number)"
+      "description": "tools/dev_service.py does not use port 5000 or another fixed application port as the worktree allocation"
     },
     {
-      "name": "Background app start in worktree-start.sh",
+      "name": "Python lifecycle starts the app",
       "max_score": 6,
-      "description": "worktree-start.sh starts the Flask application in the background (using & or equivalent)"
+      "description": "tools/dev_service.py starts the Flask application through a Python subprocess API and retains enough state to manage it"
     },
     {
-      "name": "Bounded readiness wait in worktree-start.sh",
+      "name": "Bounded readiness wait",
       "max_score": 7,
-      "description": "worktree-start.sh waits for the health endpoint until a finite attempt or wall-clock deadline before declaring success, without relying on one fixed iteration count"
+      "description": "tools/dev_service.py waits for the health endpoint until a finite wall-clock deadline before declaring success"
     },
     {
       "name": "Non-zero exit on boot failure",
       "max_score": 7,
-      "description": "worktree-start.sh exits with a non-zero status if the app fails to start within the polling period"
+      "description": "tools/dev_service.py exits non-zero and cleans up its child if the app fails to start within the readiness deadline"
     },
     {
-      "name": "Strict mode in worktree-start.sh",
+      "name": "Structured lifecycle state",
       "max_score": 5,
-      "description": "worktree-start.sh includes set -euo pipefail"
+      "description": "tools/dev_service.py persists structured state containing at least the owned PID and allocated port, and validates that state before stopping a process"
     },
     {
-      "name": "teardown.sh stops service",
+      "name": "Stop command cleans up owned service",
       "max_score": 6,
-      "description": "teardown.sh stops the Flask service (kills the process by PID or uses a stop command)"
+      "description": "tools/dev_service.py stop terminates only the service identified by the current worktree's validated lifecycle state and removes stale runtime state"
     },
     {
       "name": "Port collision rationale documented",
