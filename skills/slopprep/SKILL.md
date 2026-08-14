@@ -1,6 +1,6 @@
 ---
 name: agent-readiness
-description: "Audit and improve repository guidance, lifecycle, and runner infrastructure for dependable autonomous implementation, QA, and unattended task execution. Covers AGENTS.md operating contracts, reproducible bootstrap, canonical verification, real-surface evidence, noninteractive machine identities, CI, observability, isolation, recovery, and result submission. Use when making a repo agent-ready, agent guidance lacks usable orientation, authority, cold-start, or proof paths, agents cannot boot or verify, setup still needs a human, credentials or worktrees block automation, or a runner must finish tasks unsupervised. Do not use for reviewing an existing diff, an ordinary builder self-check in a healthy repo, or prose-only documentation cleanup."
+description: "Audit and improve repository guidance, lifecycle commands, and runner infrastructure for dependable autonomous work. Use when making a repo agent-ready, agent guidance lacks orientation or proof paths, agents cannot boot or verify, setup still needs a human, or a runner must finish tasks unsupervised. Do not use for reviewing an existing diff, an ordinary builder self-check in a healthy repo, or prose-only documentation cleanup."
 ---
 
 # Agent-Readiness
