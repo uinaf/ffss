@@ -17,7 +17,18 @@ first gap: scale — concurrent result reconciliation has not been exercised
 - **Repository grade** covers the versioned checkout and the contracts it exposes.
 - **Runner grade** covers the declared devbox, CI worker, or orchestrator environment.
 - **Evidence level** records how strongly those grades were exercised. Use
-  [autonomy-evidence.md](autonomy-evidence.md).
+  this compact scale:
+
+| Level | Strongest evidence |
+| --- | --- |
+| E0 | static inspection only |
+| E1 | one declared command exercised |
+| E2 | real success and actionable failure paths |
+| E3 | repeated representative tasks with outcome graders |
+| E4 | longitudinal or parallel operation with exercised recovery |
+
+Read [autonomy-evidence.md](autonomy-evidence.md) only when designing E3/E4
+trials, graders, or reliability reporting.
 
 Use the lowest applicable capability as each headline grade. Show the full
 profile so the minimum does not hide progress elsewhere. Mark a capability
@@ -60,9 +71,11 @@ contracts and evals.
 
 - **F:** ownership, commands, or system intent cannot be discovered.
 - **D:** essential context lives in chat, a wiki, or a person's memory.
-- **C:** a short repository entrypoint maps agents to current commands and contracts.
-- **B:** architecture, product intent, task acceptance, verification, and ownership
-  are versioned, progressively disclosed, cross-linked, and checked for drift.
+- **C:** a short repository entrypoint identifies purpose and ownership, then
+  maps task-shaped routes to current commands and contracts.
+- **B:** human or product orientation, task acceptance, authority, lifecycle,
+  verification, ownership, and write-back are versioned, progressively
+  disclosed, cross-linked, and checked for drift.
 - **A:** recurring maintenance turns production failures, review feedback, and
   architectural drift into updated contracts or mechanical enforcement.
 

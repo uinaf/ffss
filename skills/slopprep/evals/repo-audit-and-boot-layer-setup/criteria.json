@@ -1,5 +1,5 @@
 {
-  "context": "Tests whether the agent audits the applicable readiness capabilities with evidence and gaps, separates repository and runner headlines from evidence strength, derives each headline from its lowest applicable owned capability, and produces a bounded init path that proves the app is ready.",
+  "context": "Tests whether the agent audits the applicable readiness capabilities with evidence and gaps, separates repository and runner headlines from evidence strength, derives each headline from its lowest applicable owned capability, and produces a bounded Node.js lifecycle path that proves the app is ready without ad-hoc shell validation.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -33,24 +33,24 @@
       "description": "audit-report.md reports repository grade, runner grade, and E0-through-E4 evidence level separately instead of collapsing environment availability and proof strength into one letter"
     },
     {
-      "name": "Background app start in init.sh",
+      "name": "Background app start in Node lifecycle",
       "max_score": 10,
-      "description": "scripts/init.sh starts the application process in the background (using & or equivalent) so the script can poll"
+      "description": "app/scripts/init.mjs starts the application with a Node child-process API so it can observe the process and readiness signal"
     },
     {
-      "name": "Bounded readiness wait in init.sh",
+      "name": "Bounded readiness wait",
       "max_score": 10,
-      "description": "scripts/init.sh polls health or another real readiness signal until a finite attempt or wall-clock deadline before declaring success"
+      "description": "app/scripts/init.mjs polls health or another real readiness signal until a finite wall-clock deadline before declaring success"
     },
     {
       "name": "Non-zero exit on failure",
       "max_score": 10,
-      "description": "scripts/init.sh exits with a non-zero status code (exit 1 or equivalent) if the app does not start successfully"
+      "description": "app/scripts/init.mjs sets or returns a non-zero status if the app does not start successfully"
     },
     {
-      "name": "Strict mode in init.sh",
+      "name": "Package-owned lifecycle entrypoint",
       "max_score": 8,
-      "description": "scripts/init.sh includes set -euo pipefail or equivalent strict mode at the top"
+      "description": "app/package.json exposes the lifecycle program as a package script, and no parallel shell wrapper duplicates it"
     },
     {
       "name": "Target progression is explicit",

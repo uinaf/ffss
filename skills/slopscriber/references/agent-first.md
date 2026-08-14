@@ -2,23 +2,6 @@
 
 Optimize internal and operational docs for agent retrieval. Human readers benefit from the same precision and scanability.
 
-## Sources
-
-- [OpenAI Codex `AGENTS.md` guide](https://developers.openai.com/codex/guides/agents-md)
-- [OpenAI harness engineering](https://openai.com/index/harness-engineering/)
-- [Claude Code memory guidance](https://code.claude.com/docs/en/memory)
-- [Anthropic context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)
-- [Anthropic Agent Skills architecture](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
-- [Anthropic Agent Skills best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
-- [Anthropic prompting guidance](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5)
-- [GitHub instruction-file guidance](https://github.blog/ai-and-ml/github-copilot/unlocking-the-full-power-of-copilot-code-review-master-your-instructions-files/)
-- [Matt Pocock's writing-for-agents](https://github.com/mattpocock/skills/blob/main/skills/productivity/writing-for-agents/SKILL.md)
-- [Stripe scoped-rule practice](https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents)
-- [Gloaguen et al., repository context evaluation](https://arxiv.org/abs/2602.11988)
-- [Lulla et al., `AGENTS.md` efficiency study](https://arxiv.org/abs/2601.20404)
-
-The empirical results are mixed. Context files can help or hurt depending on their relevance and delivery. The stable recommendation is minimal, specific requirements plus just-in-time retrieval.
-
 Use this deletion test: would removing the line cause a capable agent to make a material mistake? If not, remove it or move it behind a focused link. Delete instructions that merely restate capable-model defaults; they spend attention without changing behavior.
 
 ## Budget Retrieval
@@ -54,6 +37,11 @@ Remove or route elsewhere:
 
 Treat the repository as a source of truth. Documentation that repeats an easy file search, script listing, config value, or `--help` lookup is a cache and must justify its drift risk. Document the lookup only when it is expensive, ambiguous, or missing the rationale an agent needs.
 
+For deterministic setup, policy, or workflow shapes, point to the maintained
+script, config, test, or reference implementation and name the contract it
+demonstrates. Keep rationale and adaptation boundaries in prose; do not make an
+agent reconstruct code from prose or copy the implementation into another doc.
+
 ## State Capabilities
 
 Apply the [negative-state rule](../SKILL.md#negative-state-rule). Lead with what works, where it lives, and how to use it.
@@ -74,6 +62,8 @@ Do not rehome deleted names under `Exclusions`, `Unavailable`, `Not supported`, 
 ## Match Structure to Information
 
 - Put the answer or action directly below its heading.
+- Do not put a bibliography before the task. Cite a source beside the claim it
+  supports; keep attribution-only material in a narrow upstream notice.
 - Use short sentences.
 - Put one independent fact in each bullet.
 - Use numbered lists only when order matters.
@@ -115,9 +105,35 @@ Each link costs a tool call. Split by retrieval boundary, not by arbitrary size.
 
 Use `AGENTS.md` for requirements that apply to agent work in its scope.
 
+Match the content to the guidance layer:
+
+- **Global or owner guidance** routes identities, workspaces, repositories, and
+  harness policy. Keep project mechanics in their owning repository.
+- **Repository guidance** gives a compact working model for cross-cutting work:
+  what the product or system does, who relies on it, what must not regress,
+  repository-wide hazards, architecture or data flow that changes code
+  placement, exact lifecycle commands, and the surfaces a change may need to
+  cover.
+- **Scoped guidance** carries package, language, or subsystem rules needed only
+  after an agent enters that scope.
+
+A repository guide can be more than a table of contents. Inline a fact when it
+changes many tasks and a missed lookup would cause a material error. Route
+deep architecture, complete references, and local-only conventions behind
+task-shaped pointers.
+
+Translate values and taste into decisions. Pair each abstract preference with
+an observable consequence, known failure mode, or small example. For example,
+`protect performance` becomes useful when it names the regressions to watch and
+the proof expected. A bounded matrix such as clients, providers, entry points,
+connection modes, or reverse states earns its context cost when omissions
+across those dimensions are a recurring defect.
+
 Keep at the root:
 
+- a brief product or system orientation and its non-negotiable outcomes
 - exact setup, run, and verification commands
+- repository-wide hazards and cross-cutting completeness checks
 - conventions that differ from model defaults
 - repository-wide ownership or safety boundaries
 - links to deeper task and architecture docs
@@ -131,10 +147,27 @@ Move closer to the code:
 - per-directory `AGENTS.md` or `AGENTS.override.md` files
 - Cursor path-scoped files under `.cursor/rules/*.mdc`, with explicit globs such as `*.test.ts`
 
-Codex loads global guidance, then project guidance from the root toward the working directory. Guidance closer to the working directory appears later and overrides broader rules. Within one directory, Codex loads `AGENTS.override.md` when present; otherwise it loads `AGENTS.md`. It loads at most one guidance file per directory.
+Codex loads global guidance, then project guidance from the root toward the
+working directory. Guidance closer to the working directory appears later and
+overrides broader rules. Within one directory, Codex loads
+`AGENTS.override.md` when present; otherwise it loads `AGENTS.md`. It loads at
+most one guidance file per directory. Verify these mechanics against the
+current [Codex `AGENTS.md` guide](https://developers.openai.com/codex/guides/agents-md)
+when changing hierarchy or filenames.
 
-Avoid generated repository tours and generic rule dumps. Gloaguen et al. found no significant completion gain from context files overall, higher inference cost, and recommended minimal, specific requirements.
+Avoid generated repository tours and generic rule dumps. Repository-context
+evaluations found that irrelevant or excessive guidance can increase cost
+without improving completion ([Gloaguen et al.](https://arxiv.org/abs/2602.11988),
+[Lulla et al.](https://arxiv.org/abs/2601.20404)).
 
-OpenAI reports success with a root file of roughly 100 lines; Claude recommends keeping `CLAUDE.md` under 200 lines. Treat these as warning thresholds, not content targets. Relevance decides what stays.
+For a concrete repository guide, inspect [T3 Code's
+`AGENTS.md`](https://github.com/pingdotgg/t3code/blob/main/AGENTS.md): reuse its
+contract-oriented shape, not its product rules.
 
-When a repo already uses `AGENTS.md`, use a `CLAUDE.md` symlink or the literal `@AGENTS.md` import when the harness supports it. Keep one authored source.
+Treat roughly 100 lines as a warning threshold, not a target. Relevance and the
+common task path decide what stays.
+
+When a repo already uses `AGENTS.md`, use a `CLAUDE.md` symlink or the literal
+`@AGENTS.md` import when the harness supports it. Keep one authored source and
+verify the import behavior against current [Claude Code memory
+guidance](https://code.claude.com/docs/en/memory).

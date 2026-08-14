@@ -1,61 +1,66 @@
 {
-  "context": "Tests whether the agent creates the requested pre-push enforcement, adds honest end-to-end CLI coverage on real files, integrates a suitable TypeScript dead-code check, and documents activation without treating mocked tests as real-surface proof.",
+  "context": "Tests whether the agent builds one structured TypeScript verification surface, keeps the Git hook a thin adapter, adds honest real-process CLI coverage, and integrates repository-owned dead-code detection without inventing shell validation.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "pre-push shebang and strict mode",
+      "name": "Canonical package verification command",
       "max_score": 10,
-      "description": ".git-hooks/pre-push starts with a bash shebang and includes set -euo pipefail"
+      "description": "package.json defines one canonical verification command that composes the relevant lint, build, dead-code, and test surfaces without requiring a separate shell script"
     },
     {
-      "name": "pre-push runs lint",
-      "max_score": 8,
-      "description": ".git-hooks/pre-push invokes a lint command (e.g., npm run lint or eslint)"
+      "name": "Pre-push delegates to canonical gate",
+      "max_score": 10,
+      "description": ".git-hooks/pre-push is executable and delegates to the canonical package verification command rather than replaying its individual steps"
     },
     {
-      "name": "pre-push runs smoke check",
+      "name": "Hook stays a thin adapter",
       "max_score": 8,
-      "description": ".git-hooks/pre-push invokes a smoke or build verification command (e.g., build, --version, or a smoke script)"
+      "description": ".git-hooks/pre-push contains no output parsing, domain assertions, retry loop, duplicated command graph, or validation policy beyond invoking the repository-owned gate"
     },
     {
       "name": "Hook activation command",
-      "max_score": 10,
-      "description": "setup-notes.md includes the command `git config core.hooksPath .git-hooks` (or equivalent) to activate the hook"
+      "max_score": 6,
+      "description": "setup-notes.md includes `git config core.hooksPath .git-hooks` or an equivalent activation command"
     },
     {
-      "name": "E2e uses real CLI invocation",
-      "max_score": 10,
-      "description": "e2e/cli.test.sh invokes the actual CLI binary or script (not a mocked or imported function) on a real input file"
+      "name": "End-to-end test invokes real CLI",
+      "max_score": 12,
+      "description": "e2e/cli.test.ts uses a child-process API to invoke the actual built CLI on the real sample.csv file, without importing or mocking parseCsv"
     },
     {
-      "name": "Golden file diff in e2e",
+      "name": "Structured golden assertion",
       "max_score": 10,
-      "description": "e2e/cli.test.sh compares output against expected.json using diff or equivalent comparison (golden file approach)"
+      "description": "e2e/cli.test.ts parses or reads the CLI JSON result and compares it with expected.json through Jest assertions rather than shell diff or text matching"
     },
     {
       "name": "Fixture files present",
       "max_score": 8,
-      "description": "Both e2e/fixtures/sample.csv and e2e/fixtures/expected.json exist and contain consistent data (parsing sample.csv would yield expected.json)"
+      "description": "e2e/fixtures/sample.csv and e2e/fixtures/expected.json exist and contain consistent data"
     },
     {
-      "name": "Dead-code detection fits the project",
-      "max_score": 12,
-      "description": "setup-notes.md gives a runnable TypeScript dead-code command whose tool is repository-owned or version-pinned and can detect unused exports such as legacyParseCsv; equivalent suitable tools are accepted"
+      "name": "Dead-code detection is repository-owned",
+      "max_score": 10,
+      "description": "A suitable TypeScript dead-code tool is version-pinned in package.json and exposed through a package script that can detect unused exports such as legacyParseCsv"
     },
     {
-      "name": "No mock tests treated as sufficient readiness",
+      "name": "Mock-only coverage is not overstated",
+      "max_score": 6,
+      "description": "setup-notes.md does not claim the existing mocked Jest test replaces real CLI proof"
+    },
+    {
+      "name": "legacyParseCsv is identified",
+      "max_score": 5,
+      "description": "setup-notes.md identifies legacyParseCsv as an example the dead-code surface should report"
+    },
+    {
+      "name": "Process failure reaches Jest",
+      "max_score": 7,
+      "description": "The end-to-end test checks child-process status or uses an API that throws on non-zero exit, so a broken CLI fails the test"
+    },
+    {
+      "name": "No ad-hoc shell validation",
       "max_score": 8,
-      "description": "setup-notes.md does not claim the existing mock-only Jest suite replaces real CLI e2e proof; it may acknowledge useful isolated unit coverage"
-    },
-    {
-      "name": "legacyParseCsv identified as dead code",
-      "max_score": 8,
-      "description": "setup-notes.md or any output file identifies legacyParseCsv as an example of dead/unused code that the dead-code tool would catch"
-    },
-    {
-      "name": "e2e exit code on failure",
-      "max_score": 8,
-      "description": "e2e/cli.test.sh exits with a non-zero code if the test fails (explicit exit 1 or relies on set -e with a failing diff command)"
+      "description": "The solution does not add e2e shell tests, shell-based JSON parsing or assertions, or another shell wrapper around the package task graph"
     }
   ]
 }

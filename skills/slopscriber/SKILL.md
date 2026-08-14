@@ -54,7 +54,7 @@ Use [references/source-boundaries.md](references/source-boundaries.md) before wr
 
 Keep top-level docs terse and navigational.
 
-- `AGENTS.md` should be a table of contents, not a wiki
+- `AGENTS.md` should be a compact operating contract and map, not a wiki
 - If the repo uses `AGENTS.md`, make `CLAUDE.md` a symlink or `@AGENTS.md` import instead of maintaining a second authored file
 - `README.md` should lead with value, quick use, and links to deeper docs
 - Refresh `CONTRIBUTING.md` and `SECURITY.md` when they already exist or when moving existing policy out of an overloaded `README.md`; do not invent baseline policy from scratch
@@ -79,7 +79,8 @@ When the user asks to save a durable rule, prompt, specification, or decision, c
 
 Tactical implementation plans, epics, tracker tickets, and session handoffs are a separate work-tracking operation. When requested alongside docs cleanup, keep the surfaces linked and report the planning work as a distinct next action instead of inventing a checked-in plan home.
 
-For new features, use the directory layout and templates in [references/structuring.md](references/structuring.md) — specifications and decisions have distinct lifecycles.
+For durable feature contracts and decisions, use the selection rules and
+templates in [references/specifications.md](references/specifications.md).
 
 ### 4. Clean up drift
 
@@ -122,5 +123,4 @@ Keep the footer to 5 labeled lines or fewer. List changed files once.
 - [references/agent-first.md](references/agent-first.md) — agent-first writing, positive state, progressive disclosure, AGENTS.md shape
 - [references/documentation.md](references/documentation.md) — README, contributing, security, and repository-doc shapes
 - [references/source-boundaries.md](references/source-boundaries.md) — durable ownership and private/local evidence boundaries
-- [references/specifications.md](references/specifications.md) — feature specs, conformance tests, spec drift, SDD trade-offs
-- [references/structuring.md](references/structuring.md) — directory layout, templates, and naming for specifications and decisions
+- [references/specifications.md](references/specifications.md) — when to create specs or decisions, compact templates, acceptance coverage, and drift

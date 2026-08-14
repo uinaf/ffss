@@ -69,22 +69,9 @@ Each child should deliver a narrow end-to-end behavior and be independently demo
 
 The canonical plan should preserve: problem/outcome, decisions, acceptance
 criteria, non-goals, approach at stable module boundaries, verification, risks
-and stop conditions, plus parent/child/blocking relationships.
-
-Child-ticket skeleton (expand via [artifact-shapes.md](references/artifact-shapes.md)):
-
-```markdown
-## Parent
-<canonical parent URL or key>
-## What this delivers
-<one independently verifiable behavior>
-## Acceptance criteria
-- [ ] <observable result>
-## Verification
-- <test, check, or real-surface evidence>
-## Blocked by
-- <issue link or None>
-```
+and stop conditions, plus parent/child/blocking relationships. Use the exact
+shapes in [artifact-shapes.md](references/artifact-shapes.md) rather than
+duplicating them here.
 
 Blocking edge example: `Migrate auth tokens` blocks `Wire login UI` because the
 UI cannot verify against the new token contract until migration lands; shared

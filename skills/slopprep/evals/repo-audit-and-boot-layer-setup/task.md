@@ -4,7 +4,10 @@
 
 Your team has inherited a Node.js REST API from a contractor. The codebase lives in a git repository but nobody on the team has run it locally — the original developer left only a vague README saying "run npm start." There's no reliable way to know if the app is alive after starting it, no health endpoint, and CI has been broken for weeks. The engineering manager wants agents to start working on features autonomously, but right now no agent can tell whether its changes broke anything.
 
-Your job is to assess the current state of the repo and add the minimum infrastructure needed for an agent to reliably start the app and verify it's alive. Produce a written audit report and an `init.sh` script that boots the app and confirms it is up.
+Your job is to assess the current state of the repo and add the minimum
+infrastructure needed for an agent to reliably start the app and verify it is
+alive. Keep lifecycle logic in the project's JavaScript runtime and expose it
+through the package manifest; do not invent a shell validation framework.
 
 ## Output Specification
 
@@ -12,9 +15,14 @@ Produce the following files:
 
 1. `audit-report.md` — A written assessment of the repository's current state from an autonomous-agent perspective. Treat a clean local Node.js environment with network access for package installation as the declared runner; no external credentials are required. Grade repository and runner readiness separately across legibility, executability, feedback, safety, durability, and scale. For each applicable capability, cite concrete evidence and describe the gap and owner. Include an E0-through-E4 evidence level and derive each headline grade from its lowest applicable capability.
 
-2. `scripts/init.sh` — A shell script that starts the application and verifies it is ready to receive traffic before returning. The script must exit with a non-zero status code if the app fails to come up.
+2. `app/scripts/init.mjs` — A Node.js lifecycle program that starts the
+   application as a child process, polls a real readiness signal with a bounded
+   deadline, and exits non-zero after cleaning up if startup fails.
 
-3. `improvements.md` — A short explanation of which readiness capabilities you addressed, which remain missing toward B and A, and what the recommended next steps are. Do not treat reaching C as completion.
+3. `app/package.json` — Preserve the existing scripts and add one package-owned
+   command for the lifecycle program.
+
+4. `improvements.md` — A short explanation of which readiness capabilities you addressed, which remain missing toward B and A, and what the recommended next steps are. Do not treat reaching C as completion.
 
 ## Input Files
 

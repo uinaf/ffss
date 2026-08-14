@@ -2,23 +2,36 @@
 
 ## Problem/Feature Description
 
-A small team is using a TypeScript CLI tool that converts CSV files to JSON. Two agents are already working on the codebase, but they keep accidentally pushing broken builds to the main branch — the unit tests pass locally because they're all mocked, but the actual CLI behavior breaks frequently. The team lead wants to add a proper enforcement layer so that broken code physically cannot be pushed, and wants real end-to-end tests that prove the CLI works correctly on actual files.
+A small team uses a TypeScript CLI that converts CSV files to JSON. Agents keep
+pushing broken builds because the existing test mocks the implementation and
+never runs the built CLI. The team wants one repository-owned verification
+entrypoint, a pre-push hook that delegates to it, honest end-to-end coverage,
+and dead-code detection.
 
-You've been asked to set up the mechanical enforcement layer and add an honest end-to-end test for the CLI. The team also wants to identify any dead code in the project. Produce the enforcement scripts and test, and write a brief `setup-notes.md` documenting what you set up and how to activate it.
+Use the project's existing package scripts and Jest surface instead of building
+a second validation framework in shell. The Git hook may be a tiny executable
+adapter, but it must not duplicate the command graph or implement assertions,
+parsing, retries, or policy.
 
 ## Output Specification
 
 Produce the following files:
 
-1. `.git-hooks/pre-push` — A shell script that acts as a git pre-push hook, running lint and smoke checks. It must be executable.
+1. `package.json` — Keep the existing commands and add repository-owned,
+   version-pinned dead-code detection plus one canonical verification command.
+2. `.git-hooks/pre-push` — An executable thin adapter that delegates to the
+   canonical verification command.
+3. `e2e/cli.test.ts` — A Jest integration test that invokes the actual built CLI
+   as a child process against real files and compares structured output with the
+   expected fixture. Do not import or mock `parseCsv`.
+4. `e2e/fixtures/sample.csv` — Sample CSV input used by the end-to-end test.
+5. `e2e/fixtures/expected.json` — Expected JSON output for the sample.
+6. Any focused Jest or TypeScript configuration required to run the test.
+7. `setup-notes.md` — Briefly explain hook activation, the canonical gate, the
+   dead-code owner, and what the real-process test proves.
 
-2. `e2e/cli.test.sh` — A shell script that runs the CLI against a real input file and verifies the output is correct (e.g., using diff against an expected output file or checking for expected content). Include the fixture input file it uses.
-
-3. `e2e/fixtures/sample.csv` — Sample CSV input used by the e2e test.
-
-4. `e2e/fixtures/expected.json` — Expected JSON output corresponding to sample.csv.
-
-5. `setup-notes.md` — Brief documentation explaining: (a) how to activate the git hook, (b) what the dead-code check command is for this TypeScript project, and (c) what the e2e test covers.
+Do not create a shell test, a second command graph, or a wrapper whose only job
+is to replay package scripts.
 
 ## Input Files
 

@@ -1,426 +1,152 @@
-# Setup Patterns
+# Readiness Setup Patterns
 
-Concrete patterns for building each readiness layer. Substitute your project's actual tools.
+Use only the section matching the missing capability. Adapt contracts to the
+repository's existing tools; do not copy generic infrastructure into a repo.
 
-## Sources
+## Lifecycle
 
-- [Stripe devboxes and blueprints](https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents)
-- [Anthropic init pattern](https://www.anthropic.com/engineering/harness-design-long-running-apps)
-- [Datadog DST and observability](https://www.datadoghq.com/blog/ai/harness-first-agents/)
-- [OpenAI Symphony orchestration](https://openai.com/index/open-source-codex-orchestration-symphony/)
-- [OpenAI agent safety controls](https://openai.com/index/running-codex-safely/)
-- [Anthropic managed-agent interfaces](https://www.anthropic.com/engineering/managed-agents)
-- [Infisical machine identities](https://infisical.com/docs/documentation/platform/identities/machine-identities)
-- [Ona infrastructure thesis](https://ona.com/stories/visual-guide-self-driving-codebases)
-- [Ramp sandbox architecture](https://engineering.ramp.com/inspect)
-- [Codex app worktrees and `.worktreeinclude`](https://developers.openai.com/codex/app/worktrees)
-- [Claude Code worktrees and `.worktreeinclude`](https://code.claude.com/docs/en/worktrees)
+Prefer one ordinary repository-owned surface used by humans, agents, and CI:
 
-## Contents
+| Stage | Required outcome |
+| --- | --- |
+| bootstrap | validate prerequisites and install reproducibly without prompts |
+| boot | start the real target and expose a bounded readiness signal |
+| verify | run canonical guardrails plus the strongest cheap real surface |
+| teardown | release owned processes and state on success, failure, timeout, and cancellation |
 
-- [Boot Scripts](#boot-scripts)
-- [Containerized Stacks](#containerized-stacks)
-- [Smoke Tests](#smoke-tests)
-- [E2e Tests](#e2e-tests)
-- [Canonical Local Gate](#canonical-local-gate)
-- [Mechanical Enforcement](#mechanical-enforcement)
-- [Tool Version Ownership](#tool-version-ownership)
-- [Machine Identities and Secret Injection](#machine-identities-and-secret-injection)
-- [Observability](#observability)
-- [Seed Data / Fixtures](#seed-data--fixtures)
-- [Per-Worktree Isolation](#per-worktree-isolation)
-- [Unattended Run Constraints](#unattended-run-constraints)
-- [Triage-to-Result Contract](#triage-to-result-contract)
-- [Deterministic vs Agentic Split](#deterministic-vs-agentic-split)
-- [Retry Caps](#retry-caps)
+Keep each stage noninteractive, idempotent where practical, bounded, and
+explicit about whether a failure belongs to the repository or runner. Do not
+invent parallel `agent-*` wrappers; wire missing entrypoints into package
+scripts, Make/`just`, or checked-in scripts already used by CI.
 
-## Boot Scripts
+Own tool versions once. Preserve the repository's runtime and package-manager
+declarations, lockfile, catalogs, or tool manager. Make CI consume those owners
+instead of copying literals into workflow files.
 
-Every project needs a single command to start. The tool doesn't matter — consistency does.
-
-### Init Script
-
-Boot the app and confirm it's alive. Run at the start of every agent session.
-
-```bash
-#!/usr/bin/env bash
-# scripts/init.sh
-set -euo pipefail
-<your-boot-command> &
-APP_PID=$!
-for i in $(seq 1 30); do
-  curl -sf http://localhost:${PORT:-3000}/health > /dev/null 2>&1 && break
-  sleep 1
-done
-curl -sf http://localhost:${PORT:-3000}/health > /dev/null 2>&1 || {
-  echo "ERROR: App failed to start"; kill $APP_PID 2>/dev/null; exit 1
-}
-echo "App is ready"
-```
-
-## Containerized Stacks
-
-For services with dependencies (DB, Redis, queues), use Docker Compose with health checks:
-
-```yaml
-services:
-  app:
-    build: .
-    ports: ["${PORT:-3000}:3000"]
-    depends_on:
-      db: { condition: service_healthy }
-  db:
-    image: postgres:16
-    healthcheck:
-      test: pg_isready
-      interval: 2s
-      timeout: 5s
-      retries: 10
-```
-
-Boot: `docker compose up -d --wait`
-
-## Smoke Tests
-
-Fast (< 5 seconds) check that the app is alive. Not user flows — just "did it start."
-
-```bash
-# HTTP service
-curl -sf http://localhost:3000/health | jq .
-
-# CLI tool
-./dist/my-cli --version
-
-# UI app (Playwright)
-npx playwright test smoke.spec.ts
-
-# Static/deploy-only repo
-test -f dist/index.html
-wrangler deploy --dry-run
-```
-
-## E2e Tests
-
-Key user flows on the real running app.
-
-- **UI**: `npx playwright test e2e/`
-- **API**: Create → Read → Delete round-trips with curl/httpie
-- **CLI**: Golden file diffs (`diff output.json expected.json`)
-- **SDK/Library**: Build, then use the artifact as a downstream consumer would
-
-Prefer these over large suites of unit tests that mock the seam under change. For agent verification, one honest integration or e2e check is usually worth more than many self-verifying mocked tests.
-
-## Canonical Local Gate
-
-Every repo should expose one checked-in command an agent can run before push. It should be fast enough for normal iteration and close enough to CI to catch routine failures locally.
-
-Good command shapes:
-
-```bash
-make verify
-just verify
-./scripts/verify.sh
-pnpm verify
-cargo xtask verify
-go run ./cmd/verify
-```
-
-Default contents:
-
-- lint, format check, typecheck, or static analysis
-- build or package check when the repo ships an artifact
-- smoke or integration proof that exercises a real process or real built output
-- secret scan or dependency audit when the repo handles credentials or release infrastructure
-
-If full CI is slow, split the contract:
-
-```bash
-make verify          # normal pre-push gate
-make verify-full     # slower full suite for release or risky work
-```
-
-CI and hooks should call the same local gate when practical. If CI cannot call it directly, document the equivalence so agents can trust local proof before opening a PR.
+For proof selection and failure requirements, use
+[verification-contract.md](verification-contract.md).
 
 ## Mechanical Enforcement
 
-### Git Hooks
+Put deterministic policy in the narrowest existing mechanical surface:
 
-```bash
-# .git-hooks/pre-push
-#!/usr/bin/env bash
-set -euo pipefail
-<your-local-gate-command>
-```
+- formatter, linter, type checker, or compiler for source constraints
+- schema or config validator for structured contracts
+- test-framework extension, matcher, fixture, or reporter for behavioral checks
+- build or task graph for dependency ordering and reusable command composition
+- canonical local gate for pre-handoff proof
+- CI or branch policy for unavoidable merge enforcement
+- a tested module or local action in the repository's primary typed language
+  when existing tools cannot express the rule
 
-Wire: `git config core.hooksPath .git-hooks`
+Adopt an existing linter or hook shape before adding another. Baseline noisy
+checks before making them blocking. Error output should name the violated rule,
+affected boundary, and recovery action when one exists.
 
-### CI Gate
+Treat a new shell script as the last adapter, not the first implementation. It
+may set strict process options and sequence a few established commands. Move to
+the repository's typed language or an existing library as soon as the flow
+parses JSON/YAML, branches on domain state, transforms data, retries, manages
+concurrency, or needs unit tests. Never create a shell wrapper that only
+duplicates a package script, task-runner target, or framework command.
 
-Smoke + integration on every PR:
+## Machine Identity
 
-```yaml
-# .github/workflows/verify.yml
-on: [pull_request]
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@<full-sha> # v6.x.y
-      - run: <your-boot-command>
-      - run: <your-smoke-command>
-      - run: <your-test-command>
-```
+Credentials are compatible with readiness when ownership is explicit:
 
-### Unused-Code Checks
+- the runner authenticates a machine or workload identity and injects
+  short-lived access
+- the repository declares required scopes and consumes injected access
+  noninteractively
+- the operator provisions, rotates, revokes, and recovers identities outside
+  normal task execution
 
-Add dead-code and unused-symbol checks when the stack supports them. These tools are cheap, deterministic, and good at catching stale scaffolding that agents leave behind.
+Prefer separate roles for triage, test fixtures, artifact submission, delivery,
+and production changes. Denied or missing scope must fail without printing
+values and identify the recovery owner. Never embed bootstrap secrets, write
+fetched secrets to artifacts, or switch a human profile during an unattended
+run.
 
-```bash
-# TypeScript / JavaScript
-npx knip
+## Observable and Reproducible State
 
-# Go
-staticcheck ./...
-```
+Expose the smallest machine-readable signal appropriate to the target:
 
-For Go repos using `golangci-lint`, enable the unused and dead-code style analyzers there instead of inventing a separate wrapper.
+- service: readiness plus structured request or job outcomes
+- CLI or library: exit status, stdout/stderr contract, and consumer invocation
+- UI: interactable runtime surface plus console or application diagnostics
+- stateful system: reproducible fixtures and isolated write/read round trips
 
-### Custom Lint Rules
+Use versioned seed data when empty state cannot exercise the real contract.
+Keep diagnostics contextual and redacted. Do not require a health endpoint or
+JSON logging where the repository's shipped surface provides a better signal.
 
-Error messages should tell the agent how to fix the issue:
+## Isolation
 
-```javascript
-meta: {
-  messages: {
-    noDirectFetch: 'Use the API client from lib/api instead of fetch(). See docs/api-conventions.md'
-  }
-}
-```
+Concurrent tasks must not collide through workspaces, branches, ports,
+processes, databases, external fixtures, artifact paths, or result refs. Grade
+collision freedom and cleanup, not one allocation algorithm.
 
-Prefer mechanical checks for error-handling hygiene when the stack supports them:
+When managed Codex or Claude worktrees need ignored local files,
+`.worktreeinclude` may name a small explicit set already covered by
+`.gitignore`. Do not include broad `.env*`, secret directories, caches,
+dependencies, build output, or machine-global configuration. Manual worktrees
+and custom hooks need their own copy or bootstrap path; do not assume the
+managed-worktree mechanism runs there.
 
-- no empty catches
-- no broad catch-and-ignore handlers
-- stable error codes or tagged variants for public interfaces
-- user-facing error text that suggests a recovery step when one exists
+## Unattended Execution
 
-## Tool Version Ownership
+An unattended path needs:
 
-When adding CI, hooks, or bootstrap scripts, keep tool versions in one checked-in owner:
+- task and attempt identity
+- bounded runtime and retry policy
+- durable logs, artifacts, and terminal state
+- cleanup on every exit path
+- scoped credentials and allowed side effects
+- recovery or escalation ownership
 
-- Node in `.node-version`; CI reads it with `node-version-file` when the action supports it
-- Package managers in `package.json#packageManager`; avoid separate `pnpm@...` or `corepack prepare ...@...` literals unless the repo cannot consume `packageManager`
-- Tool wrappers in package metadata or a workspace catalog; if workflow input needs the version, read it with a structured tool such as `jq` instead of copying the literal
-- GitHub Action SHA pins and same-line action version comments are not project tool versions; keep them explicit and Dependabot-managed
+The repository exposes ordinary lifecycle and artifact commands. A runner or
+orchestrator owns workspace allocation, credentials, queueing, retries, and
+external submission mechanics.
 
-## Machine Identities and Secret Injection
-
-Needing credentials is not a readiness failure. Needing a human to supply or
-switch them during every run is.
-
-Keep ownership explicit:
-
-- **runner**: authenticates a machine or workload identity and injects
-  short-lived access into the process environment
-- **repository**: declares required scopes and exposes a noninteractive command
-  that consumes the injected identity
-- **human/operator**: provisions, rotates, revokes, and recovers identities
-  outside normal task execution
-
-For an Infisical-backed runner, the platform can obtain a short-lived machine
-identity token using Universal Auth, OIDC, or a cloud-native auth method. The
-repository command may validate the token and invoke `infisical run` for the
-owned project without ever handling the machine identity's bootstrap secret:
-
-```bash
-: "${INFISICAL_TOKEN:?runner machine identity is unavailable}"
-: "${INFISICAL_PROJECT_ID:?runner project scope is unavailable}"
-infisical login status --json >/dev/null
-exec infisical run --projectId="$INFISICAL_PROJECT_ID" -- ./scripts/verify.sh
-```
-
-The runner should also own the Infisical domain or API URL when it differs from
-the default. Never print the access token, embed a client secret in the repo,
-write fetched secrets to artifacts, or switch a human workstation profile as
-part of an unattended task.
-
-Prefer separate identities or roles for environments and capabilities such as
-read-only triage, test fixtures, artifact submission, branch delivery, and
-production operations.
-Missing or denied scope should fail with the runner capability and recovery
-owner, not a raw credential value.
-
-## Observability
-
-Structured JSON logs + machine-readable health endpoints. This is what makes "Grade B" possible — agents can query results, not just read code.
-
-```bash
-# Structured log line
-{"level":"info","ts":"...","msg":"request","method":"GET","path":"/api/items","status":200,"duration_ms":12}
-
-# Health endpoint
-GET /health → {"status":"ok","version":"1.2.3","uptime":3600}
-```
-
-Datadog's insight: observability isn't just for production. Wire it into the dev environment so agents can verify behavior through telemetry, not just test assertions.
-
-## Seed Data / Fixtures
-
-Reproducible test state prevents non-deterministic failures:
-
-```bash
-# scripts/seed.sh
-<your-db-reset-command>
-<your-seed-command>
-```
-
-Keep fixtures in `fixtures/` or `test/fixtures/` — version with the repo.
-
-## Per-Worktree Isolation
-
-For parallel agents on the same repo:
-
-```bash
-git worktree add ../feature-xyz -b feature-xyz origin/main
-: "${AGENT_TASK_ID:?task identity is required}"
-: "${AGENT_PORT:?runner must allocate an isolated port}"
-export PORT="$AGENT_PORT"
-export COMPOSE_PROJECT_NAME="app-$AGENT_TASK_ID"
-docker compose up -d --wait
-```
-
-The allocation mechanism can be runner-assigned, a checked-in deterministic
-function, or an ephemeral-port protocol. Grade collision freedom and cleanup,
-not a particular port algorithm. Each concurrent task also needs isolated test
-state, delivery refs, and any mutable external fixture it can change.
-
-### Worktree Include Files
-
-Codex app managed worktrees and Claude Code worktrees can copy required gitignored local files from the repository root with `.worktreeinclude`.
-
-Use this when agents can create or enter worktrees but then fail because ignored local setup files are missing, such as `.env.local`, a local tool config, or a dev-only secrets file. Keep the file small:
-
-```gitignore
-# .worktreeinclude
-.env.local
-config/dev-secrets.json
-```
-
-Audit rules:
-
-- Patterns use `.gitignore` syntax and should name specific paths whenever possible.
-- Only include files that are already ignored by Git; tracked files are already present in the checkout.
-- Do not include broad patterns such as `*`, `.env*`, `secrets/`, caches, build output, dependencies, or machine-global config.
-- If the project should fetch secrets from Infisical, CI, or a setup script, document that path instead of copying a local secret file.
-- Pair `.worktreeinclude` with `.gitignore`; adding one without the other is usually a readiness gap.
-- Codex processes `.worktreeinclude` for local Codex-managed app worktrees, not remote worktrees or worktrees created manually with Git.
-- Claude Code processes `.worktreeinclude` for default `--worktree`, subagent worktrees, and desktop parallel sessions.
-- For custom Claude `WorktreeCreate` hooks or manual `git worktree add`, do not assume `.worktreeinclude` is processed. Copy required files in the hook or setup script instead.
-
-## Unattended Run Constraints
-
-Agent-ready checks should keep working after the user closes a terminal, browser tab, or laptop. Prefer scripts, CI jobs, or remote runners with explicit timeouts, cleanup, and artifact paths.
-
-Minimum useful contract:
-
-- `timeout` or CI job timeout limits wall-clock time
-- logs and screenshots land under a checked or documented artifact directory
-- cleanup runs on success and failure
-- expensive paths document their resource class, parallelism, or expected runtime
-- credentials are scoped to the task and enforced by the runtime environment
-
-Avoid verification paths that require clicking dashboards, approving prompts mid-run, or watching a local session stay alive.
-
-## Triage-to-Result Contract
-
-Keep the boundary between an orchestrator and repository stable. A useful task
-input contains:
-
-- task and attempt identifiers
-- source item and current revision
-- owned repository, base ref, and allowed result target
-- task class, result type, acceptance criteria, required evidence, and terminal condition
-- risk, required capabilities, and allowed side effects
-- runner class and credential scopes
-- timeout, retry, artifact, and escalation policy
-
-The repository should expose its ordinary bootstrap, verify, teardown, and
-artifact commands — package scripts, Make/`just` targets, or plain scripts —
-so an orchestrator can call the same surface humans and CI use without
-prompt-specific shell invention. Do not invent a parallel `agent-*` wrapper
-layer.
-Record explicit states such as:
+For triage-to-result work, define each stage's input, output, owner, and
+terminal condition:
 
 ```text
-queued → provisioning → executing → proving → submitting → reconciling
-       ↘ blocked      ↘ failed     ↘ retrying   ↘ canceled   ↘ complete
+queued -> provisioning -> executing -> proving -> submitting -> reconciling
+       -> blocked | retrying | failed | canceled | complete
 ```
 
-Success means the final provider and repository state matches the task contract,
-not merely that the agent process exited zero. Preserve task state, attempt
-history, logs, proof artifacts, result identifiers, and failure class so a new
-process can reconcile and resume safely.
+Implementation and no-diff QA are separate result types. A QA task must not
+manufacture a branch or pull request unless its contract requests repository
+changes. Every preserved artifact ties task, attempt, revision or build,
+scenario, producer, capture time, format, and redaction status to an observed
+outcome.
 
-Common result branches include:
+## Recovery and Back-Pressure
 
-- **implementation** — environment setup, implementation, real-surface proof,
-  independent review, branch or PR submission, CI and review reconciliation,
-  conflict recovery, and merge when explicitly authorized
-- **QA** — environment and build identification, scenario execution, observed
-  outcomes, an artifact manifest containing required screenshots, images,
-  recordings, logs, traces, or JSON, report submission, reruns, and acceptance
+Retry only classified recoverable failures while a configured budget remains.
+Treat repeated unchanged failure as an escalation signal. Preserve the last
+diagnostic, owned state, attempted recovery, and next safe action.
 
-Every artifact should record task and attempt identity, source revision, build
-or environment, scenario, capture time, producer, format, and redaction status;
-use hashes when the receiver needs integrity checks. A QA task should not create
-a branch or PR unless its contract requests repository changes. An artifact is
-proof only when it is tied to an exercised scenario and an observed outcome;
-file existence or an uninspected screenshot is not a passing grader.
+Run targeted checks at the earliest reliable boundary. Keep successful hooks
+quiet and failures concise; do not rerun commands merely to redisplay output.
+Long or secret-bearing operations require non-cancellable critical sections or
+durable reconciliation rather than optimistic process-exit handling.
 
-Submission and reconciliation may mutate external systems only when the
-orchestrator has explicit authority for those transitions. Keep policy decisions
-deterministic and let the agent escalate judgment calls.
+## Maintained Examples
 
-## Deterministic vs Agentic Split
+Use these public implementations only after identifying the missing contract:
 
-**Always deterministic** (hardcoded, no LLM): linting, formatting, workspace and
-branch setup, allowed-target checks, secret injection, test invocation, artifact
-placement and manifests, upload or push mechanics, result templates, and service
-startup or teardown.
+- [`uinaf/workspace-kit` lifecycle scripts](https://github.com/uinaf/workspace-kit/blob/main/package.json),
+  [installed-package smoke](https://github.com/uinaf/workspace-kit/blob/main/scripts/smoke-package.mjs),
+  and [CI gate](https://github.com/uinaf/workspace-kit/blob/main/.github/workflows/verify.yml)
+  demonstrate one package-owned local/CI lifecycle with consumer proof.
+- [`uinaf/dotfiles` task graph](https://github.com/uinaf/dotfiles/blob/main/mise.toml),
+  [check registry](https://github.com/uinaf/dotfiles/blob/main/scripts/verify/checks.json),
+  and [runner](https://github.com/uinaf/dotfiles/blob/main/scripts/verify/run.ts)
+  demonstrate deterministic domain selection, parallel checks, and failure
+  aggregation for a heterogeneous repository.
 
-**Agentic** (LLM decides): understanding the task, implementation, exploratory
-QA, diagnosing observed behavior, fixing failures, and deciding which evidence
-best demonstrates the result within the required schema.
-
-This split saves tokens, reduces errors, and guarantees critical steps happen every time.
-
-## Stop Hooks / Back-Pressure
-
-Run targeted checks when the agent finishes a task — through a local gate,
-orchestrator after-run hook, or repository hook, not just in CI. Silent on
-success, error-only on failure to avoid context flooding.
-
-```bash
-# .git-hooks/pre-commit or agent stop hook
-set -euo pipefail
-<your-typecheck-command> >/dev/null 2>&1 || <your-typecheck-command> 2>&1 | tail -20
-<your-targeted-test-command> >/dev/null 2>&1 || <your-targeted-test-command> 2>&1 | tail -20
-```
-
-Pattern: run silently, only show output on failure. Run only tests related to changed files, not the full suite. Most test runners support file-pattern filtering.
-
-## Retry Caps
-
-Every retrying transition needs a configured bound. Do not encode a universal
-count: choose it from task cost, failure class, provider limits, and risk.
-
-```
-1. Agent implements change
-2. Local lint + smoke (deterministic, < 5 seconds)
-3. Push to CI — autofix known patterns on failure
-4. Retry only while the failure is classified as recoverable and budget remains
-5. On exhaustion or repeated unchanged failure → preserve evidence and escalate
-```
-
-Track whether retries make progress. Repeating the same failure is an escalation
-signal, not evidence that the retry cap should be raised.
+Copy neither implementation wholesale. Inspect its current tests and guide,
+then reuse only the contract that matches the target repository's existing
+toolchain and lifecycle.

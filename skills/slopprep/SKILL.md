@@ -1,19 +1,21 @@
 ---
 name: agent-readiness
-description: "Audit and improve repository and runner infrastructure for dependable autonomous implementation, QA, and unattended task execution. Covers reproducible bootstrap, noninteractive machine identities, real-surface verification, artifacts, CI, observability, isolation, recovery, and result submission. Use when making a repo agent-ready, agents cannot boot or verify, setup still needs a human, credentials or worktrees block automation, AGENTS.md lacks a cold-start path, runner setup is broken, automation still needs babysitting, or a devbox/orchestrator must finish tasks unsupervised. Do not use for reviewing an existing diff or documentation-only cleanup."
-disable-model-invocation: true
+description: "Audit and improve repository guidance, lifecycle, and runner infrastructure for dependable autonomous implementation, QA, and unattended task execution. Covers AGENTS.md operating contracts, reproducible bootstrap, canonical verification, real-surface evidence, noninteractive machine identities, CI, observability, isolation, recovery, and result submission. Use when making a repo agent-ready, agent guidance lacks usable orientation, authority, cold-start, or proof paths, agents cannot boot or verify, setup still needs a human, credentials or worktrees block automation, or a runner must finish tasks unsupervised. Do not use for reviewing an existing diff, an ordinary builder self-check in a healthy repo, or prose-only documentation cleanup."
 ---
 
 # Agent-Readiness
 
-Make a repository and its declared runner dependable for autonomous work.
+Make a repository, its agent operating guide, and its declared runner dependable
+for autonomous work.
 Default target: B. Treat C as a checkpoint only ([references/grading.md](references/grading.md)).
 
 ## Boundaries
 
-- In scope: readiness infrastructure and repeatable application QA.
-- Out of scope: source-diff review, unrelated documentation cleanup, ship
-  decisions, and unauthorized external actions.
+- In scope: agent operating contracts, readiness infrastructure, and repeatable
+  application QA.
+- Out of scope: source-diff review, ordinary post-change self-checks when the
+  repository already has a usable proof path, prose-only documentation cleanup,
+  ship decisions, and unauthorized external actions.
 - Do not invent an orchestrator. Grade platform tools, network access, and
   machine authentication as runner capabilities.
 - Require task-relevant guidance and empirical proof; mock-only tests,
@@ -42,6 +44,9 @@ Lock the request first: target grade (default B), task classes
 Then:
 
 1. Read `AGENTS.md` (or the repo entrypoint) and follow its linked contracts.
+   Audit it with [references/agent-guidance.md](references/agent-guidance.md):
+   orientation, progressive routing, authority, lifecycle, proof, recovery, and
+   write-back must be discoverable without turning the entrypoint into a wiki.
 2. Discover lifecycle commands and exercise what exists; record exit codes:
 
    ```bash
@@ -50,22 +55,23 @@ Then:
    ```
 
    Static file presence alone is weak evidence.
-3. Fill the [Required Output](references/grading.md#required-output) profile; for
+3. Compare the guide's commands, paths, ownership, and restrictions with the
+   checkout and declared runner. Treat stale or unexecutable guidance as a
+   readiness failure, not merely a prose defect.
+4. Fill the [Required Output](references/grading.md#required-output) profile; for
    every applicable capability record its grade, evidence, gap, and owner.
-4. For each automation-path stage, write `input / output / owner / terminal` or
+5. For each automation-path stage, write `input / output / owner / terminal` or
    mark the stage missing.
-5. Assign an evidence level using [references/autonomy-evidence.md](references/autonomy-evidence.md).
+6. Assign the evidence level defined in
+   [references/grading.md](references/grading.md). Read
+   [references/autonomy-evidence.md](references/autonomy-evidence.md) only for
+   representative trials, reliability claims, or A-grade operation.
 
-Use [references/setup-patterns.md](references/setup-patterns.md) for machine
-identity ownership and managed-worktree inputs. Interactive human login,
-profile switching, copied secrets, and printed tokens are runner gaps.
-
-For React or existing Effect repos, apply
-[references/react-enforcement.md](references/react-enforcement.md) and
-[references/effect-readiness.md](references/effect-readiness.md). Effect work
-needs the upstream `effect-ts` guidance available to the declared agent; when
-the execution environment does not provide it, make it repository-local. Do not
-add Effect solely for readiness.
+Read [references/setup-patterns.md](references/setup-patterns.md) only for a
+missing lifecycle, machine identity, observability, isolation, or unattended
+runner contract. Interactive login, profile switching, copied secrets, and
+printed tokens are runner gaps. Do not introduce a framework or tool solely to
+raise readiness; verify the repository-selected stack instead.
 
 ### 2. Build the missing contract
 
@@ -75,31 +81,35 @@ trials**.
 
 Reuse the repository's ordinary bootstrap, verify, and teardown commands — the
 same surface humans and CI already use. Do not invent a parallel `agent-*`
-script layer. If entrypoints are missing, add plain ones and wire them into
-`package.json`, Make/`just`, or CI:
-
-```bash
-set -euo pipefail
-trap './scripts/teardown.sh' EXIT
-./scripts/bootstrap.sh
-./scripts/verify.sh
-```
+script layer. If entrypoints are missing, extend the existing build manifest,
+task graph, compiler/linter/test framework, or typed project CLI. A shell file
+is not required merely to give the command a name.
 
 Bootstrap validates prerequisites; verify is the CI-reused gate; teardown covers
-success, failure, timeout, and cancellation. Name the declared commands in
-`AGENTS.md`. Key automation artifacts by task and attempt.
+success, failure, timeout, and cancellation. Name the declared commands and
+their proof boundary in `AGENTS.md`. Key automation artifacts by task and
+attempt.
 
 | Enforce mechanically | Leave to agent judgment |
 | --- | --- |
 | workspace and branch setup, allowed targets, tool install, secret injection | task interpretation and implementation |
 | boot, test, teardown, artifact manifests, upload and push mechanics | exploratory QA, diagnosis, evidence selection, and recovery strategy |
 
-Keep `AGENTS.md` as the canonical agent guide; symlink `CLAUDE.md` → `AGENTS.md`.
+Keep `AGENTS.md` as the canonical shared guide; symlink `CLAUDE.md` →
+`AGENTS.md`. Keep shared guidance model-neutral. Put private human context in an
+owner-controlled layer when the workspace supports one, and keep model or
+harness tuning in its owning configuration.
 
 ### 3. Prove outcomes, not recipes
 
+- Use [references/verification-contract.md](references/verification-contract.md)
+  to distinguish deterministic guardrails, focused regression checks,
+  real-surface runtime proof, CI, and live or deploy evidence. One layer never
+  implies another.
 - Run the lifecycle once on the happy path and once with a safe failure
   (for example a missing required runner input); preserve both statuses and artifacts.
+- Confirm the failure path exits non-zero and surfaces a stable classification,
+  useful context, and a recovery action when the operator can act.
 - Record each trial as machine-readable JSON:
 
 ```json
@@ -135,8 +145,7 @@ Name exact commands only for failures, reproduction, or when asked.
 ## References
 
 - [references/grading.md](references/grading.md) — repository and runner grades, capability matrix, ceilings, and blockers
+- [references/agent-guidance.md](references/agent-guidance.md) — model-neutral AGENTS.md orientation, routing, authority, lifecycle, and human-context checks
+- [references/verification-contract.md](references/verification-contract.md) — canonical gates, proof layers, real-surface evidence, and failure quality
 - [references/autonomy-evidence.md](references/autonomy-evidence.md) — evidence levels, representative trials, outcome graders, and reliability metrics
-- [references/setup-patterns.md](references/setup-patterns.md) — bootstrap, gates, credentials, observability, isolation, artifacts, recovery, and result patterns
-- [references/react-enforcement.md](references/react-enforcement.md) — React-specific lint, local-gate, and CI adoption
-- [references/effect-readiness.md](references/effect-readiness.md) — Effect-specific source, runtime, test, observability, and cleanup proof
-- [references/industry-examples.md](references/industry-examples.md) — current harness, eval, and orchestration patterns
+- [references/setup-patterns.md](references/setup-patterns.md) — lifecycle, credentials, observability, isolation, unattended execution, and recovery patterns

@@ -1,11 +1,11 @@
 {
-  "context": "Tests whether the agent produces an AGENTS.md that follows the skill's structural guidance: ~100 lines, terse table-of-contents format, contains required sections (boot, test, key conventions, doc links), and strips content that should NOT be in AGENTS.md (directory listings, auto-generated tables, full architecture tours, full API docs).",
+  "context": "Tests whether the agent produces a compact repository operating contract: clear product purpose and non-negotiables, exact lifecycle commands, concrete repo-specific decisions and hazards, task-shaped pointers, and no directory dump, generated inventory, or copied reference manual.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Length constraint",
+      "name": "Compact product contract",
       "max_score": 10,
-      "description": "The new AGENTS.md is at most 120 lines (allowing slight tolerance around the ~100 line target)"
+      "description": "AGENTS.md is at most 120 lines and briefly explains what the payments service does, its critical Stripe and database responsibilities, and the outcomes a change must preserve"
     },
     {
       "name": "Boot command present",
@@ -43,9 +43,9 @@
       "description": "AGENTS.md does NOT reference the deprecated `scripts/bootstrap.sh` — only `scripts/setup.sh` if referenced at all"
     },
     {
-      "name": "Key deviating conventions",
+      "name": "Concrete conventions and hazards",
       "max_score": 10,
-      "description": "AGENTS.md mentions at least one key convention that deviates from defaults (e.g. use custom logger instead of console.log, use AppError class, TypeScript strict mode no-any)"
+      "description": "AGENTS.md preserves actionable repository-specific rules such as generated-only migrations, redacted Stripe secrets, the custom logger or AppError boundary, or strict TypeScript, and does not replace them with vague advice like write clean code"
     },
     {
       "name": "Doc report produced",
