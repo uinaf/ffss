@@ -280,8 +280,8 @@ func (s *Store) migrate() error {
 			if err := tx.QueryRow(`SELECT
 				(SELECT COUNT(*) FROM reviewers WHERE name = 'slopguard')
 				+ (SELECT COUNT(*) FROM runs
-					WHERE required_reviewers_json LIKE '%"slopguard"%'
-					   OR completed_reviewers_json LIKE '%"slopguard"%')`).Scan(&occupied); err != nil {
+					WHERE instr(required_reviewers_json, '"slopguard"') > 0
+					   OR instr(completed_reviewers_json, '"slopguard"') > 0)`).Scan(&occupied); err != nil {
 				return fmt.Errorf("inspect reviewer rename collisions: %w", err)
 			}
 			type profileRewrite struct {

@@ -1,4 +1,4 @@
-name: Bug report
+name: slopshipper bug report
 description: Report a reproducible slopshipper defect with sanitized diagnostics
 title: "bug: "
 labels:

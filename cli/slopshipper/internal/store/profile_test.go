@@ -512,3 +512,41 @@ func copyFile(t *testing.T, src, dst string) {
 		t.Fatal(err)
 	}
 }
+
+func TestMigrationCollisionCheckIsCaseSensitive(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v8-case.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateRun(machine.NewRun("run", "repo"), nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db := openSQLite(t, path)
+	// SlopGuard is a distinct, valid custom identity; lowercase autoreview
+	// cannot merge with it, so it must not block the migration.
+	if _, err := db.Exec(`UPDATE runs SET required_reviewers_json = '["autoreview","SlopGuard"]'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s, err = store.Open(path)
+	if err != nil {
+		t.Fatalf("case-distinct identities must not block: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+	got, _, err := s.GetRun("run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RequiredReviewers[0] != machine.ReviewerSlopguard || got.RequiredReviewers[1] != "SlopGuard" {
+		t.Fatalf("rename must be exact-case: %+v", got.RequiredReviewers)
+	}
+}
