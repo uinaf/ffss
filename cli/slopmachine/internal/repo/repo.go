@@ -18,14 +18,21 @@ func Key(dir string) (string, error) {
 }
 
 // ErrNotRepository marks a directory that is definitively outside any Git
-// worktree, as opposed to a failed inspection.
+// worktree, as opposed to a failed inspection (git missing, permission
+// errors), which callers must treat as unknown rather than safe.
 var ErrNotRepository = errors.New("not a git repository")
 
 // Keys returns the credential-free repo identity and checkout root.
 func Keys(dir string) (string, string, error) {
 	root, err := gitOutput(dir, "rev-parse", "--show-toplevel")
 	if err != nil {
-		return "", "", fmt.Errorf("%w: %w", ErrNotRepository, err)
+		// git prints this exact fatal for directories outside any
+		// worktree; every other failure is an inspection error. Message
+		// sniffing is confined to this git boundary.
+		if strings.Contains(err.Error(), "not a git repository") {
+			return "", "", fmt.Errorf("%w: %w", ErrNotRepository, err)
+		}
+		return "", "", fmt.Errorf("inspect git worktree: %w", err)
 	}
 	root = filepath.Clean(root)
 	remote, err := gitOutput(dir, "config", "--get", "remote.origin.url")

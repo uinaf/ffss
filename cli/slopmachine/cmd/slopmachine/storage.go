@@ -102,6 +102,9 @@ func resolveStorage(requireGitSafe bool) (storageDocument, error) {
 		Exists:        exists,
 	}
 	if repoErr != nil {
+		if requireGitSafe && !errors.Is(repoErr, repo.ErrNotRepository) {
+			return storageDocument{}, fmt.Errorf("inspect Git worktree for state safety: %w", repoErr)
+		}
 		return doc, nil
 	}
 	return applyGitSafety(doc, root, path, requireGitSafe)

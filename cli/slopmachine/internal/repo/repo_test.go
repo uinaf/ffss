@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"errors"
 	"os/exec"
 	"strings"
 	"testing"
@@ -211,4 +212,16 @@ func runGitOutput(t *testing.T, dir string, args ...string) string {
 		t.Fatalf("git %v: %v\n%s", args, err, out)
 	}
 	return string(out)
+}
+
+func TestKeysDistinguishesInspectionFailureFromNonRepo(t *testing.T) {
+	if _, _, err := Keys(t.TempDir()); !errors.Is(err, ErrNotRepository) {
+		t.Fatalf("plain directory must classify as not-a-repository: %v", err)
+	}
+	// A missing git executable is an inspection failure, not proof of a
+	// non-repository.
+	t.Setenv("PATH", t.TempDir())
+	if _, _, err := Keys(t.TempDir()); err == nil || errors.Is(err, ErrNotRepository) {
+		t.Fatalf("broken inspection must not classify as not-a-repository: %v", err)
+	}
 }

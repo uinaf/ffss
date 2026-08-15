@@ -1,6 +1,7 @@
 package store
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -23,5 +24,19 @@ func TestTimestampFixedWidth(t *testing.T) {
 	late := "2026-08-15T12:31:13.899263000Z"
 	if !(strings.Compare(early, late) < 0) {
 		t.Fatal("fixed-width stamps must order lexicographically by time")
+	}
+}
+
+func TestOpenRejectsURIDelimiterPaths(t *testing.T) {
+	for _, path := range []string{
+		filepath.Join(t.TempDir(), "state?variant.sqlite"),
+		filepath.Join(t.TempDir(), "state#frag.sqlite"),
+	} {
+		if _, err := Open(path); err == nil || !strings.Contains(err.Error(), "URI delimiter") {
+			t.Fatalf("path %q must be rejected: %v", path, err)
+		}
+		if _, err := OpenReadOnly(path); err == nil || !strings.Contains(err.Error(), "URI delimiter") {
+			t.Fatalf("read-only %q must be rejected: %v", path, err)
+		}
 	}
 }

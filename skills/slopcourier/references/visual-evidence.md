@@ -22,8 +22,10 @@ list` shows `gh attach` from `uinaf/gh-attach`). Anything else on PATH
 under that name is not this rung — fall through.
 
 When it is the real tool, it owns attachment end to end: `attach put` the
-asset (scope with `--repo`/`--pr`), and embed the returned reference
-(`--markdown` or `--url`).
+asset (or `gh attach put` when only the extension is installed — the
+extension does not put an `attach` binary on PATH), scope with
+`--repo`/`--pr`, and embed the returned reference (`--markdown` or
+`--url`).
 
 ## 2. GitLab deliveries (`glab`)
 
