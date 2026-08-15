@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "skills/slopshipper/**"
+      - "skills/slopship/**"
       - "scripts/verify-published-skill.sh"
       - ".github/workflows/publish-skill.yml"
   workflow_dispatch:
@@ -51,5 +51,5 @@ jobs:
         env:
           PUBLISHED_VERSIONS: ${{ steps.publish.outputs.versions }}
         run: |
-          version=$(jq -er '."skills/slopshipper"' <<< "$PUBLISHED_VERSIONS")
+          version=$(jq -er '."skills/slopship"' <<< "$PUBLISHED_VERSIONS")
           ./scripts/verify-published-skill.sh "$version"

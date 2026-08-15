@@ -108,7 +108,7 @@ jobs:
       - name: Lint skill package
         env:
           TESSL_AUTO_UPDATE_INTERVAL_MINUTES: "0"
-        run: tessl plugin lint skills/slopshipper
+        run: tessl plugin lint skills/slopship
 
   gate:
     name: CI / gate

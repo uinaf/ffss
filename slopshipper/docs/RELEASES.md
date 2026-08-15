@@ -99,12 +99,12 @@ version numbers are not required to match.
 
 ## Skill publication
 
-Changes under `skills/slopshipper` publish only after they merge to protected
+Changes under `skills/slopship` publish only after they merge to protected
 `main` (or via `workflow_dispatch` on that workflow). The dedicated
 `skill-release` Environment exposes a Tessl API key with the workspace-scoped
 `publisher` role; pull-request jobs remain secretless. The pinned
 `uinaf/tessl-publish-action` runs free Tessl plugin lint (default) and publishes the
-explicit version from `skills/slopshipper/.tessl-plugin/plugin.json` without
+explicit version from `skills/slopship/.tessl-plugin/plugin.json` without
 mutating the repository.
 
 Publication is immutable and rerunnable. If the declared version already

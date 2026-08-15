@@ -83,7 +83,7 @@ requires Tessl CLI 0.94.0:
 mise run skill:lint
 ```
 
-Bump `skills/slopshipper/.tessl-plugin/plugin.json` when the skill should ship a
+Bump `skills/slopship/.tessl-plugin/plugin.json` when the skill should ship a
 new immutable revision.
 
 A scheduled `govulncheck` scan covers changes in the vulnerability database

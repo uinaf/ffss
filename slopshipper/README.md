@@ -7,7 +7,7 @@ evidence-gated workflow for coding agents. Humans release the work; the CLI
 then enforces each build, verification, review, and delivery transition.
 
 ```text
-plan  →  /slopshipper  →  clarify  →  human releases  →  machine runs
+plan  →  /slopship  →  clarify  →  human releases  →  machine runs
 ```
 
 - **Human-controlled:** scope, release, required reviewers, and recovery stay
@@ -160,7 +160,7 @@ still go through the CLI.
 
 ## Agent skill
 
-The bundled [agent skill](skills/slopshipper/SKILL.md) teaches agents to drive
+The bundled [agent skill](skills/slopship/SKILL.md) teaches agents to drive
 the installed CLI and obey `next_action`. It is intentionally thin: the binary
 owns the state machine, schemas, and store.
 

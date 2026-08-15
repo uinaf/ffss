@@ -103,15 +103,15 @@ done
 description = "Free Tessl plugin lint for the skill package"
 run = '''
 set -e
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopshipper
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopship
 '''
 
 [tasks."skill:review"]
 description = "Optional credit-burning Tessl cloud review at threshold 100"
 run = '''
 set -e
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopshipper
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopshipper-0.3.0 skills/slopshipper
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopship
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopship-0.3.0 skills/slopship
 '''
 
 [tasks.security]

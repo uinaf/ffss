@@ -3,7 +3,7 @@
 set -euo pipefail
 
 repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-manifest=$repository_root/skills/slopshipper/.tessl-plugin/plugin.json
+manifest=$repository_root/skills/slopship/.tessl-plugin/plugin.json
 requested_version=${1:-}
 
 if [ -z "$requested_version" ]; then

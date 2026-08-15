@@ -2,7 +2,7 @@
 
 Contributor guidance for `slopshipper`.
 
-- North star: plan → `/slopshipper` → clarify → human releases → machine runs.
+- North star: plan → `/slopship` → clarify → human releases → machine runs.
 - Binary owns the state machine, schemas, and sqlite store; the skill is thin
   and drives the CLI. Do not invent a second runtime in markdown or scripts.
 - Prefer structured I/O (enums, JSON schemas, fail-closed validation).

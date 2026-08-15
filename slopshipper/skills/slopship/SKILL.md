@@ -1,6 +1,6 @@
 ---
-name: slopshipper
-description: "Runs a structured, deterministic implementation workflow via the installed slopshipper CLI: clarifies intake, gates human release, runs build and verify, records independent review evidence, and delivers a reviewed artifact. Use when the user says /slopshipper, run this plan, execute the task list, ship this in slices, implement with checkpoints, walk the plan end to end, build it with human gates, or do a governed multi-step implementation. Do not use for ad-hoc edits or planning-only work."
+name: slopship
+description: "Runs a structured, deterministic implementation workflow via the installed slopshipper CLI: clarifies intake, gates human release, runs build and verify, records independent review evidence, and delivers a reviewed artifact. Use when the user says /slopship, run this plan, execute the task list, ship this in slices, implement with checkpoints, walk the plan end to end, build it with human gates, or do a governed multi-step implementation. Do not use for ad-hoc edits or planning-only work."
 disable-model-invocation: true
 ---
 
@@ -9,7 +9,7 @@ disable-model-invocation: true
 Deterministic and structured approach to slop cannoning.
 
 ```text
-plan → /slopshipper → clarify → human releases → machine runs
+plan → /slopship → clarify → human releases → machine runs
 ```
 
 ## Require the binary

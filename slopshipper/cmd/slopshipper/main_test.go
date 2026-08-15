@@ -357,8 +357,8 @@ func TestAgentDXProtocolHelperBranches(t *testing.T) {
 func TestAgentDocsUseCanonicalStatusMask(t *testing.T) {
 	for _, path := range []string{
 		filepath.Join("..", "..", "docs", "AGENT_INTERFACE.md"),
-		filepath.Join("..", "..", "skills", "slopshipper", "SKILL.md"),
-		filepath.Join("..", "..", "skills", "slopshipper", "references", "status.md"),
+		filepath.Join("..", "..", "skills", "slopship", "SKILL.md"),
+		filepath.Join("..", "..", "skills", "slopship", "references", "status.md"),
 	} {
 		contents, err := os.ReadFile(path)
 		if err != nil {
