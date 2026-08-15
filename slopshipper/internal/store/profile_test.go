@@ -205,3 +205,90 @@ func TestRekeyRepoMovesProfiles(t *testing.T) {
 		t.Fatal("sanitized profile must survive")
 	}
 }
+
+func TestForgeReviewersRoundTrip(t *testing.T) {
+	s, err := store.Open(filepath.Join(t.TempDir(), "t.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+
+	if err := s.RegisterReviewer("slopzapper"); err != nil {
+		t.Fatal(err)
+	}
+	profile := testProfile("repo")
+	profile.ForgeReviewers = map[string]string{"slopzapper": "zapbot[bot]"}
+	if err := s.RegisterRepoProfile(profile); err != nil {
+		t.Fatal(err)
+	}
+	got, found, err := s.GetRepoProfile("repo")
+	if err != nil || !found {
+		t.Fatalf("found=%v err=%v", found, err)
+	}
+	if got.ForgeReviewers["slopzapper"] != "zapbot[bot]" {
+		t.Fatalf("forge reviewers did not round-trip: %+v", got.ForgeReviewers)
+	}
+
+	// The write transaction re-checks forge reviewer identities against the
+	// reviewer registry, like review bindings.
+	ghost := testProfile("repo")
+	ghost.ForgeReviewers = map[string]string{"ghost": "ghostbot"}
+	err = s.UpdateRepoProfile(ghost)
+	if !errors.Is(err, machine.ErrBadArgs) || !strings.Contains(err.Error(), "ghost") {
+		t.Fatalf("unregistered forge reviewer must fail transactionally: %v", err)
+	}
+
+	// Replacing without the mapping clears it.
+	if err := s.UpdateRepoProfile(testProfile("repo")); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err = s.GetRepoProfile("repo")
+	if err != nil || len(got.ForgeReviewers) != 0 {
+		t.Fatalf("replacement must clear forge reviewers: %+v err=%v", got.ForgeReviewers, err)
+	}
+}
+
+func TestMigratesVersionSevenAddsForgeReviewers(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v7.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateRun(machine.NewRun("run", "repo"), nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RegisterRepoProfile(testProfile("repo")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	db := openSQLite(t, path)
+	if _, err := db.Exec(`ALTER TABLE repos DROP COLUMN forge_reviewers_json`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE meta SET value = '7' WHERE key = 'schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	s, err = store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	got, found, err := s.GetRepoProfile("repo")
+	if err != nil || !found || len(got.ForgeReviewers) != 0 {
+		t.Fatalf("migrated profile must read with empty forge reviewers: %+v found=%v err=%v", got.ForgeReviewers, found, err)
+	}
+	if err := s.RegisterReviewer("slopzapper"); err != nil {
+		t.Fatal(err)
+	}
+	got.ForgeReviewers = map[string]string{"slopzapper": "zapbot"}
+	if err := s.UpdateRepoProfile(got); err != nil {
+		t.Fatalf("migrated database must accept forge reviewers: %v", err)
+	}
+}

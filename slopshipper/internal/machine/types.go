@@ -61,21 +61,42 @@ type VerifyEvidence struct {
 	OutputDigest string `json:"output_digest,omitempty"`
 }
 
+// EvidenceVerification records how a piece of evidence was established.
+// The driver stamps it — callers never supply it — and the machine only
+// checks its consistency, because observation lives outside the machine.
+type EvidenceVerification string
+
+const (
+	// VerificationObserved means the driver checked the evidence against the
+	// live forge before acceptance.
+	VerificationObserved EvidenceVerification = "observed"
+	// VerificationRecorded means the evidence is trusted caller input; the
+	// pre-verification default.
+	VerificationRecorded EvidenceVerification = "recorded"
+	// VerificationOverridden means verification applied but was explicitly
+	// bypassed; UnverifiedReason records why.
+	VerificationOverridden EvidenceVerification = "overridden"
+)
+
 // ReviewEvidence gates REVIEW → DELIVER.
 type ReviewEvidence struct {
-	Reviewer    ReviewerIdentity `json:"reviewer"`
-	Verdict     ReviewVerdict    `json:"verdict"`
-	ArtifactRef string           `json:"artifact_ref"`
+	Reviewer         ReviewerIdentity     `json:"reviewer"`
+	Verdict          ReviewVerdict        `json:"verdict"`
+	ArtifactRef      string               `json:"artifact_ref"`
+	Verification     EvidenceVerification `json:"verification,omitempty"`
+	UnverifiedReason string               `json:"unverified_reason,omitempty"`
 }
 
 // DeliverEvidence gates DELIVER completion for a unit. UnitID is stamped by
 // the machine from the unit being delivered, so later observation can
 // correlate forge state back to its unit.
 type DeliverEvidence struct {
-	UnitID       string       `json:"unit,omitempty"`
-	DeliveryMode DeliveryMode `json:"delivery_mode"`
-	PRURL        string       `json:"pr_url,omitempty"`
-	CommitSHA    string       `json:"commit_sha,omitempty"`
+	UnitID           string               `json:"unit,omitempty"`
+	DeliveryMode     DeliveryMode         `json:"delivery_mode"`
+	PRURL            string               `json:"pr_url,omitempty"`
+	CommitSHA        string               `json:"commit_sha,omitempty"`
+	Verification     EvidenceVerification `json:"verification,omitempty"`
+	UnverifiedReason string               `json:"unverified_reason,omitempty"`
 }
 
 // IntakePatch updates contract fields; always bumps intake revision.

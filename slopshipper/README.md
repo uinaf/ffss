@@ -161,13 +161,22 @@ slopshipper reviewers --add slopzapper
 slopshipper repo register \
   --forge github --trust low \
   --verify-cmd 'mise run verify' --delivery pr-hold \
-  --bind 'review=autoreview,review=slopzapper'
+  --bind 'review=autoreview,review=slopzapper' \
+  --forge-reviewer 'slopzapper=slopzapper'
 ```
 
 A registered repo drives defaults and gates: new runs inherit the delivery
 mode, `next_action` names the canonical verify command verbatim, and release
 fails closed when a required reviewer holds no review binding. Unregistered
 repositories keep profile-less behavior.
+
+A forge-bound profile also moves evidence from narrated to observed (status
+states the mode in `evidence_verification`): deliver evidence must name a
+change request that exists and matches the delivered head, and review
+evidence from a `--forge-reviewer`-mapped identity must be corroborated by a
+submitted review from that login on the referenced change request. When the
+forge is unreachable the command exits 7 rather than trusting the claim;
+`--unverified --reason TEXT` records an explicit, audited bypass.
 
 ## Telemetry
 

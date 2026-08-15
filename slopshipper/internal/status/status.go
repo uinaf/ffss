@@ -13,7 +13,7 @@ import (
 const (
 	schemaVersion      = 3
 	stateUninitialized = "UNINITIALIZED"
-	AgentFieldMask     = "state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question"
+	AgentFieldMask     = "state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification"
 )
 
 // UnitStatus is the compact per-unit projection inside status.
@@ -26,40 +26,41 @@ type UnitStatus struct {
 
 // Document is the compact agent-facing status contract.
 type Document struct {
-	SchemaVersion       int          `json:"schema_version"`
-	Revision            int64        `json:"revision"`
-	RunID               string       `json:"run_id"`
-	RepoKey             string       `json:"repo_key"`
-	State               string       `json:"state"`
-	IntakeRevision      int64        `json:"intake_revision"`
-	Released            bool         `json:"released"`
-	ReleasedRevision    *int64       `json:"released_revision,omitempty"`
-	DeliveryMode        string       `json:"delivery_mode"`
-	RiskTier            string       `json:"risk_tier,omitempty"`
-	BudgetTokens        int          `json:"budget_tokens,omitempty"`
-	BudgetMinutes       int          `json:"budget_minutes,omitempty"`
-	SeriesBound         int          `json:"series_bound"`
-	CompletedUnits      int          `json:"completed_units"`
-	CurrentUnitID       string       `json:"current_unit_id,omitempty"`
-	Frontier            []string     `json:"frontier"`
-	DeliveredUnits      []string     `json:"delivered_units"`
-	Units               []UnitStatus `json:"units"`
-	RequiredReviewers   []string     `json:"required_reviewers"`
-	CompletedReviewers  []string     `json:"completed_reviewers"`
-	AllowedCommands     []string     `json:"allowed_commands"`
-	RequiredEvidence    []string     `json:"required_evidence"`
-	NextAction          string       `json:"next_action"`
-	Blocker             string       `json:"blocker,omitempty"`
-	DecisionQuestion    string       `json:"decision_question,omitempty"`
-	DryRun              bool         `json:"dry_run,omitempty"`
-	ValidatedCommand    string       `json:"validated_command,omitempty"`
-	OutcomeUndetermined bool         `json:"outcome_undetermined,omitempty"`
-	VerifyCommand       string       `json:"verify_command,omitempty"`
-	RepoRegistered      bool         `json:"repo_registered,omitempty"`
-	TotalDurationMS     int64        `json:"total_duration_ms"`
-	TotalTokens         int          `json:"total_tokens"`
-	TotalCostCents      int          `json:"total_cost_cents"`
-	TelemetryEvents     int          `json:"telemetry_events"`
+	SchemaVersion        int          `json:"schema_version"`
+	Revision             int64        `json:"revision"`
+	RunID                string       `json:"run_id"`
+	RepoKey              string       `json:"repo_key"`
+	State                string       `json:"state"`
+	IntakeRevision       int64        `json:"intake_revision"`
+	Released             bool         `json:"released"`
+	ReleasedRevision     *int64       `json:"released_revision,omitempty"`
+	DeliveryMode         string       `json:"delivery_mode"`
+	RiskTier             string       `json:"risk_tier,omitempty"`
+	BudgetTokens         int          `json:"budget_tokens,omitempty"`
+	BudgetMinutes        int          `json:"budget_minutes,omitempty"`
+	SeriesBound          int          `json:"series_bound"`
+	CompletedUnits       int          `json:"completed_units"`
+	CurrentUnitID        string       `json:"current_unit_id,omitempty"`
+	Frontier             []string     `json:"frontier"`
+	DeliveredUnits       []string     `json:"delivered_units"`
+	Units                []UnitStatus `json:"units"`
+	RequiredReviewers    []string     `json:"required_reviewers"`
+	CompletedReviewers   []string     `json:"completed_reviewers"`
+	AllowedCommands      []string     `json:"allowed_commands"`
+	RequiredEvidence     []string     `json:"required_evidence"`
+	NextAction           string       `json:"next_action"`
+	Blocker              string       `json:"blocker,omitempty"`
+	DecisionQuestion     string       `json:"decision_question,omitempty"`
+	DryRun               bool         `json:"dry_run,omitempty"`
+	ValidatedCommand     string       `json:"validated_command,omitempty"`
+	OutcomeUndetermined  bool         `json:"outcome_undetermined,omitempty"`
+	VerifyCommand        string       `json:"verify_command,omitempty"`
+	RepoRegistered       bool         `json:"repo_registered,omitempty"`
+	EvidenceVerification string       `json:"evidence_verification,omitempty"`
+	TotalDurationMS      int64        `json:"total_duration_ms"`
+	TotalTokens          int          `json:"total_tokens"`
+	TotalCostCents       int          `json:"total_cost_cents"`
+	TelemetryEvents      int          `json:"telemetry_events"`
 }
 
 // Context carries repo-profile defaults the run inherits at read time.
@@ -69,6 +70,10 @@ type Context struct {
 	// VerifyCommand is the profile's canonical verify command; when set,
 	// verify's next_action names it instead of a placeholder.
 	VerifyCommand string
+	// EvidenceVerification states plainly whether deliver/review evidence is
+	// checked against the forge ("observed") or trusted as recorded input
+	// ("recorded").
+	EvidenceVerification string
 	// Telemetry totals aggregated from the run's recorded events.
 	TotalDurationMS int64
 	TotalTokens     int
@@ -98,37 +103,38 @@ func FromContext(run machine.Run, units []machine.Unit, ctx Context) Document {
 	selected := selectedCommand(allowed)
 	requiredEvidence := requiredEvidence(selected, units)
 	return Document{
-		SchemaVersion:      schemaVersion,
-		Revision:           run.Revision,
-		RunID:              run.ID,
-		RepoKey:            run.RepoKey,
-		State:              string(run.State),
-		IntakeRevision:     run.IntakeRevision,
-		Released:           run.Released(),
-		ReleasedRevision:   run.ReleasedRevision,
-		DeliveryMode:       string(run.DeliveryMode),
-		RiskTier:           string(run.RiskTier),
-		BudgetTokens:       run.Budget.Tokens,
-		BudgetMinutes:      run.Budget.Minutes,
-		SeriesBound:        run.SeriesBound,
-		CompletedUnits:     run.CompletedUnits,
-		CurrentUnitID:      run.CurrentUnitID,
-		Frontier:           machine.Frontier(units),
-		DeliveredUnits:     deliveredUnits(units),
-		Units:              unitStatuses(units),
-		RequiredReviewers:  requiredReviewers,
-		CompletedReviewers: completedReviewers,
-		AllowedCommands:    cmds,
-		RequiredEvidence:   requiredEvidence,
-		NextAction:         nextAction(run, units, selected, ctx),
-		Blocker:            run.BlockerReason,
-		DecisionQuestion:   run.DecisionQuestion,
-		VerifyCommand:      ctx.VerifyCommand,
-		RepoRegistered:     ctx.RepoRegistered,
-		TotalDurationMS:    ctx.TotalDurationMS,
-		TotalTokens:        ctx.TotalTokens,
-		TotalCostCents:     ctx.TotalCostCents,
-		TelemetryEvents:    ctx.TelemetryEvents,
+		SchemaVersion:        schemaVersion,
+		Revision:             run.Revision,
+		RunID:                run.ID,
+		RepoKey:              run.RepoKey,
+		State:                string(run.State),
+		IntakeRevision:       run.IntakeRevision,
+		Released:             run.Released(),
+		ReleasedRevision:     run.ReleasedRevision,
+		DeliveryMode:         string(run.DeliveryMode),
+		RiskTier:             string(run.RiskTier),
+		BudgetTokens:         run.Budget.Tokens,
+		BudgetMinutes:        run.Budget.Minutes,
+		SeriesBound:          run.SeriesBound,
+		CompletedUnits:       run.CompletedUnits,
+		CurrentUnitID:        run.CurrentUnitID,
+		Frontier:             machine.Frontier(units),
+		DeliveredUnits:       deliveredUnits(units),
+		Units:                unitStatuses(units),
+		RequiredReviewers:    requiredReviewers,
+		CompletedReviewers:   completedReviewers,
+		AllowedCommands:      cmds,
+		RequiredEvidence:     requiredEvidence,
+		NextAction:           nextAction(run, units, selected, ctx),
+		Blocker:              run.BlockerReason,
+		DecisionQuestion:     run.DecisionQuestion,
+		VerifyCommand:        ctx.VerifyCommand,
+		RepoRegistered:       ctx.RepoRegistered,
+		EvidenceVerification: ctx.EvidenceVerification,
+		TotalDurationMS:      ctx.TotalDurationMS,
+		TotalTokens:          ctx.TotalTokens,
+		TotalCostCents:       ctx.TotalCostCents,
+		TelemetryEvents:      ctx.TelemetryEvents,
 	}
 }
 

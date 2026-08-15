@@ -42,19 +42,26 @@ type verifyInput struct {
 }
 
 type reviewInput struct {
-	Run         string        `json:"run,omitempty"`
-	Reviewer    string        `json:"reviewer"`
-	Verdict     string        `json:"verdict"`
-	ArtifactRef string        `json:"artifact_ref"`
-	Telemetry   *telemetryDTO `json:"telemetry,omitempty"`
+	Run         string `json:"run,omitempty"`
+	Reviewer    string `json:"reviewer"`
+	Verdict     string `json:"verdict"`
+	ArtifactRef string `json:"artifact_ref"`
+	// Unverified requests an explicit verification bypass. Both fields keep
+	// presence: an explicit false with a reason and an orphan reason field
+	// (even empty) are rejected rather than ignored.
+	Unverified       *bool         `json:"unverified,omitempty"`
+	UnverifiedReason *string       `json:"unverified_reason,omitempty"`
+	Telemetry        *telemetryDTO `json:"telemetry,omitempty"`
 }
 
 type deliverInput struct {
-	Run          string        `json:"run,omitempty"`
-	DeliveryMode string        `json:"delivery_mode,omitempty"`
-	PRURL        string        `json:"pr_url,omitempty"`
-	CommitSHA    string        `json:"commit_sha,omitempty"`
-	Telemetry    *telemetryDTO `json:"telemetry,omitempty"`
+	Run              string        `json:"run,omitempty"`
+	DeliveryMode     string        `json:"delivery_mode,omitempty"`
+	PRURL            string        `json:"pr_url,omitempty"`
+	CommitSHA        string        `json:"commit_sha,omitempty"`
+	Unverified       *bool         `json:"unverified,omitempty"`
+	UnverifiedReason *string       `json:"unverified_reason,omitempty"`
+	Telemetry        *telemetryDTO `json:"telemetry,omitempty"`
 }
 
 type observeInput struct {

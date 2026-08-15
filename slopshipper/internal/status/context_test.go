@@ -38,3 +38,17 @@ func TestFromContextNamesCanonicalVerifyCommand(t *testing.T) {
 		t.Fatalf("verify command must be shell-quoted: %s", quoted.NextAction)
 	}
 }
+
+func TestFromContextStatesEvidenceVerification(t *testing.T) {
+	run := machine.NewRun("run", "repo")
+	run.State = machine.StateBuild
+	units := []machine.Unit{{ID: "u1", Phase: machine.PhaseActive, Attempt: 1}}
+
+	doc := status.FromContext(run, units, status.Context{EvidenceVerification: "observed"})
+	if doc.EvidenceVerification != "observed" {
+		t.Fatalf("evidence verification must project: %+v", doc)
+	}
+	if status.From(run, units).EvidenceVerification != "" {
+		t.Fatal("context-less projection must omit evidence verification")
+	}
+}

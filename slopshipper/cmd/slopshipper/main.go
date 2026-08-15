@@ -187,9 +187,9 @@ Usage:
   slopshipper release --revision N [--run ID]
   slopshipper build [--run ID]
   slopshipper verify --cmd CMD | --evidence PATH|- [--run ID]
-  slopshipper review --evidence PATH|- [--run ID]
+  slopshipper review --evidence PATH|- [--unverified --reason TEXT] [--run ID]
   slopshipper rework [--run ID]
-  slopshipper deliver --evidence PATH|- [--run ID]
+  slopshipper deliver --evidence PATH|- [--unverified --reason TEXT] [--run ID]
   slopshipper observe --signal SIGNAL [--unit ID] [--reference URL] [--run ID]
   slopshipper ask --question TEXT [--run ID]
   slopshipper decide --answer TEXT [--run ID]
@@ -235,19 +235,34 @@ Claim the next ready unit, or restart the current unit after rework.
 Run verification or load strict JSON evidence. Use --evidence - for stdin.
 A failed command is recorded as BLOCKED and exits with code 6.
 `,
-		"review": `Usage: slopshipper review --evidence PATH [--run ID]
+		"review": `Usage: slopshipper review --evidence PATH [--unverified --reason TEXT] [--run ID]
 
 Record strict JSON review evidence. Use --evidence - for stdin.
 Verdicts: clean, findings, ambiguous. The reviewer must be one of the run's
 required registered identities; inspect the registry with slopshipper reviewers.
+
+When the repo profile binds a forge and maps this reviewer with
+--forge-reviewer, artifact_ref must be a change-request URL and the forge
+must show a submitted review by that login; otherwise the evidence fails
+closed (exit 3; exit 7 with error_kind observation_* when the forge is
+unreachable). --unverified --reason TEXT records an explicit bypass in the
+evidence. Other reviewers keep recorded-input behavior.
 `,
 		"rework": `Usage: slopshipper rework [--run ID]
 
 Return the current unit from REVIEW to the build loop.
 `,
-		"deliver": `Usage: slopshipper deliver --evidence PATH [--run ID]
+		"deliver": `Usage: slopshipper deliver --evidence PATH [--unverified --reason TEXT] [--run ID]
 
 Record strict JSON delivery evidence. Use --evidence - for stdin.
+
+When the repo profile binds a forge and the run delivers change requests,
+the evidence is verified against the live change request: it must exist
+(exit 3 when not found) and match the recorded commit_sha (exit 3 on a head
+mismatch); a verified delivery without commit_sha adopts the observed head.
+Exit 7 with error_kind observation_* means the forge was unreachable and the
+evidence was not accepted. --unverified --reason TEXT records an explicit
+bypass in the evidence. Direct-trunk deliveries stay recorded input.
 `,
 		"observe": `Usage: slopshipper observe --signal SIGNAL [--unit ID] [--reference URL] [--run ID]
 
@@ -315,8 +330,12 @@ Flags for register and update:
   --bind 'role=name,...'    replace role bindings (roles: review, qa,
                             venue, memory); review bindings must be
                             registered reviewer identities
+  --forge-reviewer 'identity=login,...'   replace forge-resident reviewer
+                            mappings; a mapped reviewer's evidence is
+                            corroborated against the forge (requires --forge)
 A registered repo fails closed: releases require every required reviewer
-to hold a review binding. unregister restores profile-less behavior.
+to hold a review binding; a forge-bound profile verifies deliver evidence
+and corroborates mapped reviewers. unregister restores profile-less behavior.
 `,
 		"storage": `Usage: slopshipper storage [--json]
 
@@ -428,7 +447,10 @@ func cmdInit(st *store.Store, args []string, opts runOptions) int {
 	}
 	if opts.dryRun {
 		if st == nil {
-			doc := status.FromContext(run, nil, contextWithTelemetry(status.Context{}, tel))
+			// A fresh installation cannot hold a profile, so its evidence
+			// mode is recorded — stated like every other active document.
+			fresh := status.Context{EvidenceVerification: string(machine.VerificationRecorded)}
+			doc := status.FromContext(run, nil, contextWithTelemetry(fresh, tel))
 			doc.DryRun = true
 			doc.ValidatedCommand = string(machine.CmdInit)
 			return writeStatus(doc, opts)
@@ -785,6 +807,7 @@ func cmdReview(st *store.Store, args []string, opts runOptions) int {
 	}
 	var ev machine.ReviewEvidence
 	var input reviewInput
+	var override evidenceOverride
 	raw, err := decodeMutationInput(fs, &input)
 	if err != nil {
 		return writeFailure(opts, 2, err)
@@ -795,11 +818,34 @@ func cmdReview(st *store.Store, args []string, opts runOptions) int {
 		ev = machine.ReviewEvidence{
 			Reviewer: machine.ReviewerIdentity(input.Reviewer), Verdict: machine.ReviewVerdict(input.Verdict), ArtifactRef: input.ArtifactRef,
 		}
+		override, err = overrideFromInput(input.Unverified, input.UnverifiedReason)
+		if err != nil {
+			return writeFailure(opts, 2, err)
+		}
 	} else {
 		if fs["evidence"] == "" {
 			return writeFailure(opts, 2, fmt.Errorf("review requires --evidence or --input"))
 		}
-		if err := readJSON(fs["evidence"], &ev); err != nil {
+		// Verification is machine-stamped; field presence, not value,
+		// decides rejection.
+		var dto struct {
+			Reviewer         string  `json:"reviewer,omitempty"`
+			Verdict          string  `json:"verdict,omitempty"`
+			ArtifactRef      string  `json:"artifact_ref,omitempty"`
+			Verification     *string `json:"verification,omitempty"`
+			UnverifiedReason *string `json:"unverified_reason,omitempty"`
+		}
+		if err := readJSON(fs["evidence"], &dto); err != nil {
+			return writeFailure(opts, 2, err)
+		}
+		if dto.Verification != nil || dto.UnverifiedReason != nil {
+			return writeFailure(opts, 2, fmt.Errorf("review evidence must not declare verification; the machine stamps it (use --unverified --reason to bypass)"))
+		}
+		ev = machine.ReviewEvidence{
+			Reviewer: machine.ReviewerIdentity(dto.Reviewer), Verdict: machine.ReviewVerdict(dto.Verdict), ArtifactRef: dto.ArtifactRef,
+		}
+		override, err = overrideFromFlags(fs)
+		if err != nil {
 			return writeFailure(opts, 2, err)
 		}
 	}
@@ -810,7 +856,25 @@ func cmdReview(st *store.Store, args []string, opts runOptions) int {
 	if telErr != nil {
 		return writeFailure(opts, 2, telErr)
 	}
-	return applyCmd(st, runID, machine.CmdReview, machine.ApplyInput{Review: &ev, Telemetry: tel}, opts)
+	prepared, code := prepareApply(st, runID, machine.CmdReview, opts)
+	if code != 0 {
+		return code
+	}
+	in := machine.ApplyInput{Review: &ev, Telemetry: tel}
+	if code := preflightApply(prepared, machine.CmdReview, in, opts); code != 0 {
+		return code
+	}
+	profile, found, err := st.GetRepoProfile(prepared.repoKey)
+	if err != nil {
+		return mapErr(err, opts)
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if code := resolveReviewVerification(ctx, &ev, profile, found, override, opts); code != 0 {
+		return code
+	}
+	_, code = applyPrepared(st, prepared, machine.CmdReview, in, opts)
+	return code
 }
 
 func cmdRework(st *store.Store, args []string, opts runOptions) int {
@@ -844,6 +908,7 @@ func cmdDeliver(st *store.Store, args []string, opts runOptions) int {
 	}
 	var ev machine.DeliverEvidence
 	var input deliverInput
+	var override evidenceOverride
 	raw, err := decodeMutationInput(fs, &input)
 	if err != nil {
 		return writeFailure(opts, 2, err)
@@ -854,6 +919,10 @@ func cmdDeliver(st *store.Store, args []string, opts runOptions) int {
 		ev = machine.DeliverEvidence{
 			DeliveryMode: machine.DeliveryMode(input.DeliveryMode), PRURL: input.PRURL, CommitSHA: input.CommitSHA,
 		}
+		override, err = overrideFromInput(input.Unverified, input.UnverifiedReason)
+		if err != nil {
+			return writeFailure(opts, 2, err)
+		}
 	} else {
 		if fs["evidence"] == "" {
 			return writeFailure(opts, 2, fmt.Errorf("deliver requires --evidence or --input"))
@@ -861,10 +930,12 @@ func cmdDeliver(st *store.Store, args []string, opts runOptions) int {
 		// Field presence, not value, decides rejection: "unit":"" is
 		// caller-supplied too, and readJSON already rejects null values.
 		var dto struct {
-			Unit         *string `json:"unit,omitempty"`
-			DeliveryMode string  `json:"delivery_mode,omitempty"`
-			PRURL        string  `json:"pr_url,omitempty"`
-			CommitSHA    string  `json:"commit_sha,omitempty"`
+			Unit             *string `json:"unit,omitempty"`
+			DeliveryMode     string  `json:"delivery_mode,omitempty"`
+			PRURL            string  `json:"pr_url,omitempty"`
+			CommitSHA        string  `json:"commit_sha,omitempty"`
+			Verification     *string `json:"verification,omitempty"`
+			UnverifiedReason *string `json:"unverified_reason,omitempty"`
 		}
 		if err := readJSON(fs["evidence"], &dto); err != nil {
 			return writeFailure(opts, 2, err)
@@ -872,8 +943,15 @@ func cmdDeliver(st *store.Store, args []string, opts runOptions) int {
 		if dto.Unit != nil {
 			return writeFailure(opts, 2, fmt.Errorf("deliver evidence must not name a unit; the machine stamps the delivered unit itself"))
 		}
+		if dto.Verification != nil || dto.UnverifiedReason != nil {
+			return writeFailure(opts, 2, fmt.Errorf("deliver evidence must not declare verification; the machine stamps it (use --unverified --reason to bypass)"))
+		}
 		ev = machine.DeliverEvidence{
 			DeliveryMode: machine.DeliveryMode(dto.DeliveryMode), PRURL: dto.PRURL, CommitSHA: dto.CommitSHA,
+		}
+		override, err = overrideFromFlags(fs)
+		if err != nil {
+			return writeFailure(opts, 2, err)
 		}
 	}
 	if err := validateRunID(runID); err != nil {
@@ -883,7 +961,31 @@ func cmdDeliver(st *store.Store, args []string, opts runOptions) int {
 	if telErr != nil {
 		return writeFailure(opts, 2, telErr)
 	}
-	return applyCmd(st, runID, machine.CmdDeliver, machine.ApplyInput{Deliver: &ev, Telemetry: tel}, opts)
+	prepared, code := prepareApply(st, runID, machine.CmdDeliver, opts)
+	if code != 0 {
+		return code
+	}
+	in := machine.ApplyInput{Deliver: &ev, Telemetry: tel}
+	if code := preflightApply(prepared, machine.CmdDeliver, in, opts); code != 0 {
+		return code
+	}
+	profile, found, err := st.GetRepoProfile(prepared.repoKey)
+	if err != nil {
+		return mapErr(err, opts)
+	}
+	// The evidence may omit delivery_mode; verification judges against the
+	// run's effective mode, exactly as the machine will.
+	mode := ev.DeliveryMode
+	if mode == "" {
+		mode = prepared.run.DeliveryMode
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if code := resolveDeliverVerification(ctx, &ev, profile, found, mode, override, opts); code != 0 {
+		return code
+	}
+	_, code = applyPrepared(st, prepared, machine.CmdDeliver, in, opts)
+	return code
 }
 
 func cmdObserve(st *store.Store, args []string, opts runOptions) int {
@@ -1122,6 +1224,18 @@ func applyPrepared(st *store.Store, prepared preparedApply, cmd machine.Command,
 	return res, printStatus(st, prepared.repoKey, res.Run.ID, opts)
 }
 
+// preflightApply runs the pure state machine once and discards the result,
+// so locally invalid evidence fails deterministically before any forge
+// contact. The machine stamps defaults into the evidence pointers exactly as
+// the final apply will, so the rehearsal never diverges from the real run.
+func preflightApply(prepared preparedApply, cmd machine.Command, in machine.ApplyInput, opts runOptions) int {
+	in.ExpectedRevision = prepared.run.Revision
+	if _, err := machine.Apply(prepared.run, prepared.units, cmd, in); err != nil {
+		return mapErr(err, opts)
+	}
+	return 0
+}
+
 func applyCmd(st *store.Store, runID string, cmd machine.Command, in machine.ApplyInput, opts runOptions) int {
 	prepared, code := prepareApply(st, runID, cmd, opts)
 	if code != 0 {
@@ -1206,6 +1320,13 @@ func statusContext(st *store.Store, repoKey, runID string) (status.Context, erro
 		ctx.RepoRegistered = true
 		ctx.VerifyCommand = profile.VerifyCommand
 	}
+	// Stated plainly either way: a forge-bound profile makes deliver/review
+	// evidence observed; everything else is trusted recorded input.
+	if found && profile.ForgeKind != "" {
+		ctx.EvidenceVerification = string(machine.VerificationObserved)
+	} else {
+		ctx.EvidenceVerification = string(machine.VerificationRecorded)
+	}
 	if runID != "" {
 		totals, err := st.TelemetryTotals(runID)
 		if err != nil {
@@ -1256,9 +1377,9 @@ var commandFlags = map[string]map[string]bool{
 	"release":   {"revision": true, "run": true, "input": true, "telemetry": true},
 	"build":     {"run": true, "input": true, "telemetry": true},
 	"verify":    {"cmd": true, "evidence": true, "run": true, "input": true, "telemetry": true},
-	"review":    {"evidence": true, "run": true, "input": true, "telemetry": true},
+	"review":    {"evidence": true, "run": true, "input": true, "telemetry": true, "unverified": true, "reason": true},
 	"rework":    {"run": true, "input": true, "telemetry": true},
-	"deliver":   {"evidence": true, "run": true, "input": true, "telemetry": true},
+	"deliver":   {"evidence": true, "run": true, "input": true, "telemetry": true, "unverified": true, "reason": true},
 	"observe":   {"signal": true, "unit": true, "reference": true, "run": true, "input": true, "telemetry": true},
 	"ask":       {"question": true, "run": true, "input": true, "telemetry": true},
 	"decide":    {"answer": true, "run": true, "input": true, "telemetry": true},
@@ -1267,7 +1388,7 @@ var commandFlags = map[string]map[string]bool{
 	"status":    {"json": true, "run": true, "fields": true},
 	"reviewers": {"add": true, "remove": true, "json": true},
 	"watch":     {"once": true, "interval": true, "iterations": true, "run": true, "json": true},
-	"repo":      {"forge": true, "trust": true, "verify-cmd": true, "delivery": true, "readiness": true, "bind": true, "json": true},
+	"repo":      {"forge": true, "trust": true, "verify-cmd": true, "delivery": true, "readiness": true, "bind": true, "forge-reviewer": true, "json": true},
 	"schema":    {"json": true, "command": true},
 	"storage":   {"json": true},
 	"serve":     {"addr": true},
@@ -1431,7 +1552,7 @@ func parseFlagsWith(args []string, allowed map[string]bool) (map[string]string, 
 		if _, dup := out[key]; dup {
 			return nil, fmt.Errorf("flag --%s may be specified only once", key)
 		}
-		if key == "json" || key == "once" {
+		if key == "json" || key == "once" || key == "unverified" {
 			if hasVal {
 				return nil, fmt.Errorf("flag --%s does not accept a value", key)
 			}

@@ -111,6 +111,9 @@ func TestMigratesVersionSixAddsTelemetry(t *testing.T) {
 	if _, err := db.Exec(`ALTER TABLE events DROP COLUMN telemetry_json`); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.Exec(`ALTER TABLE repos DROP COLUMN forge_reviewers_json`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := db.Exec(`UPDATE meta SET value = '6' WHERE key = 'schema_version'`); err != nil {
 		t.Fatal(err)
 	}

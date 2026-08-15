@@ -20,6 +20,7 @@ type repoProfileDocument struct {
 	DeliveryMode     string              `json:"delivery_mode,omitempty"`
 	Readiness        string              `json:"readiness,omitempty"`
 	Bindings         map[string][]string `json:"bindings,omitempty"`
+	ForgeReviewers   map[string]string   `json:"forge_reviewers,omitempty"`
 	DryRun           bool                `json:"dry_run,omitempty"`
 	ValidatedCommand string              `json:"validated_command,omitempty"`
 }
@@ -123,6 +124,13 @@ func cmdRepo(st *store.Store, args []string, opts runOptions) int {
 		}
 		profile.Bindings = bindings
 	}
+	if value, ok := fs["forge-reviewer"]; ok {
+		reviewers, err := parseForgeReviewers(value)
+		if err != nil {
+			return writeFailure(opts, 2, err)
+		}
+		profile.ForgeReviewers = reviewers
+	}
 	if err := machine.ValidateProfile(&profile); err != nil {
 		return mapErr(err, opts)
 	}
@@ -164,9 +172,29 @@ func parseBindings(value string) (map[machine.Role][]string, error) {
 	return bindings, nil
 }
 
+// parseForgeReviewers decodes 'identity=login' pairs into the replacement
+// forge-reviewer map; an empty value clears every mapping.
+func parseForgeReviewers(value string) (map[string]string, error) {
+	reviewers := map[string]string{}
+	if strings.TrimSpace(value) == "" {
+		return reviewers, nil
+	}
+	for _, pair := range strings.Split(value, ",") {
+		identity, login, ok := strings.Cut(strings.TrimSpace(pair), "=")
+		if !ok || identity == "" || login == "" {
+			return nil, fmt.Errorf("%w: --forge-reviewer expects comma-separated identity=login pairs (e.g. slopzapper=slopzapper[bot])", machine.ErrBadArgs)
+		}
+		if _, dup := reviewers[identity]; dup {
+			return nil, fmt.Errorf("%w: --forge-reviewer maps %q twice", machine.ErrBadArgs, identity)
+		}
+		reviewers[identity] = login
+	}
+	return reviewers, nil
+}
+
 func ensureReviewBindingsRegistered(st *store.Store, profile machine.RepoProfile) error {
 	bound := profile.Bindings[machine.RoleReview]
-	if len(bound) == 0 {
+	if len(bound) == 0 && len(profile.ForgeReviewers) == 0 {
 		return nil
 	}
 	// A nil store (dry run before any state exists) has an empty custom
@@ -191,6 +219,11 @@ func ensureReviewBindingsRegistered(st *store.Store, profile machine.RepoProfile
 			return fmt.Errorf("%w: review binding %q is not a registered reviewer identity; register it first with slopshipper reviewers --add %s", machine.ErrBadArgs, name, name)
 		}
 	}
+	for identity := range profile.ForgeReviewers {
+		if _, ok := allowed[identity]; !ok {
+			return fmt.Errorf("%w: forge reviewer %q is not a registered reviewer identity; register it first with slopshipper reviewers --add %s", machine.ErrBadArgs, identity, identity)
+		}
+	}
 	return nil
 }
 
@@ -208,6 +241,12 @@ func profileDocument(key string, profile machine.RepoProfile, registered bool) r
 		doc.Bindings = make(map[string][]string, len(profile.Bindings))
 		for role, names := range profile.Bindings {
 			doc.Bindings[string(role)] = append([]string(nil), names...)
+		}
+	}
+	if len(profile.ForgeReviewers) > 0 {
+		doc.ForgeReviewers = make(map[string]string, len(profile.ForgeReviewers))
+		for identity, login := range profile.ForgeReviewers {
+			doc.ForgeReviewers[identity] = login
 		}
 	}
 	return doc
@@ -259,6 +298,18 @@ func writeRepoProfile(doc repoProfileDocument, opts runOptions) int {
 			bound = append(bound, role+"="+strings.Join(doc.Bindings[role], "+"))
 		}
 		parts = append(parts, "bind="+strings.Join(bound, ";"))
+	}
+	if len(doc.ForgeReviewers) > 0 {
+		identities := make([]string, 0, len(doc.ForgeReviewers))
+		for identity := range doc.ForgeReviewers {
+			identities = append(identities, identity)
+		}
+		slices.Sort(identities)
+		pairs := make([]string, 0, len(identities))
+		for _, identity := range identities {
+			pairs = append(pairs, identity+"="+doc.ForgeReviewers[identity])
+		}
+		parts = append(parts, "forge-reviewers="+strings.Join(pairs, ";"))
 	}
 	fmt.Fprintf(os.Stdout, "%s %s\n", prefix, strings.Join(parts, " "))
 	return 0

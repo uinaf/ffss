@@ -31,7 +31,7 @@ Use a field mask to keep the control loop compact:
 
 ```bash
 slopshipper status --json \
-  --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question
+  --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification
 ```
 
 Run only a command named in `allowed_commands`, satisfy
@@ -123,6 +123,30 @@ has two accepted limits under the bounded thread sample: a thread
 reopened without a new comment is not re-detected (any new comment is),
 and with more than ten unresolved threads a sample shift may
 conservatively re-trigger one extra rework rather than miss a signal.
+
+## Verified evidence
+
+Status states the mode plainly in `evidence_verification`: `observed` when a
+registered repo profile binds a forge kind, `recorded` otherwise. In observed
+mode the binary checks evidence before accepting it and stamps a
+`verification` field into it; never supply that field yourself.
+
+- `deliver` for a change-request delivery observes the live change request:
+  a missing one fails (exit 3), a head that differs from `commit_sha` fails
+  (exit 3), and a verified delivery without `commit_sha` adopts the observed
+  head so watch can detect later movement. Direct-trunk deliveries stay
+  recorded input.
+- `review` evidence from a reviewer mapped with `repo --forge-reviewer`
+  requires a change-request URL as `artifact_ref` and at least one submitted
+  review by the mapped login on that change request (exit 3 otherwise).
+  Unmapped reviewers keep recorded-input behavior.
+- When the forge is unreachable the evidence is unprovable, not accepted:
+  exit 7 with `error_kind` `observation_auth`, `observation_rate_limit`, or
+  `observation_transient`. Retry, or record an explicit bypass with
+  `--unverified --reason TEXT` (raw input: `"unverified": true` plus
+  `"unverified_reason"`); the bypass is itself recorded in the evidence as
+  `verification: "overridden"`. `--unverified` is rejected when nothing
+  would be verified.
 
 ## Record telemetry
 

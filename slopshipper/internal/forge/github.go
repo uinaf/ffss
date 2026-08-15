@@ -107,6 +107,48 @@ func (g *GitHub) Observe(ctx context.Context, ref ChangeRequestRef) (Observation
 	return observation, nil
 }
 
+func (g *GitHub) Head(ctx context.Context, ref ChangeRequestRef) (string, error) {
+	raw, err := g.run(ctx, "pr", "view", strconv.Itoa(ref.Number),
+		"--repo", ref.Owner+"/"+ref.Repo,
+		"--json", "headRefOid")
+	if err != nil {
+		return "", classify(err)
+	}
+	var pr struct {
+		HeadRefOid string `json:"headRefOid"`
+	}
+	if err := json.Unmarshal(raw, &pr); err != nil {
+		return "", &Error{Kind: ErrorTransient, Err: fmt.Errorf("decode pr head for %s: %w", ref, err)}
+	}
+	return pr.HeadRefOid, nil
+}
+
+func (g *GitHub) Reviews(ctx context.Context, ref ChangeRequestRef) ([]Review, error) {
+	raw, err := g.run(ctx, "pr", "view", strconv.Itoa(ref.Number),
+		"--repo", ref.Owner+"/"+ref.Repo,
+		"--json", "reviews")
+	if err != nil {
+		return nil, classify(err)
+	}
+	var pr struct {
+		Reviews []struct {
+			Author struct {
+				Login string `json:"login"`
+			} `json:"author"`
+			State       string `json:"state"`
+			SubmittedAt string `json:"submittedAt"`
+		} `json:"reviews"`
+	}
+	if err := json.Unmarshal(raw, &pr); err != nil {
+		return nil, &Error{Kind: ErrorTransient, Err: fmt.Errorf("decode pr reviews for %s: %w", ref, err)}
+	}
+	reviews := make([]Review, 0, len(pr.Reviews))
+	for _, review := range pr.Reviews {
+		reviews = append(reviews, Review{Author: review.Author.Login, State: review.State, SubmittedAt: review.SubmittedAt})
+	}
+	return reviews, nil
+}
+
 const (
 	maxThreadSample  = 10
 	maxThreadSnippet = 200

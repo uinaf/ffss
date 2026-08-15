@@ -222,3 +222,64 @@ func TestObserveLive(t *testing.T) {
 	t.Logf("live %s: head=%s checks=%s mergeable=%s unresolved=%d",
 		ref, observation.HeadSHA, observation.Checks, observation.Mergeability, observation.UnresolvedThreads)
 }
+
+func TestReviewsDecodeAndClassify(t *testing.T) {
+	reviews := `{"reviews":[
+		{"author":{"login":"zapbot"},"state":"APPROVED","submittedAt":"2026-08-15T00:00:00Z"},
+		{"author":{"login":"human"},"state":"COMMENTED","submittedAt":"2026-08-15T01:00:00Z"}
+	]}`
+	g := NewGitHub(fakeRunner(reviews, emptyThreads, nil))
+	got, err := g.Reviews(context.Background(), ChangeRequestRef{Owner: "o", Repo: "r", Number: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].Author != "zapbot" || got[0].State != "APPROVED" || got[1].SubmittedAt != "2026-08-15T01:00:00Z" {
+		t.Fatalf("reviews did not decode: %+v", got)
+	}
+
+	g = NewGitHub(fakeRunner("not json", emptyThreads, nil))
+	var forgeErr *Error
+	if _, err := g.Reviews(context.Background(), ChangeRequestRef{Owner: "o", Repo: "r", Number: 1}); !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorTransient {
+		t.Fatalf("bad payload must classify transient: %v", err)
+	}
+
+	g = NewGitHub(fakeRunner("", "", errors.New("HTTP 404: Not Found")))
+	if _, err := g.Reviews(context.Background(), ChangeRequestRef{Owner: "o", Repo: "r", Number: 1}); !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorNotFound {
+		t.Fatalf("missing object must classify not_found: %v", err)
+	}
+}
+
+func TestHeadReadsOnlyTheRevision(t *testing.T) {
+	g := NewGitHub(fakeRunner(`{"headRefOid":"abc1234"}`, emptyThreads, nil))
+	head, err := g.Head(context.Background(), ChangeRequestRef{Owner: "o", Repo: "r", Number: 1})
+	if err != nil || head != "abc1234" {
+		t.Fatalf("head=%q err=%v", head, err)
+	}
+	g = NewGitHub(fakeRunner("", "", errors.New("HTTP 404: Not Found")))
+	var forgeErr *Error
+	if _, err := g.Head(context.Background(), ChangeRequestRef{Owner: "o", Repo: "r", Number: 1}); !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorNotFound {
+		t.Fatalf("missing object must classify not_found: %v", err)
+	}
+	g = NewGitHub(fakeRunner("not json", emptyThreads, nil))
+	if _, err := g.Head(context.Background(), ChangeRequestRef{Owner: "o", Repo: "r", Number: 1}); !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorTransient {
+		t.Fatalf("bad payload must classify transient: %v", err)
+	}
+}
+
+func TestReviewsTolerateNullSubmittedAt(t *testing.T) {
+	// PENDING reviews carry submittedAt: null; JSON null into a string field
+	// is a no-op, so decoding must not fail and the record must survive with
+	// an empty timestamp.
+	reviews := `{"reviews":[
+		{"author":{"login":"zapbot"},"state":"PENDING","submittedAt":null},
+		{"author":{"login":"zapbot"},"state":"APPROVED","submittedAt":"2026-08-15T00:00:00Z"}
+	]}`
+	g := NewGitHub(fakeRunner(reviews, emptyThreads, nil))
+	got, err := g.Reviews(context.Background(), ChangeRequestRef{Owner: "o", Repo: "r", Number: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].SubmittedAt != "" || got[1].State != "APPROVED" {
+		t.Fatalf("null submittedAt must decode benignly: %+v", got)
+	}
+}

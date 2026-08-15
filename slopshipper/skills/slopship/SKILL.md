@@ -26,7 +26,7 @@ Do not invent a second runtime.
 ## Bootstrap the run
 
 ```bash
-slopshipper status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question
+slopshipper status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification
 ```
 
 If status reports `UNINITIALIZED`, obey its `slopshipper init` next action.
@@ -106,6 +106,13 @@ JSON
 ```
 
 After each projection is accepted, repeat without `--dry-run`.
+
+When status shows `evidence_verification: observed`, the binary checks
+deliver and review evidence against the live forge before accepting it:
+give real change-request URLs and the actual delivered head. A rejection
+(exit 3) means the forge disagrees with the claim — fix the claim, never
+retry with altered evidence. Exit 7 means the forge was unreachable; retry,
+or ask the human before recording a bypass with `--unverified --reason`.
 
 ## Talk to the human
 

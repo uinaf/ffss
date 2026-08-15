@@ -101,7 +101,15 @@ type Observation struct {
 	ThreadsDigest     string
 }
 
-// Forge exposes the five observation reads over one change request.
+// Review is one submitted (or pending) review on a change request, read for
+// evidence corroboration only — adapters never create or mutate reviews.
+type Review struct {
+	Author      string
+	State       string // forge-native state, e.g. APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED, PENDING
+	SubmittedAt string
+}
+
+// Forge exposes the read-only observation seam over one change request.
 type Forge interface {
 	// Kind names the adapter.
 	Kind() Kind
@@ -111,6 +119,12 @@ type Forge interface {
 	// Observe fetches the current head SHA, checks state, mergeability, and
 	// unresolved review threads for ref in one read.
 	Observe(ctx context.Context, ref ChangeRequestRef) (Observation, error)
+	// Head fetches only existence and the current head revision; delivery
+	// verification must not fail on faults in reads it does not need.
+	Head(ctx context.Context, ref ChangeRequestRef) (string, error)
+	// Reviews fetches the change request's reviews for evidence
+	// corroboration.
+	Reviews(ctx context.Context, ref ChangeRequestRef) ([]Review, error)
 }
 
 // New returns the adapter for kind, failing closed on unknown kinds.

@@ -45,7 +45,7 @@ func Decide(target Target, obs forge.Observation) Outcome {
 		out.Note = "change request closed without merge; ask for a decision or re-deliver"
 		return out
 	}
-	if headMoved(target.CommitSHA, obs.HeadSHA) {
+	if HeadMoved(target.CommitSHA, obs.HeadSHA) {
 		out.Signal = machine.SignalHeadMoved
 		out.Reference = fmt.Sprintf("delivered %s but head is %s", shortSHA(target.CommitSHA), shortSHA(obs.HeadSHA))
 		return out
@@ -146,11 +146,11 @@ func sanitizeText(value string) string {
 	return sanitized
 }
 
-// headMoved reports whether the observed head no longer matches the
+// HeadMoved reports whether the observed head no longer matches the
 // delivered revision. Delivery evidence may record an abbreviated SHA; a
 // hex prefix of at least seven characters counts as the same revision, and
 // evidence too short or non-hex to judge safely never claims movement.
-func headMoved(recorded, head string) bool {
+func HeadMoved(recorded, head string) bool {
 	recorded = strings.ToLower(recorded)
 	head = strings.ToLower(head)
 	if recorded == "" || head == "" {

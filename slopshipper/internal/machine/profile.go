@@ -57,6 +57,11 @@ type RepoProfile struct {
 	DeliveryMode  DeliveryMode
 	Readiness     Readiness
 	Bindings      map[Role][]string
+	// ForgeReviewers maps a registered reviewer identity to the forge login
+	// its reviews are submitted under, marking that reviewer as
+	// forge-resident: its review evidence is corroborated against the live
+	// change request instead of trusted as recorded input.
+	ForgeReviewers map[string]string
 }
 
 const maxVerifyCommandBytes = 500
@@ -109,7 +114,47 @@ func ValidateProfile(p *RepoProfile) error {
 			seen[name] = struct{}{}
 		}
 	}
+	if len(p.ForgeReviewers) > 0 && p.ForgeKind == "" {
+		return fmt.Errorf("%w: forge reviewers require a forge kind; declare one with --forge or drop the mapping", ErrBadArgs)
+	}
+	for identity, login := range p.ForgeReviewers {
+		if err := ValidateResourceID("forge reviewer", identity); err != nil {
+			return err
+		}
+		if err := validForgeLogin(identity, login); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+const maxForgeLoginBytes = 64
+
+// validForgeLogin checks a declared forge login: alphanumerics and hyphens
+// with an optional [bot] suffix, matching GitHub's login charset. GraphQL
+// reads return bot logins without the suffix, so corroboration strips it on
+// both sides before comparing.
+func validForgeLogin(identity, login string) error {
+	if len(login) > maxForgeLoginBytes {
+		return fmt.Errorf("%w: forge login for %q exceeds %d bytes", ErrBadArgs, identity, maxForgeLoginBytes)
+	}
+	base := strings.TrimSuffix(login, "[bot]")
+	if base == "" || strings.HasPrefix(base, "-") || strings.HasSuffix(base, "-") {
+		return fmt.Errorf("%w: forge login for %q must be a login name with an optional [bot] suffix", ErrBadArgs, identity)
+	}
+	for _, r := range base {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && r != '-' {
+			return fmt.Errorf("%w: forge login for %q must contain only alphanumerics and hyphens (optional [bot] suffix)", ErrBadArgs, identity)
+		}
+	}
+	return nil
+}
+
+// NormalizeForgeLogin canonicalizes a login for corroboration comparison:
+// the [bot] suffix is representation (REST includes it, GraphQL omits it),
+// and GitHub logins are case-insensitive.
+func NormalizeForgeLogin(login string) string {
+	return strings.ToLower(strings.TrimSuffix(login, "[bot]"))
 }
 
 func validVerifyCommandText(command string) error {

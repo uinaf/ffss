@@ -150,16 +150,20 @@ func allCommandSchemas() []commandSchema {
 			"run": run, "command": stringSchema("Verification command represented by the evidence."),
 			"exit_code": integerSchema("Verification exit code."), "output_digest": stringSchema("Optional output digest."),
 		}, "command", "exit_code"), flags("cmd", "evidence", "run", "input")), telemetry),
-		withTelemetry(mutationSchema("review", "Record strict independent-review evidence.", objectSchema(map[string]jsonSchema{
+		withTelemetry(mutationSchema("review", "Record strict independent-review evidence; forge-corroborated reviewers are checked against the live change request.", objectSchema(map[string]jsonSchema{
 			"run": run, "reviewer": reviewer,
-			"verdict":      enumSchema("Review outcome.", "clean", "findings", "ambiguous"),
-			"artifact_ref": stringSchema("Stable review artifact reference."),
-		}, "reviewer", "verdict", "artifact_ref"), flags("evidence", "run", "input")), telemetry),
+			"verdict":           enumSchema("Review outcome.", "clean", "findings", "ambiguous"),
+			"artifact_ref":      stringSchema("Stable review artifact reference; must be a change-request URL for forge-corroborated reviewers."),
+			"unverified":        boolSchema("Bypass forge corroboration explicitly; requires unverified_reason."),
+			"unverified_reason": stringSchema("Single-line reason recorded with an unverified override."),
+		}, "reviewer", "verdict", "artifact_ref"), flags("evidence", "unverified", "reason", "run", "input")), telemetry),
 		withTelemetry(mutationSchema("rework", "Return review work to the build loop.", objectSchema(map[string]jsonSchema{"run": run}), flags("run", "input")), telemetry),
-		withTelemetry(mutationSchema("deliver", "Record delivery evidence and complete the current unit.", objectSchema(map[string]jsonSchema{
+		withTelemetry(mutationSchema("deliver", "Record delivery evidence and complete the current unit; forge-bound repos verify the change request exists and matches the delivered head.", objectSchema(map[string]jsonSchema{
 			"run": run, "delivery_mode": enumSchema("Must match intake when present.", "pr-hold", "pr-merge-when-ready", "direct-trunk"),
-			"pr_url": stringSchema("Required for PR delivery modes."), "commit_sha": stringSchema("Required for direct-trunk delivery."),
-		}), flags("evidence", "run", "input")), telemetry),
+			"pr_url": stringSchema("Required for PR delivery modes."), "commit_sha": stringSchema("Required for direct-trunk delivery; optional for PR modes (verified deliveries adopt the observed head when omitted)."),
+			"unverified":        boolSchema("Bypass forge verification explicitly; requires unverified_reason."),
+			"unverified_reason": stringSchema("Single-line reason recorded with an unverified override."),
+		}), flags("evidence", "unverified", "reason", "run", "input")), telemetry),
 		withTelemetry(mutationSchema("observe", "Record an external signal for a delivered unit.", objectSchema(map[string]jsonSchema{
 			"run": run, "unit": stringSchema("Delivered unit; optional when exactly one unit is delivered."),
 			"signal":    enumSchema("What the forge showed.", "merged", "checks_failed", "review_feedback", "head_moved"),
@@ -180,7 +184,7 @@ func allCommandSchemas() []commandSchema {
 		{Name: "status", Description: "Return compact state and the next allowed action.", Flags: flags("json", "run", "fields"), Output: "status"},
 		{Name: "watch", Description: "Observe delivered units on the forge and record signals as observe events; --once runs one pass, --interval polls bounded.", Mutating: true, Flags: flags("once", "interval", "iterations", "run", "json"), Output: "watch"},
 		{Name: "reviewers", Description: "List the reviewer registry, or register/unregister a custom identity.", Mutating: true, Flags: flags("add", "remove", "json"), Output: "reviewers"},
-		{Name: "repo", Description: "Show or declare the repo profile: role bindings (review, qa, venue, memory) and policy (forge kind, trust tier, verify command, delivery mode, readiness). Subcommands: show, register, update, unregister.", Mutating: true, Flags: flags("forge", "trust", "verify-cmd", "delivery", "readiness", "bind", "json"), Output: "repo"},
+		{Name: "repo", Description: "Show or declare the repo profile: role bindings (review, qa, venue, memory) and policy (forge kind, trust tier, verify command, delivery mode, readiness). Subcommands: show, register, update, unregister.", Mutating: true, Flags: flags("forge", "trust", "verify-cmd", "delivery", "readiness", "bind", "forge-reviewer", "json"), Output: "repo"},
 		{Name: "schema", Description: "Describe commands, flags, raw inputs, enums, and outputs as JSON.", Flags: flags("json", "command"), Output: "schema"},
 		{Name: "storage", Description: "Inspect database path resolution and Git safety without mutation.", Flags: flags("json"), Output: "storage"},
 		{Name: "serve", Description: "Serve the read-only projector on loopback.", Flags: flags("addr"), Output: "long-running"},
@@ -252,6 +256,12 @@ func flags(names ...string) []flagSchema {
 			description = "Recorded agent-readiness verdict: ready or not_ready."
 		case "bind":
 			description = "Replace role bindings as comma-separated role=name pairs; roles: review, qa, venue, memory."
+		case "forge-reviewer":
+			description = "Replace forge-resident reviewer mappings as comma-separated identity=login pairs; their review evidence is corroborated against the forge."
+		case "unverified":
+			typeName, description = "boolean", "Bypass forge verification of this evidence explicitly; requires --reason."
+		case "reason":
+			description = "Reason text recorded with the action."
 		}
 		result = append(result, flagSchema{Name: "--" + name, Type: typeName, Description: description})
 	}

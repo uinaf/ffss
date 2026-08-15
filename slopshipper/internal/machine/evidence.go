@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"unicode"
 )
 
 func validateVerifyCommand(ev *VerifyEvidence) error {
@@ -33,6 +34,39 @@ func validateReviewEvidence(ev *ReviewEvidence, required []ReviewerIdentity) err
 	}
 	if !slices.Contains(required, ev.Reviewer) {
 		return fmt.Errorf("%w: review.reviewer %q is not a required reviewer for this run (%s)", ErrUnmetGuard, ev.Reviewer, joinReviewers(required))
+	}
+	return validateEvidenceVerification("review", &ev.Verification, ev.UnverifiedReason)
+}
+
+const maxUnverifiedReasonBytes = 300
+
+// validateEvidenceVerification checks the driver-stamped verification field:
+// the enum is closed, an override always carries its reason, and a reason
+// without an override is meaningless.
+func validateEvidenceVerification(field string, verification *EvidenceVerification, reason string) error {
+	switch *verification {
+	case "":
+		*verification = VerificationRecorded
+	case VerificationObserved, VerificationRecorded, VerificationOverridden:
+	default:
+		return fmt.Errorf("%w: %s.verification must be observed|recorded|overridden", ErrUnmetGuard, field)
+	}
+	if *verification != VerificationOverridden {
+		if reason != "" {
+			return fmt.Errorf("%w: %s.unverified_reason applies only to an overridden verification", ErrUnmetGuard, field)
+		}
+		return nil
+	}
+	if strings.TrimSpace(reason) == "" {
+		return fmt.Errorf("%w: an unverified override requires a reason", ErrUnmetGuard)
+	}
+	if len(reason) > maxUnverifiedReasonBytes {
+		return fmt.Errorf("%w: %s.unverified_reason exceeds %d bytes", ErrUnmetGuard, field, maxUnverifiedReasonBytes)
+	}
+	for _, r := range reason {
+		if unicode.IsControl(r) || r == '\u2028' || r == '\u2029' {
+			return fmt.Errorf("%w: %s.unverified_reason must be a single line without control characters", ErrUnmetGuard, field)
+		}
 	}
 	return nil
 }
@@ -74,7 +108,7 @@ func validateDeliverEvidence(ev *DeliverEvidence, mode DeliveryMode) error {
 			return err
 		}
 	}
-	return nil
+	return validateEvidenceVerification("deliver", &ev.Verification, ev.UnverifiedReason)
 }
 
 func validCommitSHA(sha string) error {

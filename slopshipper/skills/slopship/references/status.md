@@ -3,7 +3,7 @@
 Use a field mask as the agent leash:
 
 ```bash
-slopshipper status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question
+slopshipper status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification
 ```
 
 Prefer these fields:
