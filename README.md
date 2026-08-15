@@ -23,8 +23,10 @@ slopscouter (QA, planned), slopbench (evals, planned), slopwake.
 Under construction ([migration epic](https://github.com/uinaf/slopshipper/issues/50)).
 Histories of the member repos were imported intact; releases, installers, and
 the agent-plugin marketplace still ship from the legacy repos until the
-corresponding migration milestones land. Each member keeps its own gates:
-`mise run verify` inside `cli/slopshipper/` and `cli/slopguard/`.
+corresponding migration milestones land. The root workflow is the only live
+CI — it runs each member's own gate (`mise run verify` inside
+`cli/slopshipper/` and `cli/slopguard/`); member release workflows return
+with the release-migration milestone.
 
 ## License
 

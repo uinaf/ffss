@@ -341,6 +341,10 @@ func (s *Store) migrate() error {
 				}
 				rewrites = append(rewrites, profileRewrite{key: key, bindings: string(encodedBindings), forge: string(encodedForge)})
 			}
+			if err := rows.Err(); err != nil {
+				_ = rows.Close()
+				return fmt.Errorf("iterate profiles for reviewer rename: %w", err)
+			}
 			if err := rows.Close(); err != nil {
 				return err
 			}
