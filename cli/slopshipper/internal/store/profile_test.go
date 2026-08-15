@@ -144,6 +144,10 @@ func TestMigratesVersionFiveAddsRepos(t *testing.T) {
 	if _, err := db.Exec(`DROP TABLE repos`); err != nil {
 		t.Fatal(err)
 	}
+	// Pre-rename databases spelled the identity autoreview.
+	if _, err := db.Exec(`UPDATE runs SET required_reviewers_json = REPLACE(required_reviewers_json, '"slopguard"', '"autoreview"')`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := db.Exec(`ALTER TABLE events DROP COLUMN telemetry_json`); err != nil {
 		t.Fatal(err)
 	}
@@ -268,6 +272,13 @@ func TestMigratesVersionSevenAddsForgeReviewers(t *testing.T) {
 	if _, err := db.Exec(`ALTER TABLE repos DROP COLUMN forge_reviewers_json`); err != nil {
 		t.Fatal(err)
 	}
+	// Pre-rename databases spelled the identity autoreview.
+	if _, err := db.Exec(`UPDATE runs SET required_reviewers_json = REPLACE(required_reviewers_json, '"slopguard"', '"autoreview"')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE repos SET bindings_json = REPLACE(bindings_json, '"slopguard"', '"autoreview"')`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := db.Exec(`UPDATE meta SET value = '7' WHERE key = 'schema_version'`); err != nil {
 		t.Fatal(err)
 	}
@@ -370,9 +381,10 @@ func TestMigrationRefusesReviewerRenameCollision(t *testing.T) {
 		t.Fatal(err)
 	}
 	db := openSQLite(t, path)
-	// A v8 world where slopguard already existed as a custom identity next
-	// to the built-in autoreview: merging them would weaken the gate.
-	if _, err := db.Exec(`UPDATE runs SET required_reviewers_json = '["autoreview","slopguard"]'`); err != nil {
+	// A v8 world where slopguard already existed as a custom identity in a
+	// DIFFERENT row than the built-in autoreview: merging them would weaken
+	// the gate just the same.
+	if _, err := db.Exec(`UPDATE runs SET required_reviewers_json = '["slopguard"]'`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
@@ -381,12 +393,12 @@ func TestMigrationRefusesReviewerRenameCollision(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Open(path); err == nil || !strings.Contains(err.Error(), "refusing to merge distinct identities") {
+	if _, err := store.Open(path); err == nil || !strings.Contains(err.Error(), "silently merge") {
 		t.Fatalf("collision must refuse the migration: %v", err)
 	}
 }
 
-func TestMigrationSupersedesCustomSlopguardRegistration(t *testing.T) {
+func TestMigrationRefusesCustomSlopguardRegistration(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "v8-custom.sqlite")
 	s, err := store.Open(path)
 	if err != nil {
@@ -408,18 +420,7 @@ func TestMigrationSupersedesCustomSlopguardRegistration(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	s, err = store.Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = s.Close() }()
-	registered, err := s.ListReviewers()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, reviewer := range registered {
-		if reviewer == "slopguard" {
-			t.Fatal("custom slopguard row must be superseded by the built-in")
-		}
+	if _, err := store.Open(path); err == nil || !strings.Contains(err.Error(), "silently merge") {
+		t.Fatalf("an occupied name must refuse the migration even with no autoreview overlap: %v", err)
 	}
 }

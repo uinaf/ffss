@@ -115,6 +115,10 @@ func TestMigratesVersionSixAddsTelemetry(t *testing.T) {
 	if _, err := db.Exec(`ALTER TABLE repos DROP COLUMN forge_reviewers_json`); err != nil {
 		t.Fatal(err)
 	}
+	// Pre-rename databases spelled the identity autoreview.
+	if _, err := db.Exec(`UPDATE runs SET required_reviewers_json = REPLACE(required_reviewers_json, '"slopguard"', '"autoreview"')`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := db.Exec(`UPDATE meta SET value = '6' WHERE key = 'schema_version'`); err != nil {
 		t.Fatal(err)
 	}
