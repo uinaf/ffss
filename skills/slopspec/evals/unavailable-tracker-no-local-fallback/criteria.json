@@ -1,0 +1,41 @@
+{
+  "context": "Tests whether planning preserves the repository's chosen tracker when access is missing and returns a correct draft instead of switching to an available but wrong system.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Jira remains canonical",
+      "max_score": 20,
+      "description": "planning-result.md keeps Jira project PAY as the intended durable destination"
+    },
+    {
+      "name": "Paste-ready artifact",
+      "max_score": 22,
+      "description": "The result contains a Jira-ready title and body with outcome, complete acceptance criteria, and verification expectations"
+    },
+    {
+      "name": "Exact blocker",
+      "max_score": 16,
+      "description": "The result states that no authenticated Jira write path is available"
+    },
+    {
+      "name": "No GitHub substitution",
+      "max_score": 16,
+      "description": "The result does not create or recommend a GitHub issue merely because GitHub access exists"
+    },
+    {
+      "name": "No local fallback",
+      "max_score": 14,
+      "description": "The result does not create docs/plans, plans, or another checked-in plan file"
+    },
+    {
+      "name": "Resume action",
+      "max_score": 8,
+      "description": "The result says to publish the draft to PAY once Jira access is available and then return the Jira key or URL"
+    },
+    {
+      "name": "No implementation",
+      "max_score": 4,
+      "description": "The response does not implement retry behavior"
+    }
+  ]
+}

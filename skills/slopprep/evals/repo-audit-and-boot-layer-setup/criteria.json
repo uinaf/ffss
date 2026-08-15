@@ -1,0 +1,66 @@
+{
+  "context": "Tests whether the agent audits the applicable readiness capabilities with evidence and gaps, separates repository and runner headlines from evidence strength, derives each headline from its lowest applicable owned capability, and produces a bounded Node.js lifecycle path that proves the app is ready without ad-hoc shell validation.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Applicable readiness capabilities present",
+      "max_score": 8,
+      "description": "audit-report.md covers legibility, executability, feedback, safety, durability, and scale, marking genuinely inapplicable capabilities with a concrete reason"
+    },
+    {
+      "name": "Capability grades used",
+      "max_score": 8,
+      "description": "Each applicable capability in audit-report.md receives an F-through-A grade, while N/A is used only with a concrete task-scope reason"
+    },
+    {
+      "name": "Evidence cited per capability",
+      "max_score": 8,
+      "description": "Each capability in audit-report.md cites at least one specific file, exercised command, or observed runtime outcome as evidence"
+    },
+    {
+      "name": "Gap described per capability",
+      "max_score": 8,
+      "description": "Each capability below the requested target includes the missing outcome and identifies whether the repository or runner owns it"
+    },
+    {
+      "name": "Repository and runner grades use their lowest owned capability",
+      "max_score": 8,
+      "description": "audit-report.md reports separate repository and runner headline grades, each derived from its lowest applicable capability owned by that boundary rather than an average, and does not collapse them into one overall letter"
+    },
+    {
+      "name": "Repository, runner, and evidence are separated",
+      "max_score": 8,
+      "description": "audit-report.md reports repository grade, runner grade, and E0-through-E4 evidence level separately instead of collapsing environment availability and proof strength into one letter"
+    },
+    {
+      "name": "Background app start in Node lifecycle",
+      "max_score": 10,
+      "description": "app/scripts/init.mjs starts the application with a Node child-process API so it can observe the process and readiness signal"
+    },
+    {
+      "name": "Bounded readiness wait",
+      "max_score": 10,
+      "description": "app/scripts/init.mjs polls health or another real readiness signal until a finite wall-clock deadline before declaring success"
+    },
+    {
+      "name": "Non-zero exit on failure",
+      "max_score": 10,
+      "description": "app/scripts/init.mjs sets or returns a non-zero status if the app does not start successfully"
+    },
+    {
+      "name": "Package-owned lifecycle entrypoint",
+      "max_score": 8,
+      "description": "app/package.json exposes the lifecycle program as a package script, and no parallel shell wrapper duplicates it"
+    },
+    {
+      "name": "Target progression is explicit",
+      "max_score": 7,
+      "description": "improvements.md or audit-report.md prioritizes cold start before real-surface feedback and repeated trials, identifies the remaining path toward B and A, and does not present reaching C as completion"
+    },
+    {
+      "name": "No mock tests treated as real-surface proof",
+      "max_score": 7,
+      "description": "The report does not treat the mock-only Jest suite as passing testability or a substitute for real-process proof; it may still acknowledge isolated unit-level evidence"
+    }
+  ]
+}

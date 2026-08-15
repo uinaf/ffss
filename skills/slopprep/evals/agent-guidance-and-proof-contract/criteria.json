@@ -1,0 +1,56 @@
+{
+  "context": "Tests whether the agent treats AGENTS.md as a model-neutral readiness contract, adds useful private-owner orientation and task-shaped routing, documents authority and lifecycle proof honestly, and separates repository, runner, and evidence claims.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Human orientation is useful and bounded",
+      "max_score": 10,
+      "description": "AGENTS.md briefly explains Maya's work and translates her simplicity and composition values into a concrete convergence rule such as finishing the smallest complete result before adding abstractions; it treats this as guidance rather than a synthetic persona and points to OWNER.md instead of copying sensitive private facets"
+    },
+    {
+      "name": "Task-shaped routing is present",
+      "max_score": 10,
+      "description": "AGENTS.md tells agents when to read OWNER.md and docs/workspace.md and routes product code, cross-package decisions, and runtime incidents to their declared homes"
+    },
+    {
+      "name": "Shared guidance is model-neutral",
+      "max_score": 10,
+      "description": "AGENTS.md removes per-model XML, restatement, hidden-reasoning, and generic expert-assistant prompt fragments and expresses observable shared behavior instead"
+    },
+    {
+      "name": "Authority is explicit",
+      "max_score": 10,
+      "description": "AGENTS.md allows reversible local work without redundant confirmation, requires a real decision for destructive or external action, and prohibits invented credentials or unnecessary access to private facets"
+    },
+    {
+      "name": "Lifecycle commands are canonical",
+      "max_score": 10,
+      "description": "AGENTS.md names the provided bootstrap, boot, verify, and teardown commands as one coherent repository-owned lifecycle rather than inventing agent-specific wrappers"
+    },
+    {
+      "name": "Proof layers remain separate",
+      "max_score": 10,
+      "description": "AGENTS.md or readiness-report.md distinguishes canonical local guardrails, the health smoke surface, CI, and unavailable live or deploy proof; it does not let a unit test or screenshot imply another layer"
+    },
+    {
+      "name": "Failure quality is part of proof",
+      "max_score": 10,
+      "description": "The contract requires exercising invalid configuration and checking the non-zero redacted config/missing_value diagnostic rather than testing only the happy path"
+    },
+    {
+      "name": "Repository, runner, and evidence are separate",
+      "max_score": 10,
+      "description": "readiness-report.md reports separate repository and runner grades plus an E0-through-E4 evidence level, with each claim bounded by what was actually exercised"
+    },
+    {
+      "name": "Unexercised claims are honest",
+      "max_score": 10,
+      "description": "readiness-report.md does not claim CI, live deployment, repeated autonomy, or a passing command that the fixture does not let it run; missing executable fixture inputs are reported as gaps or static evidence"
+    },
+    {
+      "name": "Guide stays navigational",
+      "max_score": 10,
+      "description": "AGENTS.md is concise but includes the small working model needed to route product code, decisions, incidents, and proof; it uses progressive disclosure and does not copy the entire workspace document, OWNER.md biography, directory tree, or volatile inventory"
+    }
+  ]
+}

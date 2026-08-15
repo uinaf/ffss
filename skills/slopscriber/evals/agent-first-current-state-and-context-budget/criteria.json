@@ -1,0 +1,56 @@
+{
+  "context": "Tests whether the docs skill rewrites verbose operational documentation for agent retrieval: current supported state first, complete operational facts, no irrelevant negative inventory or history, and precise decision-changing limitations paired with a valid path.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Current runtime leads",
+      "max_score": 10,
+      "description": "docs/runtime.md leads with the current worker/runtime contract rather than historical background or a list of unavailable systems"
+    },
+    {
+      "name": "Start and health commands preserved",
+      "max_score": 10,
+      "description": "docs/runtime.md preserves the exact `pnpm run scheduler` and `curl http://127.0.0.1:6120/status` commands"
+    },
+    {
+      "name": "Current configuration preserved",
+      "max_score": 10,
+      "description": "docs/runtime.md maps `RUN_STORE_PATH`, `ARTIFACT_DIR`, and `SMTP_URL` to run records, generated artifacts, and completion or failure notices"
+    },
+    {
+      "name": "Owned paths preserved",
+      "max_score": 8,
+      "description": "docs/runtime.md preserves `src/scheduler/main.ts` as the entrypoint and `src/runs/repository.ts` as run persistence"
+    },
+    {
+      "name": "Recovery path preserved",
+      "max_score": 10,
+      "description": "docs/runtime.md keeps the `artifact write failed` recovery guidance and exact `pnpm run scheduler:retry -- <run-id>` command"
+    },
+    {
+      "name": "Negative inventory removed",
+      "max_score": 12,
+      "description": "docs/runtime.md omits `SENTRY_DSN`, `PAGERDUTY_TOKEN`, `DATADOG_API_KEY`, `PROMETHEUS_URL`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `LOKI_URL`, the named observability-system inventory, and its categorical restatement about hosted log search, metrics scraping, or a telemetry collector"
+    },
+    {
+      "name": "Historical narrative removed",
+      "max_score": 8,
+      "description": "docs/runtime.md omits the 2023/2025 CloudWatch and Splunk migration story and the closing historical recap"
+    },
+    {
+      "name": "Decision-changing limitation retained",
+      "max_score": 12,
+      "description": "docs/runtime.md states that live log streaming is unsupported and pairs the boundary with paging `GET /v2/runs/:id/logs?after=<cursor>` every 5 seconds"
+    },
+    {
+      "name": "Agent-first structure and budget",
+      "max_score": 10,
+      "description": "docs/runtime.md has at most 45 non-empty lines and uses task-shaped headings, bullets or mappings, and compact command blocks instead of novel-like paragraphs"
+    },
+    {
+      "name": "Report and factual restraint",
+      "max_score": 10,
+      "description": "doc-report.md identifies preserved operational facts, removed context debt, and verification; neither output invents capabilities, commands, paths, or configuration"
+    }
+  ]
+}
