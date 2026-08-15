@@ -108,7 +108,7 @@ func Run(ctx context.Context, options Options) protocol.Report {
 		}
 
 		attemptStarted := now()
-		result, reviewErr := reviewer.Review(ctx, provider.Request{Prompt: prompt, TrustedSuffix: trustedSuffix, Config: options.Config})
+		result, reviewErr := reviewer.Review(ctx, provider.Request{Prompt: prompt, TrustedSuffix: trustedSuffix, Config: options.Config, Target: reviewedTarget})
 		attemptDuration := elapsedMilliseconds(attemptStarted, now())
 
 		if reviewErr != nil {

@@ -13,9 +13,11 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/uinaf/autoreview/internal/config"
 	"github.com/uinaf/autoreview/internal/protocol"
+	"github.com/uinaf/autoreview/internal/reviewpolicy"
 	contractschema "github.com/uinaf/autoreview/schema"
 )
 
@@ -27,8 +29,9 @@ const (
 var grokVersionPattern = regexp.MustCompile(`\b(\d+\.\d+\.\d+)\b`)
 
 var (
-	errGrokIncompleteTurn  = errors.New("Grok did not complete the bounded review turn")
-	errGrokUnauthenticated = errors.New("Grok is not authenticated")
+	errGrokIncompleteTurn   = errors.New("Grok did not complete the bounded review turn")
+	errGrokIncompleteReview = errors.New("Grok did not complete the review")
+	errGrokUnauthenticated  = errors.New("Grok is not authenticated")
 )
 
 type GrokOptions struct {
@@ -71,9 +74,10 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		return Result{}, newFailure(protocol.FailureConfig, "provider prompt must be non-empty valid UTF-8", nil, nil)
 	}
 	maximumPrompt := request.Config.MaxBytes.Value + providerPromptAllowance
+	protocolBytes := int64(len(reviewpolicy.GrokReviewProtocol()))
 	promptBytes, validLength := request.promptBytes()
-	if !validLength || maximumPrompt < request.Config.MaxBytes.Value || promptBytes > maximumPrompt {
-		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("provider prompt exceeds %d bytes", maximumPrompt), nil, nil)
+	if !validLength || maximumPrompt < request.Config.MaxBytes.Value || protocolBytes > maximumPrompt || promptBytes > maximumPrompt-protocolBytes {
+		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("Grok combined review input exceeds %d bytes (bundle plus trusted policy)", maximumPrompt), nil, nil)
 	}
 	reviewContext, cancelReview := context.WithTimeout(ctx, time.Duration(request.Config.Timeout.Value))
 	defer cancelReview()
@@ -81,7 +85,7 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("resolve reviewed repository: %v", err), nil, nil)
 	}
-	executable, err := discoverExecutable(grok.executable, repository, grok.environment)
+	executables, err := discoverExecutableCandidates(grok.executable, repository, grok.environment)
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureCapability, err.Error(), grok.environment, nil)
 	}
@@ -98,7 +102,7 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 			returnError = newFailure(protocol.FailureInternal, err.Error(), runtime.Environment(), nil)
 		}
 	}()
-	version, err := grok.preflight(reviewContext, executable, runtime.Workspace, runtime.Environment(), request.Config)
+	executable, version, err := grok.selectExecutable(reviewContext, executables, runtime.Workspace, runtime.Environment(), request.Config)
 	if err != nil {
 		return Result{}, err
 	}
@@ -107,14 +111,18 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("create Grok prompt: %v", err), runtime.Environment(), nil)
 	}
-	if _, err := io.Copy(prompt, request.promptReader("")); err != nil {
+	if _, err := io.Copy(prompt, request.promptReader(reviewpolicy.GrokReviewProtocol())); err != nil {
 		_ = prompt.Close()
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("write Grok prompt: %v", err), runtime.Environment(), nil)
 	}
 	if err := prompt.Close(); err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("close Grok prompt: %v", err), runtime.Environment(), nil)
 	}
-	providerSchema, err := contractschema.GrokReviewV1()
+	filePaths := make([]string, 0, len(request.Target.Files))
+	for _, file := range request.Target.Files {
+		filePaths = append(filePaths, file.FilePath)
+	}
+	providerSchema, err := contractschema.GrokReviewV1(filePaths)
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, err.Error(), runtime.Environment(), nil)
 	}
@@ -143,7 +151,7 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		attempt.ErrorClass = &class
 		return Result{}, processFailure("Grok review", class, processErr, process, runtime.Environment(), &attempt, strictCredentialRecovery(request.Config, protocol.ProviderGrok)).withExecution(resolvedExecution)
 	}
-	review, err := decodeGrokEnvelope(process.Stdout)
+	review, err := decodeGrokEnvelope(process.Stdout, request.Target)
 	if err != nil {
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
@@ -155,7 +163,11 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		if class == protocol.FailureProvider {
 			return Result{}, newFailure(class, err.Error(), runtime.Environment(), &attempt).withExecution(resolvedExecution)
 		}
-		return Result{}, invalidProviderOutput("Grok", "result envelope", protocol.ProtocolReasonInvalidEnvelope, runtime.Environment(), &attempt).withExecution(resolvedExecution)
+		reason := protocol.ProtocolReasonInvalidEnvelope
+		if errors.Is(err, errGrokIncompleteReview) {
+			reason = protocol.ProtocolReasonReviewValidation
+		}
+		return Result{}, invalidProviderOutput("Grok", "result envelope", reason, runtime.Environment(), &attempt).withExecution(resolvedExecution)
 	}
 	attempt.Outcome = protocol.AttemptValid
 	return Result{
@@ -169,6 +181,25 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 			Applied: false,
 		},
 	}, nil
+}
+
+func (grok *Grok) selectExecutable(ctx context.Context, executables []string, workspace string, environment []string, effective config.Effective) (string, string, error) {
+	var lastCapabilityError error
+	for _, executable := range executables {
+		version, err := grok.preflight(ctx, executable, workspace, environment, effective)
+		if err == nil {
+			return executable, version, nil
+		}
+		var failure *Error
+		if !errors.As(err, &failure) || failure.Class != protocol.FailureCapability {
+			return "", "", err
+		}
+		lastCapabilityError = err
+	}
+	if lastCapabilityError != nil {
+		return "", "", lastCapabilityError
+	}
+	return "", "", newFailure(protocol.FailureCapability, "Grok has no usable executable candidate", environment, nil)
 }
 
 func (grok *Grok) preflight(ctx context.Context, executable, workspace string, environment []string, effective config.Effective) (string, error) {
@@ -284,7 +315,23 @@ func decodeGrokAuth(output []byte) error {
 	return nil
 }
 
-func decodeGrokEnvelope(output []byte) (protocol.Review, error) {
+type grokCompletion struct {
+	Status string                    `json:"status"`
+	Files  []grokCompletedFileReview `json:"files"`
+}
+
+type grokCompletedFileReview struct {
+	FilePath       string `json:"file_path"`
+	Assessment     string `json:"assessment"`
+	FindingIndexes []int  `json:"finding_indexes"`
+}
+
+type grokCompletedReview struct {
+	Review     protocol.Review
+	Completion grokCompletion
+}
+
+func decodeGrokEnvelope(output []byte, target protocol.Target) (protocol.Review, error) {
 	output = bytes.TrimSpace(output)
 	if len(output) == 0 {
 		return protocol.Review{}, fmt.Errorf("Grok output is empty")
@@ -320,18 +367,143 @@ func decodeGrokEnvelope(output []byte) (protocol.Review, error) {
 	if len(structured) == 0 || structured[0] != '{' {
 		return protocol.Review{}, fmt.Errorf("Grok result is missing structuredOutput object")
 	}
-	structuredReview, err := protocol.DecodeReview(structured)
+	structuredReview, err := decodeGrokCompletedReview(structured, target)
 	if err != nil {
 		return protocol.Review{}, err
 	}
-	textReview, err := protocol.DecodeReview([]byte(strings.TrimSpace(envelope.Text)))
+	textReview, err := decodeGrokCompletedReview([]byte(strings.TrimSpace(envelope.Text)), target)
 	if err != nil {
 		return protocol.Review{}, err
 	}
 	if !reflect.DeepEqual(structuredReview, textReview) {
 		return protocol.Review{}, fmt.Errorf("Grok text and structuredOutput disagree")
 	}
-	return structuredReview, nil
+	return structuredReview.Review, nil
+}
+
+func decodeGrokCompletedReview(data []byte, target protocol.Target) (grokCompletedReview, error) {
+	if err := protocol.RejectDuplicateKeys(data); err != nil {
+		return grokCompletedReview{}, err
+	}
+	var document struct {
+		Review     json.RawMessage `json:"review"`
+		Completion json.RawMessage `json:"completion"`
+	}
+	if err := decodeGrokJSONDocument(data, &document); err != nil {
+		return grokCompletedReview{}, err
+	}
+	review, err := protocol.DecodeReview(document.Review)
+	if err != nil {
+		return grokCompletedReview{}, err
+	}
+	completion, err := decodeGrokCompletion(document.Completion)
+	if err != nil {
+		return grokCompletedReview{}, fmt.Errorf("%w: %v", errGrokIncompleteReview, err)
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(review.OverallExplanation)) < contractschema.GrokMinimumOverallExplanationCharacters {
+		return grokCompletedReview{}, fmt.Errorf("%w: overall explanation is shorter than the required completion evidence", errGrokIncompleteReview)
+	}
+	if review.OverallConfidence < contractschema.GrokMinimumOverallConfidence {
+		return grokCompletedReview{}, fmt.Errorf("%w: overall confidence is below the required completion threshold", errGrokIncompleteReview)
+	}
+	if reviewpolicy.GrokReviewIsIncomplete(review.OverallExplanation) {
+		return grokCompletedReview{}, fmt.Errorf("%w: overall explanation explicitly describes unfinished review work", errGrokIncompleteReview)
+	}
+	if err := validateGrokCompletion(completion, review, target); err != nil {
+		return grokCompletedReview{}, fmt.Errorf("%w: %v", errGrokIncompleteReview, err)
+	}
+	return grokCompletedReview{Review: review, Completion: completion}, nil
+}
+
+func decodeGrokCompletion(data []byte) (grokCompletion, error) {
+	var raw struct {
+		Status *string            `json:"status"`
+		Files  *[]json.RawMessage `json:"files"`
+	}
+	if err := decodeGrokJSONDocument(data, &raw); err != nil {
+		return grokCompletion{}, err
+	}
+	if raw.Status == nil || raw.Files == nil {
+		return grokCompletion{}, fmt.Errorf("completion is missing required fields")
+	}
+	completion := grokCompletion{Status: *raw.Status, Files: make([]grokCompletedFileReview, 0, len(*raw.Files))}
+	for index, data := range *raw.Files {
+		var file struct {
+			FilePath       *string `json:"file_path"`
+			Assessment     *string `json:"assessment"`
+			FindingIndexes *[]int  `json:"finding_indexes"`
+		}
+		if err := decodeGrokJSONDocument(data, &file); err != nil {
+			return grokCompletion{}, fmt.Errorf("decode completion file %d: %w", index, err)
+		}
+		if file.FilePath == nil || file.Assessment == nil || file.FindingIndexes == nil {
+			return grokCompletion{}, fmt.Errorf("completion file %d is missing required fields", index)
+		}
+		completion.Files = append(completion.Files, grokCompletedFileReview{
+			FilePath:       *file.FilePath,
+			Assessment:     *file.Assessment,
+			FindingIndexes: *file.FindingIndexes,
+		})
+	}
+	return completion, nil
+}
+
+func decodeGrokJSONDocument(data []byte, target any) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("multiple JSON values")
+		}
+		return err
+	}
+	return nil
+}
+
+func validateGrokCompletion(completion grokCompletion, review protocol.Review, target protocol.Target) error {
+	if completion.Status != "complete" {
+		return fmt.Errorf("completion status is not complete")
+	}
+	if len(completion.Files) != len(target.Files) {
+		return fmt.Errorf("completion covers %d files, want %d", len(completion.Files), len(target.Files))
+	}
+	expectedFiles := make(map[string]struct{}, len(target.Files))
+	for _, file := range target.Files {
+		expectedFiles[file.FilePath] = struct{}{}
+	}
+	seenFiles := make(map[string]struct{}, len(completion.Files))
+	seenFindings := make(map[int]struct{}, len(review.Findings))
+	for _, file := range completion.Files {
+		if _, expected := expectedFiles[file.FilePath]; !expected {
+			return fmt.Errorf("completion includes unexpected file %q", file.FilePath)
+		}
+		if _, duplicate := seenFiles[file.FilePath]; duplicate {
+			return fmt.Errorf("completion repeats file %q", file.FilePath)
+		}
+		seenFiles[file.FilePath] = struct{}{}
+		if utf8.RuneCountInString(strings.TrimSpace(file.Assessment)) < contractschema.GrokMinimumFileAssessmentCharacters {
+			return fmt.Errorf("completion assessment for %q is too short", file.FilePath)
+		}
+		for _, findingIndex := range file.FindingIndexes {
+			if findingIndex < 0 || findingIndex >= len(review.Findings) {
+				return fmt.Errorf("completion for %q references invalid finding index %d", file.FilePath, findingIndex)
+			}
+			if _, duplicate := seenFindings[findingIndex]; duplicate {
+				return fmt.Errorf("completion references finding index %d more than once", findingIndex)
+			}
+			if review.Findings[findingIndex].Location.FilePath != file.FilePath {
+				return fmt.Errorf("completion links finding index %d to the wrong file", findingIndex)
+			}
+			seenFindings[findingIndex] = struct{}{}
+		}
+	}
+	if len(seenFindings) != len(review.Findings) {
+		return fmt.Errorf("completion links %d findings, want %d", len(seenFindings), len(review.Findings))
+	}
+	return nil
 }
 
 func containsAny(text string, values ...string) bool {

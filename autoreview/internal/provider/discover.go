@@ -8,16 +8,30 @@ import (
 )
 
 func discoverExecutable(name, repository string, environment []string) (string, error) {
+	candidates, err := discoverExecutableCandidates(name, repository, environment)
+	if err != nil {
+		return "", err
+	}
+	return candidates[0], nil
+}
+
+func discoverExecutableCandidates(name, repository string, environment []string) ([]string, error) {
 	if strings.TrimSpace(name) == "" {
-		return "", fmt.Errorf("provider executable is required")
+		return nil, fmt.Errorf("provider executable is required")
 	}
 	if strings.ContainsRune(name, filepath.Separator) {
 		path, err := filepath.Abs(name)
 		if err != nil {
-			return "", fmt.Errorf("resolve provider executable: %w", err)
+			return nil, fmt.Errorf("resolve provider executable: %w", err)
 		}
-		return validateExecutable(path, repository)
+		validated, err := validateExecutable(path, repository)
+		if err != nil {
+			return nil, err
+		}
+		return []string{validated}, nil
 	}
+	candidates := make([]string, 0, 1)
+	seen := make(map[string]struct{})
 	pathValue := environmentValue(environment, "PATH")
 	for _, directory := range filepath.SplitList(pathValue) {
 		if !filepath.IsAbs(directory) {
@@ -25,11 +39,19 @@ func discoverExecutable(name, repository string, environment []string) (string, 
 		}
 		candidate := filepath.Join(directory, name)
 		path, err := validateExecutable(candidate, repository)
-		if err == nil {
-			return path, nil
+		if err != nil {
+			continue
 		}
+		if _, ok := seen[path]; ok {
+			continue
+		}
+		seen[path] = struct{}{}
+		candidates = append(candidates, path)
 	}
-	return "", fmt.Errorf("provider executable %q was not found outside the reviewed repository", name)
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf("provider executable %q was not found outside the reviewed repository", name)
+	}
+	return candidates, nil
 }
 
 func validateExecutable(path, repository string) (string, error) {

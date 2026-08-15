@@ -23,6 +23,7 @@ type Request struct {
 	Prompt        string
 	TrustedSuffix string
 	Config        config.Effective
+	Target        protocol.Target
 }
 
 func (request Request) validPrompt() bool {

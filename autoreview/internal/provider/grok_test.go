@@ -6,12 +6,15 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/uinaf/autoreview/internal/config"
 	"github.com/uinaf/autoreview/internal/protocol"
+	"github.com/uinaf/autoreview/internal/reviewpolicy"
+	contractschema "github.com/uinaf/autoreview/schema"
 )
 
 func TestGrokReviewStrictUsesFrozenPromptAndBoundedPolicy(t *testing.T) {
@@ -31,13 +34,13 @@ func TestGrokReviewStrictUsesFrozenPromptAndBoundedPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Provider.Name != protocol.ProviderGrok || result.Provider.Model != "test-model" || result.Provider.Version != "0.2.118" {
+	if result.Provider.Name != protocol.ProviderGrok || result.Provider.Model != "test-model" || result.Provider.Version != "1.0.4" {
 		t.Fatalf("provider = %+v", result.Provider)
 	}
 	if result.Attempt.Outcome != protocol.AttemptValid || result.ProtocolRecovery.Applied || len(result.Review.Findings) != 0 {
 		t.Fatalf("result = %+v", result)
 	}
-	if prompt := readTestFile(t, fake.prompt); prompt != "frozen review bundle\nretry" {
+	if prompt := readTestFile(t, fake.prompt); prompt != "frozen review bundle\nretry"+reviewpolicy.GrokReviewProtocol() {
 		t.Fatalf("provider prompt = %q", prompt)
 	}
 	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
@@ -65,7 +68,7 @@ func TestGrokReviewStrictUsesFrozenPromptAndBoundedPolicy(t *testing.T) {
 		}
 	}
 	schema := argumentAfter(arguments, "--json-schema")
-	if strings.Contains(schema, `"not"`) || !strings.Contains(schema, `"findings"`) {
+	if strings.Contains(schema, `"not"`) || !strings.Contains(schema, `"findings"`) || !strings.Contains(schema, `"minLength":`+strconv.Itoa(contractschema.GrokMinimumOverallExplanationCharacters)) {
 		t.Fatalf("Grok schema projection = %s", schema)
 	}
 	environment := readTestFile(t, fake.environment)
@@ -118,6 +121,35 @@ func TestGrokReviewFailsCapabilityProbeBeforeInvocation(t *testing.T) {
 	_ = assertProviderError(t, err, protocol.FailureCapability)
 	if _, err := os.Stat(fake.arguments); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("model was invoked after failed capability probe: %v", err)
+	}
+}
+
+func TestGrokReviewSkipsIncompatibleToolManagerShim(t *testing.T) {
+	t.Parallel()
+
+	fake := newFakeGrok(t, fakeGrokOptions{})
+	shimDirectory := t.TempDir()
+	manager := filepath.Join(t.TempDir(), "mise")
+	writeTestExecutableAt(t, manager, "#!/bin/sh\nif [ \"${1:-}\" = '--version' ]; then printf '%s\\n' 'mise 2026.8.6'; exit 0; fi\nif [ \"${1:-}\" = '--help' ]; then printf '%s\\n' 'mise command help'; exit 0; fi\nexit 1\n")
+	if err := os.Symlink(manager, filepath.Join(shimDirectory, "grok")); err != nil {
+		t.Fatal(err)
+	}
+	reviewer := NewGrok(GrokOptions{
+		Repository: t.TempDir(),
+		Environment: []string{
+			"PATH=" + strings.Join([]string{shimDirectory, filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)),
+			"XAI_API_KEY=secret",
+		},
+	})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Provider.Version != "1.0.4" {
+		t.Fatalf("provider = %+v", result.Provider)
+	}
+	if _, err := os.Stat(fake.arguments); err != nil {
+		t.Fatalf("compatible Grok candidate was not invoked: %v", err)
 	}
 }
 
@@ -177,11 +209,12 @@ func TestGrokReviewStrictReportsMissingExecutableBeforeCredential(t *testing.T) 
 func TestGrokReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 	t.Parallel()
 
-	validReview := `{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`
+	validReview := validGrokReview()
 	for _, test := range []struct {
 		name             string
 		output           string
 		incomplete       bool
+		wantReason       protocol.ProtocolReason
 		wantMessage      string
 		forbiddenMessage string
 	}{
@@ -193,8 +226,12 @@ func TestGrokReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 		{name: "duplicate envelope key", output: `{"text":"x","text":"x","stopReason":"end_turn","sessionId":"s","requestId":"r","structuredOutput":{}}`},
 		{name: "invalid canonical review", output: grokEnvelope(`{"findings":[]}`)},
 		{name: "incomplete low-confidence clean review", output: grokEnvelope(`{"findings":[],"overall_explanation":"Review is still in progress.","overall_confidence":0.01}`)},
+		{name: "short high-confidence clean review", output: grokEnvelope(`{"findings":[],"overall_explanation":"Reviewing the requested changes before reporting the final result.","overall_confidence":0.95}`), wantReason: protocol.ProtocolReasonReviewValidation},
+		{name: "short placeholder finding", output: grokEnvelope(`{"findings":[{"title":"Placeholder while reviewing","body":"Reviewing the requested change before reporting a concrete defect.","priority":"P2","confidence":0.5,"category":"maintainability","location":{"file_path":"file.go","start_line":1,"end_line":1}}],"overall_explanation":"Reviewing the requested changes before reporting the final result.","overall_confidence":0.5}`), wantReason: protocol.ProtocolReasonReviewValidation},
+		{name: "explicit progress despite valid shape and confidence", output: grokEnvelope(validGrokReviewWithExplanation("Initial pass only records the frozen file set and acceptance criteria so the next complete review can inspect the actual implementation. This response is structurally complete but does not yet contain the requested analysis of changed behavior or actionable defects.")), wantReason: protocol.ProtocolReasonReviewValidation},
+		{name: "padded canonical placeholder without completion evidence", output: grokRawEnvelope(validGrokReviewWithExplanation(validGrokExplanation + " The remaining analysis is still being checked and this interim response will be replaced by the final review after inspection finishes."))},
 		{name: "duplicate review key", output: `{"text":"` + escapeJSONString(`{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`) + `","stopReason":"end_turn","sessionId":"s","requestId":"r","structuredOutput":{"findings":[],"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}}`},
-		{name: "text mismatch", output: grokMismatchedEnvelope(validReview, `{"findings":[],"overall_explanation":"Different.","overall_confidence":0.95}`)},
+		{name: "text mismatch", output: grokMismatchedEnvelope(validReview, validGrokReviewWithExplanation(validGrokExplanation+" The alternate document intentionally differs from the canonical control."))},
 		{name: "valid control", output: grokEnvelope(validReview)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -214,10 +251,13 @@ func TestGrokReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 				expectedOutcome = protocol.AttemptFailed
 			}
 			failure := assertProviderError(t, err, expectedClass)
+			if test.wantReason != "" && failure.Reason != test.wantReason {
+				t.Fatalf("protocol reason = %q, want %q", failure.Reason, test.wantReason)
+			}
 			if failure.Attempt == nil || failure.Attempt.Outcome != expectedOutcome {
 				t.Fatalf("attempt = %+v", failure.Attempt)
 			}
-			assertExecutionMetadata(t, failure, protocol.ProviderGrok, "0.2.118", protocol.IsolationStrict, false)
+			assertExecutionMetadata(t, failure, protocol.ProviderGrok, "1.0.4", protocol.IsolationStrict, false)
 			if test.wantMessage != "" && !strings.Contains(failure.Message, test.wantMessage) {
 				t.Fatalf("failure message = %q, want %q", failure.Message, test.wantMessage)
 			}
@@ -225,6 +265,132 @@ func TestGrokReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 				t.Fatalf("failure message exposed private provider detail: %q", failure.Message)
 			}
 		})
+	}
+}
+
+func TestGrokReviewRequiresExactPerFileCompletionEvidence(t *testing.T) {
+	t.Parallel()
+
+	target := protocol.Target{Files: []protocol.ReviewedFile{{FilePath: "a.go"}, {FilePath: "b.go"}}}
+	assessment := "The changed logic in a.go was inspected against the complete task contract and its relevant edge cases, with no actionable defect identified."
+	omittedFile := grokEnvelopeWithFiles(validGrokReview(), []grokCompletedFileReview{{
+		FilePath:       "a.go",
+		Assessment:     assessment,
+		FindingIndexes: []int{},
+	}})
+	var review any
+	if err := json.Unmarshal([]byte(validGrokReview()), &review); err != nil {
+		t.Fatal(err)
+	}
+	missingFindingIndexes, err := json.Marshal(map[string]any{
+		"review": review,
+		"completion": map[string]any{
+			"status": "complete",
+			"files": []any{
+				map[string]any{"file_path": "a.go", "assessment": assessment, "finding_indexes": []int{}},
+				map[string]any{"file_path": "b.go", "assessment": assessment},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name   string
+		output string
+	}{
+		{name: "omitted target file", output: omittedFile},
+		{name: "missing required finding indexes", output: grokRawEnvelope(string(missingFindingIndexes))},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fake := newFakeGrok(t, fakeGrokOptions{output: test.output})
+			reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second), Target: target})
+			failure := assertProviderError(t, err, protocol.FailureProtocol)
+			if failure.Reason != protocol.ProtocolReasonReviewValidation {
+				t.Fatalf("protocol reason = %q, want %q", failure.Reason, protocol.ProtocolReasonReviewValidation)
+			}
+		})
+	}
+}
+
+func TestValidateGrokCompletion(t *testing.T) {
+	t.Parallel()
+
+	target := protocol.Target{Files: []protocol.ReviewedFile{{FilePath: "a.go"}, {FilePath: "b.go"}}}
+	review := protocol.Review{
+		Findings: []protocol.Finding{{Location: protocol.Location{FilePath: "b.go"}}},
+	}
+	assessment := "The changed file was inspected against the complete task contract, relevant control flow, and edge cases before reaching this assessment."
+	valid := grokCompletion{Status: "complete", Files: []grokCompletedFileReview{
+		{FilePath: "a.go", Assessment: assessment, FindingIndexes: []int{}},
+		{FilePath: "b.go", Assessment: assessment, FindingIndexes: []int{0}},
+	}}
+	if err := validateGrokCompletion(valid, review, target); err != nil {
+		t.Fatalf("valid completion: %v", err)
+	}
+
+	for _, test := range []struct {
+		name       string
+		completion grokCompletion
+	}{
+		{name: "status", completion: grokCompletion{Files: valid.Files}},
+		{name: "unexpected file", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: assessment}, {FilePath: "c.go", Assessment: assessment, FindingIndexes: []int{0}}}}},
+		{name: "duplicate file", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: assessment}, {FilePath: "a.go", Assessment: assessment, FindingIndexes: []int{0}}}}},
+		{name: "short assessment", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: "too short"}, {FilePath: "b.go", Assessment: assessment, FindingIndexes: []int{0}}}}},
+		{name: "invalid finding index", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: assessment}, {FilePath: "b.go", Assessment: assessment, FindingIndexes: []int{1}}}}},
+		{name: "wrong finding file", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: assessment, FindingIndexes: []int{0}}, {FilePath: "b.go", Assessment: assessment}}}},
+		{name: "unlinked finding", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: assessment}, {FilePath: "b.go", Assessment: assessment}}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := validateGrokCompletion(test.completion, review, target); err == nil {
+				t.Fatal("expected invalid completion")
+			}
+		})
+	}
+}
+
+func TestGrokCompletionConfidenceDoesNotFilterIndividualFindings(t *testing.T) {
+	t.Parallel()
+
+	target := protocol.Target{Files: []protocol.ReviewedFile{{FilePath: "file.go"}}}
+	review := protocol.Review{
+		Findings: []protocol.Finding{{
+			Title:      "Possible edge-case defect",
+			Body:       "For the cited changed input, this branch may return the wrong result because the boundary condition skips the final element.",
+			Priority:   protocol.PriorityP2,
+			Confidence: 0.1,
+			Category:   protocol.CategoryBug,
+			Location:   protocol.Location{FilePath: "file.go", StartLine: 1, EndLine: 1},
+		}},
+		OverallExplanation: validGrokExplanation,
+		OverallConfidence:  0.9,
+	}
+	encodedReview, err := json.Marshal(review)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := []grokCompletedFileReview{{
+		FilePath:       "file.go",
+		Assessment:     "The changed boundary branch was inspected against the supplied contract and the finding records the concrete uncertain edge case without suppressing it.",
+		FindingIndexes: []int{0},
+	}}
+	document, err := decodeGrokCompletedReview([]byte(grokCompletedReviewJSON(string(encodedReview), files)), target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(document.Review.Findings) != 1 || document.Review.Findings[0].Confidence != 0.1 {
+		t.Fatalf("review findings = %+v", document.Review.Findings)
+	}
+
+	review.OverallConfidence = 0.5
+	encodedReview, err = json.Marshal(review)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = decodeGrokCompletedReview([]byte(grokCompletedReviewJSON(string(encodedReview), files)), target)
+	if !errors.Is(err, errGrokIncompleteReview) {
+		t.Fatalf("low completion confidence error = %v", err)
 	}
 }
 
@@ -269,7 +435,7 @@ func TestGrokReviewEnforcesOutputBounds(t *testing.T) {
 	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 		t.Fatalf("attempt = %+v", failure.Attempt)
 	}
-	assertExecutionMetadata(t, failure, protocol.ProviderGrok, "0.2.118", protocol.IsolationStrict, false)
+	assertExecutionMetadata(t, failure, protocol.ProviderGrok, "1.0.4", protocol.IsolationStrict, false)
 }
 
 func TestGrokReviewUsesExplicitDefaultModel(t *testing.T) {
@@ -338,7 +504,7 @@ func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
 		options.help = grokHelp()
 	}
 	if options.output == "" {
-		options.output = grokEnvelope(`{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`)
+		options.output = grokEnvelope(validGrokReview())
 	}
 	outputPath := filepath.Join(root, "output.json")
 	if err := os.WriteFile(outputPath, []byte(options.output), 0o600); err != nil {
@@ -365,7 +531,7 @@ func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
 	script := "#!/bin/sh\n" +
 		"set -eu\n" +
 		"fail_contract() { printf '%s\\n' 'unexpected Grok CLI arguments' >&2; exit 64; }\n" +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = '--version' ]; then printf '%s\\n' 'grok 0.2.118 (fake)'; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = '--version' ]; then printf '%s\\n' 'grok 1.0.4 (fake)'; exit 0; fi\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = '--help' ]; then printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = 'models' ]; then " + authBlock + "; fi\n" +
 		"printf '%s\\n' \"$@\" > " + shellQuote(fake.arguments) + "\n" +
@@ -412,7 +578,59 @@ func grokEnvelope(review string) string {
 	return grokMismatchedEnvelope(review, review)
 }
 
+func grokEnvelopeWithFiles(review string, files []grokCompletedFileReview) string {
+	document := grokCompletedReviewJSON(review, files)
+	return grokRawMismatchedEnvelope(document, document)
+}
+
+func grokRawEnvelope(document string) string {
+	return grokRawMismatchedEnvelope(document, document)
+}
+
+const validGrokExplanation = "The complete frozen target was reviewed against its trusted task contract, including every changed line and required edge case. The implementation preserves the requested behavior, introduces no actionable defect, and the cited tests cover the relevant success and failure paths."
+
+func validGrokReview() string {
+	return validGrokReviewWithExplanation(validGrokExplanation)
+}
+
+func validGrokReviewWithExplanation(explanation string) string {
+	review, err := json.Marshal(protocol.Review{
+		Findings:           []protocol.Finding{},
+		OverallExplanation: explanation,
+		OverallConfidence:  0.95,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return string(review)
+}
+
 func grokMismatchedEnvelope(textReview, structuredReview string) string {
+	return grokRawMismatchedEnvelope(grokCompletedReviewJSON(textReview, nil), grokCompletedReviewJSON(structuredReview, nil))
+}
+
+func grokCompletedReviewJSON(review string, files []grokCompletedFileReview) string {
+	var decodedReview any
+	if err := json.Unmarshal([]byte(review), &decodedReview); err != nil {
+		panic(err)
+	}
+	if files == nil {
+		files = []grokCompletedFileReview{}
+	}
+	encoded, err := json.Marshal(map[string]any{
+		"review": decodedReview,
+		"completion": grokCompletion{
+			Status: "complete",
+			Files:  files,
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	return string(encoded)
+}
+
+func grokRawMismatchedEnvelope(textReview, structuredReview string) string {
 	var structured any
 	if err := json.Unmarshal([]byte(structuredReview), &structured); err != nil {
 		panic(err)
