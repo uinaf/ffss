@@ -2,7 +2,9 @@
 
 set -eu
 
-repository_url=${SLOPMACHINE_INSTALL_REPOSITORY_URL:-https://github.com/uinaf/ffsstack/cli/slopmachine}
+# slopmachine release assets ship from the ffsstack monorepo starting with
+# the first slopmachine release (uinaf/slopshipper#50).
+repository_url=${SLOPMACHINE_INSTALL_REPOSITORY_URL:-https://github.com/uinaf/ffsstack}
 while [ "${repository_url%/}" != "$repository_url" ]; do
   repository_url=${repository_url%/}
 done
