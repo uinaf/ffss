@@ -105,6 +105,7 @@ for _ in $(seq 1 40); do
 
   # Fill documented placeholders; everything else runs verbatim.
   action=${action//\'<verification command>\'/true}
+  action=${action//\'<signal>\'/merged}
 
   command_word=$(sed -n 's/^slopshipper \([a-z]*\).*/\1/p' <<<"$action")
   commands_seen="$commands_seen $command_word"
@@ -132,6 +133,20 @@ JSON
 {"delivery_mode":"pr-hold","pr_url":"https://example.invalid/pr/1"}
 JSON
       ;;
+    observe)
+      # The unit placeholder is a documented fill; a single delivered unit
+      # arrives already named inline in next_action.
+      if [[ $action == *"'<unit>'"* ]]; then
+        delivered_json=$("$binary" status --json --fields delivered_units --run conform)
+        delivered_unit=$(sed -n 's/^    "\([^"]*\)",\{0,1\}$/\1/p' <<<"$delivered_json" | head -1)
+        if [[ -z $delivered_unit ]]; then
+          printf 'conformance: observe demanded with no delivered unit\n' >&2
+          exit 1
+        fi
+        action=${action//\'<unit>\'/$delivered_unit}
+      fi
+      eval "$action" >/dev/null
+      ;;
     *)
       eval "$action" >/dev/null
       ;;
@@ -149,7 +164,7 @@ if [[ $completed != 2 ]]; then
   printf 'conformance: expected 2 completed units, got %s\n' "$completed" >&2
   exit 1
 fi
-for expected in INTAKE BUILD REVIEW DELIVER RUN_DONE; do
+for expected in INTAKE BUILD REVIEW DELIVER AWAITING_SIGNALS RUN_DONE; do
   case "$states_seen" in
     *" $expected"*) ;;
     *)
@@ -159,7 +174,7 @@ for expected in INTAKE BUILD REVIEW DELIVER RUN_DONE; do
   esac
 done
 # The protocol must have demanded every documented step, not skipped edges.
-for expected in intake release build verify review deliver; do
+for expected in intake release build verify review deliver observe; do
   case "$commands_seen" in
     *" $expected"*) ;;
     *)

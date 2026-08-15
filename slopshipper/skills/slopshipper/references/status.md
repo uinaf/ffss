@@ -3,7 +3,7 @@
 Use a field mask as the agent leash:
 
 ```bash
-slopshipper status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivery_mode,blocker,decision_question
+slopshipper status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question
 ```
 
 Prefer these fields:
@@ -16,6 +16,9 @@ Prefer these fields:
 | `required_reviewers` | Registered reviewer identities the intake requires |
 | `completed_reviewers` | Distinct clean reviews already recorded |
 | `intake_revision` | Pass to `slopshipper release --revision` |
+| `units` | Per-unit `{id, phase, attempt}`; phases: pending, active, rework, delivered, done |
+| `delivered_units` | Units awaiting external signals; targets for `observe --unit` |
+| `risk_tier`, `budget_tokens`, `budget_minutes` | Recorded contract signals for routing policy |
 | `blocker` | Human-facing blocker reason when present |
 | `decision_question` | Pending ask; answer via `slopshipper decide` |
 
@@ -28,7 +31,7 @@ command, then read status again before submitting intake.
 ```bash
 slopshipper status --json
 # → {
-#   "schema_version": 2,
+#   "schema_version": 3,
 #   "next_action": "slopshipper build --run='demo'",
 #   "allowed_commands": ["intake", "ask", "build"],
 #   "required_evidence": [],

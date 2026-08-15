@@ -21,7 +21,9 @@ type Run struct {
 	ReturnState        State // resume target after NEEDS_DECISION; empty defaults to INTAKE
 }
 
-// Unit is one graph node.
+// Unit is one graph node. Phase is authoritative per-unit state: a unit's
+// blockers release once every blocker reaches delivered or done, so later
+// units can build while earlier ones await external signals.
 type Unit struct {
 	ID                 string     `json:"id"`
 	Title              string     `json:"title"`
@@ -29,8 +31,13 @@ type Unit struct {
 	AcceptanceCriteria []string   `json:"acceptance_criteria,omitempty"`
 	Complexity         Complexity `json:"complexity,omitempty"`
 	Attempt            int        `json:"attempt"`
-	Done               bool       `json:"done"`
+	Phase              UnitPhase  `json:"phase"`
+	// ReworkCause records why a delivered unit re-entered the build loop.
+	ReworkCause string `json:"rework_cause,omitempty"`
 }
+
+// Settled reports whether the unit no longer blocks dependents.
+func (u Unit) Settled() bool { return u.Phase == PhaseDelivered || u.Phase == PhaseDone }
 
 // Budget bounds a run's spend as recorded contract data. Zero means the
 // dimension is unbounded; enforcement belongs to routing, not the machine.
@@ -120,6 +127,14 @@ type BlockEvidence struct {
 	Reason string `json:"reason"`
 }
 
+// ObserveEvidence records one external signal about a delivered unit.
+// UnitID may be empty when exactly one delivered unit exists.
+type ObserveEvidence struct {
+	UnitID    string        `json:"unit,omitempty"`
+	Signal    ObserveSignal `json:"signal"`
+	Reference string        `json:"reference,omitempty"`
+}
+
 // ApplyInput carries command-specific payloads.
 type ApplyInput struct {
 	ExpectedRevision int64 // 0 means "use current" for tests; store always passes real revision
@@ -131,6 +146,7 @@ type ApplyInput struct {
 	Verify              *VerifyEvidence
 	Review              *ReviewEvidence
 	Deliver             *DeliverEvidence
+	Observe             *ObserveEvidence
 	Decision            *Decision
 	RetryReason         string
 	BlockReason         string

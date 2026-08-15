@@ -143,6 +143,8 @@ func runWithOptions(args []string, opts runOptions) int {
 		return cmdRework(st, rest, opts)
 	case "deliver":
 		return cmdDeliver(st, rest, opts)
+	case "observe":
+		return cmdObserve(st, rest, opts)
 	case "ask":
 		return cmdAsk(st, rest, opts)
 	case "decide":
@@ -183,6 +185,7 @@ Usage:
   slopshipper review --evidence PATH|- [--run ID]
   slopshipper rework [--run ID]
   slopshipper deliver --evidence PATH|- [--run ID]
+  slopshipper observe --signal SIGNAL [--unit ID] [--reference URL] [--run ID]
   slopshipper ask --question TEXT [--run ID]
   slopshipper decide --answer TEXT [--run ID]
   slopshipper retry --reason TEXT [--run ID]
@@ -237,6 +240,12 @@ Return the current unit from REVIEW to the build loop.
 		"deliver": `Usage: slopshipper deliver --evidence PATH [--run ID]
 
 Record strict JSON delivery evidence. Use --evidence - for stdin.
+`,
+		"observe": `Usage: slopshipper observe --signal SIGNAL [--unit ID] [--reference URL] [--run ID]
+
+Record one external signal about a delivered unit. Signals: merged closes
+the unit; checks_failed and review_feedback return it to the build loop
+with the cause recorded. Omit --unit when exactly one unit is delivered.
 `,
 		"ask": `Usage: slopshipper ask --question TEXT [--run ID]
 
@@ -711,6 +720,41 @@ func cmdDeliver(st *store.Store, args []string, opts runOptions) int {
 	return applyCmd(st, runID, machine.CmdDeliver, machine.ApplyInput{Deliver: &ev}, opts)
 }
 
+func cmdObserve(st *store.Store, args []string, opts runOptions) int {
+	fs, code := requireFlags("observe", args, opts)
+	if code != 0 {
+		return code
+	}
+	var input observeInput
+	raw, err := decodeMutationInput(fs, &input)
+	if err != nil {
+		return writeFailure(opts, 2, err)
+	}
+	runID := fs["run"]
+	if raw {
+		runID = input.Run
+	} else {
+		input.Unit = fs["unit"]
+		input.Signal = fs["signal"]
+		input.Reference = fs["reference"]
+	}
+	if input.Signal == "" {
+		return writeFailure(opts, 2, fmt.Errorf("observe requires --signal or --input"))
+	}
+	if err := validateRunID(runID); err != nil {
+		return writeFailure(opts, 2, err)
+	}
+	if input.Unit != "" {
+		if err := machine.ValidateResourceID("unit id", input.Unit); err != nil {
+			return writeFailure(opts, 2, err)
+		}
+	}
+	evidence := machine.ObserveEvidence{
+		UnitID: input.Unit, Signal: machine.ObserveSignal(input.Signal), Reference: input.Reference,
+	}
+	return applyCmd(st, runID, machine.CmdObserve, machine.ApplyInput{Observe: &evidence}, opts)
+}
+
 func cmdAsk(st *store.Store, args []string, opts runOptions) int {
 	fs, code := requireFlags("ask", args, opts)
 	if code != 0 {
@@ -938,6 +982,7 @@ var commandFlags = map[string]map[string]bool{
 	"review":    {"evidence": true, "run": true, "input": true},
 	"rework":    {"run": true, "input": true},
 	"deliver":   {"evidence": true, "run": true, "input": true},
+	"observe":   {"signal": true, "unit": true, "reference": true, "run": true, "input": true},
 	"ask":       {"question": true, "run": true, "input": true},
 	"decide":    {"answer": true, "run": true, "input": true},
 	"retry":     {"reason": true, "run": true, "input": true},

@@ -4,15 +4,44 @@ package machine
 type State string
 
 const (
-	StateIntake        State = "INTAKE"
-	StateBuild         State = "BUILD"
-	StateVerify        State = "VERIFY"
-	StateReview        State = "REVIEW"
-	StateDeliver       State = "DELIVER"
-	StateRework        State = "REWORK"
-	StateNeedsDecision State = "NEEDS_DECISION"
-	StateBlocked       State = "BLOCKED"
-	StateRunDone       State = "RUN_DONE"
+	StateIntake  State = "INTAKE"
+	StateBuild   State = "BUILD"
+	StateVerify  State = "VERIFY"
+	StateReview  State = "REVIEW"
+	StateDeliver State = "DELIVER"
+	StateRework  State = "REWORK"
+	// AWAITING_SIGNALS rests when no unit is buildable but delivered units
+	// still wait on external signals (checks, review feedback, merge).
+	StateAwaitingSignals State = "AWAITING_SIGNALS"
+	StateNeedsDecision   State = "NEEDS_DECISION"
+	StateBlocked         State = "BLOCKED"
+	StateRunDone         State = "RUN_DONE"
+)
+
+// UnitPhase is the authoritative per-unit lifecycle position. The run state
+// is a projection of unit phases plus the active unit's pipeline position.
+type UnitPhase string
+
+const (
+	// PhasePending waits for its blockers and a build claim.
+	PhasePending UnitPhase = "pending"
+	// PhaseActive is the single unit currently in the build pipeline.
+	PhaseActive UnitPhase = "active"
+	// PhaseRework was pulled back by an external signal and awaits re-build.
+	PhaseRework UnitPhase = "rework"
+	// PhaseDelivered shipped a change request and awaits external signals.
+	PhaseDelivered UnitPhase = "delivered"
+	// PhaseDone is settled: the delivered work was accepted.
+	PhaseDone UnitPhase = "done"
+)
+
+// ObserveSignal is one externally observed event about a delivered unit.
+type ObserveSignal string
+
+const (
+	SignalMerged         ObserveSignal = "merged"
+	SignalChecksFailed   ObserveSignal = "checks_failed"
+	SignalReviewFeedback ObserveSignal = "review_feedback"
 )
 
 // Command is a named edge command.
@@ -31,6 +60,7 @@ const (
 	CmdDecide  Command = "decide"
 	CmdRetry   Command = "retry"
 	CmdBlock   Command = "block"
+	CmdObserve Command = "observe"
 )
 
 // RiskTier classifies how much can go wrong when a run's work is wrong.

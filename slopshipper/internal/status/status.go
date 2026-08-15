@@ -13,37 +13,47 @@ import (
 const (
 	schemaVersion      = 3
 	stateUninitialized = "UNINITIALIZED"
-	AgentFieldMask     = "state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivery_mode,blocker,decision_question"
+	AgentFieldMask     = "state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question"
 )
+
+// UnitStatus is the compact per-unit projection inside status.
+type UnitStatus struct {
+	ID          string `json:"id"`
+	Phase       string `json:"phase"`
+	Attempt     int    `json:"attempt"`
+	ReworkCause string `json:"rework_cause,omitempty"`
+}
 
 // Document is the compact agent-facing status contract.
 type Document struct {
-	SchemaVersion       int      `json:"schema_version"`
-	Revision            int64    `json:"revision"`
-	RunID               string   `json:"run_id"`
-	RepoKey             string   `json:"repo_key"`
-	State               string   `json:"state"`
-	IntakeRevision      int64    `json:"intake_revision"`
-	Released            bool     `json:"released"`
-	ReleasedRevision    *int64   `json:"released_revision,omitempty"`
-	DeliveryMode        string   `json:"delivery_mode"`
-	RiskTier            string   `json:"risk_tier,omitempty"`
-	BudgetTokens        int      `json:"budget_tokens,omitempty"`
-	BudgetMinutes       int      `json:"budget_minutes,omitempty"`
-	SeriesBound         int      `json:"series_bound"`
-	CompletedUnits      int      `json:"completed_units"`
-	CurrentUnitID       string   `json:"current_unit_id,omitempty"`
-	Frontier            []string `json:"frontier"`
-	RequiredReviewers   []string `json:"required_reviewers"`
-	CompletedReviewers  []string `json:"completed_reviewers"`
-	AllowedCommands     []string `json:"allowed_commands"`
-	RequiredEvidence    []string `json:"required_evidence"`
-	NextAction          string   `json:"next_action"`
-	Blocker             string   `json:"blocker,omitempty"`
-	DecisionQuestion    string   `json:"decision_question,omitempty"`
-	DryRun              bool     `json:"dry_run,omitempty"`
-	ValidatedCommand    string   `json:"validated_command,omitempty"`
-	OutcomeUndetermined bool     `json:"outcome_undetermined,omitempty"`
+	SchemaVersion       int          `json:"schema_version"`
+	Revision            int64        `json:"revision"`
+	RunID               string       `json:"run_id"`
+	RepoKey             string       `json:"repo_key"`
+	State               string       `json:"state"`
+	IntakeRevision      int64        `json:"intake_revision"`
+	Released            bool         `json:"released"`
+	ReleasedRevision    *int64       `json:"released_revision,omitempty"`
+	DeliveryMode        string       `json:"delivery_mode"`
+	RiskTier            string       `json:"risk_tier,omitempty"`
+	BudgetTokens        int          `json:"budget_tokens,omitempty"`
+	BudgetMinutes       int          `json:"budget_minutes,omitempty"`
+	SeriesBound         int          `json:"series_bound"`
+	CompletedUnits      int          `json:"completed_units"`
+	CurrentUnitID       string       `json:"current_unit_id,omitempty"`
+	Frontier            []string     `json:"frontier"`
+	DeliveredUnits      []string     `json:"delivered_units"`
+	Units               []UnitStatus `json:"units"`
+	RequiredReviewers   []string     `json:"required_reviewers"`
+	CompletedReviewers  []string     `json:"completed_reviewers"`
+	AllowedCommands     []string     `json:"allowed_commands"`
+	RequiredEvidence    []string     `json:"required_evidence"`
+	NextAction          string       `json:"next_action"`
+	Blocker             string       `json:"blocker,omitempty"`
+	DecisionQuestion    string       `json:"decision_question,omitempty"`
+	DryRun              bool         `json:"dry_run,omitempty"`
+	ValidatedCommand    string       `json:"validated_command,omitempty"`
+	OutcomeUndetermined bool         `json:"outcome_undetermined,omitempty"`
 }
 
 func From(run machine.Run, units []machine.Unit) Document {
@@ -60,7 +70,8 @@ func From(run machine.Run, units []machine.Unit) Document {
 	for _, reviewer := range run.RequiredReviewers {
 		requiredReviewers = append(requiredReviewers, string(reviewer))
 	}
-	requiredEvidence := requiredEvidence(allowed)
+	selected := selectedCommand(allowed)
+	requiredEvidence := requiredEvidence(selected, units)
 	return Document{
 		SchemaVersion:      schemaVersion,
 		Revision:           run.Revision,
@@ -78,11 +89,13 @@ func From(run machine.Run, units []machine.Unit) Document {
 		CompletedUnits:     run.CompletedUnits,
 		CurrentUnitID:      run.CurrentUnitID,
 		Frontier:           machine.Frontier(units),
+		DeliveredUnits:     deliveredUnits(units),
+		Units:              unitStatuses(units),
 		RequiredReviewers:  requiredReviewers,
 		CompletedReviewers: completedReviewers,
 		AllowedCommands:    cmds,
 		RequiredEvidence:   requiredEvidence,
-		NextAction:         nextAction(run, allowed),
+		NextAction:         nextAction(run, units, selected),
 		Blocker:            run.BlockerReason,
 		DecisionQuestion:   run.DecisionQuestion,
 	}
@@ -95,6 +108,8 @@ func Bootstrap(repoKey string) Document {
 		RepoKey:            repoKey,
 		State:              stateUninitialized,
 		Frontier:           []string{},
+		DeliveredUnits:     []string{},
+		Units:              []UnitStatus{},
 		RequiredReviewers:  []string{},
 		CompletedReviewers: []string{},
 		AllowedCommands:    []string{string(machine.CmdInit)},
@@ -181,41 +196,65 @@ func FieldNames() []string {
 	return fields
 }
 
-func nextAction(run machine.Run, allowed []machine.Command) string {
+// selectedCommand picks the one command next_action recommends; the
+// required_evidence projection derives from the same choice so the two
+// fields can never disagree.
+func selectedCommand(allowed []machine.Command) machine.Command {
+	// decide and retry outrank observe: resolving a human latch is always
+	// actionable, while an external signal may not exist yet.
 	priority := []machine.Command{
 		machine.CmdRelease, machine.CmdBuild, machine.CmdVerify, machine.CmdReview,
-		machine.CmdDeliver, machine.CmdRework, machine.CmdDecide, machine.CmdRetry, machine.CmdIntake,
+		machine.CmdDeliver, machine.CmdRework, machine.CmdDecide, machine.CmdRetry, machine.CmdObserve, machine.CmdIntake,
 	}
 	for _, p := range priority {
 		for _, a := range allowed {
 			if a == p {
-				var command string
-				switch p {
-				case machine.CmdIntake:
-					command = "slopshipper intake --file -"
-				case machine.CmdRelease:
-					command = fmt.Sprintf("slopshipper release --revision %d", run.IntakeRevision)
-				case machine.CmdVerify:
-					command = "slopshipper verify --cmd '<verification command>'"
-				case machine.CmdReview:
-					command = "slopshipper review --evidence -"
-				case machine.CmdDeliver:
-					command = "slopshipper deliver --evidence -"
-				case machine.CmdDecide:
-					command = "slopshipper decide --answer '<answer>'"
-				case machine.CmdRetry:
-					command = "slopshipper retry --reason '<reason>'"
-				default:
-					command = "slopshipper " + string(p)
-				}
-				return withRun(command, run.ID)
+				return p
 			}
 		}
 	}
 	if len(allowed) == 0 {
 		return ""
 	}
-	return withRun("slopshipper "+string(allowed[0]), run.ID)
+	return allowed[0]
+}
+
+func nextAction(run machine.Run, units []machine.Unit, selected machine.Command) string {
+	if selected == "" {
+		return ""
+	}
+	var command string
+	switch selected {
+	case machine.CmdIntake:
+		command = "slopshipper intake --file -"
+	case machine.CmdRelease:
+		command = fmt.Sprintf("slopshipper release --revision %d", run.IntakeRevision)
+	case machine.CmdVerify:
+		command = "slopshipper verify --cmd '<verification command>'"
+	case machine.CmdReview:
+		command = "slopshipper review --evidence -"
+	case machine.CmdDeliver:
+		command = "slopshipper deliver --evidence -"
+	case machine.CmdObserve:
+		command = observeAction(units)
+	case machine.CmdDecide:
+		command = "slopshipper decide --answer '<answer>'"
+	case machine.CmdRetry:
+		command = "slopshipper retry --reason '<reason>'"
+	default:
+		command = "slopshipper " + string(selected)
+	}
+	return withRun(command, run.ID)
+}
+
+// observeAction stays executable for any delivered-unit count: one delivered
+// unit is named inline; several leave a documented unit placeholder.
+func observeAction(units []machine.Unit) string {
+	delivered := deliveredUnits(units)
+	if len(delivered) == 1 {
+		return "slopshipper observe --signal '<signal>' --unit=" + shellQuote(delivered[0])
+	}
+	return "slopshipper observe --signal '<signal>' --unit '<unit>'"
 }
 
 func withRun(command, runID string) string {
@@ -229,18 +268,44 @@ func shellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
 }
 
-func requiredEvidence(allowed []machine.Command) []string {
-	for _, a := range allowed {
-		switch a {
-		case machine.CmdVerify:
-			return []string{"verify.command", "verify.exit_code"}
-		case machine.CmdReview:
-			return []string{"review.reviewer", "review.verdict", "review.artifact_ref"}
-		case machine.CmdDeliver:
-			return []string{"deliver.delivery_mode", "deliver.pr_url|deliver.commit_sha"}
-		case machine.CmdRetry:
-			return []string{"retry.reason"}
+func deliveredUnits(units []machine.Unit) []string {
+	out := make([]string, 0)
+	for _, u := range units {
+		if u.Phase == machine.PhaseDelivered {
+			out = append(out, u.ID)
 		}
+	}
+	return out
+}
+
+func unitStatuses(units []machine.Unit) []UnitStatus {
+	out := make([]UnitStatus, 0, len(units))
+	for _, u := range units {
+		phase := u.Phase
+		if phase == "" {
+			phase = machine.PhasePending
+		}
+		out = append(out, UnitStatus{ID: u.ID, Phase: string(phase), Attempt: u.Attempt, ReworkCause: u.ReworkCause})
+	}
+	return out
+}
+
+// requiredEvidence lists evidence for the selected next command only.
+func requiredEvidence(selected machine.Command, units []machine.Unit) []string {
+	switch selected {
+	case machine.CmdVerify:
+		return []string{"verify.command", "verify.exit_code"}
+	case machine.CmdReview:
+		return []string{"review.reviewer", "review.verdict", "review.artifact_ref"}
+	case machine.CmdDeliver:
+		return []string{"deliver.delivery_mode", "deliver.pr_url|deliver.commit_sha"}
+	case machine.CmdObserve:
+		if len(deliveredUnits(units)) > 1 {
+			return []string{"observe.signal", "observe.unit"}
+		}
+		return []string{"observe.signal"}
+	case machine.CmdRetry:
+		return []string{"retry.reason"}
 	}
 	return []string{}
 }

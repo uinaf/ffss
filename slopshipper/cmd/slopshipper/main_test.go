@@ -142,8 +142,17 @@ func TestCLINorthStarSmoke(t *testing.T) {
 
 	out = h.must("status", "--json", "--run", "smoke")
 	var fin struct {
-		State string `json:"state"`
+		State          string   `json:"state"`
+		DeliveredUnits []string `json:"delivered_units"`
 	}
+	if err := json.Unmarshal([]byte(out), &fin); err != nil {
+		t.Fatal(err)
+	}
+	if fin.State != "AWAITING_SIGNALS" || len(fin.DeliveredUnits) != 1 {
+		t.Fatalf("want AWAITING_SIGNALS with one delivered unit got %s", out)
+	}
+	h.must("observe", "--signal", "merged", "--run", "smoke")
+	out = h.must("status", "--json", "--run", "smoke")
 	if err := json.Unmarshal([]byte(out), &fin); err != nil {
 		t.Fatal(err)
 	}
@@ -600,6 +609,8 @@ func TestAgentDXRawInputsDryRunAndFieldMask(t *testing.T) {
 	h.mustInput(`{"run":"agent","command":"go test ./...","exit_code":0}`, "verify", "--input", "-", "--json")
 	h.mustInput(`{"run":"agent","reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://local"}`, "review", "--input", "-", "--json")
 	out = h.mustInput(`{"run":"agent","delivery_mode":"pr-hold","pr_url":"https://example.com/pr/1"}`, "deliver", "--input", "-", "--json")
+	assertJSONState(t, out, "AWAITING_SIGNALS")
+	out = h.mustInput(`{"run":"agent","signal":"merged","reference":"https://example.com/pr/1"}`, "observe", "--input", "-", "--json")
 	assertJSONState(t, out, "RUN_DONE")
 	if status := gitOutput(t, h.repoDir, "status", "--porcelain"); status != "" {
 		t.Fatalf("stdin workflow left repository artifacts: %q", status)
@@ -696,7 +707,14 @@ func TestCLIMultiUnitAskDecide(t *testing.T) {
 		h.must("deliver", "--evidence", del, "--run", "multi")
 	}
 	walkUnit("u1", 1)
+	// u1 is delivered, not settled: u2 builds while u1 awaits signals.
 	walkUnit("u2", 2)
+	// Two delivered units: an unqualified observe is ambiguous.
+	if out, code := h.run("observe", "--signal", "merged", "--run", "multi"); code != 2 || !strings.Contains(out, "pass observe.unit") {
+		t.Fatalf("ambiguous observe exit=%d output=%s", code, out)
+	}
+	h.must("observe", "--signal", "merged", "--unit", "u1", "--run", "multi")
+	h.must("observe", "--signal", "merged", "--unit", "u2", "--run", "multi")
 
 	out = h.must("status", "--json", "--run", "multi")
 	var fin struct {

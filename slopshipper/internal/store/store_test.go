@@ -269,6 +269,25 @@ func TestReviewerRegistryRoundTrip(t *testing.T) {
 		t.Fatalf("registry after removes: %v %v", reviewers, err)
 	}
 
+	// Unit phases and rework causes survive a round trip.
+	phased := machine.NewRun("phased", "repo-phased")
+	if err := s.CreateRun(phased, []machine.Unit{
+		{ID: "d1", Phase: machine.PhaseDelivered},
+		{ID: "r1", Phase: machine.PhaseRework, ReworkCause: "checks_failed: ci", Attempt: 2},
+		{ID: "p1"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	_, phasedUnits, err := s.GetRun("phased")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if phasedUnits[0].Phase != machine.PhaseDelivered ||
+		phasedUnits[1].Phase != machine.PhaseRework || phasedUnits[1].ReworkCause != "checks_failed: ci" ||
+		phasedUnits[2].Phase != machine.PhasePending {
+		t.Fatalf("phase round trip: %+v", phasedUnits)
+	}
+
 	// A run stored with a nil required set reads back as empty, not null.
 	bare := machine.NewRun("bare", "repo-bare")
 	bare.RequiredReviewers = nil
@@ -327,6 +346,71 @@ func TestResolveStatusRunBranchesAndReadOnlyVersionGate(t *testing.T) {
 	}
 	if _, err := store.OpenReadOnly(path); err == nil || !strings.Contains(err.Error(), "requires a normal command to migrate") {
 		t.Fatalf("read-only version gate: %v", err)
+	}
+}
+
+func TestOpenFailureBranches(t *testing.T) {
+	blocking := filepath.Join(t.TempDir(), "not-a-directory")
+	if err := os.WriteFile(blocking, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Open(filepath.Join(blocking, "db.sqlite")); !errors.Is(err, store.ErrStateUnavailable) {
+		t.Fatalf("unpreparable open: %v", err)
+	}
+	if _, err := store.OpenReadOnly(filepath.Join(t.TempDir(), "missing.sqlite")); err == nil {
+		t.Fatal("read-only open of missing database succeeded")
+	}
+	// A present file that is not a slopshipper database fails at the
+	// schema-version read, not silently.
+	if _, err := store.OpenReadOnly(blocking); err == nil {
+		t.Fatal("read-only open of a non-database succeeded")
+	}
+}
+
+func TestReadPathsFailClosedOnWrongRepo(t *testing.T) {
+	s, err := store.Open(filepath.Join(t.TempDir(), "reads.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if err := s.CreateRun(machine.NewRun("reads", "repo-a"), []machine.Unit{{ID: "u1"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ListEvents("repo-b", "reads"); !errors.Is(err, machine.ErrNotFound) {
+		t.Fatalf("cross-repo events: %v", err)
+	}
+	if _, _, _, err := s.GetRunProjection("repo-b", "reads"); !errors.Is(err, machine.ErrNotFound) {
+		t.Fatalf("cross-repo projection: %v", err)
+	}
+	run, units, events, err := s.GetRunProjection("repo-a", "reads")
+	if err != nil || run.ID != "reads" || len(units) != 1 || len(events) != 1 {
+		t.Fatalf("projection: %+v units=%d events=%d err=%v", run, len(units), len(events), err)
+	}
+}
+
+func TestRekeyRepoBranches(t *testing.T) {
+	s, err := store.Open(filepath.Join(t.TempDir(), "rekey.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	// Empty inputs are a declared no-op.
+	if err := s.RekeyRepo("", "/root"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RekeyRepo("key", ""); err != nil {
+		t.Fatal(err)
+	}
+	// A root that matches no persisted run leaves state untouched.
+	if err := s.CreateRun(machine.NewRun("keep", "identity|/somewhere/else"), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RekeyRepo("new-key|/root", "/root"); err != nil {
+		t.Fatal(err)
+	}
+	kept, _, err := s.GetRun("keep")
+	if err != nil || kept.RepoKey != "identity|/somewhere/else" {
+		t.Fatalf("unmatched rekey mutated state: %+v %v", kept, err)
 	}
 }
 

@@ -121,6 +121,11 @@ func allCommandSchemas() []commandSchema {
 			"run": run, "delivery_mode": enumSchema("Must match intake when present.", "pr-hold", "pr-merge-when-ready", "direct-trunk"),
 			"pr_url": stringSchema("Required for PR delivery modes."), "commit_sha": stringSchema("Required for direct-trunk delivery."),
 		}), flags("evidence", "run", "input")),
+		mutationSchema("observe", "Record an external signal for a delivered unit.", objectSchema(map[string]jsonSchema{
+			"run": run, "unit": stringSchema("Delivered unit; optional when exactly one unit is delivered."),
+			"signal":    enumSchema("What the forge showed.", "merged", "checks_failed", "review_feedback"),
+			"reference": stringSchema("Optional link or check name backing the signal."),
+		}, "signal"), flags("signal", "unit", "reference", "run", "input")),
 		mutationSchema("ask", "Park the run for a human decision.", objectSchema(map[string]jsonSchema{
 			"run": run, "question": stringSchema("Question requiring a human answer."),
 		}, "question"), flags("question", "run", "input")),
@@ -168,6 +173,12 @@ func flags(names ...string) []flagSchema {
 			description = "Hardened run identifier."
 		case "command":
 			description = "Limit schema output to one command."
+		case "signal":
+			description = "Observed signal: merged, checks_failed, or review_feedback."
+		case "unit":
+			description = "Delivered unit identifier; optional when unambiguous."
+		case "reference":
+			description = "Optional link or check name backing the signal."
 		case "add":
 			description = "Register a custom reviewer identity; idempotent."
 		case "remove":

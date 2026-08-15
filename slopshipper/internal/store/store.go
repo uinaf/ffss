@@ -16,7 +16,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 4
+const schemaVersion = 5
 
 // ErrStateUnavailable marks a resolved state location that cannot be
 // prepared (directory or database file creation failed). Callers recover by
@@ -202,6 +202,30 @@ func (s *Store) migrate() error {
 				}
 			}
 			version = 4
+		case 4:
+			for _, ddl := range []string{
+				`ALTER TABLE units ADD COLUMN phase TEXT NOT NULL DEFAULT 'pending'`,
+				`ALTER TABLE units ADD COLUMN rework_cause TEXT NOT NULL DEFAULT ''`,
+			} {
+				if _, err := tx.Exec(ddl); err != nil {
+					return fmt.Errorf("migrate schema 4 to 5: %w", err)
+				}
+			}
+			// Schema 4 marked settled units done at delivery; map that onto
+			// phases and re-mark the active pipeline unit.
+			if _, err := tx.Exec(`UPDATE units SET phase = CASE done WHEN 1 THEN 'done' ELSE 'pending' END`); err != nil {
+				return fmt.Errorf("map unit done flags to phases: %w", err)
+			}
+			if _, err := tx.Exec(`UPDATE units SET phase = 'active'
+				WHERE phase = 'pending' AND EXISTS (
+					SELECT 1 FROM runs WHERE runs.id = units.run_id AND runs.current_unit_id = units.id
+				)`); err != nil {
+				return fmt.Errorf("mark active units from schema 4: %w", err)
+			}
+			if _, err := tx.Exec(`ALTER TABLE units DROP COLUMN done`); err != nil {
+				return fmt.Errorf("drop unit done flag from schema 4: %w", err)
+			}
+			version = 5
 		default:
 			return fmt.Errorf("unsupported schema version %d", version)
 		}
@@ -253,7 +277,8 @@ func createCurrentSchema(tx *sql.Tx) error {
 			acceptance_criteria_json TEXT NOT NULL DEFAULT '[]',
 			complexity TEXT NOT NULL DEFAULT '',
 			attempt INTEGER NOT NULL,
-			done INTEGER NOT NULL,
+			phase TEXT NOT NULL DEFAULT 'pending',
+			rework_cause TEXT NOT NULL DEFAULT '',
 			PRIMARY KEY (run_id, id),
 			FOREIGN KEY (run_id) REFERENCES runs(id)
 		)`,
@@ -484,7 +509,7 @@ func scanRun(row scannable) (machine.Run, error) {
 }
 
 func (s *Store) loadUnits(runID string) ([]machine.Unit, error) {
-	rows, err := s.db.Query(`SELECT id, title, blockers_json, acceptance_criteria_json, complexity, attempt, done FROM units WHERE run_id = ? ORDER BY rowid`, runID)
+	rows, err := s.db.Query(`SELECT id, title, blockers_json, acceptance_criteria_json, complexity, attempt, phase, rework_cause FROM units WHERE run_id = ? ORDER BY rowid`, runID)
 	if err != nil {
 		return nil, err
 	}
@@ -492,9 +517,8 @@ func (s *Store) loadUnits(runID string) ([]machine.Unit, error) {
 	var units []machine.Unit
 	for rows.Next() {
 		var u machine.Unit
-		var blockers, criteria, complexity string
-		var done int
-		if err := rows.Scan(&u.ID, &u.Title, &blockers, &criteria, &complexity, &u.Attempt, &done); err != nil {
+		var blockers, criteria, complexity, phase string
+		if err := rows.Scan(&u.ID, &u.Title, &blockers, &criteria, &complexity, &u.Attempt, &phase, &u.ReworkCause); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal([]byte(blockers), &u.Blockers); err != nil {
@@ -504,7 +528,7 @@ func (s *Store) loadUnits(runID string) ([]machine.Unit, error) {
 			return nil, err
 		}
 		u.Complexity = machine.Complexity(complexity)
-		u.Done = done == 1
+		u.Phase = machine.UnitPhase(phase)
 		units = append(units, u)
 	}
 	return units, rows.Err()
@@ -626,10 +650,6 @@ func replaceUnitsTx(tx *sql.Tx, runID string, units []machine.Unit) error {
 		if b == nil {
 			b = []byte("[]")
 		}
-		done := 0
-		if u.Done {
-			done = 1
-		}
 		criteria, err := json.Marshal(u.AcceptanceCriteria)
 		if err != nil {
 			return err
@@ -637,8 +657,12 @@ func replaceUnitsTx(tx *sql.Tx, runID string, units []machine.Unit) error {
 		if criteria == nil || string(criteria) == "null" {
 			criteria = []byte("[]")
 		}
-		if _, err := tx.Exec(`INSERT INTO units(run_id, id, title, blockers_json, acceptance_criteria_json, complexity, attempt, done) VALUES (?,?,?,?,?,?,?,?)`,
-			runID, u.ID, u.Title, string(b), string(criteria), string(u.Complexity), u.Attempt, done); err != nil {
+		phase := u.Phase
+		if phase == "" {
+			phase = machine.PhasePending
+		}
+		if _, err := tx.Exec(`INSERT INTO units(run_id, id, title, blockers_json, acceptance_criteria_json, complexity, attempt, phase, rework_cause) VALUES (?,?,?,?,?,?,?,?,?)`,
+			runID, u.ID, u.Title, string(b), string(criteria), string(u.Complexity), u.Attempt, string(phase), u.ReworkCause); err != nil {
 			return err
 		}
 	}

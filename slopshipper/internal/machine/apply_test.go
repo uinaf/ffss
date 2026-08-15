@@ -125,8 +125,22 @@ func TestHappyPathMultiUnit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Run.State != machine.StateRunDone {
-		t.Fatalf("want RUN_DONE got %s", res.Run.State)
+	run, units = res.Run, res.Units
+	if run.State != machine.StateAwaitingSignals {
+		t.Fatalf("want AWAITING_SIGNALS got %s", run.State)
+	}
+	for _, unit := range []string{"u1", "u2"} {
+		res, err = machine.Apply(run, units, machine.CmdObserve, machine.ApplyInput{
+			ExpectedRevision: run.Revision,
+			Observe:          &machine.ObserveEvidence{UnitID: unit, Signal: machine.SignalMerged},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		run, units = res.Run, res.Units
+	}
+	if run.State != machine.StateRunDone {
+		t.Fatalf("want RUN_DONE got %s", run.State)
 	}
 }
 
@@ -165,7 +179,7 @@ func TestAskThenDecide(t *testing.T) {
 
 func TestIntakeClearsSpoofedDone(t *testing.T) {
 	run := machine.NewRun("r1", "repo")
-	units := []machine.Unit{{ID: "u1", Done: true, Attempt: 9}}
+	units := []machine.Unit{{ID: "u1", Phase: machine.PhaseDone, ReworkCause: "spoofed", Attempt: 9}}
 	res, err := machine.Apply(run, nil, machine.CmdIntake, machine.ApplyInput{
 		ExpectedRevision: 1,
 		Intake:           &machine.IntakePatch{Units: units},
@@ -173,7 +187,7 @@ func TestIntakeClearsSpoofedDone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Units[0].Done || res.Units[0].Attempt != 0 {
+	if res.Units[0].Phase != machine.PhasePending || res.Units[0].Attempt != 0 || res.Units[0].ReworkCause != "" {
 		t.Fatalf("spoofed fields kept: %+v", res.Units[0])
 	}
 }
@@ -496,7 +510,7 @@ func TestBlockedRetryRequiresReason(t *testing.T) {
 func TestBlockedRetryRejectsInvalidCurrentUnit(t *testing.T) {
 	for _, units := range [][]machine.Unit{
 		{{ID: "other"}},
-		{{ID: "u1", Done: true}},
+		{{ID: "u1", Phase: machine.PhaseDone}},
 	} {
 		run := machine.NewRun("r", "repo")
 		run.State = machine.StateBlocked

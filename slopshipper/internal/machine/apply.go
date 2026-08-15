@@ -38,7 +38,7 @@ func Apply(run Run, units []Unit, cmd Command, in ApplyInput) (ApplyResult, erro
 	case CmdIntake:
 		err = applyIntake(&run, &units, in)
 	case CmdRelease:
-		err = applyRelease(&run, in)
+		err = applyRelease(&run, units, in)
 	case CmdBuild:
 		err = applyBuild(&run, &units)
 	case CmdVerify:
@@ -52,11 +52,13 @@ func Apply(run Run, units []Unit, cmd Command, in ApplyInput) (ApplyResult, erro
 	case CmdAsk:
 		err = applyAsk(&run, in)
 	case CmdDecide:
-		err = applyDecide(&run, in)
+		err = applyDecide(&run, units, in)
 	case CmdRetry:
 		err = applyRetry(&run, units, in)
 	case CmdBlock:
 		err = applyBlock(&run, in)
+	case CmdObserve:
+		err = applyObserve(&run, &units, in)
 	default:
 		return ApplyResult{}, fmt.Errorf("%w: unknown command %q", ErrBadArgs, cmd)
 	}
@@ -92,6 +94,12 @@ func applyIntake(run *Run, units *[]Unit, in ApplyInput) error {
 			return err
 		}
 		run.RequiredReviewers = required
+	} else if len(run.RequiredReviewers) > 0 {
+		// A retained set must still be registered, so dry runs agree with
+		// the transactional guard at commit time.
+		if _, err := validRequiredReviewers(run.RequiredReviewers, in.RegisteredReviewers); err != nil {
+			return err
+		}
 	}
 	if patch.RiskTier != nil {
 		if err := validRiskTier(*patch.RiskTier); err != nil {
@@ -118,7 +126,8 @@ func applyIntake(run *Run, units *[]Unit, in ApplyInput) error {
 		next := cloneUnits(patch.Units)
 		for i := range next {
 			next[i].Attempt = 0
-			next[i].Done = false
+			next[i].Phase = PhasePending
+			next[i].ReworkCause = ""
 		}
 		*units = next
 		run.CurrentUnitID = ""
@@ -132,7 +141,7 @@ func applyIntake(run *Run, units *[]Unit, in ApplyInput) error {
 	return nil
 }
 
-func applyRelease(run *Run, in ApplyInput) error {
+func applyRelease(run *Run, units []Unit, in ApplyInput) error {
 	if in.IntakeRevision == 0 {
 		return fmt.Errorf("%w: release requires --revision", ErrBadArgs)
 	}
@@ -149,8 +158,11 @@ func applyRelease(run *Run, in ApplyInput) error {
 	}
 	rev := run.IntakeRevision
 	run.ReleasedRevision = &rev
-	// RELEASED is a latch; resting display stays INTAKE until build claims a unit.
-	// Status reports released=true; build is the next action.
+	// Project the latched graph: signals recorded while unreleased may
+	// already have settled every unit.
+	if len(units) > 0 {
+		projectResting(run, units)
+	}
 	return nil
 }
 
@@ -174,6 +186,12 @@ func applyBuild(run *Run, units *[]Unit) error {
 		return nil
 	}
 
+	// Rework-phase units re-enter the pipeline before fresh frontier claims;
+	// their earlier delivery no longer counts toward the series bound.
+	if next := firstReworkUnit(*units); next != nil {
+		claimUnit(run, next)
+		return nil
+	}
 	next, err := frontierUnit(*units)
 	if err != nil {
 		return err
@@ -181,17 +199,23 @@ func applyBuild(run *Run, units *[]Unit) error {
 	if next == nil {
 		return fmt.Errorf("%w: no frontier unit to build", ErrUnmetGuard)
 	}
-	if run.CompletedUnits >= run.SeriesBound {
+	if settledCount(*units) >= run.SeriesBound {
 		return fmt.Errorf("%w: series_bound %d reached", ErrUnmetGuard, run.SeriesBound)
 	}
-	run.CurrentUnitID = next.ID
-	next.Attempt++
+	claimUnit(run, next)
+	return nil
+}
+
+func claimUnit(run *Run, unit *Unit) {
+	run.CurrentUnitID = unit.ID
+	unit.Phase = PhaseActive
+	unit.ReworkCause = ""
+	unit.Attempt++
 	run.CompletedReviewers = nil
 	run.State = StateBuild
 	run.BlockerReason = ""
 	run.DecisionQuestion = ""
 	run.ReturnState = ""
-	return nil
 }
 
 func applyVerify(run *Run, in ApplyInput) error {
@@ -250,25 +274,145 @@ func applyDeliver(run *Run, units *[]Unit, in ApplyInput) error {
 	if u == nil {
 		return fmt.Errorf("%w: current unit missing", ErrCorruptState)
 	}
-	u.Done = true
-	run.CompletedUnits++
+	// Delivery opens a change request; the unit settles only when an
+	// observed external signal closes it (observe --signal merged).
+	u.Phase = PhaseDelivered
+	u.ReworkCause = ""
 	run.CurrentUnitID = ""
 	run.CompletedReviewers = nil
+	projectResting(run, *units)
+	return nil
+}
 
-	if run.CompletedUnits >= run.SeriesBound {
-		run.State = StateRunDone
-		return nil
+// projectResting derives the run's resting state and delivery count from
+// authoritative unit phases once no unit is active in the pipeline.
+func projectResting(run *Run, units []Unit) {
+	run.CompletedUnits = settledCount(units)
+	if firstReworkUnit(units) != nil {
+		// Park on released INTAKE: build re-claims the rework unit next.
+		run.State = StateIntake
+		return
 	}
-	next, err := frontierUnit(*units)
+	frontier, _ := frontierUnit(units)
+	if frontier != nil && run.CompletedUnits < run.SeriesBound {
+		run.State = StateIntake
+		return
+	}
+	if anyDelivered(units) {
+		run.State = StateAwaitingSignals
+		return
+	}
+	run.State = StateRunDone
+}
+
+func applyObserve(run *Run, units *[]Unit, in ApplyInput) error {
+	if in.Observe == nil {
+		return fmt.Errorf("%w: observe evidence required", ErrBadArgs)
+	}
+	switch in.Observe.Signal {
+	case SignalMerged, SignalChecksFailed, SignalReviewFeedback:
+	default:
+		return fmt.Errorf("%w: observe.signal must be merged|checks_failed|review_feedback", ErrBadArgs)
+	}
+	unit, err := resolveDeliveredUnit(*units, in.Observe.UnitID)
 	if err != nil {
 		return err
 	}
-	if next == nil {
-		run.State = StateRunDone
-		return nil
+	in.Observe.UnitID = unit.ID
+	switch in.Observe.Signal {
+	case SignalMerged:
+		unit.Phase = PhaseDone
+		unit.ReworkCause = ""
+	default:
+		unit.Phase = PhaseRework
+		cause := string(in.Observe.Signal)
+		if strings.TrimSpace(in.Observe.Reference) != "" {
+			cause += ": " + strings.TrimSpace(in.Observe.Reference)
+		}
+		unit.ReworkCause = cause
 	}
-	// Remaining frontier: park on released INTAKE so next_action is build.
-	run.State = StateIntake
+	// Only released resting runs re-project; unreleased, mid-pipeline, and
+	// human-parked states (BLOCKED, NEEDS_DECISION) record the phase change
+	// without moving the run, so a signal can never settle an amended
+	// contract or disturb an active question.
+	if (run.State == StateIntake || run.State == StateAwaitingSignals) && run.Released() {
+		projectResting(run, *units)
+	} else {
+		run.CompletedUnits = settledCount(*units)
+	}
+	return nil
+}
+
+func resolveDeliveredUnit(units []Unit, id string) (*Unit, error) {
+	if id != "" {
+		unit := findUnit(units, id)
+		if unit == nil {
+			return nil, fmt.Errorf("%w: unit %q not found", ErrBadArgs, id)
+		}
+		if unit.Phase != PhaseDelivered {
+			return nil, fmt.Errorf("%w: unit %q is %s, not delivered", ErrUnmetGuard, id, unit.Phase)
+		}
+		return unit, nil
+	}
+	var match *Unit
+	for i := range units {
+		if units[i].Phase != PhaseDelivered {
+			continue
+		}
+		if match != nil {
+			return nil, fmt.Errorf("%w: multiple delivered units; pass observe.unit", ErrBadArgs)
+		}
+		match = &units[i]
+	}
+	if match == nil {
+		return nil, fmt.Errorf("%w: no delivered unit awaits signals", ErrUnmetGuard)
+	}
+	return match, nil
+}
+
+func settledCount(units []Unit) int {
+	count := 0
+	for i := range units {
+		if units[i].Settled() {
+			count++
+		}
+	}
+	return count
+}
+
+func anyDelivered(units []Unit) bool {
+	for i := range units {
+		if units[i].Phase == PhaseDelivered {
+			return true
+		}
+	}
+	return false
+}
+
+// firstReworkUnit returns the first rework-phase unit whose blockers are
+// all settled, so a dependent never rebuilds on a churning prerequisite.
+func firstReworkUnit(units []Unit) *Unit {
+	settled := map[string]bool{}
+	for i := range units {
+		if units[i].Settled() {
+			settled[units[i].ID] = true
+		}
+	}
+	for i := range units {
+		if units[i].Phase != PhaseRework {
+			continue
+		}
+		ready := true
+		for _, b := range units[i].Blockers {
+			if !settled[b] {
+				ready = false
+				break
+			}
+		}
+		if ready {
+			return &units[i]
+		}
+	}
 	return nil
 }
 
@@ -282,7 +426,7 @@ func applyAsk(run *Run, in ApplyInput) error {
 	return nil
 }
 
-func applyDecide(run *Run, in ApplyInput) error {
+func applyDecide(run *Run, units []Unit, in ApplyInput) error {
 	if in.Decision == nil || in.Decision.Answer == "" {
 		return fmt.Errorf("%w: decision.answer required", ErrBadArgs)
 	}
@@ -290,9 +434,17 @@ func applyDecide(run *Run, in ApplyInput) error {
 	if ret == "" {
 		ret = StateIntake
 	}
-	run.State = ret
 	run.DecisionQuestion = ""
 	run.ReturnState = ""
+	// Observations recorded while parked can make a remembered resting
+	// state stale; re-project instead of restoring it verbatim. Unreleased
+	// runs never observe, so they resume literally.
+	if (ret == StateIntake || ret == StateAwaitingSignals) && run.Released() && len(units) > 0 {
+		run.State = ret
+		projectResting(run, units)
+		return nil
+	}
+	run.State = ret
 	return nil
 }
 
@@ -304,7 +456,7 @@ func applyRetry(run *Run, units []Unit, in ApplyInput) error {
 		return fmt.Errorf("%w: blocked run has no current unit", ErrCorruptState)
 	}
 	unit := findUnit(units, run.CurrentUnitID)
-	if unit == nil || unit.Done {
+	if unit == nil || unit.Settled() {
 		return fmt.Errorf("%w: blocked run current unit %q is missing or complete", ErrCorruptState, run.CurrentUnitID)
 	}
 	run.State = StateBuild
@@ -323,31 +475,45 @@ func applyBlock(run *Run, in ApplyInput) error {
 }
 
 func AllowedCommands(run Run, units []Unit) []Command {
+	withObserve := func(commands []Command) []Command {
+		if anyDelivered(units) {
+			return append(commands, CmdObserve)
+		}
+		return commands
+	}
 	switch run.State {
 	case StateIntake:
 		out := []Command{CmdIntake, CmdAsk}
 		if run.Released() {
-			if u, _ := frontierUnit(units); u != nil && run.CompletedUnits < run.SeriesBound {
+			buildable := firstReworkUnit(units) != nil
+			if !buildable {
+				if u, _ := frontierUnit(units); u != nil && settledCount(units) < run.SeriesBound {
+					buildable = true
+				}
+			}
+			if buildable {
 				out = append(out, CmdBuild)
 			}
 		} else if len(units) > 0 {
 			out = append(out, CmdRelease)
 		}
-		return out
+		return withObserve(out)
 	case StateBuild:
-		return []Command{CmdVerify, CmdAsk, CmdBlock}
+		return withObserve([]Command{CmdVerify, CmdAsk, CmdBlock})
 	case StateVerify:
-		return []Command{CmdVerify, CmdAsk, CmdBlock}
+		return withObserve([]Command{CmdVerify, CmdAsk, CmdBlock})
 	case StateReview:
-		return []Command{CmdReview, CmdRework, CmdAsk, CmdBlock}
+		return withObserve([]Command{CmdReview, CmdRework, CmdAsk, CmdBlock})
 	case StateDeliver:
-		return []Command{CmdDeliver, CmdAsk}
+		return withObserve([]Command{CmdDeliver, CmdAsk})
 	case StateRework:
-		return []Command{CmdBuild, CmdAsk}
+		return withObserve([]Command{CmdBuild, CmdAsk})
+	case StateAwaitingSignals:
+		return withObserve([]Command{CmdIntake, CmdAsk})
 	case StateNeedsDecision:
-		return []Command{CmdDecide}
+		return withObserve([]Command{CmdDecide})
 	case StateBlocked:
-		return []Command{CmdRetry}
+		return withObserve([]Command{CmdRetry})
 	case StateRunDone:
 		return nil
 	default:
@@ -509,22 +675,24 @@ func validateGraph(units []Unit) error {
 	return nil
 }
 
+// Frontier lists pending units whose blockers all settled (delivered or
+// done), so dependents can build while earlier units await signals.
 func Frontier(units []Unit) []string {
-	done := map[string]bool{}
+	settled := map[string]bool{}
 	for i := range units {
-		if units[i].Done {
-			done[units[i].ID] = true
+		if units[i].Settled() {
+			settled[units[i].ID] = true
 		}
 	}
 	frontier := make([]string, 0)
 	for i := range units {
 		u := &units[i]
-		if u.Done {
+		if u.Phase != PhasePending && u.Phase != "" {
 			continue
 		}
 		ready := true
 		for _, b := range u.Blockers {
-			if !done[b] {
+			if !settled[b] {
 				ready = false
 				break
 			}
@@ -607,6 +775,8 @@ func canonicalEvidence(run Run, units []Unit, cmd Command, in ApplyInput) any {
 		return RetryEvidence{Reason: in.RetryReason}
 	case CmdBlock:
 		return BlockEvidence{Reason: in.BlockReason}
+	case CmdObserve:
+		return *in.Observe
 	default:
 		return nil
 	}

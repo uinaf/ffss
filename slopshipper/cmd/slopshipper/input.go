@@ -48,6 +48,13 @@ type deliverInput struct {
 	CommitSHA    string `json:"commit_sha,omitempty"`
 }
 
+type observeInput struct {
+	Run       string `json:"run,omitempty"`
+	Unit      string `json:"unit,omitempty"`
+	Signal    string `json:"signal"`
+	Reference string `json:"reference,omitempty"`
+}
+
 type questionInput struct {
 	Run      string `json:"run,omitempty"`
 	Question string `json:"question"`

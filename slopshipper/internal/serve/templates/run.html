@@ -56,7 +56,7 @@
             <tr>
               <th class="col-id">id</th>
               <th class="col-title">title</th>
-              <th class="col-done">done</th>
+              <th class="col-done">phase</th>
               <th data-num class="col-attempt">attempt</th>
               <th class="col-blockers">blockers</th>
             </tr>
@@ -66,7 +66,7 @@
             <tr{{if eq .ID $.CurrentUnitID}} data-selected{{end}}>
               <td class="col-id" title="{{.ID}}">{{.ID}}</td>
               <td class="col-title cell-wrap" title="{{.Title}}">{{.Title}}</td>
-              <td class="col-done">{{if .Done}}yes{{else}}no{{end}}</td>
+              <td class="col-done">{{.Phase}}{{if .ReworkCause}} ({{.ReworkCause}}){{end}}</td>
               <td data-num class="col-attempt">{{.Attempt}}</td>
               <td class="col-blockers" title="{{if .Blockers}}{{join .Blockers ", "}}{{end}}">{{if .Blockers}}{{join .Blockers ", "}}{{else}}—{{end}}</td>
             </tr>

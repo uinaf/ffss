@@ -95,8 +95,13 @@ JSON
 slopshipper deliver --evidence - --run demo <<'JSON'
 {"delivery_mode":"pr-hold","pr_url":"https://github.com/example/repo/pull/1"}
 JSON
+slopshipper observe --signal merged --run demo
 slopshipper status --json --run demo
 ```
+
+Delivery opens the change request; the unit settles only when an observed
+signal closes it. `checks_failed` and `review_feedback` return the unit to
+the build loop while later units keep building.
 
 `status` is the compass. Its default output is one compact line with an
 executable `next_action`; `--json` exposes the full contract for agents. Check
@@ -135,6 +140,7 @@ Every command also has focused help, such as `slopshipper review --help`.
 | Record an external blocker | `slopshipper block --reason "…"` |
 | Resume after confirmed recovery | `slopshipper retry --reason "…"` |
 | Re-enter the build loop after findings | `slopshipper rework` |
+| Record a forge signal for a delivered unit | `slopshipper observe --signal merged\|checks_failed\|review_feedback` |
 | Inspect all runs in a browser | `slopshipper serve` |
 
 Commands that act on a run accept `--run ID`. When the repository has exactly

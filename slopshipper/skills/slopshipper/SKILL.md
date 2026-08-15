@@ -26,7 +26,7 @@ Do not invent a second runtime.
 ## Bootstrap the run
 
 ```bash
-slopshipper status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivery_mode,blocker,decision_question
+slopshipper status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question
 ```
 
 If status reports `UNINITIALIZED`, obey its `slopshipper init` next action.
@@ -136,6 +136,17 @@ With `--json`, failures return `error.kind`, `error.message`, and
 exit 3. Fix the input or re-read status instead of bypassing the gate. Empty
 next action means the run is done or needs human inspection.
 
+## Post-delivery babysit
+
+Delivery opens a change request; the unit is `delivered`, not settled, and
+later units already build while it waits. Record only what the forge really
+shows, via `slopshipper observe`: `merged` settles the unit,
+`checks_failed` and `review_feedback` pull it back through the build loop
+with the cause recorded. Pass `--unit` when several units are delivered.
+`AWAITING_SIGNALS` means every remaining unit waits on external signals;
+keep watching the change requests and record signals as they land. Never
+invent a signal.
+
 ## Post-review flow
 
 - `clean` records that reviewer. Delivery requires a distinct clean result
@@ -157,5 +168,6 @@ surface. Never simulate a reviewer.
 
 ## Done
 
-Stop when `RUN_DONE`, blocked pending human recovery, or waiting at release or
-decision. SQLite holds the canonical event log.
+Stop when `RUN_DONE` (every unit settled), blocked pending human recovery,
+or waiting at release or decision. `AWAITING_SIGNALS` is not done — report
+which change requests still wait. SQLite holds the canonical event log.

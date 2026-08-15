@@ -2,6 +2,7 @@ package status
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
@@ -117,6 +118,75 @@ func TestFromContracts(t *testing.T) {
 			assertStrings(t, "frontier", doc.Frontier, tt.frontier)
 			assertStrings(t, "completed reviewers", doc.CompletedReviewers, tt.completed)
 		})
+	}
+}
+
+func TestEvidenceFollowsSelectedAction(t *testing.T) {
+	released := int64(2)
+	run := machine.Run{
+		ID: "r", State: machine.StateIntake, IntakeRevision: 2, ReleasedRevision: &released,
+		SeriesBound: 2, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview},
+	}
+	units := []machine.Unit{
+		{ID: "d1", Phase: machine.PhaseDelivered},
+		{ID: "p1", Phase: machine.PhasePending},
+	}
+	doc := From(run, units)
+	if !strings.Contains(doc.NextAction, "slopshipper build") {
+		t.Fatalf("next action: %s", doc.NextAction)
+	}
+	if len(doc.RequiredEvidence) != 0 {
+		t.Fatalf("evidence must follow the selected action, got %v", doc.RequiredEvidence)
+	}
+	if len(doc.DeliveredUnits) != 1 || doc.DeliveredUnits[0] != "d1" {
+		t.Fatalf("delivered units: %v", doc.DeliveredUnits)
+	}
+
+	// One delivered unit: observe arrives executable with the unit inlined.
+	run.State = machine.StateAwaitingSignals
+	single := []machine.Unit{
+		{ID: "d1", Phase: machine.PhaseDelivered},
+		{ID: "x1", Phase: machine.PhaseDone},
+	}
+	doc = From(run, single)
+	if !strings.Contains(doc.NextAction, "observe --signal '<signal>' --unit='d1'") {
+		t.Fatalf("single-delivered observe action: %s", doc.NextAction)
+	}
+	if strings.Join(doc.RequiredEvidence, ",") != "observe.signal" {
+		t.Fatalf("single-delivered evidence: %v", doc.RequiredEvidence)
+	}
+
+	// Several delivered units: the unit placeholder is part of the contract.
+	multi := []machine.Unit{
+		{ID: "d1", Phase: machine.PhaseDelivered},
+		{ID: "d2", Phase: machine.PhaseDelivered},
+	}
+	doc = From(run, multi)
+	if !strings.Contains(doc.NextAction, "observe --signal '<signal>' --unit '<unit>'") {
+		t.Fatalf("multi-delivered observe action: %s", doc.NextAction)
+	}
+	if strings.Join(doc.RequiredEvidence, ",") != "observe.signal,observe.unit" {
+		t.Fatalf("multi-delivered evidence: %v", doc.RequiredEvidence)
+	}
+}
+
+func TestParkedRecoveryOutranksObserve(t *testing.T) {
+	released := int64(1)
+	run := machine.Run{
+		ID: "r", State: machine.StateBlocked, IntakeRevision: 1,
+		ReleasedRevision: &released, SeriesBound: 2, CurrentUnitID: "u2",
+		BlockerReason: "verify failed",
+	}
+	units := []machine.Unit{
+		{ID: "u1", Phase: machine.PhaseDelivered},
+		{ID: "u2", Phase: machine.PhaseActive},
+	}
+	doc := From(run, units)
+	if !strings.Contains(doc.NextAction, "slopshipper retry") {
+		t.Fatalf("retry must outrank observe: %s", doc.NextAction)
+	}
+	if !slices.Contains(doc.AllowedCommands, "observe") {
+		t.Fatalf("observe must stay allowed: %v", doc.AllowedCommands)
 	}
 }
 

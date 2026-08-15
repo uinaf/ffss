@@ -47,6 +47,9 @@ func TestMigratesVersionOneTransactionally(t *testing.T) {
 		`ALTER TABLE runs DROP COLUMN budget_json`,
 		`ALTER TABLE units DROP COLUMN acceptance_criteria_json`,
 		`ALTER TABLE units DROP COLUMN complexity`,
+		`ALTER TABLE units DROP COLUMN phase`,
+		`ALTER TABLE units DROP COLUMN rework_cause`,
+		`ALTER TABLE units ADD COLUMN done INTEGER NOT NULL DEFAULT 0`,
 	} {
 		if _, err := db.Exec(ddl); err != nil {
 			t.Fatal(err)
@@ -85,6 +88,9 @@ func TestMigratesVersionOneTransactionally(t *testing.T) {
 	run, units, err := s.ResolveActiveRun("repo", "")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(units) != 1 || units[0].Phase != machine.PhaseActive {
+		t.Fatalf("legacy current unit phase: %+v", units)
 	}
 	if run.CompletedReviewers == nil || len(run.CompletedReviewers) != 0 {
 		t.Fatalf("completed reviewers: %#v", run.CompletedReviewers)

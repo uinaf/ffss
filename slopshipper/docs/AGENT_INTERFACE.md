@@ -31,7 +31,7 @@ Use a field mask to keep the control loop compact:
 
 ```bash
 slopshipper status --json \
-  --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivery_mode,blocker,decision_question
+  --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question
 ```
 
 Run only a command named in `allowed_commands`, satisfy
@@ -102,6 +102,15 @@ channels to stderr so stdout remains machine-readable; plain mode preserves
 the child's stdout and stderr.
 A non-dry `verify --cmd` intentionally invokes the local shell; never
 construct it from untrusted text.
+
+## Observe external signals
+
+Delivery does not settle a unit. `slopshipper observe` records what the
+forge showed for a delivered unit: `merged` settles it, `checks_failed` and
+`review_feedback` return it to the build loop with the cause recorded, and
+later units keep building while earlier ones wait (`AWAITING_SIGNALS`).
+`observe.unit` is required only when several units are delivered; the
+`delivered_units` status field lists the candidates.
 
 ## Treat SQLite as canonical state
 
