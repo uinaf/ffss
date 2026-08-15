@@ -54,9 +54,25 @@ type Document struct {
 	DryRun              bool         `json:"dry_run,omitempty"`
 	ValidatedCommand    string       `json:"validated_command,omitempty"`
 	OutcomeUndetermined bool         `json:"outcome_undetermined,omitempty"`
+	VerifyCommand       string       `json:"verify_command,omitempty"`
+	RepoRegistered      bool         `json:"repo_registered,omitempty"`
+}
+
+// Context carries repo-profile defaults the run inherits at read time.
+type Context struct {
+	// RepoRegistered marks that a repo profile exists for this checkout.
+	RepoRegistered bool
+	// VerifyCommand is the profile's canonical verify command; when set,
+	// verify's next_action names it instead of a placeholder.
+	VerifyCommand string
 }
 
 func From(run machine.Run, units []machine.Unit) Document {
+	return FromContext(run, units, Context{})
+}
+
+// FromContext projects status with repo-profile defaults applied.
+func FromContext(run machine.Run, units []machine.Unit, ctx Context) Document {
 	allowed := machine.AllowedCommands(run, units)
 	cmds := make([]string, 0, len(allowed))
 	for _, c := range allowed {
@@ -95,9 +111,11 @@ func From(run machine.Run, units []machine.Unit) Document {
 		CompletedReviewers: completedReviewers,
 		AllowedCommands:    cmds,
 		RequiredEvidence:   requiredEvidence,
-		NextAction:         nextAction(run, units, selected),
+		NextAction:         nextAction(run, units, selected, ctx),
 		Blocker:            run.BlockerReason,
 		DecisionQuestion:   run.DecisionQuestion,
+		VerifyCommand:      ctx.VerifyCommand,
+		RepoRegistered:     ctx.RepoRegistered,
 	}
 }
 
@@ -219,7 +237,7 @@ func selectedCommand(allowed []machine.Command) machine.Command {
 	return allowed[0]
 }
 
-func nextAction(run machine.Run, units []machine.Unit, selected machine.Command) string {
+func nextAction(run machine.Run, units []machine.Unit, selected machine.Command, ctx Context) string {
 	if selected == "" {
 		return ""
 	}
@@ -230,7 +248,13 @@ func nextAction(run machine.Run, units []machine.Unit, selected machine.Command)
 	case machine.CmdRelease:
 		command = fmt.Sprintf("slopshipper release --revision %d", run.IntakeRevision)
 	case machine.CmdVerify:
-		command = "slopshipper verify --cmd '<verification command>'"
+		// A registered repo's canonical verify command keeps the action
+		// executable verbatim; without one the placeholder stays documented.
+		if ctx.VerifyCommand != "" {
+			command = "slopshipper verify --cmd " + shellQuote(ctx.VerifyCommand)
+		} else {
+			command = "slopshipper verify --cmd '<verification command>'"
+		}
 	case machine.CmdReview:
 		command = "slopshipper review --evidence -"
 	case machine.CmdDeliver:

@@ -101,6 +101,9 @@ func applyIntake(run *Run, units *[]Unit, in ApplyInput) error {
 			return err
 		}
 	}
+	if err := ProfileAllowsReviewers(in.Profile, run.RequiredReviewers); err != nil {
+		return err
+	}
 	if patch.RiskTier != nil {
 		if err := validRiskTier(*patch.RiskTier); err != nil {
 			return err
@@ -155,6 +158,9 @@ func applyRelease(run *Run, units []Unit, in ApplyInput) error {
 		if _, ok := allowed[reviewer]; !ok {
 			return fmt.Errorf("%w: required reviewer %q is not registered", ErrUnmetGuard, reviewer)
 		}
+	}
+	if err := ProfileAllowsReviewers(in.Profile, run.RequiredReviewers); err != nil {
+		return err
 	}
 	rev := run.IntakeRevision
 	run.ReleasedRevision = &rev

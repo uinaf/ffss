@@ -141,10 +141,31 @@ Every command also has focused help, such as `slopshipper review --help`.
 | Resume after confirmed recovery | `slopshipper retry --reason "…"` |
 | Re-enter the build loop after findings | `slopshipper rework` |
 | Record a forge signal for a delivered unit | `slopshipper observe --signal merged\|checks_failed\|review_feedback` |
+| Inspect or declare the repo profile | `slopshipper repo [show\|register\|update\|unregister]` |
 | Inspect all runs in a browser | `slopshipper serve` |
 
 Commands that act on a run accept `--run ID`. When the repository has exactly
 one open run, the CLI selects it automatically.
+
+## Repo profiles
+
+A repository can declare its profile: role bindings (review, qa, venue,
+memory) plus policy (forge kind, trust tier, canonical verify command,
+default delivery mode, recorded readiness verdict). Declaration over
+detection — the binary never probes for tools.
+
+```bash
+slopshipper reviewers --add slopzapper
+slopshipper repo register \
+  --forge github --trust low \
+  --verify-cmd 'mise run verify' --delivery pr-hold \
+  --bind 'review=autoreview,review=slopzapper'
+```
+
+A registered repo drives defaults and gates: new runs inherit the delivery
+mode, `next_action` names the canonical verify command verbatim, and release
+fails closed when a required reviewer holds no review binding. Unregistered
+repositories keep profile-less behavior.
 
 ## Browser view
 

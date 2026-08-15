@@ -142,15 +142,18 @@ type ApplyInput struct {
 	// RegisteredReviewers is the custom registry snapshot the caller loaded;
 	// built-in identities are always allowed in addition to this set.
 	RegisteredReviewers []ReviewerIdentity
-	Intake              *IntakePatch
-	Verify              *VerifyEvidence
-	Review              *ReviewEvidence
-	Deliver             *DeliverEvidence
-	Observe             *ObserveEvidence
-	Decision            *Decision
-	RetryReason         string
-	BlockReason         string
-	Question            string // when forcing NEEDS_DECISION from a command path
+	// Profile is the registered repo profile snapshot, nil when the repo is
+	// unregistered. A registered profile must bind every required reviewer.
+	Profile     *RepoProfile
+	Intake      *IntakePatch
+	Verify      *VerifyEvidence
+	Review      *ReviewEvidence
+	Deliver     *DeliverEvidence
+	Observe     *ObserveEvidence
+	Decision    *Decision
+	RetryReason string
+	BlockReason string
+	Question    string // when forcing NEEDS_DECISION from a command path
 }
 
 // ApplyResult is the post-transition snapshot hint for status/next_action.

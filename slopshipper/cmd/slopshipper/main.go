@@ -158,6 +158,8 @@ func runWithOptions(args []string, opts runOptions) int {
 		return cmdStatus(st, rest, opts)
 	case "reviewers":
 		return cmdReviewers(st, rest, opts)
+	case "repo":
+		return cmdRepo(st, rest, opts)
 	case "serve":
 		return cmdServe(st, rest, opts)
 	default:
@@ -193,6 +195,7 @@ Usage:
   slopshipper block --reason TEXT [--run ID]
   slopshipper status [--json] [--run ID]
   slopshipper reviewers [--add NAME | --remove NAME] [--json]
+  slopshipper repo [show|register|update|unregister] [flags] [--json]
   slopshipper schema [--command NAME] [--json]
   slopshipper storage [--json]
   slopshipper serve [--addr 127.0.0.1:7780]
@@ -279,6 +282,21 @@ custom identity. Registration is declarative and idempotent; built-ins
 (autoreview, bugbot) cannot be changed. Humans hold release and recovery
 latches; a human sign-off reviewer must be registered explicitly.
 `,
+		"repo": `Usage: slopshipper repo [show|register|update|unregister] [flags] [--json]
+
+Show or declare this repository's profile: role bindings plus policy.
+Flags for register and update:
+  --forge github            forge kind hosting change requests
+  --trust low|medium|high   earned autonomy tier
+  --verify-cmd CMD          canonical verification command
+  --delivery MODE           default delivery mode for new runs
+  --readiness ready|not_ready   recorded agent-readiness verdict
+  --bind 'role=name,...'    replace role bindings (roles: review, qa,
+                            venue, memory); review bindings must be
+                            registered reviewer identities
+A registered repo fails closed: releases require every required reviewer
+to hold a review binding. unregister restores profile-less behavior.
+`,
 		"storage": `Usage: slopshipper storage [--json]
 
 Show the resolved database path, source, scope, existence, and Git safety.
@@ -317,7 +335,9 @@ func openStoreForCommand(command string, opts runOptions) (*store.Store, error) 
 	}
 	if _, err := os.Stat(path); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			if command != "init" {
+			// init and repo do not require a run; their dry runs project
+			// against empty state, matching what the real command creates.
+			if command != "init" && command != "repo" {
 				return nil, fmt.Errorf("%w: canonical state does not exist at %q; run slopshipper init first", machine.ErrNotFound, path)
 			}
 			return nil, nil
@@ -370,6 +390,17 @@ func cmdInit(st *store.Store, args []string, opts runOptions) int {
 		return writeFailure(opts, 2, err)
 	}
 	run := machine.NewRun(runID, key)
+	if st != nil {
+		// A registered repo's delivery policy is the default contract; intake
+		// may still override it explicitly.
+		profile, found, err := st.GetRepoProfile(key)
+		if err != nil {
+			return mapErr(err, opts)
+		}
+		if found && profile.DeliveryMode != "" {
+			run.DeliveryMode = profile.DeliveryMode
+		}
+	}
 	if opts.dryRun {
 		if st == nil {
 			doc := status.From(run, nil)
@@ -382,7 +413,11 @@ func cmdInit(st *store.Store, args []string, opts runOptions) int {
 		} else if !errors.Is(err, machine.ErrNotFound) {
 			return mapErr(err, opts)
 		}
-		doc := status.From(run, nil)
+		ctx, err := statusContext(st, key)
+		if err != nil {
+			return mapErr(err, opts)
+		}
+		doc := status.FromContext(run, nil, ctx)
 		doc.DryRun = true
 		doc.ValidatedCommand = string(machine.CmdInit)
 		return writeStatus(doc, opts)
@@ -620,7 +655,11 @@ func cmdVerify(st *store.Store, args []string, opts runOptions) int {
 	}
 	if c := fs["cmd"]; !raw && c != "" {
 		if opts.dryRun {
-			doc := status.From(prepared.run, prepared.units)
+			ctx, err := statusContext(st, prepared.repoKey)
+			if err != nil {
+				return mapErr(err, opts)
+			}
+			doc := status.FromContext(prepared.run, prepared.units, ctx)
 			doc.DryRun = true
 			doc.ValidatedCommand = string(machine.CmdVerify)
 			doc.OutcomeUndetermined = true
@@ -942,13 +981,24 @@ func applyPrepared(st *store.Store, prepared preparedApply, cmd machine.Command,
 			return machine.ApplyResult{}, mapErr(err, opts)
 		}
 		in.RegisteredReviewers = registered
+		profile, found, err := st.GetRepoProfile(prepared.repoKey)
+		if err != nil {
+			return machine.ApplyResult{}, mapErr(err, opts)
+		}
+		if found {
+			in.Profile = &profile
+		}
 	}
 	res, err := machine.Apply(run, prepared.units, cmd, in)
 	if err != nil {
 		return machine.ApplyResult{}, mapErr(err, opts)
 	}
 	if opts.dryRun {
-		doc := status.From(res.Run, res.Units)
+		ctx, err := statusContext(st, prepared.repoKey)
+		if err != nil {
+			return machine.ApplyResult{}, mapErr(err, opts)
+		}
+		doc := status.FromContext(res.Run, res.Units, ctx)
 		doc.DryRun = true
 		doc.ValidatedCommand = string(cmd)
 		return res, writeStatus(doc, opts)
@@ -976,7 +1026,23 @@ func printStatus(st *store.Store, repoKey, runID string, opts runOptions) int {
 		}
 		return mapErr(err, opts)
 	}
-	return writeStatus(status.From(run, units), opts)
+	ctx, err := statusContext(st, repoKey)
+	if err != nil {
+		return mapErr(err, opts)
+	}
+	return writeStatus(status.FromContext(run, units, ctx), opts)
+}
+
+// statusContext loads the repo profile's read-time defaults, if registered.
+func statusContext(st *store.Store, repoKey string) (status.Context, error) {
+	profile, found, err := st.GetRepoProfile(repoKey)
+	if err != nil {
+		return status.Context{}, err
+	}
+	if !found {
+		return status.Context{}, nil
+	}
+	return status.Context{RepoRegistered: true, VerifyCommand: profile.VerifyCommand}, nil
 }
 
 func writeStatus(doc status.Document, opts runOptions) int {
@@ -1026,6 +1092,7 @@ var commandFlags = map[string]map[string]bool{
 	"block":     {"reason": true, "run": true, "input": true},
 	"status":    {"json": true, "run": true, "fields": true},
 	"reviewers": {"add": true, "remove": true, "json": true},
+	"repo":      {"forge": true, "trust": true, "verify-cmd": true, "delivery": true, "readiness": true, "bind": true, "json": true},
 	"schema":    {"json": true, "command": true},
 	"storage":   {"json": true},
 	"serve":     {"addr": true},
@@ -1183,6 +1250,11 @@ func parseFlagsWith(args []string, allowed map[string]bool) (map[string]string, 
 		}
 		if !allowed[key] {
 			return nil, fmt.Errorf("unknown flag --%s", key)
+		}
+		// Last-value-wins would let an earlier invalid declaration escape
+		// validation; every flag is declared exactly once, fail-closed.
+		if _, dup := out[key]; dup {
+			return nil, fmt.Errorf("flag --%s may be specified only once", key)
 		}
 		if key == "json" {
 			if hasVal {

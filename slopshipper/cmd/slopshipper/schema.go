@@ -140,6 +140,7 @@ func allCommandSchemas() []commandSchema {
 		}, "reason"), flags("reason", "run", "input")),
 		{Name: "status", Description: "Return compact state and the next allowed action.", Flags: flags("json", "run", "fields"), Output: "status"},
 		{Name: "reviewers", Description: "List the reviewer registry, or register/unregister a custom identity.", Mutating: true, Flags: flags("add", "remove", "json"), Output: "reviewers"},
+		{Name: "repo", Description: "Show or declare the repo profile: role bindings (review, qa, venue, memory) and policy (forge kind, trust tier, verify command, delivery mode, readiness). Subcommands: show, register, update, unregister.", Mutating: true, Flags: flags("forge", "trust", "verify-cmd", "delivery", "readiness", "bind", "json"), Output: "repo"},
 		{Name: "schema", Description: "Describe commands, flags, raw inputs, enums, and outputs as JSON.", Flags: flags("json", "command"), Output: "schema"},
 		{Name: "storage", Description: "Inspect database path resolution and Git safety without mutation.", Flags: flags("json"), Output: "storage"},
 		{Name: "serve", Description: "Serve the read-only projector on loopback.", Flags: flags("addr"), Output: "long-running"},
@@ -183,6 +184,18 @@ func flags(names ...string) []flagSchema {
 			description = "Register a custom reviewer identity; idempotent."
 		case "remove":
 			description = "Unregister a custom reviewer identity; idempotent."
+		case "forge":
+			description = "Forge kind hosting this repo's change requests: github."
+		case "trust":
+			description = "Earned autonomy tier: low, medium, or high."
+		case "verify-cmd":
+			description = "Canonical single-line verification command for this repo."
+		case "delivery":
+			description = "Default delivery mode for new runs: pr-hold, pr-merge-when-ready, or direct-trunk."
+		case "readiness":
+			description = "Recorded agent-readiness verdict: ready or not_ready."
+		case "bind":
+			description = "Replace role bindings as comma-separated role=name pairs; roles: review, qa, venue, memory."
 		}
 		result = append(result, flagSchema{Name: "--" + name, Type: typeName, Description: description})
 	}

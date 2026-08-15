@@ -16,7 +16,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 5
+const schemaVersion = 6
 
 // ErrStateUnavailable marks a resolved state location that cannot be
 // prepared (directory or database file creation failed). Callers recover by
@@ -226,6 +226,11 @@ func (s *Store) migrate() error {
 				return fmt.Errorf("drop unit done flag from schema 4: %w", err)
 			}
 			version = 5
+		case 5:
+			if _, err := tx.Exec(createReposTable); err != nil {
+				return fmt.Errorf("migrate schema 5 to 6: %w", err)
+			}
+			version = 6
 		default:
 			return fmt.Errorf("unsupported schema version %d", version)
 		}
@@ -286,6 +291,7 @@ func createCurrentSchema(tx *sql.Tx) error {
 			name TEXT PRIMARY KEY,
 			created_at TEXT NOT NULL
 		)`,
+		createReposTable,
 		`CREATE TABLE IF NOT EXISTS events (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			run_id TEXT NOT NULL,
@@ -305,6 +311,18 @@ func createCurrentSchema(tx *sql.Tx) error {
 	}
 	return nil
 }
+
+const createReposTable = `CREATE TABLE IF NOT EXISTS repos (
+	repo_key TEXT PRIMARY KEY,
+	forge_kind TEXT NOT NULL DEFAULT '',
+	trust_tier TEXT NOT NULL DEFAULT '',
+	verify_command TEXT NOT NULL DEFAULT '',
+	delivery_mode TEXT NOT NULL DEFAULT '',
+	readiness TEXT NOT NULL DEFAULT '',
+	bindings_json TEXT NOT NULL DEFAULT '{}',
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL
+)`
 
 func (s *Store) exec(q string, args ...any) error {
 	_, err := s.db.Exec(q, args...)
@@ -549,6 +567,19 @@ func (s *Store) SaveApply(result machine.ApplyResult) error {
 		if err := ensureReviewersRegisteredTx(tx, run.RequiredReviewers); err != nil {
 			return err
 		}
+		// The profile predicate also holds transactionally: a binding removed
+		// between the machine's check and this commit still fails the latch.
+		profile, found, err := repoProfileTx(tx, run.RepoKey)
+		if err != nil {
+			return err
+		}
+		var snapshot *machine.RepoProfile
+		if found {
+			snapshot = &profile
+		}
+		if err := machine.ProfileAllowsReviewers(snapshot, run.RequiredReviewers); err != nil {
+			return err
+		}
 	}
 	completedReviewers, err := json.Marshal(run.CompletedReviewers)
 	if err != nil {
@@ -685,6 +716,113 @@ func marshalReviewers(reviewers []machine.ReviewerIdentity) (string, error) {
 	return string(encoded), nil
 }
 
+type profileQuerier interface {
+	QueryRow(query string, args ...any) *sql.Row
+}
+
+func repoProfileTx(q profileQuerier, repoKey string) (machine.RepoProfile, bool, error) {
+	profile := machine.RepoProfile{RepoKey: repoKey}
+	var forgeKind, trustTier, deliveryMode, readiness, bindings string
+	err := q.QueryRow(`SELECT forge_kind, trust_tier, verify_command, delivery_mode, readiness, bindings_json
+		FROM repos WHERE repo_key = ?`, repoKey).
+		Scan(&forgeKind, &trustTier, &profile.VerifyCommand, &deliveryMode, &readiness, &bindings)
+	if errors.Is(err, sql.ErrNoRows) {
+		return machine.RepoProfile{}, false, nil
+	}
+	if err != nil {
+		return machine.RepoProfile{}, false, err
+	}
+	profile.ForgeKind = machine.ForgeKind(forgeKind)
+	profile.TrustTier = machine.TrustTier(trustTier)
+	profile.DeliveryMode = machine.DeliveryMode(deliveryMode)
+	profile.Readiness = machine.Readiness(readiness)
+	if err := json.Unmarshal([]byte(bindings), &profile.Bindings); err != nil {
+		return machine.RepoProfile{}, false, fmt.Errorf("decode repo profile bindings: %w", err)
+	}
+	return profile, true, nil
+}
+
+// GetRepoProfile returns the registered profile for repoKey, if any.
+func (s *Store) GetRepoProfile(repoKey string) (machine.RepoProfile, bool, error) {
+	return repoProfileTx(s.db, repoKey)
+}
+
+// RegisterRepoProfile records a new profile; a registered repo must update.
+func (s *Store) RegisterRepoProfile(profile machine.RepoProfile) error {
+	return s.writeRepoProfile(profile, false)
+}
+
+// UpdateRepoProfile replaces a registered profile; unregistered repos must register.
+func (s *Store) UpdateRepoProfile(profile machine.RepoProfile) error {
+	return s.writeRepoProfile(profile, true)
+}
+
+func (s *Store) writeRepoProfile(profile machine.RepoProfile, mustExist bool) error {
+	// Defense in depth: the CLI validates too, but no caller may persist an
+	// invalid profile row.
+	if err := machine.ValidateProfile(&profile); err != nil {
+		return err
+	}
+	tx, err := s.beginImmediate()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var one int
+	err = tx.QueryRow(`SELECT 1 FROM repos WHERE repo_key = ?`, profile.RepoKey).Scan(&one)
+	exists := err == nil
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	if exists && !mustExist {
+		return fmt.Errorf("%w: this repo is already registered; inspect it with slopshipper repo show or change it with slopshipper repo update", machine.ErrBadArgs)
+	}
+	if !exists && mustExist {
+		return fmt.Errorf("%w: this repo has no profile; create one with slopshipper repo register", machine.ErrNotFound)
+	}
+	bindings := profile.Bindings
+	if bindings == nil {
+		bindings = map[machine.Role][]string{}
+	}
+	// Review bindings must be registered reviewer identities at the moment
+	// this transaction commits, not just when the caller pre-checked them.
+	for _, name := range bindings[machine.RoleReview] {
+		if err := ensureReviewersRegisteredTx(tx, []machine.ReviewerIdentity{machine.ReviewerIdentity(name)}); err != nil {
+			// Only a missing registration is the caller's mistake; storage
+			// failures keep their own cause and classification.
+			if errors.Is(err, machine.ErrUnmetGuard) {
+				return fmt.Errorf("%w: review binding %q is not a registered reviewer identity; register it first with slopshipper reviewers --add %s", machine.ErrBadArgs, name, name)
+			}
+			return err
+		}
+	}
+	encoded, err := json.Marshal(bindings)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if exists {
+		if _, err := tx.Exec(`UPDATE repos SET forge_kind=?, trust_tier=?, verify_command=?, delivery_mode=?, readiness=?, bindings_json=?, updated_at=?
+			WHERE repo_key=?`,
+			string(profile.ForgeKind), string(profile.TrustTier), profile.VerifyCommand,
+			string(profile.DeliveryMode), string(profile.Readiness), string(encoded), now, profile.RepoKey); err != nil {
+			return err
+		}
+	} else if _, err := tx.Exec(`INSERT INTO repos(repo_key, forge_kind, trust_tier, verify_command, delivery_mode, readiness, bindings_json, created_at, updated_at)
+		VALUES (?,?,?,?,?,?,?,?,?)`,
+		profile.RepoKey, string(profile.ForgeKind), string(profile.TrustTier), profile.VerifyCommand,
+		string(profile.DeliveryMode), string(profile.Readiness), string(encoded), now, now); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// UnregisterRepoProfile removes the profile; the repo returns to profile-less
+// behavior. Idempotent.
+func (s *Store) UnregisterRepoProfile(repoKey string) error {
+	return s.exec(`DELETE FROM repos WHERE repo_key = ?`, repoKey)
+}
+
 // RegisterReviewer records a custom reviewer identity; idempotent.
 func (s *Store) RegisterReviewer(name machine.ReviewerIdentity) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
@@ -769,6 +907,50 @@ func (s *Store) RekeyRepo(newKey, root string) error {
 	}
 	for id, target := range targets {
 		if _, err := tx.Exec(`UPDATE runs SET repo_key = ? WHERE id = ?`, target, id); err != nil {
+			return err
+		}
+	}
+	// Profiles carry the same identity; keep them attached across sanitization.
+	profileRows, err := tx.Query(`SELECT repo_key FROM repos WHERE repo_key = ? OR substr(repo_key, -length(?)) = ?`, root, suffix, suffix)
+	if err != nil {
+		return err
+	}
+	profileTargets := make(map[string]string)
+	for profileRows.Next() {
+		var candidate string
+		if err := profileRows.Scan(&candidate); err != nil {
+			_ = profileRows.Close()
+			return err
+		}
+		if sanitized, ok := repo.SanitizeKey(candidate, root); ok {
+			if repo.MatchesKey(candidate, newKey, root) {
+				sanitized = newKey
+			}
+			if sanitized != candidate {
+				profileTargets[candidate] = sanitized
+			}
+		}
+	}
+	if err := profileRows.Close(); err != nil {
+		return err
+	}
+	if err := profileRows.Err(); err != nil {
+		return err
+	}
+	for candidate, target := range profileTargets {
+		// A sanitized row that already exists wins; drop the credentialed twin.
+		var one int
+		err := tx.QueryRow(`SELECT 1 FROM repos WHERE repo_key = ?`, target).Scan(&one)
+		if err == nil {
+			if _, err := tx.Exec(`DELETE FROM repos WHERE repo_key = ?`, candidate); err != nil {
+				return err
+			}
+			continue
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if _, err := tx.Exec(`UPDATE repos SET repo_key = ? WHERE repo_key = ?`, target, candidate); err != nil {
 			return err
 		}
 	}
