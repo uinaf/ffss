@@ -70,6 +70,17 @@ playback first:
 ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4
 ```
 
+## Embedding
+
+Structure the evidence; never paste bare images that take over the page:
+
+- Constrain size with an HTML img tag — mobile screenshots especially
+  (`<img src="…" width="300">`), or they occupy the whole page.
+- Put comparisons side by side in a table (before/after, light/dark,
+  breakpoints), one labeled column each.
+- Collapse anything long or secondary in `<details><summary>…</summary>`.
+- One primary aid inline; everything else collapsed or linked.
+
 ## 4. Non-media artifacts or endpoint failure
 
 Do not force non-media artifacts through a media endpoint. Fall back to
