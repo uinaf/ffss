@@ -356,3 +356,70 @@ func TestMigratesVersionEightRenamesRetiredReviewer(t *testing.T) {
 		t.Fatalf("forge reviewer keys rename, values stay: %+v", profile.ForgeReviewers)
 	}
 }
+
+func TestMigrationRefusesReviewerRenameCollision(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v8-collision.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateRun(machine.NewRun("run", "repo"), nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db := openSQLite(t, path)
+	// A v8 world where slopguard already existed as a custom identity next
+	// to the built-in autoreview: merging them would weaken the gate.
+	if _, err := db.Exec(`UPDATE runs SET required_reviewers_json = '["autoreview","slopguard"]'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Open(path); err == nil || !strings.Contains(err.Error(), "refusing to merge distinct identities") {
+		t.Fatalf("collision must refuse the migration: %v", err)
+	}
+}
+
+func TestMigrationSupersedesCustomSlopguardRegistration(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v8-custom.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RegisterReviewer("shadow"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db := openSQLite(t, path)
+	if _, err := db.Exec(`UPDATE reviewers SET name = 'slopguard' WHERE name = 'shadow'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s, err = store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	registered, err := s.ListReviewers()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, reviewer := range registered {
+		if reviewer == "slopguard" {
+			t.Fatal("custom slopguard row must be superseded by the built-in")
+		}
+	}
+}

@@ -267,6 +267,28 @@ func (s *Store) migrate() error {
 			// event ledger keeps historical evidence verbatim. The quoted
 			// JSON tokens are unambiguous because identities are whole JSON
 			// strings in these documents.
+			//
+			// A pre-existing CUSTOM "slopguard" identity would textually
+			// merge with the renamed one and silently weaken distinct-review
+			// gates; refuse those collisions instead of resolving them.
+			var collisions int
+			if err := tx.QueryRow(`SELECT
+				(SELECT COUNT(*) FROM runs
+					WHERE (required_reviewers_json LIKE '%"autoreview"%' AND required_reviewers_json LIKE '%"slopguard"%')
+					   OR (completed_reviewers_json LIKE '%"autoreview"%' AND completed_reviewers_json LIKE '%"slopguard"%'))
+				+ (SELECT COUNT(*) FROM repos
+					WHERE (bindings_json LIKE '%"autoreview"%' AND bindings_json LIKE '%"slopguard"%')
+					   OR (forge_reviewers_json LIKE '%"autoreview":%' AND forge_reviewers_json LIKE '%"slopguard":%'))`).Scan(&collisions); err != nil {
+				return fmt.Errorf("inspect reviewer rename collisions: %w", err)
+			}
+			if collisions > 0 {
+				return fmt.Errorf("%d row(s) reference both the retired reviewer identity \"autoreview\" and a pre-existing \"slopguard\"; refusing to merge distinct identities — remove one of them, then rerun", collisions)
+			}
+			// A custom "slopguard" registration without any autoreview
+			// overlap is simply superseded by the new built-in.
+			if _, err := tx.Exec(`DELETE FROM reviewers WHERE name = 'slopguard'`); err != nil {
+				return fmt.Errorf("drop superseded custom slopguard registration: %w", err)
+			}
 			if _, err := tx.Exec(`UPDATE runs SET
 				required_reviewers_json = REPLACE(required_reviewers_json, '"autoreview"', '"slopguard"'),
 				completed_reviewers_json = REPLACE(completed_reviewers_json, '"autoreview"', '"slopguard"')`); err != nil {

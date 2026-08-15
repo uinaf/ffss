@@ -213,7 +213,7 @@ registered, not hardcoded: `slopguard` and `bugbot` are built in,
 and `slopshipper reviewers --add NAME` registers others (a hosted bot such as
 slopzapper, a CI reviewer, a QA provider). The intake's `required_reviewers`
 selects among them; run the matching installed tool — such as the
-[`slopguard`](https://github.com/uinaf/slopguard) CLI or Cursor's
+[`slopguard`](https://github.com/uinaf/ffsstack/tree/main/cli/slopguard) CLI or Cursor's
 `/review-bugbot` — when the intake requires it.
 
 ## Documentation

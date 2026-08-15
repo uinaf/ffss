@@ -25,6 +25,11 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 ~/.local/bin/slopguard --version
 ```
 
+Until the first slopguard release ships from this repository
+(uinaf/slopshipper#50), install the identically-featured legacy binary via
+`https://raw.githubusercontent.com/uinaf/autoreview/main/install.sh` (it
+installs as `autoreview`).
+
 Pass `--version v0.4.0` or `--dest /chosen/bin` after `sh -s --` to pin a
 release or override `${HOME}/.local/bin`. The installer downloads the archive
 and `checksums.txt` from the same GitHub Release, verifies the exact SHA-256,

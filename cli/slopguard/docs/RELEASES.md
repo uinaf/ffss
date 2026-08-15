@@ -23,6 +23,11 @@ before Apple accepts their notarization submissions. Their Apple signing ID is
 Apple Team ID. Apple creates tickets for standalone binaries but does not
 support stapling tickets to them, so Gatekeeper retrieves the ticket online.
 
+Artifacts published before the ffsstack migration were signed by the legacy
+workflow identity
+`https://github.com/uinaf/autoreview/.github/workflows/ci.yml@refs/heads/main`;
+verify those with that identity.
+
 ## Linux installer trust boundary
 
 The installer script and the release tag, matching archive, and `checksums.txt`

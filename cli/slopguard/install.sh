@@ -2,7 +2,10 @@
 
 set -eu
 
-repository_url=${SLOPGUARD_INSTALL_REPOSITORY_URL:-https://github.com/uinaf/ffsstack/cli/slopguard}
+# slopguard release assets ship from the ffsstack monorepo starting with
+# the first slopguard release (uinaf/slopshipper#50); earlier artifacts are
+# autoreview releases in the legacy repository.
+repository_url=${SLOPGUARD_INSTALL_REPOSITORY_URL:-https://github.com/uinaf/ffsstack}
 while [ "${repository_url%/}" != "$repository_url" ]; do
   repository_url=${repository_url%/}
 done
