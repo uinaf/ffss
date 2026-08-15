@@ -43,6 +43,20 @@ run = "go build ./cmd/autoreview"
 description = "Run deterministic repository verification"
 depends = ["fmt:check", "test", "test:race", "vet", "build", "installer:check", "skill:publish:check"]
 
+[tasks."verify:live"]
+description = "Opt in to authenticated CLI-level provider regression controls"
+run = '''
+set -e
+command -v trufflehog >/dev/null || {
+  printf '%s\n' "verify:live requires the trufflehog executable on PATH" >&2
+  exit 1
+}
+AUTOREVIEW_TEST_LIVE=1 \
+  go test -p 1 -parallel 1 ./cmd/autoreview \
+  -run '^TestBinaryLiveProviderMatrix$' \
+  -count=1 -v -timeout 8h30m
+'''
+
 [tasks."installer:test"]
 description = "Run the offline Linux installer fixture tests"
 run = "bash scripts/test-install.sh"

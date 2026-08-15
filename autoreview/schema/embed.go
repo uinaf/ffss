@@ -14,6 +14,7 @@ var resultV1 []byte
 
 const GrokMinimumOverallExplanationCharacters = 160
 const GrokMinimumFileAssessmentCharacters = 80
+const GrokMaximumFileAssessmentCharacters = 1000
 const GrokMinimumOverallConfidence = 0.7
 
 func ReviewV1() []byte {
@@ -139,7 +140,7 @@ func grokCompletionReviewV1(document map[string]any, filePaths []string) ([]byte
 						"required":             []string{"file_path", "assessment", "finding_indexes"},
 						"properties": map[string]any{
 							"file_path":       filePath,
-							"assessment":      map[string]any{"type": "string", "minLength": GrokMinimumFileAssessmentCharacters, "maxLength": 1000},
+							"assessment":      map[string]any{"type": "string", "minLength": GrokMinimumFileAssessmentCharacters, "maxLength": GrokMaximumFileAssessmentCharacters},
 							"finding_indexes": map[string]any{"type": "array", "items": map[string]any{"type": "integer", "minimum": 0}, "uniqueItems": true},
 						},
 					},

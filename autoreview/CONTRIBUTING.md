@@ -43,6 +43,26 @@ For skill changes, run the pinned hosted quality gate:
 mise run skill:lint
 ```
 
+Authenticated provider regression checks are committed but intentionally
+separate from deterministic verification and CI. They build the current CLI,
+materialize public synthetic clean and defective commits, run builder tests,
+and review both controls through each selected provider using native session
+authentication:
+
+```bash
+mise run verify:live
+AUTOREVIEW_LIVE_PROVIDERS=codex,grok mise run verify:live
+AUTOREVIEW_LIVE_PROVIDERS=grok AUTOREVIEW_LIVE_REPEAT=3 mise run verify:live
+```
+
+The default checks Codex, Claude, Cursor, and Grok sequentially. Cursor runs
+with web access because its harness cannot guarantee per-run web disablement;
+the other providers run with web access off. `AUTOREVIEW_LIVE_REPEAT` is bounded
+from 1 through 10. These checks consume provider quota and require every
+selected harness plus `trufflehog` on `PATH`.
+At the maximum repeat value, the default four-provider matrix can take more
+than eight hours when every review consumes its protocol retry.
+
 ## Pull Requests
 
 - Start from a GitHub issue.

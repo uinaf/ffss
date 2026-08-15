@@ -243,6 +243,9 @@ func TestGrokReviewSchemaProjectsUnsupportedKeywords(t *testing.T) {
 	if assessment["minLength"] != float64(contractschema.GrokMinimumFileAssessmentCharacters) {
 		t.Fatalf("Grok completion assessment minLength = %v", assessment["minLength"])
 	}
+	if assessment["maxLength"] != float64(contractschema.GrokMaximumFileAssessmentCharacters) {
+		t.Fatalf("Grok completion assessment maxLength = %v", assessment["maxLength"])
+	}
 	if paths := requireArray(t, filePath["enum"], "completion file_path enum"); len(paths) != 2 || paths[0] != "internal/provider/grok.go" || paths[1] != "schema/embed.go" {
 		t.Fatalf("Grok completion file paths = %+v", paths)
 	}

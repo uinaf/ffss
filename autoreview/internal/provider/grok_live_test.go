@@ -18,7 +18,7 @@ func TestGrokLive(t *testing.T) {
 	effective.Model = config.Value[string]{Source: config.SourceDefault}
 	reviewer := NewGrok(GrokOptions{Repository: t.TempDir()})
 	result, err := reviewer.Review(context.Background(), Request{
-		Prompt: "Return one review object with no findings, overall_explanation set to Live Grok adapter smoke passed., and overall_confidence set to 1. Do not use tools.",
+		Prompt: "Return a completed review with no findings and overall_confidence set to 1. The overall_explanation must state that the live Grok adapter smoke exercised authenticated structured output, produced the complete provider-private envelope, required no repository tools, and found no actionable defect in the empty synthetic target. Do not use tools.",
 		Config: effective,
 	})
 	if err != nil {

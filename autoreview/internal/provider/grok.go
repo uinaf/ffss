@@ -484,8 +484,12 @@ func validateGrokCompletion(completion grokCompletion, review protocol.Review, t
 			return fmt.Errorf("completion repeats file %q", file.FilePath)
 		}
 		seenFiles[file.FilePath] = struct{}{}
-		if utf8.RuneCountInString(strings.TrimSpace(file.Assessment)) < contractschema.GrokMinimumFileAssessmentCharacters {
+		trimmedAssessmentCharacters := utf8.RuneCountInString(strings.TrimSpace(file.Assessment))
+		if trimmedAssessmentCharacters < contractschema.GrokMinimumFileAssessmentCharacters {
 			return fmt.Errorf("completion assessment for %q is too short", file.FilePath)
+		}
+		if utf8.RuneCountInString(file.Assessment) > contractschema.GrokMaximumFileAssessmentCharacters {
+			return fmt.Errorf("completion assessment for %q is too long", file.FilePath)
 		}
 		for _, findingIndex := range file.FindingIndexes {
 			if findingIndex < 0 || findingIndex >= len(review.Findings) {
