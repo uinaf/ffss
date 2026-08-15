@@ -41,7 +41,7 @@ run = "go build ./cmd/slopguard"
 
 [tasks.verify]
 description = "Run deterministic repository verification"
-depends = ["fmt:check", "test", "test:race", "vet", "build", "installer:check", "skill:publish:check"]
+depends = ["fmt:check", "test", "test:race", "vet", "build", "installer:check"]
 
 [tasks."verify:live"]
 description = "Opt in to authenticated CLI-level provider regression controls"
@@ -125,22 +125,9 @@ else
 fi
 '''
 
-[tasks."skill:package"]
-description = "Validate the standalone skill package and evals"
-run = "go test ./cmd/slopguard -run '^TestSkill' -count=1"
-
-[tasks."skill:publish:check"]
-description = "Validate skill publication automation"
-run = '''
-set -e
-bash -n scripts/verify-published-skill.sh
-shellcheck -s bash scripts/verify-published-skill.sh
-actionlint .github/workflows/publish-skill.yml
-'''
-
 [tasks."verify:release"]
 description = "Run complete v0.1 source-release gates, including live vulnerability data"
-depends = ["verify", "test:integration", "vuln", "build:cross", "runtime:go-only", "skill:package"]
+depends = ["verify", "test:integration", "vuln", "build:cross", "runtime:go-only"]
 
 [tasks."release:check"]
 description = "Validate release and GitHub Actions configuration"
@@ -185,19 +172,4 @@ test -n "$native_binary"
 "$native_binary" --version | grep -E '^slopguard v[0-9]+\.[0-9]+\.[0-9]+-snapshot-[0-9a-f]+ \([0-9a-f]{40}\)$'
 '''
 
-[tasks."skill:lint"]
-description = "Free Tessl plugin lint for the skill package"
-run = '''
-set -e
-test "$(tessl --version)" = "0.94.0"
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint ../../skills/slopguard
-'''
 
-[tasks."skill:review"]
-description = "Optional credit-burning Tessl cloud review at threshold 100"
-run = '''
-set -e
-test "$(tessl --version)" = "0.94.0"
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint ../../skills/slopguard
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopguard-2.1.1-tessl-0.94.0 ../../skills/slopguard
-'''

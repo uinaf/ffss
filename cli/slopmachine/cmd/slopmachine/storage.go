@@ -44,13 +44,24 @@ func resolveStorage(requireGitSafe bool) (storageDocument, error) {
 		if err != nil {
 			return storageDocument{}, fmt.Errorf("inspect database %q: %w", path, err)
 		}
-		return storageDocument{
+		doc := storageDocument{
 			SchemaVersion: 1,
 			Path:          path,
 			Source:        "xdg-data",
 			Scope:         "user",
 			Exists:        exists,
-		}, nil
+		}
+		// An absolute XDG_DATA_HOME can point inside the current worktree;
+		// the default path earns no exemption from containment safety.
+		cwd, err := os.Getwd()
+		if err != nil {
+			return storageDocument{}, err
+		}
+		_, root, repoErr := repo.Keys(cwd)
+		if repoErr != nil {
+			return doc, nil
+		}
+		return applyGitSafety(doc, root, path, requireGitSafe)
 	}
 
 	cwd, err := os.Getwd()
@@ -82,6 +93,12 @@ func resolveStorage(requireGitSafe bool) (storageDocument, error) {
 	if repoErr != nil {
 		return doc, nil
 	}
+	return applyGitSafety(doc, root, path, requireGitSafe)
+}
+
+// applyGitSafety enforces worktree containment for any resolved database
+// path, override or default alike.
+func applyGitSafety(doc storageDocument, root, path string, requireGitSafe bool) (storageDocument, error) {
 	physicalRoot, err := physicalPath(root)
 	if err != nil {
 		return storageDocument{}, fmt.Errorf("resolve Git worktree root %q: %w", root, err)

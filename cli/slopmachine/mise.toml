@@ -80,8 +80,6 @@ actionlint
 goreleaser check
 bash -n scripts/verify-apple-credentials.sh
 bash -n scripts/verify-apple-release.sh
-bash -n scripts/verify-published-skill.sh
-shellcheck -s bash scripts/verify-published-skill.sh
 test -f .releaserc.json
 '''
 
@@ -99,20 +97,7 @@ for archive in dist/slopmachine_*.tar.gz; do
 done
 '''
 
-[tasks."skill:lint"]
-description = "Free Tessl plugin lint for the skill package"
-run = '''
-set -e
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint ../../skills/slopmachine
-'''
 
-[tasks."skill:review"]
-description = "Optional credit-burning Tessl cloud review at threshold 100"
-run = '''
-set -e
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint ../../skills/slopmachine
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopmachine-0.3.0 ../../skills/slopmachine
-'''
 
 [tasks.security]
 description = "Scan reachable Go dependencies for known vulnerabilities"

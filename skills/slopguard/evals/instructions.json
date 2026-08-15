@@ -104,7 +104,7 @@
     },
     {
       "instruction": "Search existing issues before creating a sanitized public defect report",
-      "original_snippets": "Search open and closed issues in uinaf/slopguard.",
+      "original_snippets": "Search open and closed issues in uinaf/ffsstack.",
       "relevant_when": "A reproducible non-security CLI defect is found",
       "why_given": "preference"
     },

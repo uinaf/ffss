@@ -279,3 +279,22 @@ func gitOutput(t *testing.T, directory string, args ...string) string {
 	}
 	return strings.TrimSpace(string(out))
 }
+
+func TestDefaultStoragePathInsideWorktreeFailsClosed(t *testing.T) {
+	repoDir := t.TempDir()
+	runGit(t, repoDir, "init")
+	oldDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(repoDir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldDir) })
+	t.Setenv("SLOPMACHINE_DB", "")
+	t.Setenv("XDG_DATA_HOME", filepath.Join(repoDir, ".data"))
+
+	if _, err := resolveStorage(true); err == nil || !errors.Is(err, errUnsafeStatePath) {
+		t.Fatalf("default path inside the worktree must fail closed: %v", err)
+	}
+}

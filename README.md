@@ -8,20 +8,20 @@ adversarial review for shipping slop that survives contact with reality.
 
 | CLI | What it is |
 | --- | --- |
-| [`cli/slopmachine`](cli/slopmachine/) | The deterministic state machine: Go CLI + SQLite spine gating intake → release → build → verify → review → deliver → watch, with forge-verified evidence (formerly slopshipper) |
-| [`cli/slopguard`](cli/slopguard/) | Pre-ship second-model review closeout CLI (formerly autoreview) |
+| [`slopmachine`](cli/slopmachine/) | The deterministic state machine: Go CLI + SQLite spine gating intake → release → build → verify → review → deliver → watch, with forge-verified evidence |
+| [`slopguard`](cli/slopguard/) | Pre-ship second-model review closeout CLI |
 
 ## Skills
 
 | Skill | What it does |
 | --- | --- |
-| [`skills/slopmachine`](skills/slopmachine/) | Drive the slopmachine CLI through a governed run (formerly slopship) |
-| [`skills/slopguard`](skills/slopguard/) | Run one independent review through the slopguard CLI |
-| [`skills/slopcourier`](skills/slopcourier/) | Deliver finished work as a change request on the repo's forge, with the visual-evidence ladder |
-| [`skills/slopnanny`](skills/slopnanny/) | Babysit a delivered change request through review and CI to a settled outcome |
-| [`skills/slopspec`](skills/slopspec/) | Turn agreed work into durable tracker plans |
-| [`skills/slopscriber`](skills/slopscriber/) | Audit and rewrite repo docs and agent guidance |
-| [`skills/slopprep`](skills/slopprep/) | Make a repository agent-ready |
+| [`slopmachine`](skills/slopmachine/) | Drive the slopmachine CLI through a governed run |
+| [`slopguard`](skills/slopguard/) | Run one independent review through the slopguard CLI |
+| [`slopcourier`](skills/slopcourier/) | Deliver finished work as a change request on the repo's forge, with the visual-evidence ladder |
+| [`slopnanny`](skills/slopnanny/) | Babysit a delivered change request through review and CI to a settled outcome |
+| [`slopspec`](skills/slopspec/) | Turn agreed work into durable tracker plans |
+| [`slopscriber`](skills/slopscriber/) | Audit and rewrite repo docs and agent guidance |
+| [`slopprep`](skills/slopprep/) | Make a repository agent-ready |
 
 Reference bindings elsewhere in the family: slopzapper (forge review bot),
 slopscouter (QA, planned), slopbench (evals), slopwake.
