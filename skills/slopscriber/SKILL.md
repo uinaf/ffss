@@ -1,5 +1,5 @@
 ---
-name: docs
+name: slopscriber
 description: "Audit, compress, restructure, and update repo documentation and durable agent-facing artifacts such as AGENTS.md, README.md, docs/, specs, decisions, and runbooks. Use when changes risk doc drift or when docs need current-state cleanup or context-efficient agent-first rewriting. Do not use to create tactical work plans, epics, or tracker tickets, or for code review, runtime verification, or boot/readiness infrastructure setup."
 ---
 

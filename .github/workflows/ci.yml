@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: classify changes
+    runs-on: ubuntu-latest
+    outputs:
+      slopshipper: ${{ steps.filter.outputs.slopshipper }}
+      autoreview: ${{ steps.filter.outputs.autoreview }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            slopshipper:
+              - 'slopshipper/**'
+            autoreview:
+              - 'autoreview/**'
+
+  slopshipper:
+    name: slopshipper verify
+    needs: changes
+    if: needs.changes.outputs.slopshipper == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: slopshipper
+    steps:
+      - uses: actions/checkout@v5
+      - uses: jdx/mise-action@v4
+        with:
+          working_directory: slopshipper
+      - run: mise run verify
+
+  autoreview:
+    name: autoreview verify
+    needs: changes
+    if: needs.changes.outputs.autoreview == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: autoreview
+    steps:
+      - uses: actions/checkout@v5
+      - uses: jdx/mise-action@v4
+        with:
+          working_directory: autoreview
+      - run: mise run verify

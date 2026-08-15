@@ -1,5 +1,5 @@
 ---
-name: agent-readiness
+name: slopprep
 description: "Audit and improve repository guidance, lifecycle commands, and runner infrastructure for dependable autonomous work. Use when making a repo agent-ready, agent guidance lacks orientation or proof paths, agents cannot boot or verify, setup still needs a human, or a runner must finish tasks unsupervised. Do not use for reviewing an existing diff, an ordinary builder self-check in a healthy repo, or prose-only documentation cleanup."
 ---
 
