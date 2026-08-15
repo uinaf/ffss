@@ -14,6 +14,7 @@ adversarial review for shipping slop that survives contact with reality.
 | [`skills/slopscriber`](skills/slopscriber/) | Audit and rewrite repo docs and agent guidance |
 | [`skills/slopprep`](skills/slopprep/) | Make a repository agent-ready |
 | [`skills/slopcourier`](skills/slopcourier/) | Deliver finished work as a change request on the repo's forge, with the visual-evidence ladder |
+| [`skills/slopnanny`](skills/slopnanny/) | Babysit a delivered change request through review and CI to a settled outcome |
 
 Reference bindings elsewhere in the family: slopzapper (forge review bot),
 slopscouter (QA, planned), slopbench (evals, planned), slopwake.

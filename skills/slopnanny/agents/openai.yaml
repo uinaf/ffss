@@ -1,0 +1,14 @@
+interface:
+  display_name: "Slopnanny"
+  short_description: "Babysit a change request to a settled outcome"
+  default_prompt: |
+    Use $slopnanny to babysit the open change request: observe checks and
+    review feedback (via slopshipper watch when a run is active, otherwise
+    the forge CLI), act only on signals newer than the latest push, verify
+    every bot claim against the code before acting, fix real findings with
+    the smallest in-scope change and reply with the commit hash, reject
+    wrong or out-of-scope findings with evidence, stay quiet when nothing
+    changed, stop when green, and never merge without an explicit request.
+
+policy:
+  allow_implicit_invocation: false
