@@ -22,6 +22,7 @@ check_profile() {
 
 check_profile cli ./cmd/slopshipper 80
 check_profile buildinfo ./internal/buildinfo 80
+check_profile forge ./internal/forge 80
 check_profile machine ./internal/machine 90
 check_profile repo ./internal/repo 80
 check_profile serve ./internal/serve 80
