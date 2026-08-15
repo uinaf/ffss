@@ -101,6 +101,69 @@ func (s *Store) ListEvents(repoKey, runID string) ([]Event, error) {
 	return out, rows.Err()
 }
 
+// Delivery is one persisted delivery event for a unit. Seq identifies the
+// exact event, so an ABA re-delivery with identical evidence still reads as
+// a different delivery.
+type Delivery struct {
+	Seq      int
+	Evidence machine.DeliverEvidence
+}
+
+// LatestDeliveries returns the newest delivery per unit for a run.
+// Events older than the unit-stamping change carry no unit and are skipped;
+// their units stay observable through manual observe.
+func (s *Store) LatestDeliveries(runID string) (map[string]Delivery, error) {
+	rows, err := s.db.Query(`SELECT seq, evidence_json FROM events
+		WHERE run_id = ? AND command = ? ORDER BY seq ASC`, runID, string(machine.CmdDeliver))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := make(map[string]Delivery)
+	for rows.Next() {
+		var seq int
+		var raw string
+		if err := rows.Scan(&seq, &raw); err != nil {
+			return nil, err
+		}
+		var evidence machine.DeliverEvidence
+		if err := json.Unmarshal([]byte(raw), &evidence); err != nil {
+			return nil, fmt.Errorf("decode deliver evidence: %w", err)
+		}
+		if evidence.UnitID == "" {
+			continue
+		}
+		out[evidence.UnitID] = Delivery{Seq: seq, Evidence: evidence}
+	}
+	return out, rows.Err()
+}
+
+// LastObservation returns the newest observe evidence recording signal for
+// unit, or false when none exists. Watch compares its reference and thread
+// tokens to tell already-recorded feedback from new feedback.
+func (s *Store) LastObservation(runID, unitID string, signal machine.ObserveSignal) (machine.ObserveEvidence, bool, error) {
+	rows, err := s.db.Query(`SELECT evidence_json FROM events
+		WHERE run_id = ? AND command = ? ORDER BY seq DESC`, runID, string(machine.CmdObserve))
+	if err != nil {
+		return machine.ObserveEvidence{}, false, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			return machine.ObserveEvidence{}, false, err
+		}
+		var evidence machine.ObserveEvidence
+		if err := json.Unmarshal([]byte(raw), &evidence); err != nil {
+			return machine.ObserveEvidence{}, false, fmt.Errorf("decode observe evidence: %w", err)
+		}
+		if evidence.UnitID == unitID && evidence.Signal == signal {
+			return evidence, true, rows.Err()
+		}
+	}
+	return machine.ObserveEvidence{}, false, rows.Err()
+}
+
 // Totals aggregates recorded telemetry across a run's events.
 type Totals struct {
 	DurationMS int64

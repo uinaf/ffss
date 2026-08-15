@@ -3,6 +3,7 @@ package forge
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -96,12 +97,13 @@ func (g *GitHub) Observe(ctx context.Context, ref ChangeRequestRef) (Observation
 		return entry.Status, conclusion
 	})
 
-	threads, unresolved, err := g.reviewThreads(ctx, ref)
+	threads, unresolved, digest, err := g.reviewThreads(ctx, ref)
 	if err != nil {
 		return Observation{}, err
 	}
 	observation.Threads = threads
 	observation.UnresolvedThreads = unresolved
+	observation.ThreadsDigest = digest
 	return observation, nil
 }
 
@@ -111,15 +113,15 @@ const (
 	maxThreadPages   = 10
 )
 
-func (g *GitHub) reviewThreads(ctx context.Context, ref ChangeRequestRef) ([]ReviewThread, int, error) {
+func (g *GitHub) reviewThreads(ctx context.Context, ref ChangeRequestRef) ([]ReviewThread, int, string, error) {
 	const query = `query($owner:String!,$repo:String!,$number:Int!,$cursor:String){
   repository(owner:$owner,name:$repo){
     pullRequest(number:$number){
       reviewThreads(first:100, after:$cursor){
         pageInfo{hasNextPage endCursor}
         nodes{
-          isResolved path line
-          comments(last:1){nodes{author{login} body}}
+          id isResolved path line
+          comments(last:1){nodes{id updatedAt author{login} body}}
         }
       }
     }
@@ -127,6 +129,7 @@ func (g *GitHub) reviewThreads(ctx context.Context, ref ChangeRequestRef) ([]Rev
 }`
 	var sample []ReviewThread
 	unresolved := 0
+	digest := sha256.New()
 	cursor := ""
 	// Bounded pagination keeps the count honest on huge threads; beyond the
 	// bound the observation fails closed instead of undercounting.
@@ -141,27 +144,31 @@ func (g *GitHub) reviewThreads(ctx context.Context, ref ChangeRequestRef) ([]Rev
 		}
 		raw, err := g.run(ctx, args...)
 		if err != nil {
-			return nil, 0, classify(err)
+			return nil, 0, "", classify(err)
 		}
 		nodes, pageInfo, err := decodeThreadsPage(raw, ref)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, "", err
 		}
 		for _, thread := range nodes {
 			if thread.Resolved {
 				continue
 			}
 			unresolved++
+			// Every unresolved thread joins the digest, sampled or not, so a
+			// new or edited comment beyond the sample still changes the
+			// observation.
+			fmt.Fprintf(digest, "|%s@%s@%s", thread.ID, thread.LastCommentID, thread.LastCommentEdited)
 			if len(sample) < maxThreadSample {
 				sample = append(sample, thread)
 			}
 		}
 		if !pageInfo.HasNextPage {
-			return sample, unresolved, nil
+			return sample, unresolved, fmt.Sprintf("%x", digest.Sum(nil)), nil
 		}
 		cursor = pageInfo.EndCursor
 	}
-	return nil, 0, &Error{Kind: ErrorTransient, Err: fmt.Errorf("%s has more than %d pages of review threads; observation incomplete", ref, maxThreadPages)}
+	return nil, 0, "", &Error{Kind: ErrorTransient, Err: fmt.Errorf("%s has more than %d pages of review threads; observation incomplete", ref, maxThreadPages)}
 }
 
 type threadPageInfo struct {
@@ -177,12 +184,15 @@ func decodeThreadsPage(raw []byte, ref ChangeRequestRef) ([]ReviewThread, thread
 					ReviewThreads struct {
 						PageInfo threadPageInfo `json:"pageInfo"`
 						Nodes    []struct {
+							ID         string `json:"id"`
 							IsResolved bool   `json:"isResolved"`
 							Path       string `json:"path"`
 							Line       int    `json:"line"`
 							Comments   struct {
 								Nodes []struct {
-									Author struct {
+									ID        string `json:"id"`
+									UpdatedAt string `json:"updatedAt"`
+									Author    struct {
 										Login string `json:"login"`
 									} `json:"author"`
 									Body string `json:"body"`
@@ -200,11 +210,13 @@ func decodeThreadsPage(raw []byte, ref ChangeRequestRef) ([]ReviewThread, thread
 	threads := response.Data.Repository.PullRequest.ReviewThreads
 	out := make([]ReviewThread, 0, len(threads.Nodes))
 	for _, node := range threads.Nodes {
-		thread := ReviewThread{Path: node.Path, Line: node.Line, Resolved: node.IsResolved}
+		thread := ReviewThread{ID: node.ID, Path: node.Path, Line: node.Line, Resolved: node.IsResolved}
 		if len(node.Comments.Nodes) > 0 {
 			last := node.Comments.Nodes[len(node.Comments.Nodes)-1]
 			thread.Author = last.Author.Login
 			thread.Snippet = snippet(last.Body)
+			thread.LastCommentID = last.ID
+			thread.LastCommentEdited = last.UpdatedAt
 		}
 		out = append(out, thread)
 	}

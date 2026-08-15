@@ -139,13 +139,19 @@ next action means the run is done or needs human inspection.
 ## Post-delivery babysit
 
 Delivery opens a change request; the unit is `delivered`, not settled, and
-later units already build while it waits. Record only what the forge really
-shows, via `slopshipper observe`: `merged` settles the unit,
-`checks_failed` and `review_feedback` pull it back through the build loop
-with the cause recorded. Pass `--unit` when several units are delivered.
-`AWAITING_SIGNALS` means every remaining unit waits on external signals;
-keep watching the change requests and record signals as they land. Never
-invent a signal.
+later units already build while it waits. Prefer `slopshipper watch --once`:
+the binary observes every delivered unit's change request itself and records
+the signals — `merged` settles the unit; `checks_failed`, `review_feedback`,
+and `head_moved` pull it back through the build loop with the cause
+recorded. Passes are idempotent, so rerun freely; `--interval SECONDS`
+polls with bounded iterations. Two narrow feedback-identity limits: a
+thread reopened without a new comment is not re-detected (any new
+comment is), and a change request with more than ten unresolved threads
+may conservatively re-trigger one extra rework when the sample shifts. For signals the binary cannot observe (no
+change request URL, foreign forge), record what the forge really shows via
+`slopshipper observe`, passing `--unit` when several units are delivered.
+`AWAITING_SIGNALS` means every remaining unit waits on external signals.
+Never invent a signal.
 
 ## Post-review flow
 

@@ -105,12 +105,24 @@ construct it from untrusted text.
 
 ## Observe external signals
 
-Delivery does not settle a unit. `slopshipper observe` records what the
-forge showed for a delivered unit: `merged` settles it, `checks_failed` and
-`review_feedback` return it to the build loop with the cause recorded, and
-later units keep building while earlier ones wait (`AWAITING_SIGNALS`).
+Delivery does not settle a unit. `slopshipper watch --once` observes every
+delivered unit's change request on the forge and records the signals itself;
+passes are idempotent, and `--interval SECONDS` polls with a bounded
+iteration count. `slopshipper observe` records one signal manually:
+`merged` settles the unit; `checks_failed`, `review_feedback`, and
+`head_moved` return it to the build loop with the cause recorded, and later
+units keep building while earlier ones wait (`AWAITING_SIGNALS`).
 `observe.unit` is required only when several units are delivered; the
-`delivered_units` status field lists the candidates.
+`delivered_units` status field lists the candidates. Exit 7 from watch
+means the final pass left at least one delivered unit unobserved (auth,
+rate limit, transient failure, or a missing change request); failures
+recovered by a later interval pass do not affect the exit status. Stdout
+still carries the watch document — observations already recorded plus an
+`error_kind` field — not the ok:false error envelope. Feedback identity
+has two accepted limits under the bounded thread sample: a thread
+reopened without a new comment is not re-detected (any new comment is),
+and with more than ten unresolved threads a sample shift may
+conservatively re-trigger one extra rework rather than miss a signal.
 
 ## Record telemetry
 

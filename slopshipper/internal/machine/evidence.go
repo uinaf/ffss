@@ -67,5 +67,24 @@ func validateDeliverEvidence(ev *DeliverEvidence, mode DeliveryMode) error {
 	default:
 		return fmt.Errorf("%w: unknown delivery mode %q", ErrUnmetGuard, mode)
 	}
+	// A recorded revision must be a judgeable commit identity, or head
+	// movement could never be detected against it.
+	if ev.CommitSHA != "" {
+		if err := validCommitSHA(ev.CommitSHA); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validCommitSHA(sha string) error {
+	if len(sha) < 7 || len(sha) > 64 {
+		return fmt.Errorf("%w: deliver.commit_sha must be 7-64 hex characters", ErrUnmetGuard)
+	}
+	for _, r := range sha {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') && (r < 'A' || r > 'F') {
+			return fmt.Errorf("%w: deliver.commit_sha must be hexadecimal", ErrUnmetGuard)
+		}
+	}
 	return nil
 }

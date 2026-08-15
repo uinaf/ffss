@@ -162,7 +162,7 @@ func allCommandSchemas() []commandSchema {
 		}), flags("evidence", "run", "input")), telemetry),
 		withTelemetry(mutationSchema("observe", "Record an external signal for a delivered unit.", objectSchema(map[string]jsonSchema{
 			"run": run, "unit": stringSchema("Delivered unit; optional when exactly one unit is delivered."),
-			"signal":    enumSchema("What the forge showed.", "merged", "checks_failed", "review_feedback"),
+			"signal":    enumSchema("What the forge showed.", "merged", "checks_failed", "review_feedback", "head_moved"),
 			"reference": stringSchema("Optional link or check name backing the signal."),
 		}, "signal"), flags("signal", "unit", "reference", "run", "input")), telemetry),
 		withTelemetry(mutationSchema("ask", "Park the run for a human decision.", objectSchema(map[string]jsonSchema{
@@ -178,6 +178,7 @@ func allCommandSchemas() []commandSchema {
 			"run": run, "reason": stringSchema("External blocker reason."),
 		}, "reason"), flags("reason", "run", "input")), telemetry),
 		{Name: "status", Description: "Return compact state and the next allowed action.", Flags: flags("json", "run", "fields"), Output: "status"},
+		{Name: "watch", Description: "Observe delivered units on the forge and record signals as observe events; --once runs one pass, --interval polls bounded.", Mutating: true, Flags: flags("once", "interval", "iterations", "run", "json"), Output: "watch"},
 		{Name: "reviewers", Description: "List the reviewer registry, or register/unregister a custom identity.", Mutating: true, Flags: flags("add", "remove", "json"), Output: "reviewers"},
 		{Name: "repo", Description: "Show or declare the repo profile: role bindings (review, qa, venue, memory) and policy (forge kind, trust tier, verify command, delivery mode, readiness). Subcommands: show, register, update, unregister.", Mutating: true, Flags: flags("forge", "trust", "verify-cmd", "delivery", "readiness", "bind", "json"), Output: "repo"},
 		{Name: "schema", Description: "Describe commands, flags, raw inputs, enums, and outputs as JSON.", Flags: flags("json", "command"), Output: "schema"},
@@ -224,7 +225,7 @@ func flags(names ...string) []flagSchema {
 		case "command":
 			description = "Limit schema output to one command."
 		case "signal":
-			description = "Observed signal: merged, checks_failed, or review_feedback."
+			description = "Observed signal: merged, checks_failed, review_feedback, or head_moved."
 		case "unit":
 			description = "Delivered unit identifier; optional when unambiguous."
 		case "reference":
@@ -233,6 +234,12 @@ func flags(names ...string) []flagSchema {
 			description = "Register a custom reviewer identity; idempotent."
 		case "remove":
 			description = "Unregister a custom reviewer identity; idempotent."
+		case "once":
+			typeName, description = "boolean", "Run exactly one observation pass (the default)."
+		case "interval":
+			typeName, description = "integer", "Poll every N seconds (5-3600) until bounds are reached."
+		case "iterations":
+			typeName, description = "integer", "Maximum polling passes for --interval (default 20, max 1000)."
 		case "forge":
 			description = "Forge kind hosting this repo's change requests: github."
 		case "trust":

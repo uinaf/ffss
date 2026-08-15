@@ -72,11 +72,17 @@ const (
 
 // ReviewThread is one unresolved review conversation on a change request.
 type ReviewThread struct {
-	Author   string
-	Path     string
-	Line     int
-	Snippet  string // first line of the newest comment, bounded by the adapter
-	Resolved bool
+	// ID and LastCommentID are the forge's stable identifiers; feedback
+	// identity prefers them over location and text. LastCommentEdited
+	// changes when the newest comment is edited in place.
+	ID                string
+	LastCommentID     string
+	LastCommentEdited string
+	Author            string
+	Path              string
+	Line              int
+	Snippet           string // first line of the newest comment, bounded by the adapter
+	Resolved          bool
 }
 
 // Observation is one read of a change request's externally visible state.
@@ -86,9 +92,13 @@ type Observation struct {
 	Checks       ChecksState
 	Mergeability Mergeability
 	// UnresolvedThreads counts open review conversations; Threads carries a
-	// bounded sample of them for evidence, newest first.
+	// bounded sample of them for evidence, newest first. ThreadsDigest
+	// fingerprints EVERY unresolved thread's identity and newest comment —
+	// not just the sample — so feedback beyond the sample bound is still
+	// distinguishable.
 	UnresolvedThreads int
 	Threads           []ReviewThread
+	ThreadsDigest     string
 }
 
 // Forge exposes the five observation reads over one change request.

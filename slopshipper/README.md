@@ -140,7 +140,8 @@ Every command also has focused help, such as `slopshipper review --help`.
 | Record an external blocker | `slopshipper block --reason "…"` |
 | Resume after confirmed recovery | `slopshipper retry --reason "…"` |
 | Re-enter the build loop after findings | `slopshipper rework` |
-| Record a forge signal for a delivered unit | `slopshipper observe --signal merged\|checks_failed\|review_feedback` |
+| Record a forge signal for a delivered unit | `slopshipper observe --signal merged\|checks_failed\|review_feedback\|head_moved` |
+| Observe delivered units on the forge automatically | `slopshipper watch [--once \| --interval SECONDS]` |
 | Inspect or declare the repo profile | `slopshipper repo [show\|register\|update\|unregister]` |
 | Record transition telemetry | `slopshipper COMMAND --telemetry tel.json` |
 | Inspect all runs in a browser | `slopshipper serve` |

@@ -42,6 +42,9 @@ const (
 	SignalMerged         ObserveSignal = "merged"
 	SignalChecksFailed   ObserveSignal = "checks_failed"
 	SignalReviewFeedback ObserveSignal = "review_feedback"
+	// SignalHeadMoved marks delivery evidence as stale: the change request's
+	// head no longer matches the delivered work.
+	SignalHeadMoved ObserveSignal = "head_moved"
 )
 
 // Command is a named edge command.

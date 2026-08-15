@@ -68,8 +68,11 @@ type ReviewEvidence struct {
 	ArtifactRef string           `json:"artifact_ref"`
 }
 
-// DeliverEvidence gates DELIVER completion for a unit.
+// DeliverEvidence gates DELIVER completion for a unit. UnitID is stamped by
+// the machine from the unit being delivered, so later observation can
+// correlate forge state back to its unit.
 type DeliverEvidence struct {
+	UnitID       string       `json:"unit,omitempty"`
 	DeliveryMode DeliveryMode `json:"delivery_mode"`
 	PRURL        string       `json:"pr_url,omitempty"`
 	CommitSHA    string       `json:"commit_sha,omitempty"`
@@ -133,6 +136,10 @@ type ObserveEvidence struct {
 	UnitID    string        `json:"unit,omitempty"`
 	Signal    ObserveSignal `json:"signal"`
 	Reference string        `json:"reference,omitempty"`
+	// ThreadTokens identify the unresolved feedback set behind a
+	// review_feedback signal (one stable token per thread); watch compares
+	// them across observations so only genuinely new feedback re-triggers.
+	ThreadTokens []string `json:"thread_tokens,omitempty"`
 }
 
 // ApplyInput carries command-specific payloads.

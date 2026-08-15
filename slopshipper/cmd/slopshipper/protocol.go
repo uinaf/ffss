@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/uinaf/slopshipper/internal/forge"
 	"github.com/uinaf/slopshipper/internal/machine"
 	"github.com/uinaf/slopshipper/internal/store"
 )
@@ -154,7 +155,10 @@ func writeFailure(opts runOptions, code int, err error) int {
 }
 
 func errorKind(code int, err error) string {
+	var forgeErr *forge.Error
 	switch {
+	case errors.As(err, &forgeErr):
+		return "observation_" + string(forgeErr.Kind)
 	case errors.Is(err, errUnsafeStatePath):
 		return "unsafe_state_path"
 	case errors.Is(err, errInvalidStateConfig):

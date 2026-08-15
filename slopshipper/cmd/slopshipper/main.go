@@ -158,6 +158,8 @@ func runWithOptions(args []string, opts runOptions) int {
 		return cmdStatus(st, rest, opts)
 	case "reviewers":
 		return cmdReviewers(st, rest, opts)
+	case "watch":
+		return cmdWatch(st, rest, opts)
 	case "repo":
 		return cmdRepo(st, rest, opts)
 	case "serve":
@@ -195,6 +197,7 @@ Usage:
   slopshipper block --reason TEXT [--run ID]
   slopshipper status [--json] [--run ID]
   slopshipper reviewers [--add NAME | --remove NAME] [--json]
+  slopshipper watch [--once | --interval SECONDS [--iterations N]] [--run ID]
   slopshipper repo [show|register|update|unregister] [flags] [--json]
   slopshipper schema [--command NAME] [--json]
   slopshipper storage [--json]
@@ -249,8 +252,9 @@ Record strict JSON delivery evidence. Use --evidence - for stdin.
 		"observe": `Usage: slopshipper observe --signal SIGNAL [--unit ID] [--reference URL] [--run ID]
 
 Record one external signal about a delivered unit. Signals: merged closes
-the unit; checks_failed and review_feedback return it to the build loop
-with the cause recorded. Omit --unit when exactly one unit is delivered.
+the unit; checks_failed, review_feedback, and head_moved return it to the
+build loop with the cause recorded. Omit --unit when exactly one unit is
+delivered. slopshipper watch records these signals from the forge itself.
 `,
 		"ask": `Usage: slopshipper ask --question TEXT [--run ID]
 
@@ -282,6 +286,22 @@ List built-in and registered reviewer identities, or register/unregister a
 custom identity. Registration is declarative and idempotent; built-ins
 (autoreview, bugbot) cannot be changed. Humans hold release and recovery
 latches; a human sign-off reviewer must be registered explicitly.
+`,
+		"watch": `Usage: slopshipper watch [--once | --interval SECONDS [--iterations N]] [--run ID]
+
+Observe every delivered unit's change request on the forge and record the
+signals as observe events: merged settles the unit; failed checks, new
+review feedback, or a moved head return it to the build loop with the
+cause recorded. Unchanged forge state records nothing, so passes are
+idempotent. --once (the default) runs one pass; --interval polls with a
+bounded iteration count (default 20) and stops early once nothing awaits
+signals. Interrupting with Ctrl-C is safe. Exit 7 means the final pass
+left something unobserved or unrecorded; the emitted watch document
+still reports every observation already recorded plus error_kind:
+auth/rate_limit (fix gh access and rerun), transient (rerun),
+not_found (the change request is gone; ask or re-deliver), unobservable
+(delivery evidence unusable; record manually with slopshipper observe),
+conflict (concurrent writers or a fresh re-delivery; rerun watch).
 `,
 		"repo": `Usage: slopshipper repo [show|register|update|unregister] [flags] [--json]
 
@@ -838,8 +858,22 @@ func cmdDeliver(st *store.Store, args []string, opts runOptions) int {
 		if fs["evidence"] == "" {
 			return writeFailure(opts, 2, fmt.Errorf("deliver requires --evidence or --input"))
 		}
-		if err := readJSON(fs["evidence"], &ev); err != nil {
+		// Field presence, not value, decides rejection: "unit":"" is
+		// caller-supplied too, and readJSON already rejects null values.
+		var dto struct {
+			Unit         *string `json:"unit,omitempty"`
+			DeliveryMode string  `json:"delivery_mode,omitempty"`
+			PRURL        string  `json:"pr_url,omitempty"`
+			CommitSHA    string  `json:"commit_sha,omitempty"`
+		}
+		if err := readJSON(fs["evidence"], &dto); err != nil {
 			return writeFailure(opts, 2, err)
+		}
+		if dto.Unit != nil {
+			return writeFailure(opts, 2, fmt.Errorf("deliver evidence must not name a unit; the machine stamps the delivered unit itself"))
+		}
+		ev = machine.DeliverEvidence{
+			DeliveryMode: machine.DeliveryMode(dto.DeliveryMode), PRURL: dto.PRURL, CommitSHA: dto.CommitSHA,
 		}
 	}
 	if err := validateRunID(runID); err != nil {
@@ -1232,6 +1266,7 @@ var commandFlags = map[string]map[string]bool{
 	"block":     {"reason": true, "run": true, "input": true, "telemetry": true},
 	"status":    {"json": true, "run": true, "fields": true},
 	"reviewers": {"add": true, "remove": true, "json": true},
+	"watch":     {"once": true, "interval": true, "iterations": true, "run": true, "json": true},
 	"repo":      {"forge": true, "trust": true, "verify-cmd": true, "delivery": true, "readiness": true, "bind": true, "json": true},
 	"schema":    {"json": true, "command": true},
 	"storage":   {"json": true},
@@ -1396,11 +1431,11 @@ func parseFlagsWith(args []string, allowed map[string]bool) (map[string]string, 
 		if _, dup := out[key]; dup {
 			return nil, fmt.Errorf("flag --%s may be specified only once", key)
 		}
-		if key == "json" {
+		if key == "json" || key == "once" {
 			if hasVal {
-				return nil, fmt.Errorf("flag --json does not accept a value")
+				return nil, fmt.Errorf("flag --%s does not accept a value", key)
 			}
-			out["json"] = "1"
+			out[key] = "1"
 			continue
 		}
 		if !hasVal {

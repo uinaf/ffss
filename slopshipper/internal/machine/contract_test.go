@@ -618,8 +618,11 @@ func TestDeliveryModesAndValidation(t *testing.T) {
 	}{
 		{"pr hold", machine.DeliveryPRHold, machine.DeliverEvidence{PRURL: "https://example.com/1"}, true},
 		{"merge ready", machine.DeliveryPRMergeWhenReady, machine.DeliverEvidence{PRURL: "https://example.com/2"}, true},
-		{"direct", machine.DeliveryDirectTrunk, machine.DeliverEvidence{CommitSHA: "abc123"}, true},
+		{"direct", machine.DeliveryDirectTrunk, machine.DeliverEvidence{CommitSHA: "abc1234"}, true},
 		{"missing pr", machine.DeliveryPRHold, machine.DeliverEvidence{}, false},
+		{"non-hex sha", machine.DeliveryDirectTrunk, machine.DeliverEvidence{CommitSHA: "zzz9999"}, false},
+		{"short sha", machine.DeliveryDirectTrunk, machine.DeliverEvidence{CommitSHA: "abc12"}, false},
+		{"pr with bad sha", machine.DeliveryPRHold, machine.DeliverEvidence{PRURL: "https://example.com/3", CommitSHA: "not-a-sha"}, false},
 		{"missing commit", machine.DeliveryDirectTrunk, machine.DeliverEvidence{}, false},
 		{"mismatch", machine.DeliveryPRHold, machine.DeliverEvidence{DeliveryMode: machine.DeliveryDirectTrunk, PRURL: "x"}, false},
 		{"unknown", machine.DeliveryMode("other"), machine.DeliverEvidence{}, false},

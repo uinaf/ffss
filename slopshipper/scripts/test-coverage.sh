@@ -28,6 +28,7 @@ check_profile repo ./internal/repo 80
 check_profile serve ./internal/serve 80
 check_profile status ./internal/status 90
 check_profile store ./internal/store 80
+check_profile watch ./internal/watch 90
 
 # The CLI integration tests execute a built child process. Instrument that binary
 # separately so those end-to-end paths cannot disappear behind parent test coverage.

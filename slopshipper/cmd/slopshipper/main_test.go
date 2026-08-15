@@ -1140,7 +1140,7 @@ func TestRunEntryPointsAndFullRecoveryFlow(t *testing.T) {
 		t.Fatalf("bugbot=%d", code)
 	}
 	delivery := filepath.Join(t.TempDir(), "delivery.json")
-	mustWrite(t, delivery, `{"delivery_mode":"direct-trunk","commit_sha":"abc123"}`)
+	mustWrite(t, delivery, `{"delivery_mode":"direct-trunk","commit_sha":"abc1234"}`)
 	if code := run([]string{"deliver", "--evidence", delivery, "--run", "direct"}); code != 0 {
 		t.Fatalf("deliver=%d", code)
 	}

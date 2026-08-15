@@ -284,6 +284,9 @@ func applyDeliver(run *Run, units *[]Unit, in ApplyInput) error {
 	if u == nil {
 		return fmt.Errorf("%w: current unit missing", ErrCorruptState)
 	}
+	// Stamp the delivered unit into the evidence so observation (watch) can
+	// correlate forge state back to its unit later.
+	in.Deliver.UnitID = u.ID
 	// Delivery opens a change request; the unit settles only when an
 	// observed external signal closes it (observe --signal merged).
 	u.Phase = PhaseDelivered
@@ -320,9 +323,22 @@ func applyObserve(run *Run, units *[]Unit, in ApplyInput) error {
 		return fmt.Errorf("%w: observe evidence required", ErrBadArgs)
 	}
 	switch in.Observe.Signal {
-	case SignalMerged, SignalChecksFailed, SignalReviewFeedback:
+	case SignalMerged, SignalChecksFailed, SignalReviewFeedback, SignalHeadMoved:
 	default:
-		return fmt.Errorf("%w: observe.signal must be merged|checks_failed|review_feedback", ErrBadArgs)
+		return fmt.Errorf("%w: observe.signal must be merged|checks_failed|review_feedback|head_moved", ErrBadArgs)
+	}
+	if len(in.Observe.ThreadTokens) > maxObserveThreadTokens {
+		return fmt.Errorf("%w: observe.thread_tokens must carry at most %d entries", ErrBadArgs, maxObserveThreadTokens)
+	}
+	for _, token := range in.Observe.ThreadTokens {
+		if token == "" || len(token) > maxObserveTokenBytes {
+			return fmt.Errorf("%w: observe.thread_tokens entries must be 1-%d bytes", ErrBadArgs, maxObserveTokenBytes)
+		}
+		for _, r := range token {
+			if unicode.IsControl(r) || r == '\u2028' || r == '\u2029' {
+				return fmt.Errorf("%w: observe.thread_tokens entries must not contain control characters", ErrBadArgs)
+			}
+		}
 	}
 	unit, err := resolveDeliveredUnit(*units, in.Observe.UnitID)
 	if err != nil {
@@ -552,6 +568,8 @@ func validComplexity(c Complexity) error {
 const (
 	maxAcceptanceCriteria       = 32
 	maxAcceptanceCriterionBytes = 500
+	maxObserveThreadTokens      = 64
+	maxObserveTokenBytes        = 300
 )
 
 func validAcceptanceCriteria(unitID string, criteria []string) error {
