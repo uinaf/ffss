@@ -17,9 +17,11 @@ widens the change.
   `head_moved` return it to the build loop with the cause recorded — act on
   that cause.
 - Without a run, poll through the forge CLI the delivery dispatched to
-  (`gh` / `glab`): checks state and unresolved review threads.
-- Act only on checks and comments newer than the latest push; everything
-  older was already answered by that push.
+  (`gh` / `glab`): checks state, review verdicts (a `CHANGES_REQUESTED`
+  review may carry no inline thread), unresolved review threads, and
+  top-level comments — bots often report findings as ordinary comments.
+- Act only on checks, reviews, and comments newer than the latest push;
+  everything older was already answered by that push.
 
 ## Triage findings
 
@@ -28,13 +30,21 @@ widens the change.
    sometimes wrong.
 2. Fix a real finding with the smallest change at the owning boundary, rerun
    the repository's own gates, push, and reply on the thread with the commit
-   hash.
+   hash. Never force-push without explicit approval — even when rework
+   after `head_moved` tempts a rebase.
 3. Reject an incorrect or out-of-scope finding in a thread reply with
    concrete evidence (file, line, invariant); never fix-to-appease.
 4. Never let feedback expand the change beyond its original goal. Real
    shortcomings outside the goal become tracker items, not commits.
 5. Attach visual proof only when it is the clearest evidence — reuse the
    slopcourier visual-evidence ladder; never commit proof assets.
+
+## Reply voice
+
+Replies post under the authenticated account and are that identity
+speaking: first-person neutral voice, never third-person self-reference,
+structured markdown (short paragraphs, backticked identifiers), and only
+content that advances the thread.
 
 ## Quiet discipline
 
