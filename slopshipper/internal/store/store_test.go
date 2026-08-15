@@ -27,7 +27,7 @@ func TestCreateResolveAndCAS(t *testing.T) {
 
 	run := machine.NewRun("run-a", "repo-a")
 	units := []machine.Unit{{ID: "u1", Title: "one"}}
-	if err := s.CreateRun(run, units); err != nil {
+	if err := s.CreateRun(run, units, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -41,7 +41,7 @@ func TestCreateResolveAndCAS(t *testing.T) {
 
 	// second open run → ambiguous
 	run2 := machine.NewRun("run-b", "repo-a")
-	if err := s.CreateRun(run2, units); err != nil {
+	if err := s.CreateRun(run2, units, nil); err != nil {
 		t.Fatal(err)
 	}
 	_, _, err = s.ResolveActiveRun("repo-a", "")
@@ -54,7 +54,7 @@ func TestCreateResolveAndCAS(t *testing.T) {
 	}
 
 	other := machine.NewRun("run-other", "repo-b")
-	if err := s.CreateRun(other, units); err != nil {
+	if err := s.CreateRun(other, units, nil); err != nil {
 		t.Fatal(err)
 	}
 	_, _, err = s.ResolveActiveRun("repo-a", "run-other")
@@ -87,7 +87,7 @@ func TestOpenReadOnlyResolvesWithoutWriting(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CreateRun(machine.NewRun("read-only", "repo"), nil); err != nil {
+	if err := s.CreateRun(machine.NewRun("read-only", "repo"), nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Close(); err != nil {
@@ -137,7 +137,7 @@ func TestResolveStatusRunIncludesClosed(t *testing.T) {
 
 	run := machine.NewRun("run-done", "repo-a")
 	units := []machine.Unit{{ID: "u1", Title: "one"}}
-	if err := s.CreateRun(run, units); err != nil {
+	if err := s.CreateRun(run, units, nil); err != nil {
 		t.Fatal(err)
 	}
 	run.State = machine.StateRunDone
@@ -169,7 +169,7 @@ func TestListRunsAndEvents(t *testing.T) {
 
 	runA := machine.NewRun("run-a", "repo-a")
 	units := []machine.Unit{{ID: "u1", Title: "one"}}
-	if err := s.CreateRun(runA, units); err != nil {
+	if err := s.CreateRun(runA, units, nil); err != nil {
 		t.Fatal(err)
 	}
 	res, err := machine.Apply(runA, units, machine.CmdIntake, machine.ApplyInput{
@@ -196,11 +196,11 @@ func TestListRunsAndEvents(t *testing.T) {
 	}
 
 	runB := machine.NewRun("run-b", "repo-a")
-	if err := s.CreateRun(runB, units); err != nil {
+	if err := s.CreateRun(runB, units, nil); err != nil {
 		t.Fatal(err)
 	}
 	other := machine.NewRun("run-other", "repo-b")
-	if err := s.CreateRun(other, units); err != nil {
+	if err := s.CreateRun(other, units, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -275,7 +275,7 @@ func TestReviewerRegistryRoundTrip(t *testing.T) {
 		{ID: "d1", Phase: machine.PhaseDelivered},
 		{ID: "r1", Phase: machine.PhaseRework, ReworkCause: "checks_failed: ci", Attempt: 2},
 		{ID: "p1"},
-	}); err != nil {
+	}, nil); err != nil {
 		t.Fatal(err)
 	}
 	_, phasedUnits, err := s.GetRun("phased")
@@ -291,7 +291,7 @@ func TestReviewerRegistryRoundTrip(t *testing.T) {
 	// A run stored with a nil required set reads back as empty, not null.
 	bare := machine.NewRun("bare", "repo-bare")
 	bare.RequiredReviewers = nil
-	if err := s.CreateRun(bare, nil); err != nil {
+	if err := s.CreateRun(bare, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	loaded, _, err := s.GetRun("bare")
@@ -309,7 +309,7 @@ func TestResolveStatusRunBranchesAndReadOnlyVersionGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CreateRun(machine.NewRun("first", "repo-x"), []machine.Unit{{ID: "u1"}}); err != nil {
+	if err := s.CreateRun(machine.NewRun("first", "repo-x"), []machine.Unit{{ID: "u1"}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if run, _, err := s.ResolveStatusRun("repo-x", ""); err != nil || run.ID != "first" {
@@ -318,7 +318,7 @@ func TestResolveStatusRunBranchesAndReadOnlyVersionGate(t *testing.T) {
 	if _, _, err := s.GetRun("nope"); !errors.Is(err, machine.ErrNotFound) {
 		t.Fatalf("missing run: %v", err)
 	}
-	if err := s.CreateRun(machine.NewRun("second", "repo-x"), []machine.Unit{{ID: "u1"}}); err != nil {
+	if err := s.CreateRun(machine.NewRun("second", "repo-x"), []machine.Unit{{ID: "u1"}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := s.ResolveStatusRun("repo-x", ""); !errors.Is(err, machine.ErrAmbiguousRun) {
@@ -373,7 +373,7 @@ func TestReadPathsFailClosedOnWrongRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	if err := s.CreateRun(machine.NewRun("reads", "repo-a"), []machine.Unit{{ID: "u1"}}); err != nil {
+	if err := s.CreateRun(machine.NewRun("reads", "repo-a"), []machine.Unit{{ID: "u1"}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.ListEvents("repo-b", "reads"); !errors.Is(err, machine.ErrNotFound) {
@@ -402,7 +402,7 @@ func TestRekeyRepoBranches(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A root that matches no persisted run leaves state untouched.
-	if err := s.CreateRun(machine.NewRun("keep", "identity|/somewhere/else"), nil); err != nil {
+	if err := s.CreateRun(machine.NewRun("keep", "identity|/somewhere/else"), nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.RekeyRepo("new-key|/root", "/root"); err != nil {
@@ -424,7 +424,7 @@ func TestSaveApplyReenforcesReviewerRegistryTransactionally(t *testing.T) {
 		t.Fatal(err)
 	}
 	run := machine.NewRun("guarded", "repo-guard")
-	if err := s.CreateRun(run, nil); err != nil {
+	if err := s.CreateRun(run, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	res, err := machine.Apply(run, nil, machine.CmdIntake, machine.ApplyInput{
@@ -459,10 +459,10 @@ func TestRunIDsAreGloballyUnique(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	if err := s.CreateRun(machine.NewRun("demo", "repo-a"), nil); err != nil {
+	if err := s.CreateRun(machine.NewRun("demo", "repo-a"), nil, nil); err != nil {
 		t.Fatal(err)
 	}
-	err = s.CreateRun(machine.NewRun("demo", "repo-b"), nil)
+	err = s.CreateRun(machine.NewRun("demo", "repo-b"), nil, nil)
 	if !errors.Is(err, machine.ErrRunExists) {
 		t.Fatalf("duplicate run error=%v", err)
 	}
@@ -479,7 +479,7 @@ func TestPersistsCanonicalEvidenceAndReviewProgress(t *testing.T) {
 	run.RequiredReviewers = []machine.ReviewerIdentity{machine.ReviewerAutoreview, machine.ReviewerBugbot}
 	run.CurrentUnitID = "u1"
 	units := []machine.Unit{{ID: "u1", Attempt: 1}}
-	if err := s.CreateRun(run, units); err != nil {
+	if err := s.CreateRun(run, units, nil); err != nil {
 		t.Fatal(err)
 	}
 	res, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
@@ -505,7 +505,7 @@ func TestPersistsCanonicalEvidenceAndReviewProgress(t *testing.T) {
 	deliver := machine.NewRun("deliver", "repo")
 	deliver.State = machine.StateDeliver
 	deliver.CurrentUnitID = "u1"
-	if err := s.CreateRun(deliver, units); err != nil {
+	if err := s.CreateRun(deliver, units, nil); err != nil {
 		t.Fatal(err)
 	}
 	deliveryEvidence := &machine.DeliverEvidence{PRURL: "https://example.com/pull/1"}
@@ -554,7 +554,7 @@ func TestDefaultsPreferencesRekeyAndMissingRuns(t *testing.T) {
 	basicRoot := "/work/basic"
 	basicKey := "https://host/basic|" + basicRoot
 	run := machine.NewRun("legacy", "https://host/basic?access_token=OLD|"+basicRoot)
-	if err := s.CreateRun(run, nil); err != nil {
+	if err := s.CreateRun(run, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.RekeyRepo(basicKey, basicRoot); err != nil {
@@ -570,15 +570,15 @@ func TestDefaultsPreferencesRekeyAndMissingRuns(t *testing.T) {
 		t.Fatalf("missing run: %v", err)
 	}
 	rotated := machine.NewRun("rotated", "https://host/repo?access_token=OLD|/work/repo")
-	if err := s.CreateRun(rotated, nil); err != nil {
+	if err := s.CreateRun(rotated, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	other := machine.NewRun("other-root", "https://host/repo?access_token=OLD|/work/other")
-	if err := s.CreateRun(other, nil); err != nil {
+	if err := s.CreateRun(other, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	collision := machine.NewRun("delimiter-root", "https://host/repo|/tmp|/work/repo")
-	if err := s.CreateRun(collision, nil); err != nil {
+	if err := s.CreateRun(collision, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.RekeyRepo("https://host/repo|/work/repo", "/work/repo"); err != nil {
@@ -594,7 +594,7 @@ func TestDefaultsPreferencesRekeyAndMissingRuns(t *testing.T) {
 		t.Fatalf("delimiter-bearing root changed: %+v %v", got, err)
 	}
 	repointed := machine.NewRun("repointed", "https://old-host/repo?access_token=OLD|/work/repo")
-	if err := s.CreateRun(repointed, nil); err != nil {
+	if err := s.CreateRun(repointed, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.RekeyRepo("https://new-host/repo|/work/repo", "/work/repo"); err != nil {

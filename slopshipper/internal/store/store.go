@@ -16,7 +16,14 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 6
+const schemaVersion = 7
+
+// timestampNow returns a fixed-width UTC timestamp. RFC3339Nano trims
+// trailing zeros, which breaks the lexicographic ordering the run queries
+// rely on; a constant-width fraction keeps string order equal to time order.
+func timestampNow() string {
+	return time.Now().UTC().Format("2006-01-02T15:04:05.000000000Z")
+}
 
 // ErrStateUnavailable marks a resolved state location that cannot be
 // prepared (directory or database file creation failed). Callers recover by
@@ -186,7 +193,7 @@ func (s *Store) migrate() error {
 			if _, err := tx.Exec(`INSERT OR IGNORE INTO reviewers(name, created_at)
 				SELECT 'human', ? WHERE EXISTS (
 					SELECT 1 FROM runs WHERE required_reviewers_json = '["human"]'
-				)`, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+				)`, timestampNow()); err != nil {
 				return fmt.Errorf("register legacy human reviewer from schema 2: %w", err)
 			}
 			version = 3
@@ -231,6 +238,11 @@ func (s *Store) migrate() error {
 				return fmt.Errorf("migrate schema 5 to 6: %w", err)
 			}
 			version = 6
+		case 6:
+			if _, err := tx.Exec(`ALTER TABLE events ADD COLUMN telemetry_json TEXT NOT NULL DEFAULT '{}'`); err != nil {
+				return fmt.Errorf("migrate schema 6 to 7: %w", err)
+			}
+			version = 7
 		default:
 			return fmt.Errorf("unsupported schema version %d", version)
 		}
@@ -301,6 +313,7 @@ func createCurrentSchema(tx *sql.Tx) error {
 			from_state TEXT NOT NULL,
 			to_state TEXT NOT NULL,
 			evidence_json TEXT NOT NULL,
+			telemetry_json TEXT NOT NULL DEFAULT '{}',
 			UNIQUE(run_id, seq)
 		)`,
 	}
@@ -329,8 +342,9 @@ func (s *Store) exec(q string, args ...any) error {
 	return err
 }
 
-// CreateRun inserts a new run and optional units.
-func (s *Store) CreateRun(run machine.Run, units []machine.Unit) error {
+// CreateRun inserts a new run and optional units; telemetry, when present,
+// rides the init event.
+func (s *Store) CreateRun(run machine.Run, units []machine.Unit, telemetry *machine.Telemetry) error {
 	tx, err := s.beginImmediate()
 	if err != nil {
 		return err
@@ -343,7 +357,7 @@ func (s *Store) CreateRun(run machine.Run, units []machine.Unit) error {
 		return err
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := timestampNow()
 	completedReviewers, err := json.Marshal(run.CompletedReviewers)
 	if err != nil {
 		return err
@@ -383,8 +397,18 @@ func (s *Store) CreateRun(run machine.Run, units []machine.Unit) error {
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`INSERT INTO events(run_id, seq, at, command, from_state, to_state, evidence_json)
-		VALUES (?,?,?,?,?,?,?)`, run.ID, 1, now, string(machine.CmdInit), "", string(run.State), string(initEvidence)); err != nil {
+	initTelemetry := []byte("{}")
+	if telemetry != nil {
+		if err := machine.ValidateTelemetry(telemetry); err != nil {
+			return err
+		}
+		initTelemetry, err = json.Marshal(telemetry)
+		if err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(`INSERT INTO events(run_id, seq, at, command, from_state, to_state, evidence_json, telemetry_json)
+		VALUES (?,?,?,?,?,?,?,?)`, run.ID, 1, now, string(machine.CmdInit), "", string(run.State), string(initEvidence), string(initTelemetry)); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -456,7 +480,7 @@ func (s *Store) runIDs(repoKey string, openOnly bool) ([]string, error) {
 	if openOnly {
 		q += ` AND open = 1`
 	}
-	q += ` ORDER BY updated_at DESC, created_at DESC`
+	q += ` ORDER BY updated_at DESC, created_at DESC, rowid DESC`
 	rows, err := s.db.Query(q, repoKey)
 	if err != nil {
 		return nil, err
@@ -598,7 +622,7 @@ func (s *Store) SaveApply(result machine.ApplyResult) error {
 	if run.State == machine.StateRunDone {
 		open = 0
 	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := timestampNow()
 	budget, err := json.Marshal(run.Budget)
 	if err != nil {
 		return err
@@ -638,9 +662,16 @@ func (s *Store) SaveApply(result machine.ApplyResult) error {
 	if err := tx.QueryRow(`SELECT COALESCE(MAX(seq), 0) + 1 FROM events WHERE run_id = ?`, run.ID).Scan(&seq); err != nil {
 		return err
 	}
-	_, err = tx.Exec(`INSERT INTO events(run_id, seq, at, command, from_state, to_state, evidence_json)
-		VALUES (?,?,?,?,?,?,?)`,
-		run.ID, seq, now, string(result.Command), string(result.EventFrom), string(result.EventTo), string(evJSON),
+	telemetryJSON := []byte("{}")
+	if result.Telemetry != nil {
+		telemetryJSON, err = json.Marshal(result.Telemetry)
+		if err != nil {
+			return err
+		}
+	}
+	_, err = tx.Exec(`INSERT INTO events(run_id, seq, at, command, from_state, to_state, evidence_json, telemetry_json)
+		VALUES (?,?,?,?,?,?,?,?)`,
+		run.ID, seq, now, string(result.Command), string(result.EventFrom), string(result.EventTo), string(evJSON), string(telemetryJSON),
 	)
 	if err != nil {
 		return err
@@ -788,19 +819,14 @@ func (s *Store) writeRepoProfile(profile machine.RepoProfile, mustExist bool) er
 	// this transaction commits, not just when the caller pre-checked them.
 	for _, name := range bindings[machine.RoleReview] {
 		if err := ensureReviewersRegisteredTx(tx, []machine.ReviewerIdentity{machine.ReviewerIdentity(name)}); err != nil {
-			// Only a missing registration is the caller's mistake; storage
-			// failures keep their own cause and classification.
-			if errors.Is(err, machine.ErrUnmetGuard) {
-				return fmt.Errorf("%w: review binding %q is not a registered reviewer identity; register it first with slopshipper reviewers --add %s", machine.ErrBadArgs, name, name)
-			}
-			return err
+			return fmt.Errorf("%w: review binding %q is not a registered reviewer identity; register it first with slopshipper reviewers --add %s", machine.ErrBadArgs, name, name)
 		}
 	}
 	encoded, err := json.Marshal(bindings)
 	if err != nil {
 		return err
 	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := timestampNow()
 	if exists {
 		if _, err := tx.Exec(`UPDATE repos SET forge_kind=?, trust_tier=?, verify_command=?, delivery_mode=?, readiness=?, bindings_json=?, updated_at=?
 			WHERE repo_key=?`,
@@ -825,7 +851,7 @@ func (s *Store) UnregisterRepoProfile(repoKey string) error {
 
 // RegisterReviewer records a custom reviewer identity; idempotent.
 func (s *Store) RegisterReviewer(name machine.ReviewerIdentity) error {
-	now := time.Now().UTC().Format(time.RFC3339Nano)
+	now := timestampNow()
 	return s.exec(`INSERT INTO reviewers(name, created_at) VALUES (?, ?)
 		ON CONFLICT(name) DO NOTHING`, string(name), now)
 }

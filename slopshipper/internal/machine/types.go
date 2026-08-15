@@ -144,7 +144,10 @@ type ApplyInput struct {
 	RegisteredReviewers []ReviewerIdentity
 	// Profile is the registered repo profile snapshot, nil when the repo is
 	// unregistered. A registered profile must bind every required reviewer.
-	Profile     *RepoProfile
+	Profile *RepoProfile
+	// Telemetry is optional recorded input for this transition; absent
+	// telemetry never blocks a command.
+	Telemetry   *Telemetry
 	Intake      *IntakePatch
 	Verify      *VerifyEvidence
 	Review      *ReviewEvidence
@@ -164,4 +167,7 @@ type ApplyResult struct {
 	EventTo   State
 	Command   Command
 	Evidence  any
+	// Telemetry is the validated recorded input for this transition, nil
+	// when none was supplied.
+	Telemetry *Telemetry
 }

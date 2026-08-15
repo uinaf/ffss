@@ -98,7 +98,7 @@ func cmdRepo(st *store.Store, args []string, opts runOptions) int {
 	// silent clear; only --bind documents empty-as-clear (replacement set).
 	for _, name := range []string{"forge", "trust", "verify-cmd", "delivery", "readiness"} {
 		if value, ok := fs[name]; ok && value == "" {
-			return writeFailure(opts, 2, fmt.Errorf("--%s requires a non-empty value; to drop a policy field, unregister and register the profile again without it", name))
+			return writeFailure(opts, 2, fmt.Errorf("--%s requires a non-empty value; re-register the profile to drop a policy field", name))
 		}
 	}
 	if value, ok := fs["forge"]; ok {

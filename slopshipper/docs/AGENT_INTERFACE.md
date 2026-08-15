@@ -112,6 +112,15 @@ later units keep building while earlier ones wait (`AWAITING_SIGNALS`).
 `observe.unit` is required only when several units are delivered; the
 `delivered_units` status field lists the candidates.
 
+## Record telemetry
+
+Transitions accept optional recorded telemetry (`--telemetry PATH|-` or a
+`telemetry` object in `--input` payloads): `duration_ms`, `tokens`,
+`cost_cents`, and `route` (venue, harness, role→model map). Record real
+numbers only; omit what was not measured. `verify --cmd` measures its own
+wall clock. Totals appear in status as `total_duration_ms`,
+`total_tokens`, `total_cost_cents`, and `telemetry_events`.
+
 ## Treat SQLite as canonical state
 
 By default, state is stored outside the repository:

@@ -34,14 +34,20 @@ type flagSchema struct {
 }
 
 type jsonSchema struct {
-	Type                 string                `json:"type,omitempty"`
-	Description          string                `json:"description,omitempty"`
-	Properties           map[string]jsonSchema `json:"properties,omitempty"`
-	Required             []string              `json:"required,omitempty"`
-	Enum                 []string              `json:"enum,omitempty"`
-	Items                *jsonSchema           `json:"items,omitempty"`
-	Minimum              *int                  `json:"minimum,omitempty"`
-	AdditionalProperties *bool                 `json:"additionalProperties,omitempty"`
+	Type          string                `json:"type,omitempty"`
+	Description   string                `json:"description,omitempty"`
+	Properties    map[string]jsonSchema `json:"properties,omitempty"`
+	Required      []string              `json:"required,omitempty"`
+	Enum          []string              `json:"enum,omitempty"`
+	Items         *jsonSchema           `json:"items,omitempty"`
+	Minimum       *int                  `json:"minimum,omitempty"`
+	Maximum       *int                  `json:"maximum,omitempty"`
+	MinLength     *int                  `json:"minLength,omitempty"`
+	MinProperties *int                  `json:"minProperties,omitempty"`
+	AnyOf         []jsonSchema          `json:"anyOf,omitempty"`
+	// AdditionalProperties is false for closed objects or a schema for
+	// typed map values.
+	AdditionalProperties any `json:"additionalProperties,omitempty"`
 }
 
 func schemaDocument(command string) (introspectionDocument, error) {
@@ -90,6 +96,39 @@ func allCommandSchemas() []commandSchema {
 		"acceptance_criteria": arraySchema(stringSchema("One verifiable acceptance criterion."), "What must be true for the unit to count as done; at most 32 single-line criteria, each at most 500 bytes."),
 		"complexity":          enumSchema("Expected difficulty of the unit.", "low", "medium", "high"),
 	}, "id")
+	venue := stringSchema("Where the work ran (for example local, crabbox, a cloud agent).")
+	venue.MinLength = intPointer(1)
+	harness := stringSchema("Driver harness identity.")
+	harness.MinLength = intPointer(1)
+	models := mapSchema(stringSchema("Model identity for the role."), "Role to model map.")
+	route := objectSchema(map[string]jsonSchema{
+		"venue":   venue,
+		"harness": harness,
+		"models":  models,
+	})
+	route.Description = "Execution stack actually used; at least one non-empty field when present."
+	route.MinProperties = intPointer(1)
+	route.AnyOf = []jsonSchema{
+		{Required: []string{"venue"}},
+		{Required: []string{"harness"}},
+		{Required: []string{"models"}, Properties: map[string]jsonSchema{"models": {MinProperties: intPointer(1)}}},
+	}
+	telemetry := objectSchema(map[string]jsonSchema{
+		"duration_ms": boundedIntegerSchema("Wall-clock duration in milliseconds.", 0, maxTelemetryDimension),
+		"tokens":      boundedIntegerSchema("Estimated tokens spent.", 0, maxTelemetryDimension),
+		"cost_cents":  boundedIntegerSchema("Estimated cost in cents.", 0, maxTelemetryDimension),
+		"route":       route,
+	})
+	telemetry.Description = "Optional recorded telemetry for this transition; at least one non-zero dimension or a route when present."
+	telemetry.MinProperties = intPointer(1)
+	// All-zero telemetry is rejected at the boundary; the published contract
+	// encodes the same rule so schema-driven agents never emit it.
+	telemetry.AnyOf = []jsonSchema{
+		{Required: []string{"duration_ms"}, Properties: map[string]jsonSchema{"duration_ms": minimumIntegerSchema("", 1)}},
+		{Required: []string{"tokens"}, Properties: map[string]jsonSchema{"tokens": minimumIntegerSchema("", 1)}},
+		{Required: []string{"cost_cents"}, Properties: map[string]jsonSchema{"cost_cents": minimumIntegerSchema("", 1)}},
+		{Required: []string{"route"}},
+	}
 	reviewer := stringSchema("Registered reviewer identity. Built-ins: autoreview, bugbot; register anything else (including a human sign-off identity) with slopshipper reviewers --add.")
 	intake := objectSchema(map[string]jsonSchema{
 		"run":                run,
@@ -101,43 +140,43 @@ func allCommandSchemas() []commandSchema {
 		"units":              arraySchema(unit, "Replacement dependency graph."),
 	})
 	commands := []commandSchema{
-		mutationSchema("init", "Create a run for the current repository.", objectSchema(map[string]jsonSchema{"run": run}), flags("run", "input")),
-		mutationSchema("intake", "Load or update the released-work contract.", intake, flags("file", "run", "input")),
-		mutationSchema("release", "Latch human approval for an intake revision.", objectSchema(map[string]jsonSchema{
+		withTelemetry(mutationSchema("init", "Create a run for the current repository.", objectSchema(map[string]jsonSchema{"run": run}), flags("run", "input")), telemetry),
+		withTelemetry(mutationSchema("intake", "Load or update the released-work contract.", intake, flags("file", "run", "input")), telemetry),
+		withTelemetry(mutationSchema("release", "Latch human approval for an intake revision.", objectSchema(map[string]jsonSchema{
 			"run": run, "revision": integerSchema("Exact intake revision to release."),
-		}, "revision"), flags("revision", "run", "input")),
-		mutationSchema("build", "Claim the next ready unit.", objectSchema(map[string]jsonSchema{"run": run}), flags("run", "input")),
-		mutationSchema("verify", "Record verification evidence; convenience --cmd executes a shell command.", objectSchema(map[string]jsonSchema{
+		}, "revision"), flags("revision", "run", "input")), telemetry),
+		withTelemetry(mutationSchema("build", "Claim the next ready unit.", objectSchema(map[string]jsonSchema{"run": run}), flags("run", "input")), telemetry),
+		withTelemetry(mutationSchema("verify", "Record verification evidence; convenience --cmd executes a shell command.", objectSchema(map[string]jsonSchema{
 			"run": run, "command": stringSchema("Verification command represented by the evidence."),
 			"exit_code": integerSchema("Verification exit code."), "output_digest": stringSchema("Optional output digest."),
-		}, "command", "exit_code"), flags("cmd", "evidence", "run", "input")),
-		mutationSchema("review", "Record strict independent-review evidence.", objectSchema(map[string]jsonSchema{
+		}, "command", "exit_code"), flags("cmd", "evidence", "run", "input")), telemetry),
+		withTelemetry(mutationSchema("review", "Record strict independent-review evidence.", objectSchema(map[string]jsonSchema{
 			"run": run, "reviewer": reviewer,
 			"verdict":      enumSchema("Review outcome.", "clean", "findings", "ambiguous"),
 			"artifact_ref": stringSchema("Stable review artifact reference."),
-		}, "reviewer", "verdict", "artifact_ref"), flags("evidence", "run", "input")),
-		mutationSchema("rework", "Return review work to the build loop.", objectSchema(map[string]jsonSchema{"run": run}), flags("run", "input")),
-		mutationSchema("deliver", "Record delivery evidence and complete the current unit.", objectSchema(map[string]jsonSchema{
+		}, "reviewer", "verdict", "artifact_ref"), flags("evidence", "run", "input")), telemetry),
+		withTelemetry(mutationSchema("rework", "Return review work to the build loop.", objectSchema(map[string]jsonSchema{"run": run}), flags("run", "input")), telemetry),
+		withTelemetry(mutationSchema("deliver", "Record delivery evidence and complete the current unit.", objectSchema(map[string]jsonSchema{
 			"run": run, "delivery_mode": enumSchema("Must match intake when present.", "pr-hold", "pr-merge-when-ready", "direct-trunk"),
 			"pr_url": stringSchema("Required for PR delivery modes."), "commit_sha": stringSchema("Required for direct-trunk delivery."),
-		}), flags("evidence", "run", "input")),
-		mutationSchema("observe", "Record an external signal for a delivered unit.", objectSchema(map[string]jsonSchema{
+		}), flags("evidence", "run", "input")), telemetry),
+		withTelemetry(mutationSchema("observe", "Record an external signal for a delivered unit.", objectSchema(map[string]jsonSchema{
 			"run": run, "unit": stringSchema("Delivered unit; optional when exactly one unit is delivered."),
 			"signal":    enumSchema("What the forge showed.", "merged", "checks_failed", "review_feedback"),
 			"reference": stringSchema("Optional link or check name backing the signal."),
-		}, "signal"), flags("signal", "unit", "reference", "run", "input")),
-		mutationSchema("ask", "Park the run for a human decision.", objectSchema(map[string]jsonSchema{
+		}, "signal"), flags("signal", "unit", "reference", "run", "input")), telemetry),
+		withTelemetry(mutationSchema("ask", "Park the run for a human decision.", objectSchema(map[string]jsonSchema{
 			"run": run, "question": stringSchema("Question requiring a human answer."),
-		}, "question"), flags("question", "run", "input")),
-		mutationSchema("decide", "Record a human answer and resume.", objectSchema(map[string]jsonSchema{
+		}, "question"), flags("question", "run", "input")), telemetry),
+		withTelemetry(mutationSchema("decide", "Record a human answer and resume.", objectSchema(map[string]jsonSchema{
 			"run": run, "answer": stringSchema("Human decision."),
-		}, "answer"), flags("answer", "run", "input")),
-		mutationSchema("retry", "Record recovery and resume blocked verification.", objectSchema(map[string]jsonSchema{
+		}, "answer"), flags("answer", "run", "input")), telemetry),
+		withTelemetry(mutationSchema("retry", "Record recovery and resume blocked verification.", objectSchema(map[string]jsonSchema{
 			"run": run, "reason": stringSchema("Confirmed recovery reason."),
-		}, "reason"), flags("reason", "run", "input")),
-		mutationSchema("block", "Record why active work cannot continue.", objectSchema(map[string]jsonSchema{
+		}, "reason"), flags("reason", "run", "input")), telemetry),
+		withTelemetry(mutationSchema("block", "Record why active work cannot continue.", objectSchema(map[string]jsonSchema{
 			"run": run, "reason": stringSchema("External blocker reason."),
-		}, "reason"), flags("reason", "run", "input")),
+		}, "reason"), flags("reason", "run", "input")), telemetry),
 		{Name: "status", Description: "Return compact state and the next allowed action.", Flags: flags("json", "run", "fields"), Output: "status"},
 		{Name: "reviewers", Description: "List the reviewer registry, or register/unregister a custom identity.", Mutating: true, Flags: flags("add", "remove", "json"), Output: "reviewers"},
 		{Name: "repo", Description: "Show or declare the repo profile: role bindings (review, qa, venue, memory) and policy (forge kind, trust tier, verify command, delivery mode, readiness). Subcommands: show, register, update, unregister.", Mutating: true, Flags: flags("forge", "trust", "verify-cmd", "delivery", "readiness", "bind", "json"), Output: "repo"},
@@ -152,6 +191,16 @@ func allCommandSchemas() []commandSchema {
 
 func mutationSchema(name, description string, input jsonSchema, commandFlags []flagSchema) commandSchema {
 	return commandSchema{Name: name, Description: description, Mutating: true, Flags: commandFlags, Input: &input, Output: "status"}
+}
+
+// withTelemetry adds the shared optional telemetry object to a transition's
+// input schema and its --telemetry flag.
+func withTelemetry(spec commandSchema, telemetry jsonSchema) commandSchema {
+	if spec.Input != nil {
+		spec.Input.Properties["telemetry"] = telemetry
+	}
+	spec.Flags = append(spec.Flags, flagSchema{Name: "--telemetry", Type: "string", Description: "Strict JSON telemetry path; use - for stdin."})
+	return spec
 }
 
 func flags(names ...string) []flagSchema {
@@ -203,9 +252,15 @@ func flags(names ...string) []flagSchema {
 }
 
 func objectSchema(properties map[string]jsonSchema, required ...string) jsonSchema {
-	additional := false
-	return jsonSchema{Type: "object", Properties: properties, Required: required, AdditionalProperties: &additional}
+	return jsonSchema{Type: "object", Properties: properties, Required: required, AdditionalProperties: false}
 }
+
+// mapSchema is an open-keyed object whose values share one schema.
+func mapSchema(values jsonSchema, description string) jsonSchema {
+	return jsonSchema{Type: "object", Description: description, AdditionalProperties: &values}
+}
+
+func intPointer(value int) *int { return &value }
 
 func stringSchema(description string) jsonSchema {
 	return jsonSchema{Type: "string", Description: description}
@@ -221,6 +276,13 @@ func integerSchema(description string) jsonSchema {
 
 func minimumIntegerSchema(description string, minimum int) jsonSchema {
 	return jsonSchema{Type: "integer", Description: description, Minimum: &minimum}
+}
+
+// maxTelemetryDimension mirrors the machine's per-dimension telemetry bound.
+const maxTelemetryDimension = 1 << 50
+
+func boundedIntegerSchema(description string, minimum, maximum int) jsonSchema {
+	return jsonSchema{Type: "integer", Description: description, Minimum: &minimum, Maximum: &maximum}
 }
 
 func boolSchema(description string) jsonSchema {

@@ -29,6 +29,9 @@ func Apply(run Run, units []Unit, cmd Command, in ApplyInput) (ApplyResult, erro
 	if !slices.Contains(AllowedCommands(run, units), cmd) {
 		return ApplyResult{}, fmt.Errorf("%w: %s not allowed from %s", ErrIllegalTransition, cmd, run.State)
 	}
+	if err := ValidateTelemetry(in.Telemetry); err != nil {
+		return ApplyResult{}, err
+	}
 
 	from := run.State
 	units = cloneUnits(units)
@@ -74,6 +77,7 @@ func Apply(run Run, units []Unit, cmd Command, in ApplyInput) (ApplyResult, erro
 		EventTo:   run.State,
 		Command:   cmd,
 		Evidence:  canonicalEvidence(run, units, cmd, in),
+		Telemetry: in.Telemetry,
 	}, nil
 }
 

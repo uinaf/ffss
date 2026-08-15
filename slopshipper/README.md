@@ -142,6 +142,7 @@ Every command also has focused help, such as `slopshipper review --help`.
 | Re-enter the build loop after findings | `slopshipper rework` |
 | Record a forge signal for a delivered unit | `slopshipper observe --signal merged\|checks_failed\|review_feedback` |
 | Inspect or declare the repo profile | `slopshipper repo [show\|register\|update\|unregister]` |
+| Record transition telemetry | `slopshipper COMMAND --telemetry tel.json` |
 | Inspect all runs in a browser | `slopshipper serve` |
 
 Commands that act on a run accept `--run ID`. When the repository has exactly
@@ -166,6 +167,18 @@ A registered repo drives defaults and gates: new runs inherit the delivery
 mode, `next_action` names the canonical verify command verbatim, and release
 fails closed when a required reviewer holds no review binding. Unregistered
 repositories keep profile-less behavior.
+
+## Telemetry
+
+Every transition can carry recorded telemetry — wall-clock duration,
+estimated tokens and cost, and the route actually used (venue, harness,
+role→model map) — via `--telemetry PATH|-` or a `telemetry` object in raw
+`--input` payloads. `verify --cmd` measures its own duration. Absent
+telemetry is always valid; wrong shapes fail closed. `status --json`
+exposes per-run totals (`total_duration_ms`, `total_tokens`,
+`total_cost_cents`, `telemetry_events`) and `serve` shows them per run.
+This is recorded input for the routing ledger — the machine never enforces
+spend and never handles model keys.
 
 ## Browser view
 

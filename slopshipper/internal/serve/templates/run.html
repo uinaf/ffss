@@ -32,6 +32,9 @@
         {{if .ReviewRequired}}
         <div class="u-def"><span class="u-def-term">reviewers</span><p class="u-def-desc">{{if .ReviewCompleted}}{{join .ReviewCompleted ", "}}{{else}}none completed{{end}} / required {{join .ReviewRequired ", "}}</p></div>
         {{end}}
+        {{if .Telemetry}}
+        <div class="u-def"><span class="u-def-term">telemetry</span><p class="u-def-desc">{{.Telemetry}}</p></div>
+        {{end}}
       </div>
       {{if .NextAction}}
       <div class="next-command">

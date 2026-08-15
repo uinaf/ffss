@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/uinaf/slopshipper/internal/machine"
 )
 
 type initInput struct {
-	Run string `json:"run,omitempty"`
+	Run       string        `json:"run,omitempty"`
+	Telemetry *telemetryDTO `json:"telemetry,omitempty"`
 }
 
 type intakeInput struct {
@@ -16,58 +19,116 @@ type intakeInput struct {
 	Budget            *budgetDTO      `json:"budget,omitempty"`
 	SeriesBound       *int            `json:"series_bound,omitempty"`
 	Units             []intakeUnitDTO `json:"units,omitempty"`
+	Telemetry         *telemetryDTO   `json:"telemetry,omitempty"`
 }
 
 type releaseInput struct {
-	Run      string `json:"run,omitempty"`
-	Revision *int64 `json:"revision"`
+	Run       string        `json:"run,omitempty"`
+	Revision  *int64        `json:"revision"`
+	Telemetry *telemetryDTO `json:"telemetry,omitempty"`
 }
 
 type runInput struct {
-	Run string `json:"run,omitempty"`
+	Run       string        `json:"run,omitempty"`
+	Telemetry *telemetryDTO `json:"telemetry,omitempty"`
 }
 
 type verifyInput struct {
-	Run          string `json:"run,omitempty"`
-	Command      string `json:"command"`
-	ExitCode     *int   `json:"exit_code"`
-	OutputDigest string `json:"output_digest,omitempty"`
+	Run          string        `json:"run,omitempty"`
+	Command      string        `json:"command"`
+	ExitCode     *int          `json:"exit_code"`
+	OutputDigest string        `json:"output_digest,omitempty"`
+	Telemetry    *telemetryDTO `json:"telemetry,omitempty"`
 }
 
 type reviewInput struct {
-	Run         string `json:"run,omitempty"`
-	Reviewer    string `json:"reviewer"`
-	Verdict     string `json:"verdict"`
-	ArtifactRef string `json:"artifact_ref"`
+	Run         string        `json:"run,omitempty"`
+	Reviewer    string        `json:"reviewer"`
+	Verdict     string        `json:"verdict"`
+	ArtifactRef string        `json:"artifact_ref"`
+	Telemetry   *telemetryDTO `json:"telemetry,omitempty"`
 }
 
 type deliverInput struct {
-	Run          string `json:"run,omitempty"`
-	DeliveryMode string `json:"delivery_mode,omitempty"`
-	PRURL        string `json:"pr_url,omitempty"`
-	CommitSHA    string `json:"commit_sha,omitempty"`
+	Run          string        `json:"run,omitempty"`
+	DeliveryMode string        `json:"delivery_mode,omitempty"`
+	PRURL        string        `json:"pr_url,omitempty"`
+	CommitSHA    string        `json:"commit_sha,omitempty"`
+	Telemetry    *telemetryDTO `json:"telemetry,omitempty"`
 }
 
 type observeInput struct {
-	Run       string `json:"run,omitempty"`
-	Unit      string `json:"unit,omitempty"`
-	Signal    string `json:"signal"`
-	Reference string `json:"reference,omitempty"`
+	Run       string        `json:"run,omitempty"`
+	Unit      string        `json:"unit,omitempty"`
+	Signal    string        `json:"signal"`
+	Reference string        `json:"reference,omitempty"`
+	Telemetry *telemetryDTO `json:"telemetry,omitempty"`
 }
 
 type questionInput struct {
-	Run      string `json:"run,omitempty"`
-	Question string `json:"question"`
+	Run       string        `json:"run,omitempty"`
+	Question  string        `json:"question"`
+	Telemetry *telemetryDTO `json:"telemetry,omitempty"`
 }
 
 type answerInput struct {
-	Run    string `json:"run,omitempty"`
-	Answer string `json:"answer"`
+	Run       string        `json:"run,omitempty"`
+	Answer    string        `json:"answer"`
+	Telemetry *telemetryDTO `json:"telemetry,omitempty"`
 }
 
 type reasonInput struct {
-	Run    string `json:"run,omitempty"`
-	Reason string `json:"reason"`
+	Run       string        `json:"run,omitempty"`
+	Reason    string        `json:"reason"`
+	Telemetry *telemetryDTO `json:"telemetry,omitempty"`
+}
+
+// telemetryDTO preserves field presence so explicitly empty values are
+// rejected instead of silently reading as absent.
+type telemetryDTO struct {
+	DurationMS *int64    `json:"duration_ms,omitempty"`
+	Tokens     *int      `json:"tokens,omitempty"`
+	CostCents  *int      `json:"cost_cents,omitempty"`
+	Route      *routeDTO `json:"route,omitempty"`
+}
+
+type routeDTO struct {
+	Venue   *string           `json:"venue,omitempty"`
+	Harness *string           `json:"harness,omitempty"`
+	Models  map[string]string `json:"models,omitempty"`
+}
+
+func (t *telemetryDTO) toTelemetry() (*machine.Telemetry, error) {
+	if t == nil {
+		return nil, nil
+	}
+	out := &machine.Telemetry{}
+	if t.DurationMS != nil {
+		out.DurationMS = *t.DurationMS
+	}
+	if t.Tokens != nil {
+		out.Tokens = *t.Tokens
+	}
+	if t.CostCents != nil {
+		out.CostCents = *t.CostCents
+	}
+	if t.Route != nil {
+		route := &machine.Route{Models: t.Route.Models}
+		if t.Route.Venue != nil {
+			if *t.Route.Venue == "" {
+				return nil, fmt.Errorf("telemetry.route.venue must be non-empty when set; omit the field instead")
+			}
+			route.Venue = *t.Route.Venue
+		}
+		if t.Route.Harness != nil {
+			if *t.Route.Harness == "" {
+				return nil, fmt.Errorf("telemetry.route.harness must be non-empty when set; omit the field instead")
+			}
+			route.Harness = *t.Route.Harness
+		}
+		out.Route = route
+	}
+	return out, nil
 }
 
 func decodeMutationInput(flags map[string]string, dest any) (bool, error) {

@@ -201,7 +201,8 @@ Usage:
   slopshipper serve [--addr 127.0.0.1:7780]
   slopshipper version
 
-All mutating commands accept --input PATH and --dry-run.
+All mutating commands accept --input PATH and --dry-run. Run transitions
+also accept --telemetry PATH|- recording duration, tokens, cost, and route.
 Use --json before or after a command for structured success and error output.
 `
 }
@@ -389,6 +390,10 @@ func cmdInit(st *store.Store, args []string, opts runOptions) int {
 	if err != nil {
 		return writeFailure(opts, 2, err)
 	}
+	tel, telErr := telemetryInput(fs, input.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
 	run := machine.NewRun(runID, key)
 	if st != nil {
 		// A registered repo's delivery policy is the default contract; intake
@@ -403,7 +408,7 @@ func cmdInit(st *store.Store, args []string, opts runOptions) int {
 	}
 	if opts.dryRun {
 		if st == nil {
-			doc := status.From(run, nil)
+			doc := status.FromContext(run, nil, contextWithTelemetry(status.Context{}, tel))
 			doc.DryRun = true
 			doc.ValidatedCommand = string(machine.CmdInit)
 			return writeStatus(doc, opts)
@@ -413,16 +418,16 @@ func cmdInit(st *store.Store, args []string, opts runOptions) int {
 		} else if !errors.Is(err, machine.ErrNotFound) {
 			return mapErr(err, opts)
 		}
-		ctx, err := statusContext(st, key)
+		ctx, err := statusContext(st, key, "")
 		if err != nil {
 			return mapErr(err, opts)
 		}
-		doc := status.FromContext(run, nil, ctx)
+		doc := status.FromContext(run, nil, contextWithTelemetry(ctx, tel))
 		doc.DryRun = true
 		doc.ValidatedCommand = string(machine.CmdInit)
 		return writeStatus(doc, opts)
 	}
-	if err := st.CreateRun(run, nil); err != nil {
+	if err := st.CreateRun(run, nil, tel); err != nil {
 		return mapErr(err, opts)
 	}
 	return printStatus(st, key, runID, opts)
@@ -548,7 +553,11 @@ func cmdIntake(st *store.Store, args []string, opts runOptions) int {
 	if raw {
 		runID = patch.Run
 	}
-	return applyCmd(st, runID, machine.CmdIntake, machine.ApplyInput{Intake: ip}, opts)
+	tel, telErr := telemetryInput(fs, patch.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
+	return applyCmd(st, runID, machine.CmdIntake, machine.ApplyInput{Intake: ip, Telemetry: tel}, opts)
 }
 
 func cmdRelease(st *store.Store, args []string, opts runOptions) int {
@@ -582,7 +591,11 @@ func cmdRelease(st *store.Store, args []string, opts runOptions) int {
 	if err := validateRunID(runID); err != nil {
 		return writeFailure(opts, 2, err)
 	}
-	return applyCmd(st, runID, machine.CmdRelease, machine.ApplyInput{IntakeRevision: revision}, opts)
+	tel, telErr := telemetryInput(fs, input.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
+	return applyCmd(st, runID, machine.CmdRelease, machine.ApplyInput{IntakeRevision: revision, Telemetry: tel}, opts)
 }
 
 func cmdBuild(st *store.Store, args []string, opts runOptions) int {
@@ -602,7 +615,11 @@ func cmdBuild(st *store.Store, args []string, opts runOptions) int {
 	if err := validateRunID(runID); err != nil {
 		return writeFailure(opts, 2, err)
 	}
-	return applyCmd(st, runID, machine.CmdBuild, machine.ApplyInput{}, opts)
+	tel, telErr := telemetryInput(fs, input.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
+	return applyCmd(st, runID, machine.CmdBuild, machine.ApplyInput{Telemetry: tel}, opts)
 }
 
 func cmdVerify(st *store.Store, args []string, opts runOptions) int {
@@ -649,15 +666,35 @@ func cmdVerify(st *store.Store, args []string, opts runOptions) int {
 	if err := validateRunID(runID); err != nil {
 		return writeFailure(opts, 2, err)
 	}
+	tel, telErr := telemetryInput(fs, rawInput.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
 	prepared, code := prepareApply(st, runID, machine.CmdVerify, opts)
 	if code != 0 {
 		return code
 	}
 	if c := fs["cmd"]; !raw && c != "" {
 		if opts.dryRun {
-			ctx, err := statusContext(st, prepared.repoKey)
+			ctx, err := statusContext(st, prepared.repoKey, prepared.run.ID)
 			if err != nil {
 				return mapErr(err, opts)
+			}
+			// Caller-supplied dimensions project like a real run; the
+			// measured duration stays undetermined without execution, and a
+			// caller-supplied duration never overrides it — clear it so the
+			// projection matches the real command's merge. The real command
+			// always records one event (measured duration), so the count
+			// projects even when nothing else is known.
+			projected := tel
+			if projected != nil && projected.DurationMS != 0 {
+				copied := *projected
+				copied.DurationMS = 0
+				projected = &copied
+			}
+			ctx = contextWithTelemetry(ctx, projected)
+			if projected == nil || projected.IsZero() {
+				ctx.TelemetryEvents++
 			}
 			doc := status.FromContext(prepared.run, prepared.units, ctx)
 			doc.DryRun = true
@@ -665,6 +702,7 @@ func cmdVerify(st *store.Store, args []string, opts runOptions) int {
 			doc.OutcomeUndetermined = true
 			return writeStatus(doc, opts)
 		}
+		started := time.Now()
 		ctx, cancel := context.WithCancel(context.Background())
 		signals := make(chan os.Signal, 1)
 		caught := make(chan os.Signal, 1)
@@ -703,8 +741,14 @@ func cmdVerify(st *store.Store, args []string, opts runOptions) int {
 			return writeFailure(opts, cancelCode, err)
 		}
 		ev = machine.VerifyEvidence{Command: c, ExitCode: code, OutputDigest: outputDigest}
+		// verify measures its own wall clock; caller telemetry keeps its
+		// other dimensions but never overrides the measured duration.
+		if tel == nil {
+			tel = &machine.Telemetry{}
+		}
+		tel.DurationMS = max(time.Since(started).Milliseconds(), 1)
 	}
-	_, code = applyPrepared(st, prepared, machine.CmdVerify, machine.ApplyInput{Verify: &ev}, opts)
+	_, code = applyPrepared(st, prepared, machine.CmdVerify, machine.ApplyInput{Verify: &ev, Telemetry: tel}, opts)
 	if code != 0 {
 		return code
 	}
@@ -742,7 +786,11 @@ func cmdReview(st *store.Store, args []string, opts runOptions) int {
 	if err := validateRunID(runID); err != nil {
 		return writeFailure(opts, 2, err)
 	}
-	return applyCmd(st, runID, machine.CmdReview, machine.ApplyInput{Review: &ev}, opts)
+	tel, telErr := telemetryInput(fs, input.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
+	return applyCmd(st, runID, machine.CmdReview, machine.ApplyInput{Review: &ev, Telemetry: tel}, opts)
 }
 
 func cmdRework(st *store.Store, args []string, opts runOptions) int {
@@ -762,7 +810,11 @@ func cmdRework(st *store.Store, args []string, opts runOptions) int {
 	if err := validateRunID(runID); err != nil {
 		return writeFailure(opts, 2, err)
 	}
-	return applyCmd(st, runID, machine.CmdRework, machine.ApplyInput{}, opts)
+	tel, telErr := telemetryInput(fs, input.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
+	return applyCmd(st, runID, machine.CmdRework, machine.ApplyInput{Telemetry: tel}, opts)
 }
 
 func cmdDeliver(st *store.Store, args []string, opts runOptions) int {
@@ -793,7 +845,11 @@ func cmdDeliver(st *store.Store, args []string, opts runOptions) int {
 	if err := validateRunID(runID); err != nil {
 		return writeFailure(opts, 2, err)
 	}
-	return applyCmd(st, runID, machine.CmdDeliver, machine.ApplyInput{Deliver: &ev}, opts)
+	tel, telErr := telemetryInput(fs, input.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
+	return applyCmd(st, runID, machine.CmdDeliver, machine.ApplyInput{Deliver: &ev, Telemetry: tel}, opts)
 }
 
 func cmdObserve(st *store.Store, args []string, opts runOptions) int {
@@ -828,7 +884,11 @@ func cmdObserve(st *store.Store, args []string, opts runOptions) int {
 	evidence := machine.ObserveEvidence{
 		UnitID: input.Unit, Signal: machine.ObserveSignal(input.Signal), Reference: input.Reference,
 	}
-	return applyCmd(st, runID, machine.CmdObserve, machine.ApplyInput{Observe: &evidence}, opts)
+	tel, telErr := telemetryInput(fs, input.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
+	return applyCmd(st, runID, machine.CmdObserve, machine.ApplyInput{Observe: &evidence, Telemetry: tel}, opts)
 }
 
 func cmdAsk(st *store.Store, args []string, opts runOptions) int {
@@ -851,7 +911,11 @@ func cmdAsk(st *store.Store, args []string, opts runOptions) int {
 	if err := validateRunID(runID); err != nil {
 		return writeFailure(opts, 2, err)
 	}
-	return applyCmd(st, runID, machine.CmdAsk, machine.ApplyInput{Question: question}, opts)
+	tel, telErr := telemetryInput(fs, input.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
+	return applyCmd(st, runID, machine.CmdAsk, machine.ApplyInput{Question: question, Telemetry: tel}, opts)
 }
 
 func cmdDecide(st *store.Store, args []string, opts runOptions) int {
@@ -874,7 +938,11 @@ func cmdDecide(st *store.Store, args []string, opts runOptions) int {
 	if err := validateRunID(runID); err != nil {
 		return writeFailure(opts, 2, err)
 	}
-	return applyCmd(st, runID, machine.CmdDecide, machine.ApplyInput{Decision: &machine.Decision{Answer: answer}}, opts)
+	tel, telErr := telemetryInput(fs, input.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
+	return applyCmd(st, runID, machine.CmdDecide, machine.ApplyInput{Decision: &machine.Decision{Answer: answer}, Telemetry: tel}, opts)
 }
 
 func cmdRetry(st *store.Store, args []string, opts runOptions) int {
@@ -897,7 +965,11 @@ func cmdRetry(st *store.Store, args []string, opts runOptions) int {
 	if err := validateRunID(runID); err != nil {
 		return writeFailure(opts, 2, err)
 	}
-	return applyCmd(st, runID, machine.CmdRetry, machine.ApplyInput{RetryReason: reason}, opts)
+	tel, telErr := telemetryInput(fs, input.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
+	return applyCmd(st, runID, machine.CmdRetry, machine.ApplyInput{RetryReason: reason, Telemetry: tel}, opts)
 }
 
 func cmdBlock(st *store.Store, args []string, opts runOptions) int {
@@ -920,7 +992,11 @@ func cmdBlock(st *store.Store, args []string, opts runOptions) int {
 	if err := validateRunID(runID); err != nil {
 		return writeFailure(opts, 2, err)
 	}
-	return applyCmd(st, runID, machine.CmdBlock, machine.ApplyInput{BlockReason: reason}, opts)
+	tel, telErr := telemetryInput(fs, input.Telemetry)
+	if telErr != nil {
+		return writeFailure(opts, 2, telErr)
+	}
+	return applyCmd(st, runID, machine.CmdBlock, machine.ApplyInput{BlockReason: reason, Telemetry: tel}, opts)
 }
 
 func cmdStatus(st *store.Store, args []string, opts runOptions) int {
@@ -994,10 +1070,13 @@ func applyPrepared(st *store.Store, prepared preparedApply, cmd machine.Command,
 		return machine.ApplyResult{}, mapErr(err, opts)
 	}
 	if opts.dryRun {
-		ctx, err := statusContext(st, prepared.repoKey)
+		ctx, err := statusContext(st, prepared.repoKey, prepared.run.ID)
 		if err != nil {
 			return machine.ApplyResult{}, mapErr(err, opts)
 		}
+		// The projection reports what the real command would leave behind,
+		// including the proposed (unpersisted) telemetry in the totals.
+		ctx = contextWithTelemetry(ctx, res.Telemetry)
 		doc := status.FromContext(res.Run, res.Units, ctx)
 		doc.DryRun = true
 		doc.ValidatedCommand = string(cmd)
@@ -1018,6 +1097,41 @@ func applyCmd(st *store.Store, runID string, cmd machine.Command, in machine.App
 	return code
 }
 
+// telemetryInput resolves recorded telemetry for a transition: the raw
+// --input payload's telemetry object, or a strict JSON document from
+// --telemetry. All-zero telemetry is rejected: omit it instead.
+func telemetryInput(fs map[string]string, raw *telemetryDTO) (*machine.Telemetry, error) {
+	dto := raw
+	if dto == nil {
+		path, present := fs["telemetry"]
+		if !present {
+			return nil, nil
+		}
+		if path == "" {
+			return nil, fmt.Errorf("--telemetry requires a path or - for stdin")
+		}
+		// Two JSON sources cannot share one stdin stream.
+		if path == "-" && (fs["file"] == "-" || fs["evidence"] == "-") {
+			return nil, fmt.Errorf("only one JSON source may read stdin; pass --telemetry or the evidence file by path")
+		}
+		dto = &telemetryDTO{}
+		if err := readJSON(path, dto); err != nil {
+			return nil, fmt.Errorf("invalid telemetry json: %w", err)
+		}
+	}
+	telemetry, err := dto.toTelemetry()
+	if err != nil {
+		return nil, err
+	}
+	if telemetry.IsZero() {
+		return nil, fmt.Errorf("telemetry must record at least one dimension; omit it instead")
+	}
+	if err := machine.ValidateTelemetry(telemetry); err != nil {
+		return nil, err
+	}
+	return telemetry, nil
+}
+
 func printStatus(st *store.Store, repoKey, runID string, opts runOptions) int {
 	run, units, err := st.ResolveStatusRun(repoKey, runID)
 	if err != nil {
@@ -1026,23 +1140,49 @@ func printStatus(st *store.Store, repoKey, runID string, opts runOptions) int {
 		}
 		return mapErr(err, opts)
 	}
-	ctx, err := statusContext(st, repoKey)
+	ctx, err := statusContext(st, repoKey, run.ID)
 	if err != nil {
 		return mapErr(err, opts)
 	}
 	return writeStatus(status.FromContext(run, units, ctx), opts)
 }
 
-// statusContext loads the repo profile's read-time defaults, if registered.
-func statusContext(st *store.Store, repoKey string) (status.Context, error) {
+// contextWithTelemetry projects proposed (unpersisted) telemetry onto the
+// totals a dry run reports; persisted aggregation saturates the same way.
+func contextWithTelemetry(ctx status.Context, telemetry *machine.Telemetry) status.Context {
+	if telemetry == nil || telemetry.IsZero() {
+		return ctx
+	}
+	ctx.TotalDurationMS = store.SaturatingAdd64(ctx.TotalDurationMS, telemetry.DurationMS)
+	ctx.TotalTokens = store.SaturatingAddInt(ctx.TotalTokens, telemetry.Tokens)
+	ctx.TotalCostCents = store.SaturatingAddInt(ctx.TotalCostCents, telemetry.CostCents)
+	ctx.TelemetryEvents++
+	return ctx
+}
+
+// statusContext loads the repo profile's read-time defaults, if registered,
+// and the run's aggregated telemetry totals.
+func statusContext(st *store.Store, repoKey, runID string) (status.Context, error) {
+	var ctx status.Context
 	profile, found, err := st.GetRepoProfile(repoKey)
 	if err != nil {
 		return status.Context{}, err
 	}
-	if !found {
-		return status.Context{}, nil
+	if found {
+		ctx.RepoRegistered = true
+		ctx.VerifyCommand = profile.VerifyCommand
 	}
-	return status.Context{RepoRegistered: true, VerifyCommand: profile.VerifyCommand}, nil
+	if runID != "" {
+		totals, err := st.TelemetryTotals(runID)
+		if err != nil {
+			return status.Context{}, err
+		}
+		ctx.TotalDurationMS = totals.DurationMS
+		ctx.TotalTokens = totals.Tokens
+		ctx.TotalCostCents = totals.CostCents
+		ctx.TelemetryEvents = totals.RecordedEvents
+	}
+	return ctx, nil
 }
 
 func writeStatus(doc status.Document, opts runOptions) int {
@@ -1077,19 +1217,19 @@ func mapErr(err error, opts runOptions) int {
 }
 
 var commandFlags = map[string]map[string]bool{
-	"init":      {"run": true, "input": true},
-	"intake":    {"file": true, "run": true, "input": true},
-	"release":   {"revision": true, "run": true, "input": true},
-	"build":     {"run": true, "input": true},
-	"verify":    {"cmd": true, "evidence": true, "run": true, "input": true},
-	"review":    {"evidence": true, "run": true, "input": true},
-	"rework":    {"run": true, "input": true},
-	"deliver":   {"evidence": true, "run": true, "input": true},
-	"observe":   {"signal": true, "unit": true, "reference": true, "run": true, "input": true},
-	"ask":       {"question": true, "run": true, "input": true},
-	"decide":    {"answer": true, "run": true, "input": true},
-	"retry":     {"reason": true, "run": true, "input": true},
-	"block":     {"reason": true, "run": true, "input": true},
+	"init":      {"run": true, "input": true, "telemetry": true},
+	"intake":    {"file": true, "run": true, "input": true, "telemetry": true},
+	"release":   {"revision": true, "run": true, "input": true, "telemetry": true},
+	"build":     {"run": true, "input": true, "telemetry": true},
+	"verify":    {"cmd": true, "evidence": true, "run": true, "input": true, "telemetry": true},
+	"review":    {"evidence": true, "run": true, "input": true, "telemetry": true},
+	"rework":    {"run": true, "input": true, "telemetry": true},
+	"deliver":   {"evidence": true, "run": true, "input": true, "telemetry": true},
+	"observe":   {"signal": true, "unit": true, "reference": true, "run": true, "input": true, "telemetry": true},
+	"ask":       {"question": true, "run": true, "input": true, "telemetry": true},
+	"decide":    {"answer": true, "run": true, "input": true, "telemetry": true},
+	"retry":     {"reason": true, "run": true, "input": true, "telemetry": true},
+	"block":     {"reason": true, "run": true, "input": true, "telemetry": true},
 	"status":    {"json": true, "run": true, "fields": true},
 	"reviewers": {"add": true, "remove": true, "json": true},
 	"repo":      {"forge": true, "trust": true, "verify-cmd": true, "delivery": true, "readiness": true, "bind": true, "json": true},

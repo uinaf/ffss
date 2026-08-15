@@ -56,6 +56,10 @@ type Document struct {
 	OutcomeUndetermined bool         `json:"outcome_undetermined,omitempty"`
 	VerifyCommand       string       `json:"verify_command,omitempty"`
 	RepoRegistered      bool         `json:"repo_registered,omitempty"`
+	TotalDurationMS     int64        `json:"total_duration_ms"`
+	TotalTokens         int          `json:"total_tokens"`
+	TotalCostCents      int          `json:"total_cost_cents"`
+	TelemetryEvents     int          `json:"telemetry_events"`
 }
 
 // Context carries repo-profile defaults the run inherits at read time.
@@ -65,6 +69,11 @@ type Context struct {
 	// VerifyCommand is the profile's canonical verify command; when set,
 	// verify's next_action names it instead of a placeholder.
 	VerifyCommand string
+	// Telemetry totals aggregated from the run's recorded events.
+	TotalDurationMS int64
+	TotalTokens     int
+	TotalCostCents  int
+	TelemetryEvents int
 }
 
 func From(run machine.Run, units []machine.Unit) Document {
@@ -116,6 +125,10 @@ func FromContext(run machine.Run, units []machine.Unit, ctx Context) Document {
 		DecisionQuestion:   run.DecisionQuestion,
 		VerifyCommand:      ctx.VerifyCommand,
 		RepoRegistered:     ctx.RepoRegistered,
+		TotalDurationMS:    ctx.TotalDurationMS,
+		TotalTokens:        ctx.TotalTokens,
+		TotalCostCents:     ctx.TotalCostCents,
+		TelemetryEvents:    ctx.TelemetryEvents,
 	}
 }
 

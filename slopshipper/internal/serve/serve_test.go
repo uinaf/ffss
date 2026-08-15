@@ -33,7 +33,7 @@ func TestIndexAndRunProjection(t *testing.T) {
 
 	run := machine.NewRun("demo", "repo-a")
 	units := []machine.Unit{{ID: "u1", Title: "one"}}
-	if err := st.CreateRun(run, units); err != nil {
+	if err := st.CreateRun(run, units, nil); err != nil {
 		t.Fatal(err)
 	}
 	res, err := machine.Apply(run, units, machine.CmdIntake, machine.ApplyInput{

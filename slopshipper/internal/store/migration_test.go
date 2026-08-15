@@ -16,16 +16,16 @@ func TestMigratesVersionOneTransactionally(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CreateRun(machine.NewRun("run", "repo"), []machine.Unit{{ID: "u1"}}); err != nil {
+	if err := s.CreateRun(machine.NewRun("run", "repo"), []machine.Unit{{ID: "u1"}}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CreateRun(machine.NewRun("deliver", "repo-deliver"), []machine.Unit{{ID: "u2"}}); err != nil {
+	if err := s.CreateRun(machine.NewRun("deliver", "repo-deliver"), []machine.Unit{{ID: "u2"}}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CreateRun(machine.NewRun("closed-deliver", "repo-closed"), []machine.Unit{{ID: "u3"}}); err != nil {
+	if err := s.CreateRun(machine.NewRun("closed-deliver", "repo-closed"), []machine.Unit{{ID: "u3"}}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CreateRun(machine.NewRun("parked-deliver", "repo-parked"), []machine.Unit{{ID: "u4"}}); err != nil {
+	if err := s.CreateRun(machine.NewRun("parked-deliver", "repo-parked"), []machine.Unit{{ID: "u4"}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Close(); err != nil {
@@ -43,6 +43,8 @@ func TestMigratesVersionOneTransactionally(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, ddl := range []string{
+		`ALTER TABLE events DROP COLUMN telemetry_json`,
+		`DROP TABLE repos`,
 		`ALTER TABLE runs DROP COLUMN risk_tier`,
 		`ALTER TABLE runs DROP COLUMN budget_json`,
 		`ALTER TABLE units DROP COLUMN acceptance_criteria_json`,
@@ -157,7 +159,7 @@ func TestMigrationRefusesUnknownLegacyConsent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CreateRun(machine.NewRun("bogus", "repo-bogus"), []machine.Unit{{ID: "u1"}}); err != nil {
+	if err := s.CreateRun(machine.NewRun("bogus", "repo-bogus"), []machine.Unit{{ID: "u1"}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Close(); err != nil {

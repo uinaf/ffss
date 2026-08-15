@@ -505,7 +505,7 @@ func TestAgentDXDirectRuntimeBranches(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := otherRepo.CreateRun(machine.NewRun("global-run", "different-repository"), nil); err != nil {
+	if err := otherRepo.CreateRun(machine.NewRun("global-run", "different-repository"), nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := otherRepo.Close(); err != nil {
@@ -573,12 +573,24 @@ func captureStdoutResult(t *testing.T, fn func() int) (string, int) {
 	}
 	previous := os.Stdout
 	os.Stdout = writer
+	// Drain concurrently: output larger than the pipe buffer (the schema
+	// document already is) would otherwise deadlock the writer.
+	type readResult struct {
+		output []byte
+		err    error
+	}
+	done := make(chan readResult, 1)
+	go func() {
+		output, err := io.ReadAll(reader)
+		done <- readResult{output, err}
+	}()
 	code := fn()
 	os.Stdout = previous
 	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	output, err := io.ReadAll(reader)
+	drained := <-done
+	output, err := drained.output, drained.err
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1541,7 +1553,7 @@ func TestResolveRepoKeyMigratesMalformedVersionOneIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer st.Close()
-	if err := st.CreateRun(machine.NewRun("legacy", legacyKey), nil); err != nil {
+	if err := st.CreateRun(machine.NewRun("legacy", legacyKey), nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	oldDir, err := os.Getwd()

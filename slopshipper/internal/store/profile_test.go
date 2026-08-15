@@ -96,7 +96,7 @@ func TestSaveApplyReenforcesProfileBindingsTransactionally(t *testing.T) {
 	defer func() { _ = s.Close() }()
 
 	run := machine.NewRun("run", "repo")
-	if err := s.CreateRun(run, nil); err != nil {
+	if err := s.CreateRun(run, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	res, err := machine.Apply(run, nil, machine.CmdIntake, machine.ApplyInput{
@@ -133,7 +133,7 @@ func TestMigratesVersionFiveAddsRepos(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CreateRun(machine.NewRun("run", "repo"), nil); err != nil {
+	if err := s.CreateRun(machine.NewRun("run", "repo"), nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Close(); err != nil {
@@ -142,6 +142,9 @@ func TestMigratesVersionFiveAddsRepos(t *testing.T) {
 
 	db := openSQLite(t, path)
 	if _, err := db.Exec(`DROP TABLE repos`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`ALTER TABLE events DROP COLUMN telemetry_json`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`UPDATE meta SET value = '5' WHERE key = 'schema_version'`); err != nil {

@@ -149,6 +149,12 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "store error", http.StatusInternalServerError)
 		return
 	}
+	totals, err := s.opts.Store.TelemetryTotals(run.ID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "slopshipper serve: totals %s: %v\n", id, err)
+		http.Error(w, "store error", http.StatusInternalServerError)
+		return
+	}
 	doc := status.From(run, units)
 	s.render(w, "run.html", map[string]any{
 		"Title":            run.ID,
@@ -164,7 +170,38 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 		"StatusLine":       doc.CompactLine(),
 		"Blocker":          run.BlockerReason,
 		"CurrentUnitID":    run.CurrentUnitID,
+		"Telemetry":        formatTotals(totals),
 	})
+}
+
+// formatDuration keeps the stored total exact: sub-second totals render in
+// milliseconds, larger ones as seconds with trailing zeros trimmed.
+func formatDuration(ms int64) string {
+	if ms < 1000 {
+		return fmt.Sprintf("%dms", ms)
+	}
+	// Integer arithmetic keeps totals exact beyond float64's 2^53 range.
+	seconds := strings.TrimRight(strings.TrimRight(fmt.Sprintf("%d.%03d", ms/1000, ms%1000), "0"), ".")
+	return seconds + "s"
+}
+
+// formatTotals renders aggregated run telemetry for the projector; empty
+// when no event recorded any.
+func formatTotals(t store.Totals) string {
+	if t.RecordedEvents == 0 {
+		return ""
+	}
+	parts := []string{fmt.Sprintf("%d event(s)", t.RecordedEvents)}
+	if t.DurationMS > 0 {
+		parts = append(parts, formatDuration(t.DurationMS))
+	}
+	if t.Tokens > 0 {
+		parts = append(parts, fmt.Sprintf("%d tokens", t.Tokens))
+	}
+	if t.CostCents > 0 {
+		parts = append(parts, fmt.Sprintf("$%d.%02d", t.CostCents/100, t.CostCents%100))
+	}
+	return strings.Join(parts, " · ")
 }
 
 func (s *Server) render(w http.ResponseWriter, name string, data any) {
