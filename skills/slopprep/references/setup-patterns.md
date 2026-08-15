@@ -21,17 +21,21 @@ scripts, Make/`just`, or checked-in scripts already used by CI.
 
 ### Runtime resource ownership
 
-Apply the lifecycle to every resource a task raises: child processes, ports,
+Apply the lifecycle to every resource a task raises: process trees, ports,
 simulators, emulators, virtual machines, containers, browsers, services,
-databases, and external test fixtures.
+databases, and external test fixtures. When a launcher can spawn descendants,
+track the owned process group, job, or equivalent boundary rather than only its
+direct child PID.
 
 - Snapshot relevant state before acquisition and persist the exact resource ID
   plus task and attempt ownership.
 - Release only resources created or acquired by that attempt. Preserve a device,
   container, service, or database that was already running.
 - Register cleanup before the first later failure point and run it on success,
-  failure, timeout, cancellation, and retry. Preserve the primary command's
-  terminal status if cleanup also fails.
+  failure, timeout, cancellation, and retry. If the primary command succeeded,
+  a cleanup or absence-verification failure makes the command fail. If the
+  primary command already failed or was signaled, preserve that terminal status
+  and report the cleanup failure separately.
 - Verify final state: no owned resource remains, and pre-existing resources are
   unchanged. Exercise this once after success and once after an injected safe
   failure.

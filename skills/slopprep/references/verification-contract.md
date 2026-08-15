@@ -28,7 +28,8 @@ typed CLI; it does not need a wrapper file.
 It should:
 
 - run noninteractively with a finite bound
-- preserve exit status and concise, inspectable failure output
+- preserve a primary failure or signal status and concise, inspectable output;
+  make cleanup or absence-verification failure non-zero after primary success
 - exercise the strongest cheap surface appropriate to the repository
 - distinguish repository failures from missing runner capabilities
 - clean up owned processes, ports, test state, temporary credentials, and
@@ -36,8 +37,8 @@ It should:
   containers, browsers, services, and databases on success, failure, timeout,
   and cancellation
 - preserve pre-existing resources, record exact IDs for resources created or
-  acquired by the attempt, and verify the final resource state rather than
-  trusting a cleanup command's exit status
+  acquired by the attempt, track an owned process tree when a launcher can spawn
+  descendants, and verify final state rather than trusting cleanup exit status
 - emit task-and-attempt-scoped artifacts when evidence must survive the process
 
 Do not create a parallel agent-only verification wrapper. Improve the ordinary
