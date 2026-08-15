@@ -190,7 +190,7 @@ description = "Free Tessl plugin lint for the skill package"
 run = '''
 set -e
 test "$(tessl --version)" = "0.94.0"
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopguard
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint ../../skills/slopguard
 '''
 
 [tasks."skill:review"]
@@ -198,6 +198,6 @@ description = "Optional credit-burning Tessl cloud review at threshold 100"
 run = '''
 set -e
 test "$(tessl --version)" = "0.94.0"
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint skills/slopguard
-TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopguard-2.1.1-tessl-0.94.0 skills/slopguard
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint ../../skills/slopguard
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopguard-2.1.1-tessl-0.94.0 ../../skills/slopguard
 '''

@@ -211,7 +211,7 @@ func TestSkillSlopguardCommandsUseBuiltCLIFlags(t *testing.T) {
 	root := skillRoot(t)
 	binary := filepath.Join(t.TempDir(), "slopguard")
 	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "./cmd/slopguard")
-	build.Dir = filepath.Clean(filepath.Join(root, "..", ".."))
+	build.Dir = filepath.Clean(filepath.Join(root, "..", "..", "cli", "slopguard"))
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build slopguard: %v\n%s", err, output)
 	}
@@ -306,7 +306,7 @@ func commandOutput(t *testing.T, name string, arguments ...string) string {
 
 func skillRoot(t *testing.T) string {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "..", "skills", "slopguard"))
+	root, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "skills", "slopguard"))
 	if err != nil {
 		t.Fatal(err)
 	}

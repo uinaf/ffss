@@ -1,0 +1,123 @@
+[settings]
+jobs = 1
+
+[tools]
+actionlint = "1.7.12"
+go = "1.26.6"
+goreleaser = "2.17.1"
+shellcheck = "0.11.0"
+
+[env]
+GOWORK = "off"
+
+[tasks.fmt]
+description = "Format Go sources"
+run = "gofmt -w ."
+
+[tasks."fmt:check"]
+description = "Check Go source formatting"
+run = "test -z \"$(gofmt -l .)\""
+
+[tasks.test]
+description = "Run unit tests"
+run = "go test -p 4 -parallel 4 ./..."
+
+[tasks."test:coverage"]
+description = "Enforce package and CLI integration coverage floors"
+run = "bash scripts/test-coverage.sh"
+
+[tasks."test:race"]
+description = "Run the Go race detector"
+run = "go test -race -p 4 -parallel 4 ./..."
+
+[tasks.vet]
+description = "Run Go static analysis"
+run = "go vet ./..."
+
+[tasks.build]
+description = "Build the slopmachine CLI into ./bin"
+run = "mkdir -p bin && go build -o bin/slopmachine ./cmd/slopmachine"
+
+[tasks.conformance]
+description = "Prove a skill-less shell agent drives a full run via the protocol"
+run = '''
+set -e
+bash -n scripts/test-conformance.sh
+shellcheck -s bash scripts/test-conformance.sh
+bash scripts/test-conformance.sh --self-test
+bash scripts/test-conformance.sh
+'''
+
+[tasks."installer:test"]
+description = "Run the offline installer and PATH fixture tests"
+run = '''
+set -e
+bash scripts/test-install.sh
+bash scripts/test-install-path.sh
+'''
+
+[tasks."installer:check"]
+description = "Validate the Linux installer"
+depends = ["installer:test"]
+run = '''
+set -e
+sh -n install.sh
+bash -n scripts/test-install.sh
+bash -n scripts/check-install-path.sh
+bash -n scripts/test-install-path.sh
+shellcheck -s sh install.sh
+shellcheck -s bash scripts/test-install.sh
+shellcheck -s bash scripts/check-install-path.sh
+shellcheck -s bash scripts/test-install-path.sh
+'''
+
+[tasks."release:check"]
+description = "Validate GoReleaser, installer, and GitHub Actions configuration"
+depends = ["installer:check"]
+run = '''
+set -e
+actionlint
+goreleaser check
+bash -n scripts/verify-apple-credentials.sh
+bash -n scripts/verify-apple-release.sh
+bash -n scripts/verify-published-skill.sh
+shellcheck -s bash scripts/verify-published-skill.sh
+test -f .releaserc.json
+'''
+
+[tasks."release:snapshot"]
+description = "Build and inspect unpublished release archives"
+depends = ["release:check"]
+run = '''
+set -e
+goreleaser release --snapshot --clean --skip=publish,sign
+test "$(find dist -maxdepth 1 -name 'slopmachine_*.tar.gz' -type f | wc -l | tr -d ' ')" = "4"
+test "$(find dist -maxdepth 1 -name 'slopmachine_*_linux_amd64.tar.gz' -type f | wc -l | tr -d ' ')" = "1"
+test "$(find dist -maxdepth 1 -name 'slopmachine_*_linux_arm64.tar.gz' -type f | wc -l | tr -d ' ')" = "1"
+for archive in dist/slopmachine_*.tar.gz; do
+  test "$(tar -tzf "$archive" | LC_ALL=C sort | tr '\n' ' ')" = "LICENSE README.md slopmachine "
+done
+'''
+
+[tasks."skill:lint"]
+description = "Free Tessl plugin lint for the skill package"
+run = '''
+set -e
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint ../../skills/slopmachine
+'''
+
+[tasks."skill:review"]
+description = "Optional credit-burning Tessl cloud review at threshold 100"
+run = '''
+set -e
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl plugin lint ../../skills/slopmachine
+TESSL_AUTO_UPDATE_INTERVAL_MINUTES=0 tessl review run --workspace uinaf --force --threshold 100 --label slopmachine-0.3.0 ../../skills/slopmachine
+'''
+
+[tasks.security]
+description = "Scan reachable Go dependencies for known vulnerabilities"
+run = "go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./..."
+
+[tasks.verify]
+description = "Run deterministic repository verification"
+depends = ["fmt:check", "test", "test:coverage", "test:race", "vet", "build", "conformance", "installer:check", "release:check"]

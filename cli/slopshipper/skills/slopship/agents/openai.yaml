@@ -1,7 +1,0 @@
-interface:
-  display_name: "Slopship"
-  short_description: "Run a plan with human gates and evidence-backed loops"
-  default_prompt: "Use $slopship to run the agreed plan through field-masked JSON status, dry-run validation, human release, and evidence-backed build, verify, review, and delivery."
-
-policy:
-  allow_implicit_invocation: false

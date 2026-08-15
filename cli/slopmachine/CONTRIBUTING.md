@@ -1,0 +1,95 @@
+# Contributing
+
+## Setup
+
+Requirements: Go 1.26+ and [mise](https://mise.jdx.dev/).
+
+```bash
+git clone https://github.com/uinaf/ffsstack/cli/slopmachine.git
+cd slopmachine
+mise trust
+mise install
+```
+
+## Run locally
+
+Build and invoke the development binary from the checkout:
+
+```bash
+mise run build
+./bin/slopmachine version
+```
+
+The build task never installs an unversioned `slopmachine` into the active Go
+toolchain or replaces a packaged CLI on `PATH`.
+
+## Validate
+
+Run the deterministic local gate before opening a pull request:
+
+```bash
+mise run verify
+```
+
+Coverage is enforced per production package: 80% minimum, with the state
+machine and status contract held to 90%. The CLI child-process integration
+surface has a separate floor. The gate also runs the race detector, installer
+fixtures, release configuration checks, and the repo-local build.
+
+## Pull requests
+
+Use the PR template. Prefer small, verifiable slices. Squash-merge is the
+default on `main`. Conventional Commits on `main` drive Semantic Release
+(see [`docs/RELEASES.md`](docs/RELEASES.md)).
+
+Control plane UI lives in `internal/serve` (Go `html/template` + embedded
+`@uinaf/design` CSS). Keep it a read-only projector over sqlite; do not add
+mutations that bypass the CLI state machine.
+
+`internal/serve/static/{tokens,components}.css` is vendored from the npm
+registry, because the server is loopback-only and ships as one binary. Move the
+pin with `./scripts/sync-design-css.sh <version>`, which fetches the pair and
+records the version and digests in `internal/serve/design_css_test.go`; never
+hand-edit the two files. The sheet loads Berkeley Mono from `cdn.uinaf.dev` and
+falls back to the local monospace stack offline. `app.css` holds only page frame
+and table behavior. A second test fails when a template or a Go-built class
+names a class neither the vendored pair nor `app.css` defines, which is the
+check `design-check` performs in Node repos.
+
+Agent-facing command schemas live with the binary in
+`cmd/slopmachine/schema.go`; strict raw payload DTOs live in
+`cmd/slopmachine/input.go`; state-location policy lives in
+`cmd/slopmachine/storage.go`. When adding or changing a command, keep its
+parser, runtime schema, JSON output, dry-run behavior, and child-process
+contract in sync. Tests require every parsed command to appear in
+`slopmachine schema`.
+Keep the checked-in [agent CLI contract](docs/AGENT_INTERFACE.md) aligned with
+observable behavior, but do not duplicate runtime schemas in prose.
+
+## Releases
+
+Publication uses the protected `release` Environment (shared Apple signing
+secrets with other uinaf CLIs) and the `uinaf-releaser` GitHub App scoped to
+`slopmachine` + `homebrew-tap`. Do not delete published tags to retry; re-run
+the workflow on the tagged HEAD instead.
+
+Skill publication uses a separate `skill-release` Environment with
+`TESSL_TOKEN` (Tessl workspace `uinaf` publisher). GitHub Actions runs Tessl
+plugin lint before merge, then `uinaf/tessl-publish-action` publishes the
+manifest version and smokes a Codex install. Local skill lint additionally
+requires Tessl CLI 0.94.0:
+
+```bash
+mise run skill:lint
+```
+
+Bump `skills/slopmachine/.tessl-plugin/plugin.json` when the skill should ship a
+new immutable revision.
+
+A scheduled `govulncheck` scan covers changes in the vulnerability database
+without making the deterministic local gate depend on the network.
+
+## Security
+
+Do not open public issues for vulnerabilities. Use private vulnerability
+reporting (see [SECURITY.md](SECURITY.md)).
