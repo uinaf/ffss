@@ -15,7 +15,11 @@ invents a second workflow runtime.
    checks, run fresh). Report a missing or failing gate instead of delivering.
 2. Delivery is authorized: an explicit user request, or an active slopshipper
    run whose status allows `deliver`.
-3. The worktree contains only the intended change. Preserve unrelated work;
+3. The delivery is a change request. A slopshipper run with
+   `delivery_mode: direct-trunk` is out of this skill's lane — do not open
+   a change request for it; the delivery is the trunk commit itself,
+   recorded with `slopshipper deliver` and its `commit_sha`.
+4. The worktree contains only the intended change. Preserve unrelated work;
    never sweep it into the delivery.
 
 ## Forge dispatch
