@@ -97,7 +97,7 @@ not a generic schema for CLI request parameters.
 
 ## Agent skill
 
-The bundled [agent skill](skills/slopguard/SKILL.md) delegates one independent
+The family [agent skill](../../skills/slopguard/SKILL.md) delegates one independent
 review to the installed CLI. It does not contain a second runtime.
 
 ## Documentation

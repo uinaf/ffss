@@ -204,7 +204,7 @@ still go through the CLI.
 
 ## Agent skill
 
-The bundled [agent skill](skills/slopmachine/SKILL.md) teaches agents to drive
+The family [agent skill](../../skills/slopmachine/SKILL.md) teaches agents to drive
 the installed CLI and obey `next_action`. It is intentionally thin: the binary
 owns the state machine, schemas, and store.
 
