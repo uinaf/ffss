@@ -20,7 +20,7 @@ whatever reference it returns.
 Upload through the project uploads API and embed the returned markdown:
 
 ```bash
-glab api "projects/:id/uploads" --field "file=@evidence.png"
+glab api "projects/:id/uploads" --form "file=@evidence.png"
 ```
 
 The response carries a `markdown` field (`![…](/uploads/…)`); paste it into
@@ -36,12 +36,15 @@ inherits repository visibility and needs no browser:
 repo_id=$(gh api repos/{owner}/{repo} -q .id)
 curl -s "https://uploads.github.com/user-attachments/assets?name=<file>&content_type=<mime>&repository_id=${repo_id}" \
   -X POST \
-  -H "Authorization: Bearer $(gh auth token)" \
-  -H "Accept: application/json" \
-  --data-binary @<file>
+  -H @- \
+  --data-binary @<file> <<EOF
+Authorization: Bearer $(gh auth token)
+Accept: application/json
+EOF
 ```
 
-Embed the returned `.url` as markdown. Failure modes: 422 = unsupported
+The heredoc keeps the token out of the process argument list, where other
+local processes could read it. Embed the returned `.url` as markdown. Failure modes: 422 = unsupported
 content type; 404 = bad repository id or no push permission.
 
 Video: same endpoint with `content_type` `video/mp4` or `video/webm`, and

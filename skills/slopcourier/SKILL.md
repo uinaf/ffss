@@ -52,11 +52,13 @@ The vocabulary is "change request"; the forge decides the tool:
 
 When an active slopshipper run asked for this delivery, hand the URL
 straight back through stdin evidence and let the binary judge it (a
-forge-bound repo verifies the change request and head before accepting):
+forge-bound repo verifies the change request and head before accepting).
+`delivery_mode` must match the run — read it from the status document
+(`delivery_mode` field) instead of assuming one:
 
 ```bash
 slopshipper deliver --evidence - --run <run-id> <<'JSON'
-{"delivery_mode":"pr-hold","pr_url":"<change request URL>","commit_sha":"<delivered head>"}
+{"delivery_mode":"<delivery_mode from status>","pr_url":"<change request URL>","commit_sha":"<delivered head>"}
 JSON
 ```
 
