@@ -23,9 +23,9 @@ jobs:
         with:
           filters: |
             slopshipper:
-              - 'slopshipper/**'
+              - 'cli/slopshipper/**'
             autoreview:
-              - 'autoreview/**'
+              - 'cli/autoreview/**'
 
   slopshipper:
     name: slopshipper verify
@@ -34,12 +34,12 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: slopshipper
+        working-directory: cli/slopshipper
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
         with:
-          working_directory: slopshipper
+          working_directory: cli/slopshipper
       - run: mise run verify
 
   autoreview:
@@ -49,10 +49,10 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: autoreview
+        working-directory: cli/autoreview
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
         with:
-          working_directory: autoreview
+          working_directory: cli/autoreview
       - run: mise run verify
