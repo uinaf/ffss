@@ -2,6 +2,7 @@ package repo
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/url"
 	"os/exec"
@@ -16,11 +17,15 @@ func Key(dir string) (string, error) {
 	return key, err
 }
 
+// ErrNotRepository marks a directory that is definitively outside any Git
+// worktree, as opposed to a failed inspection.
+var ErrNotRepository = errors.New("not a git repository")
+
 // Keys returns the credential-free repo identity and checkout root.
 func Keys(dir string) (string, string, error) {
 	root, err := gitOutput(dir, "rev-parse", "--show-toplevel")
 	if err != nil {
-		return "", "", fmt.Errorf("not a git repository: %w", err)
+		return "", "", fmt.Errorf("%w: %w", ErrNotRepository, err)
 	}
 	root = filepath.Clean(root)
 	remote, err := gitOutput(dir, "config", "--get", "remote.origin.url")

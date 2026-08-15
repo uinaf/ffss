@@ -65,6 +65,11 @@ func resolveStorage(requireGitSafe bool) (storageDocument, error) {
 		}
 		_, root, repoErr := repo.Keys(cwd)
 		if repoErr != nil {
+			// Only "definitely not a repository" may skip containment;
+			// a broken git inspection must fail closed, not fail open.
+			if requireGitSafe && !errors.Is(repoErr, repo.ErrNotRepository) {
+				return storageDocument{}, fmt.Errorf("inspect Git worktree for state safety: %w", repoErr)
+			}
 			return doc, nil
 		}
 		return applyGitSafety(doc, root, path, requireGitSafe)

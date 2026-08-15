@@ -98,6 +98,9 @@ func resolvedDatabasePath(path string) (string, error) {
 	if path == "" {
 		return "", errors.New("database path is empty")
 	}
+	if strings.ContainsAny(path, "?#") {
+		return "", fmt.Errorf("%w: database path %q contains a SQLite URI delimiter ('?' or '#'); use a path without them", ErrStateUnavailable, path)
+	}
 	resolvedPath, err := filepath.Abs(path)
 	if err != nil {
 		return "", fmt.Errorf("resolve database path %q: %w", path, err)
