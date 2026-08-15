@@ -129,7 +129,7 @@ func allCommandSchemas() []commandSchema {
 		{Required: []string{"cost_cents"}, Properties: map[string]jsonSchema{"cost_cents": minimumIntegerSchema("", 1)}},
 		{Required: []string{"route"}},
 	}
-	reviewer := stringSchema("Registered reviewer identity. Built-ins: autoreview, bugbot; register anything else (including a human sign-off identity) with slopshipper reviewers --add.")
+	reviewer := stringSchema("Registered reviewer identity. Built-ins: slopguard, bugbot; register anything else (including a human sign-off identity) with slopshipper reviewers --add.")
 	intake := objectSchema(map[string]jsonSchema{
 		"run":                run,
 		"delivery_mode":      enumSchema("Delivery behavior.", "pr-hold", "pr-merge-when-ready", "direct-trunk"),

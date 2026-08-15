@@ -1,6 +1,7 @@
 package store_test
 
 import (
+	"math"
 	"path/filepath"
 	"testing"
 
@@ -132,5 +133,18 @@ func TestMigratesVersionSixAddsTelemetry(t *testing.T) {
 	}
 	if _, _, err := s.GetRun("run"); err != nil {
 		t.Fatalf("existing runs must keep reading: %v", err)
+	}
+}
+
+func TestSaturatingAddsClampBothDirections(t *testing.T) {
+	if store.SaturatingAdd64(math.MaxInt64, 1) != math.MaxInt64 ||
+		store.SaturatingAdd64(math.MinInt64, -1) != math.MinInt64 ||
+		store.SaturatingAdd64(2, 3) != 5 {
+		t.Fatal("SaturatingAdd64 must clamp at both extremes")
+	}
+	if store.SaturatingAddInt(math.MaxInt, 1) != math.MaxInt ||
+		store.SaturatingAddInt(math.MinInt, -1) != math.MinInt ||
+		store.SaturatingAddInt(-2, -3) != -5 {
+		t.Fatal("SaturatingAddInt must clamp at both extremes")
 	}
 }

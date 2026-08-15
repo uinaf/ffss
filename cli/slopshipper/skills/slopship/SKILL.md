@@ -44,7 +44,7 @@ slopshipper intake --input - --dry-run --json <<'JSON'
 {
   "run": "run-id-from-status",
   "delivery_mode": "pr-hold",
-  "required_reviewers": ["autoreview"],
+  "required_reviewers": ["slopguard"],
   "risk_tier": "low",
   "series_bound": 1,
   "units": [
@@ -92,7 +92,7 @@ status.
 ```bash
 # after verify succeeds and status asks for review
 slopshipper review --input - --dry-run --json <<'JSON'
-{"run":"run-id-from-status","reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://local"}
+{"run":"run-id-from-status","reviewer":"slopguard","verdict":"clean","artifact_ref":"slopguard://local"}
 JSON
 ```
 
@@ -124,7 +124,7 @@ what you need — never a wall of CLI JSON. Plain words over machine dumps.
 1. **Release** — confirm table (what/how/review), wait, then
    `slopshipper release --revision` using `intake_revision` from status JSON.
 2. **Required reviewers** — once at intake: pick from the registered
-   identities (`slopshipper reviewers` lists them; `autoreview` and `bugbot`
+   identities (`slopshipper reviewers` lists them; `slopguard` and `bugbot`
    are built in). Store via intake `required_reviewers`. Do not auto-fire
    reviewers.
 3. **Decide** — `slopshipper ask --question …`, then
@@ -170,12 +170,12 @@ Never invent a signal.
 
 ## Mindful spend
 
-Strong model for BUILD; cheaper review (Bugbot / lighter autoreview). Never
+Strong model for BUILD; cheaper review (Bugbot / lighter slopguard). Never
 default "most expensive everywhere."
 
 ## Companion tools
 
-Run whichever installed tool matches a required reviewer: the `autoreview`
+Run whichever installed tool matches a required reviewer: the `slopguard`
 binary, Cursor `/review-bugbot`, or the registered custom reviewer's own
 surface. Never simulate a reviewer.
 

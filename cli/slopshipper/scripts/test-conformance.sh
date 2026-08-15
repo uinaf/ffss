@@ -114,7 +114,7 @@ for _ in $(seq 1 40); do
       eval "$action" >/dev/null <<'JSON'
 {
   "delivery_mode": "pr-hold",
-  "required_reviewers": ["autoreview"],
+  "required_reviewers": ["slopguard"],
   "series_bound": 2,
   "units": [
     {"id": "c1", "title": "first conformance unit", "blockers": []},
@@ -125,7 +125,7 @@ JSON
       ;;
     review)
       eval "$action" >/dev/null <<'JSON'
-{"reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://conformance"}
+{"reviewer":"slopguard","verdict":"clean","artifact_ref":"slopguard://conformance"}
 JSON
       ;;
     deliver)

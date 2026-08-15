@@ -13,7 +13,7 @@ func TestJSONFieldsAndDryRunMetadata(t *testing.T) {
 	if err := ValidateFields(strings.Split(AgentFieldMask, ",")); err != nil {
 		t.Fatalf("agent field mask: %v", err)
 	}
-	doc := From(machine.Run{ID: "dry", State: machine.StateIntake, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview}}, nil)
+	doc := From(machine.Run{ID: "dry", State: machine.StateIntake, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard}}, nil)
 	doc.DryRun = true
 	doc.ValidatedCommand = "intake"
 	b, err := doc.JSONFields([]string{"state", "dry_run", "validated_command", "blocker"})
@@ -52,7 +52,7 @@ func TestFromContracts(t *testing.T) {
 	}{
 		{
 			name: "empty intake requires intake",
-			run:  machine.Run{State: machine.StateIntake, IntakeRevision: 3, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview}},
+			run:  machine.Run{State: machine.StateIntake, IntakeRevision: 3, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard}},
 			next: "slopshipper intake --file -", allowed: []string{"intake", "ask"},
 			required: []string{}, frontier: []string{}, completed: []string{},
 		},
@@ -72,37 +72,37 @@ func TestFromContracts(t *testing.T) {
 		},
 		{
 			name: "build requires verification",
-			run:  machine.Run{State: machine.StateBuild, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview}},
+			run:  machine.Run{State: machine.StateBuild, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard}},
 			next: "slopshipper verify --cmd '<verification command>'", allowed: []string{"verify", "ask", "block"},
 			required: []string{"verify.command", "verify.exit_code"}, frontier: []string{}, completed: []string{},
 		},
 		{
 			name: "both reviews shows progress",
-			run:  machine.Run{State: machine.StateReview, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview, machine.ReviewerBugbot}, CompletedReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview}},
+			run:  machine.Run{State: machine.StateReview, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard, machine.ReviewerBugbot}, CompletedReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard}},
 			next: "slopshipper review --evidence -", allowed: []string{"review", "rework", "ask", "block"},
-			required: []string{"review.reviewer", "review.verdict", "review.artifact_ref"}, frontier: []string{}, completed: []string{"autoreview"},
+			required: []string{"review.reviewer", "review.verdict", "review.artifact_ref"}, frontier: []string{}, completed: []string{"slopguard"},
 		},
 		{
 			name: "blocked requires explicit retry",
-			run:  machine.Run{State: machine.StateBlocked, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview}},
+			run:  machine.Run{State: machine.StateBlocked, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard}},
 			next: "slopshipper retry --reason '<reason>'", allowed: []string{"retry"},
 			required: []string{"retry.reason"}, frontier: []string{}, completed: []string{},
 		},
 		{
 			name: "decision uses an answer placeholder",
-			run:  machine.Run{State: machine.StateNeedsDecision, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview}, DecisionQuestion: "continue?"},
+			run:  machine.Run{State: machine.StateNeedsDecision, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard}, DecisionQuestion: "continue?"},
 			next: "slopshipper decide --answer '<answer>'", allowed: []string{"decide"},
 			required: []string{}, frontier: []string{}, completed: []string{},
 		},
 		{
 			name: "delivery names its evidence",
-			run:  machine.Run{State: machine.StateDeliver, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview}},
+			run:  machine.Run{State: machine.StateDeliver, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard}},
 			next: "slopshipper deliver --evidence -", allowed: []string{"deliver", "ask"},
 			required: []string{"deliver.delivery_mode", "deliver.pr_url|deliver.commit_sha"}, frontier: []string{}, completed: []string{},
 		},
 		{
 			name:    "done has no next action",
-			run:     machine.Run{State: machine.StateRunDone, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview}},
+			run:     machine.Run{State: machine.StateRunDone, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard}},
 			allowed: []string{}, required: []string{}, frontier: []string{}, completed: []string{},
 		},
 	}
@@ -125,7 +125,7 @@ func TestEvidenceFollowsSelectedAction(t *testing.T) {
 	released := int64(2)
 	run := machine.Run{
 		ID: "r", State: machine.StateIntake, IntakeRevision: 2, ReleasedRevision: &released,
-		SeriesBound: 2, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview},
+		SeriesBound: 2, RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard},
 	}
 	units := []machine.Unit{
 		{ID: "d1", Phase: machine.PhaseDelivered},
@@ -236,7 +236,7 @@ func TestBootstrapDirectsFirstRunToInit(t *testing.T) {
 func TestNextActionSelectsAndQuotesRun(t *testing.T) {
 	doc := From(machine.Run{
 		ID: "run with ' quote", State: machine.StateNeedsDecision,
-		RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview}, DecisionQuestion: "continue?",
+		RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard}, DecisionQuestion: "continue?",
 	}, nil)
 	want := `slopshipper decide --answer '<answer>' --run='run with '"'"' quote'`
 	if doc.NextAction != want {
@@ -247,7 +247,7 @@ func TestNextActionSelectsAndQuotesRun(t *testing.T) {
 func TestNextActionKeepsFlagLikeRunIDAsValue(t *testing.T) {
 	doc := From(machine.Run{
 		ID: "--json", State: machine.StateNeedsDecision,
-		RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview}, DecisionQuestion: "continue?",
+		RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard}, DecisionQuestion: "continue?",
 	}, nil)
 	if !strings.HasSuffix(doc.NextAction, `--run='--json'`) {
 		t.Fatalf("next_action=%q", doc.NextAction)

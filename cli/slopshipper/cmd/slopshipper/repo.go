@@ -216,11 +216,17 @@ func ensureReviewBindingsRegistered(st *store.Store, profile machine.RepoProfile
 	}
 	for _, name := range bound {
 		if _, ok := allowed[name]; !ok {
+			if renamed := machine.LegacyReviewerRename(machine.ReviewerIdentity(name)); renamed != "" {
+				return fmt.Errorf("%w: reviewer identity %q was renamed to %q", machine.ErrBadArgs, name, renamed)
+			}
 			return fmt.Errorf("%w: review binding %q is not a registered reviewer identity; register it first with slopshipper reviewers --add %s", machine.ErrBadArgs, name, name)
 		}
 	}
 	for identity := range profile.ForgeReviewers {
 		if _, ok := allowed[identity]; !ok {
+			if renamed := machine.LegacyReviewerRename(machine.ReviewerIdentity(identity)); renamed != "" {
+				return fmt.Errorf("%w: reviewer identity %q was renamed to %q", machine.ErrBadArgs, identity, renamed)
+			}
 			return fmt.Errorf("%w: forge reviewer %q is not a registered reviewer identity; register it first with slopshipper reviewers --add %s", machine.ErrBadArgs, identity, identity)
 		}
 	}

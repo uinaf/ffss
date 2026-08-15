@@ -16,7 +16,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 8
+const schemaVersion = 9
 
 // timestampNow returns a fixed-width UTC timestamp. RFC3339Nano trims
 // trailing zeros, which breaks the lexicographic ordering the run queries
@@ -261,6 +261,23 @@ func (s *Store) migrate() error {
 				return fmt.Errorf("migrate schema 7 to 8: %w", err)
 			}
 			version = 8
+		case 8:
+			// The autoreview built-in identity was renamed to slopguard.
+			// Live run state and profile bindings follow the rename; the
+			// event ledger keeps historical evidence verbatim. The quoted
+			// JSON tokens are unambiguous because identities are whole JSON
+			// strings in these documents.
+			if _, err := tx.Exec(`UPDATE runs SET
+				required_reviewers_json = REPLACE(required_reviewers_json, '"autoreview"', '"slopguard"'),
+				completed_reviewers_json = REPLACE(completed_reviewers_json, '"autoreview"', '"slopguard"')`); err != nil {
+				return fmt.Errorf("migrate schema 8 to 9: %w", err)
+			}
+			if _, err := tx.Exec(`UPDATE repos SET
+				bindings_json = REPLACE(bindings_json, '"autoreview"', '"slopguard"'),
+				forge_reviewers_json = REPLACE(forge_reviewers_json, '"autoreview":', '"slopguard":')`); err != nil {
+				return fmt.Errorf("migrate schema 8 to 9 profiles: %w", err)
+			}
+			version = 9
 		default:
 			return fmt.Errorf("unsupported schema version %d", version)
 		}

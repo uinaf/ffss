@@ -366,7 +366,7 @@ func TestEmptyReviewEvidenceFails(t *testing.T) {
 	run, units := releasedAtReview(t)
 	_, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 		ExpectedRevision: run.Revision,
-		Review:           &machine.ReviewEvidence{Reviewer: machine.ReviewerAutoreview},
+		Review:           &machine.ReviewEvidence{Reviewer: machine.ReviewerSlopguard},
 	})
 	if !errors.Is(err, machine.ErrUnmetGuard) {
 		t.Fatalf("got %v", err)
@@ -409,11 +409,11 @@ func TestIllegalTransition(t *testing.T) {
 }
 
 func TestReviewBothRequiresDistinctCleanReviews(t *testing.T) {
-	run, units := reviewRun(machine.ReviewerAutoreview, machine.ReviewerBugbot)
+	run, units := reviewRun(machine.ReviewerSlopguard, machine.ReviewerBugbot)
 	first, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 		ExpectedRevision: run.Revision,
 		Review: &machine.ReviewEvidence{
-			Reviewer: machine.ReviewerAutoreview, Verdict: machine.ReviewClean, ArtifactRef: "autoreview://1",
+			Reviewer: machine.ReviewerSlopguard, Verdict: machine.ReviewClean, ArtifactRef: "slopguard://1",
 		},
 	})
 	if err != nil {
@@ -425,7 +425,7 @@ func TestReviewBothRequiresDistinctCleanReviews(t *testing.T) {
 	if _, err := machine.Apply(first.Run, first.Units, machine.CmdReview, machine.ApplyInput{
 		ExpectedRevision: first.Run.Revision,
 		Review: &machine.ReviewEvidence{
-			Reviewer: machine.ReviewerAutoreview, Verdict: machine.ReviewClean, ArtifactRef: "autoreview://2",
+			Reviewer: machine.ReviewerSlopguard, Verdict: machine.ReviewClean, ArtifactRef: "slopguard://2",
 		},
 	}); !errors.Is(err, machine.ErrUnmetGuard) {
 		t.Fatalf("duplicate reviewer: %v", err)
@@ -453,11 +453,11 @@ func TestReviewOutcomesRouteWithoutUnlockingDelivery(t *testing.T) {
 		{machine.ReviewAmbiguous, machine.StateNeedsDecision},
 	} {
 		t.Run(string(tt.verdict), func(t *testing.T) {
-			run, units := reviewRun(machine.ReviewerAutoreview)
+			run, units := reviewRun(machine.ReviewerSlopguard)
 			res, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 				ExpectedRevision: run.Revision,
 				Review: &machine.ReviewEvidence{
-					Reviewer: machine.ReviewerAutoreview, Verdict: tt.verdict, ArtifactRef: "autoreview://1",
+					Reviewer: machine.ReviewerSlopguard, Verdict: tt.verdict, ArtifactRef: "slopguard://1",
 				},
 			})
 			if err != nil {
@@ -524,11 +524,11 @@ func TestBlockedRetryRejectsInvalidCurrentUnit(t *testing.T) {
 }
 
 func TestRetryClearsReviewProgress(t *testing.T) {
-	run, units := reviewRun(machine.ReviewerAutoreview, machine.ReviewerBugbot)
+	run, units := reviewRun(machine.ReviewerSlopguard, machine.ReviewerBugbot)
 	res, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 		ExpectedRevision: run.Revision,
 		Review: &machine.ReviewEvidence{
-			Reviewer: machine.ReviewerAutoreview, Verdict: machine.ReviewClean, ArtifactRef: "autoreview://1",
+			Reviewer: machine.ReviewerSlopguard, Verdict: machine.ReviewClean, ArtifactRef: "slopguard://1",
 		},
 	})
 	if err != nil {
@@ -578,7 +578,7 @@ func releasedAtBuild(t *testing.T) (machine.Run, []machine.Unit) {
 	res, err := machine.Apply(run, units, machine.CmdIntake, machine.ApplyInput{
 		ExpectedRevision: 1,
 		Intake: &machine.IntakePatch{
-			RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview},
+			RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard},
 			Units:             units,
 		},
 	})

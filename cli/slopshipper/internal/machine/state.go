@@ -100,16 +100,27 @@ const (
 type ReviewerIdentity string
 
 const (
-	ReviewerAutoreview ReviewerIdentity = "autoreview"
-	ReviewerBugbot     ReviewerIdentity = "bugbot"
-	ReviewerHuman      ReviewerIdentity = "human"
+	ReviewerSlopguard ReviewerIdentity = "slopguard"
+	ReviewerBugbot    ReviewerIdentity = "bugbot"
+	ReviewerHuman     ReviewerIdentity = "human"
 )
+
+// LegacyReviewerRename returns the current name of a retired reviewer
+// identity, or "" when the name was never renamed. Retired names are
+// rejected everywhere with a pointer to their successor; the event ledger
+// keeps historical evidence verbatim.
+func LegacyReviewerRename(name ReviewerIdentity) ReviewerIdentity {
+	if name == "autoreview" {
+		return ReviewerSlopguard
+	}
+	return ""
+}
 
 // BuiltinReviewers returns the identities that are registered in every
 // installation. Humans hold the release and recovery latches, not a default
 // review identity; a human sign-off reviewer must be registered explicitly.
 func BuiltinReviewers() []ReviewerIdentity {
-	return []ReviewerIdentity{ReviewerAutoreview, ReviewerBugbot}
+	return []ReviewerIdentity{ReviewerSlopguard, ReviewerBugbot}
 }
 
 // ReviewVerdict is the normalized outcome of one independent review.

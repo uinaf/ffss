@@ -299,7 +299,7 @@ Describe commands, flags, strict input schemas, enums, and outputs as JSON.
 
 List built-in and registered reviewer identities, or register/unregister a
 custom identity. Registration is declarative and idempotent; built-ins
-(autoreview, bugbot) cannot be changed. Humans hold release and recovery
+(slopguard, bugbot) cannot be changed. Humans hold release and recovery
 latches; a human sign-off reviewer must be registered explicitly.
 `,
 		"watch": `Usage: slopshipper watch [--once | --interval SECONDS [--iterations N]] [--run ID]
@@ -1426,6 +1426,11 @@ func cmdReviewers(st *store.Store, args []string, opts runOptions) int {
 		}
 		if slices.Contains(machine.BuiltinReviewers(), machine.ReviewerIdentity(name)) {
 			return writeFailure(opts, 2, fmt.Errorf("reviewer %q is built-in and always registered", name))
+		}
+		// Retired names stay reserved so a custom identity can never shadow
+		// historical evidence recorded under them.
+		if renamed := machine.LegacyReviewerRename(machine.ReviewerIdentity(name)); renamed != "" {
+			return writeFailure(opts, 2, fmt.Errorf("reviewer identity %q was renamed to %q", name, renamed))
 		}
 	}
 	if !opts.dryRun {

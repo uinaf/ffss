@@ -116,7 +116,7 @@ func TestMigratesVersionOneTransactionally(t *testing.T) {
 	if deliver.State != machine.StateReview || len(deliver.CompletedReviewers) != 0 {
 		t.Fatalf("legacy review migration did not fail closed: %+v", deliver)
 	}
-	if len(deliver.RequiredReviewers) != 1 || deliver.RequiredReviewers[0] != machine.ReviewerAutoreview {
+	if len(deliver.RequiredReviewers) != 1 || deliver.RequiredReviewers[0] != machine.ReviewerSlopguard {
 		t.Fatalf("legacy autoreview consent mapping: %+v", deliver.RequiredReviewers)
 	}
 	closed, _, err := s.GetRun("closed-deliver")

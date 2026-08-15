@@ -19,7 +19,7 @@ func testProfile(repoKey string) machine.RepoProfile {
 		DeliveryMode:  machine.DeliveryPRHold,
 		Readiness:     machine.ReadinessReady,
 		Bindings: map[machine.Role][]string{
-			machine.RoleReview: {"autoreview", "bugbot"},
+			machine.RoleReview: {"slopguard", "bugbot"},
 		},
 	}
 }
@@ -114,11 +114,11 @@ func TestSaveApplyReenforcesProfileBindingsTransactionally(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = s.SaveApply(res)
-	if !errors.Is(err, machine.ErrUnmetGuard) || !strings.Contains(err.Error(), "autoreview") {
+	if !errors.Is(err, machine.ErrUnmetGuard) || !strings.Contains(err.Error(), "slopguard") {
 		t.Fatalf("save must re-check profile bindings transactionally: %v", err)
 	}
 
-	profile.Bindings = map[machine.Role][]string{machine.RoleReview: {"autoreview"}}
+	profile.Bindings = map[machine.Role][]string{machine.RoleReview: {"slopguard"}}
 	if err := s.UpdateRepoProfile(profile); err != nil {
 		t.Fatal(err)
 	}
@@ -290,5 +290,69 @@ func TestMigratesVersionSevenAddsForgeReviewers(t *testing.T) {
 	got.ForgeReviewers = map[string]string{"slopzapper": "zapbot"}
 	if err := s.UpdateRepoProfile(got); err != nil {
 		t.Fatalf("migrated database must accept forge reviewers: %v", err)
+	}
+}
+
+func TestMigratesVersionEightRenamesRetiredReviewer(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v8.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := machine.NewRun("run", "repo")
+	run.RequiredReviewers = []machine.ReviewerIdentity{machine.ReviewerSlopguard, machine.ReviewerBugbot}
+	if err := s.CreateRun(run, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RegisterRepoProfile(testProfile("repo")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Rewind to v8 with the retired identity in live state, exactly as a
+	// pre-rename database would hold it.
+	db := openSQLite(t, path)
+	if _, err := db.Exec(`UPDATE runs SET
+		required_reviewers_json = '["autoreview","bugbot"]',
+		completed_reviewers_json = '["autoreview"]'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE repos SET
+		bindings_json = '{"review":["autoreview","bugbot"]}',
+		forge_reviewers_json = '{"autoreview":"autoreview"}'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	s, err = store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	got, _, err := s.GetRun("run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RequiredReviewers[0] != machine.ReviewerSlopguard || got.CompletedReviewers[0] != machine.ReviewerSlopguard {
+		t.Fatalf("live run state must follow the rename: %+v", got)
+	}
+	profile, _, err := s.GetRepoProfile("repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if profile.Bindings[machine.RoleReview][0] != "slopguard" {
+		t.Fatalf("bindings must follow the rename: %+v", profile.Bindings)
+	}
+	// The mapping KEY is an identity and renames; the VALUE is a forge
+	// login and must stay untouched.
+	if login, ok := profile.ForgeReviewers["slopguard"]; !ok || login != "autoreview" {
+		t.Fatalf("forge reviewer keys rename, values stay: %+v", profile.ForgeReviewers)
 	}
 }

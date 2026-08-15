@@ -166,7 +166,7 @@ func TestCLINorthStarSmoke(t *testing.T) {
 
 	intake := filepath.Join(t.TempDir(), "intake.json")
 	mustWrite(t, intake, `{
-		"required_reviewers":["autoreview"],
+		"required_reviewers":["slopguard"],
 		"series_bound":1,
 		"units":[{"id":"u1","title":"one"}]
 	}`)
@@ -184,7 +184,7 @@ func TestCLINorthStarSmoke(t *testing.T) {
 	h.must("verify", "--cmd", "true", "--run", "smoke")
 
 	rev := filepath.Join(t.TempDir(), "review.json")
-	mustWrite(t, rev, `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"test://1"}`)
+	mustWrite(t, rev, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1"}`)
 	h.must("review", "--evidence", rev, "--run", "smoke")
 
 	del := filepath.Join(t.TempDir(), "deliver.json")
@@ -634,7 +634,7 @@ func TestAgentDXRawInputsDryRunAndFieldMask(t *testing.T) {
 	out := h.mustInput(`{"run":"agent"}`, "init", "--input", "-", "--json")
 	assertJSONState(t, out, "INTAKE")
 
-	intake := `{"run":"agent","delivery_mode":"pr-hold","required_reviewers":["autoreview"],"series_bound":1,"units":[{"id":"u1","title":"Agent DX","blockers":[]}]}`
+	intake := `{"run":"agent","delivery_mode":"pr-hold","required_reviewers":["slopguard"],"series_bound":1,"units":[{"id":"u1","title":"Agent DX","blockers":[]}]}`
 	dry := h.mustInput(intake, "intake", "--input", "-", "--dry-run", "--json")
 	var projection struct {
 		DryRun              bool   `json:"dry_run"`
@@ -678,7 +678,7 @@ func TestAgentDXRawInputsDryRunAndFieldMask(t *testing.T) {
 	h.mustInput(`{"run":"agent"}`, "rework", "--input", "-", "--json")
 	h.mustInput(`{"run":"agent"}`, "build", "--input", "-", "--json")
 	h.mustInput(`{"run":"agent","command":"go test ./...","exit_code":0}`, "verify", "--input", "-", "--json")
-	h.mustInput(`{"run":"agent","reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://local"}`, "review", "--input", "-", "--json")
+	h.mustInput(`{"run":"agent","reviewer":"slopguard","verdict":"clean","artifact_ref":"slopguard://local"}`, "review", "--input", "-", "--json")
 	out = h.mustInput(`{"run":"agent","delivery_mode":"pr-hold","pr_url":"https://example.com/pr/1"}`, "deliver", "--input", "-", "--json")
 	assertJSONState(t, out, "AWAITING_SIGNALS")
 	out = h.mustInput(`{"run":"agent","signal":"merged","reference":"https://example.com/pr/1"}`, "observe", "--input", "-", "--json")
@@ -812,7 +812,7 @@ func TestCLIFailClosedGuards(t *testing.T) {
 
 	intake := filepath.Join(t.TempDir(), "intake.json")
 	mustWrite(t, intake, `{
-		"required_reviewers":["autoreview"],
+		"required_reviewers":["slopguard"],
 		"series_bound":1,
 		"units":[{"id":"u1","title":"one"}]
 	}`)
@@ -829,7 +829,7 @@ func TestCLIFailClosedGuards(t *testing.T) {
 		field, value := spoofed.field, spoofed.value
 		spoof := filepath.Join(t.TempDir(), "spoof-"+field+".json")
 		mustWrite(t, spoof, fmt.Sprintf(`{
-			"required_reviewers":["autoreview"],
+			"required_reviewers":["slopguard"],
 			"series_bound":1,
 			"units":[{"id":"u1","title":"one",%q:%s}]
 		}`, field, value))
@@ -859,13 +859,13 @@ func TestCLIFailClosedGuards(t *testing.T) {
 	h.must("verify", "--cmd", "true", "--run", "a")
 
 	emptyRev := filepath.Join(t.TempDir(), "empty-review.json")
-	mustWrite(t, emptyRev, `{"reviewer":"autoreview","verdict":"clean"}`)
+	mustWrite(t, emptyRev, `{"reviewer":"slopguard","verdict":"clean"}`)
 	out, code = h.run("review", "--evidence", emptyRev, "--run", "a")
 	if code != 3 {
 		t.Fatalf("empty artifact_ref want exit 3 got %d %s", code, out)
 	}
 
-	// Consent mismatch: bugbot evidence under autoreview consent.
+	// Consent mismatch: bugbot evidence under slopguard consent.
 	bad := filepath.Join(t.TempDir(), "bad-review.json")
 	mustWrite(t, bad, `{"reviewer":"bugbot","verdict":"clean","artifact_ref":"x"}`)
 	out, code = h.run("review", "--evidence", bad, "--run", "a")
@@ -1094,7 +1094,7 @@ func TestRunEntryPointsAndFullRecoveryFlow(t *testing.T) {
 	}
 
 	intake := filepath.Join(t.TempDir(), "intake.json")
-	mustWrite(t, intake, `{"delivery_mode":"direct-trunk","required_reviewers":["autoreview","bugbot"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	mustWrite(t, intake, `{"delivery_mode":"direct-trunk","required_reviewers":["slopguard","bugbot"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
 	if code := run([]string{"intake", "--file", intake, "--run", "direct"}); code != 0 {
 		t.Fatalf("intake=%d", code)
 	}
@@ -1127,14 +1127,14 @@ func TestRunEntryPointsAndFullRecoveryFlow(t *testing.T) {
 	if code := run([]string{"verify", "--cmd", "true", "--run", "direct"}); code != 0 {
 		t.Fatalf("reverify=%d", code)
 	}
-	if code := runReviewInput(t, "direct", `{"reviewer":"autoreview","verdict":"ambiguous","artifact_ref":"review://ambiguous"}`); code != 0 {
+	if code := runReviewInput(t, "direct", `{"reviewer":"slopguard","verdict":"ambiguous","artifact_ref":"review://ambiguous"}`); code != 0 {
 		t.Fatalf("ambiguous review=%d", code)
 	}
 	if code := run([]string{"decide", "--answer", "continue review", "--run", "direct"}); code != 0 {
 		t.Fatalf("decide=%d", code)
 	}
-	if code := runReviewInput(t, "direct", `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"review://autoreview"}`); code != 0 {
-		t.Fatalf("autoreview=%d", code)
+	if code := runReviewInput(t, "direct", `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"review://slopguard"}`); code != 0 {
+		t.Fatalf("slopguard=%d", code)
 	}
 	if code := runReviewInput(t, "direct", `{"reviewer":"bugbot","verdict":"clean","artifact_ref":"review://bugbot"}`); code != 0 {
 		t.Fatalf("bugbot=%d", code)
@@ -1221,13 +1221,13 @@ func TestCLIRegisteredCustomReviewerFlow(t *testing.T) {
 	}
 
 	// Built-ins are immutable; unregistered requirements fail closed at intake.
-	if out, code := h.run("reviewers", "--add", "autoreview", "--json"); code != 2 || !strings.Contains(out, "built-in") {
+	if out, code := h.run("reviewers", "--add", "slopguard", "--json"); code != 2 || !strings.Contains(out, "built-in") {
 		t.Fatalf("builtin add exit=%d output=%s", code, out)
 	}
 	if out, code := h.run("reviewers", "--add", "slopzapper", "--remove", "slopzapper"); code != 2 {
 		t.Fatalf("add+remove exit=%d output=%s", code, out)
 	}
-	intake := `{"run":"custom","delivery_mode":"pr-hold","required_reviewers":["slopzapper","autoreview"],"series_bound":1,"units":[{"id":"u1","title":"one","blockers":[]}]}`
+	intake := `{"run":"custom","delivery_mode":"pr-hold","required_reviewers":["slopzapper","slopguard"],"series_bound":1,"units":[{"id":"u1","title":"one","blockers":[]}]}`
 	if out, code := h.runInput(intake, "intake", "--input", "-", "--json"); code != 2 || !strings.Contains(out, "not registered") {
 		t.Fatalf("unregistered intake exit=%d output=%s", code, out)
 	}
@@ -1270,7 +1270,7 @@ func TestCLIRegisteredCustomReviewerFlow(t *testing.T) {
 		afterFirst.State != "REVIEW" || len(afterFirst.CompletedReviewers) != 1 {
 		t.Fatalf("first custom review: %v %s", err, out)
 	}
-	out = h.mustInput(`{"run":"custom","reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://approval"}`,
+	out = h.mustInput(`{"run":"custom","reviewer":"slopguard","verdict":"clean","artifact_ref":"slopguard://approval"}`,
 		"review", "--input", "-", "--json")
 	if err := json.Unmarshal([]byte(out), &afterFirst); err != nil || afterFirst.State != "DELIVER" {
 		t.Fatalf("second review: %v %s", err, out)
@@ -1314,7 +1314,7 @@ func TestRunReviewersRegistryAndCustomFlowInProcess(t *testing.T) {
 	if code != 0 || !strings.Contains(out, `"builtin"`) || !strings.Contains(out, `"registered": []`) {
 		t.Fatalf("registry list exit=%d output=%s", code, out)
 	}
-	if out, code = captureStdoutResult(t, func() int { return run([]string{"reviewers", "--add", "autoreview"}) }); code != 2 {
+	if out, code = captureStdoutResult(t, func() int { return run([]string{"reviewers", "--add", "slopguard"}) }); code != 2 {
 		t.Fatalf("builtin add exit=%d output=%s", code, out)
 	}
 	if out, code = captureStdoutResult(t, func() int {
@@ -1345,7 +1345,7 @@ func TestRunReviewersRegistryAndCustomFlowInProcess(t *testing.T) {
 
 	intake := filepath.Join(t.TempDir(), "intake.json")
 	mustWrite(t, intake, `{
-		"required_reviewers":["slopzapper","autoreview"],
+		"required_reviewers":["slopzapper","slopguard"],
 		"risk_tier":"high",
 		"budget":{"tokens":250000,"minutes":45},
 		"series_bound":1,

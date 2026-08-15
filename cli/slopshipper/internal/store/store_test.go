@@ -476,7 +476,7 @@ func TestPersistsCanonicalEvidenceAndReviewProgress(t *testing.T) {
 	defer s.Close()
 	run := machine.NewRun("review", "repo")
 	run.State = machine.StateReview
-	run.RequiredReviewers = []machine.ReviewerIdentity{machine.ReviewerAutoreview, machine.ReviewerBugbot}
+	run.RequiredReviewers = []machine.ReviewerIdentity{machine.ReviewerSlopguard, machine.ReviewerBugbot}
 	run.CurrentUnitID = "u1"
 	units := []machine.Unit{{ID: "u1", Attempt: 1}}
 	if err := s.CreateRun(run, units, nil); err != nil {
@@ -485,7 +485,7 @@ func TestPersistsCanonicalEvidenceAndReviewProgress(t *testing.T) {
 	res, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 		ExpectedRevision: run.Revision,
 		Review: &machine.ReviewEvidence{
-			Reviewer: machine.ReviewerAutoreview, Verdict: machine.ReviewClean, ArtifactRef: "autoreview://1",
+			Reviewer: machine.ReviewerSlopguard, Verdict: machine.ReviewClean, ArtifactRef: "slopguard://1",
 		},
 	})
 	if err != nil {
@@ -498,7 +498,7 @@ func TestPersistsCanonicalEvidenceAndReviewProgress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got.CompletedReviewers) != 1 || got.CompletedReviewers[0] != machine.ReviewerAutoreview {
+	if len(got.CompletedReviewers) != 1 || got.CompletedReviewers[0] != machine.ReviewerSlopguard {
 		t.Fatalf("review progress: %#v", got.CompletedReviewers)
 	}
 
