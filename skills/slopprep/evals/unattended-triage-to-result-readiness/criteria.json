@@ -45,7 +45,7 @@
     {
       "name": "Attempt state and cleanup are durable",
       "max_score": 8,
-      "description": "A declared ordinary teardown entrypoint (not an agent-* wrapper) is idempotent on success, failure, cancellation, timeout, and retry; the contract records task and attempt state, commands, and artifact locations needed for a fresh process to resume"
+      "description": "A declared ordinary teardown entrypoint (not an agent-* wrapper) is idempotent on success, failure, cancellation, timeout, and retry; it records exact ownership, releases only processes and applicable heavyweight runtimes raised by the attempt, preserves pre-existing resources, verifies final state, and records task and attempt commands and artifact locations needed for a fresh process to resume"
     },
     {
       "name": "Retries, stalls, and escalation are bounded",

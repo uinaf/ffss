@@ -31,8 +31,13 @@ It should:
 - preserve exit status and concise, inspectable failure output
 - exercise the strongest cheap surface appropriate to the repository
 - distinguish repository failures from missing runner capabilities
-- clean up processes, ports, test state, and temporary credentials on success,
-  failure, timeout, and cancellation
+- clean up owned processes, ports, test state, temporary credentials, and
+  heavyweight runtimes such as simulators, emulators, virtual machines,
+  containers, browsers, services, and databases on success, failure, timeout,
+  and cancellation
+- preserve pre-existing resources, record exact IDs for resources created or
+  acquired by the attempt, and verify the final resource state rather than
+  trusting a cleanup command's exit status
 - emit task-and-attempt-scoped artifacts when evidence must survive the process
 
 Do not create a parallel agent-only verification wrapper. Improve the ordinary
@@ -67,8 +72,9 @@ IO, authentication, network, configuration, or external dependencies. Require:
 - a useful recovery action when the user or operator can act
 - preserved artifacts or logs for unattended diagnosis
 
-Swallowed errors, vague success, raw secret output, unbounded waits, and cleanup
-that only runs on success are readiness failures.
+Swallowed errors, vague success, raw secret output, unbounded waits, cleanup
+that only runs on success, global teardown that destroys unowned resources, and
+owned resources left running without an explicit handoff are readiness failures.
 
 ## Reporting
 

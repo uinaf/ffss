@@ -90,6 +90,15 @@ success, failure, timeout, and cancellation. Name the declared commands and
 their proof boundary in `AGENTS.md`. Key automation artifacts by task and
 attempt.
 
+Treat heavyweight runtime resources as owned lifecycle state: simulators,
+emulators, virtual machines, containers, browsers, services, databases, and
+similar runners. Snapshot pre-existing state, record exact resource IDs, and
+release only resources raised by the current task or attempt on every exit path.
+Preserve resources that were already running. Verify the final state after a
+successful run and an injected failure; a persistent `run` or development task
+must hand off its resource IDs and explicit teardown command instead of silently
+leaking them.
+
 | Enforce mechanically | Leave to agent judgment |
 | --- | --- |
 | workspace and branch setup, allowed targets, tool install, secret injection | task interpretation and implementation |

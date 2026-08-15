@@ -12,12 +12,36 @@ Prefer one ordinary repository-owned surface used by humans, agents, and CI:
 | bootstrap | validate prerequisites and install reproducibly without prompts |
 | boot | start the real target and expose a bounded readiness signal |
 | verify | run canonical guardrails plus the strongest cheap real surface |
-| teardown | release owned processes and state on success, failure, timeout, and cancellation |
+| teardown | release owned processes, heavyweight runtimes, and state on success, failure, timeout, and cancellation |
 
 Keep each stage noninteractive, idempotent where practical, bounded, and
 explicit about whether a failure belongs to the repository or runner. Do not
 invent parallel `agent-*` wrappers; wire missing entrypoints into package
 scripts, Make/`just`, or checked-in scripts already used by CI.
+
+### Runtime resource ownership
+
+Apply the lifecycle to every resource a task raises: child processes, ports,
+simulators, emulators, virtual machines, containers, browsers, services,
+databases, and external test fixtures.
+
+- Snapshot relevant state before acquisition and persist the exact resource ID
+  plus task and attempt ownership.
+- Release only resources created or acquired by that attempt. Preserve a device,
+  container, service, or database that was already running.
+- Register cleanup before the first later failure point and run it on success,
+  failure, timeout, cancellation, and retry. Preserve the primary command's
+  terminal status if cleanup also fails.
+- Verify final state: no owned resource remains, and pre-existing resources are
+  unchanged. Exercise this once after success and once after an injected safe
+  failure.
+- For intentionally persistent `run`, preview, or development tasks, emit the
+  owned IDs and explicit teardown command as a handoff. Do not report the
+  lifecycle complete until the resource is released or ownership is accepted.
+
+Avoid broad cleanup such as `killall`, `simctl shutdown all`, deleting every
+container, or stopping shared databases unless the command's declared scope
+owns the entire target set.
 
 Own tool versions once. Preserve the repository's runtime and package-manager
 declarations, lockfile, catalogs, or tool manager. Make CI consume those owners

@@ -53,7 +53,10 @@ Produce:
      the tested revision, build, environment, scenario, producer, capture time,
      format, and redaction status.
    - **teardown** — idempotent cleanup suitable for success, failure,
-     cancellation, timeout, and retry.
+     cancellation, timeout, and retry. It must track exact resource ownership,
+     release only processes, containers, emulators, simulators, virtual machines,
+     or similar runtime resources raised by the attempt, preserve pre-existing
+     resources, and verify the final state.
 
 Document the exact commands in `AGENTS.md`. Accept compatible orchestrator
 implementations; do not prescribe an internal Symphony implementation.
