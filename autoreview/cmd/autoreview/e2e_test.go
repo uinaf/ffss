@@ -241,6 +241,14 @@ func runBinaryConfig(t *testing.T, binary, repository string, arguments ...strin
 func writeFakeReviewTools(t *testing.T, scenario string) (string, string, string) {
 	t.Helper()
 	directory := t.TempDir()
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	realGit, err = filepath.Abs(realGit)
+	if err != nil {
+		t.Fatal(err)
+	}
 	calls := filepath.Join(directory, "calls")
 	providerPID := filepath.Join(directory, "provider-pid")
 	clean := `{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`
@@ -274,6 +282,12 @@ func writeFakeReviewTools(t *testing.T, scenario string) (string, string, string
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(directory, "trufflehog"), []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	gitScript := "#!/bin/sh\nset -eu\n" +
+		"if [ \"$#\" -eq 3 ] && [ \"$1\" = \"-C\" ] && [ \"$3\" = \"--version\" ]; then printf '%s\\n' 'git version 2.41.0'; exit 0; fi\n" +
+		"exec " + shellLiteral(realGit) + " \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(directory, "git"), []byte(gitScript), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	return directory, calls, providerPID
