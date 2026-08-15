@@ -45,16 +45,23 @@ The vocabulary is "change request"; the forge decides the tool:
 2. Commit with conventional-commit messages. Never force-push without
    explicit approval.
 3. Push with upstream tracking.
-4. Open the change request with the dispatched CLI, ready for review unless
-   a draft was requested. Use the repository's template verbatim; if none
-   exists, cover Summary, Changed, Risks, Verification, and Complexity in
-   plain language. Never fabricate verification results — report exactly
-   what ran.
-5. Give a non-trivial change its single clearest review aid — a labeled
+4. Check whether a change request for this branch already exists; if it
+   does, update it instead of filing a duplicate.
+5. Open the change request with the dispatched CLI, ready for review unless
+   a draft was requested. Title it the way this repository titles merged
+   work — read recent merged change requests and git history first — and
+   prefer the outcome over the mechanism ("cut frame size 70% with
+   gzipping", not "negotiate permessage-deflate"). Use the repository's
+   template verbatim; if none exists, cover Summary, Changed, Risks,
+   Verification, and Complexity in plain language. Open the description
+   with the problem as the requester stated it, then the solution — never
+   an implementation inventory. Never fabricate verification results —
+   report exactly what ran.
+6. Give a non-trivial change its single clearest review aid — a labeled
    screenshot or recording, a focused diagram, or sanitized contract
    input/output. Load [visual-evidence.md](references/visual-evidence.md)
    for the attachment ladder. Never commit proof assets to the repository.
-6. Return the change-request URL as the result.
+7. Return the change-request URL as the result.
 
 ## Compose with slopshipper
 
