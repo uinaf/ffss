@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -29,7 +30,7 @@ jobs:
   slopshipper:
     name: slopshipper verify
     needs: changes
-    if: needs.changes.outputs.slopshipper == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.slopshipper == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,7 +45,7 @@ jobs:
   autoreview:
     name: autoreview verify
     needs: changes
-    if: needs.changes.outputs.autoreview == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.autoreview == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
