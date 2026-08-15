@@ -226,6 +226,10 @@ func runLiveReview(t *testing.T, binary string, live liveProvider, control liveC
 		arguments = append(arguments, "--web-access=false", "--reasoning-effort", "high")
 	}
 	command := exec.CommandContext(t.Context(), binary, arguments...)
+	command.Env = replaceEnvironment(os.Environ(), map[string]string{
+		"GIT_CONFIG_GLOBAL": "/dev/null",
+		"GIT_CONFIG_SYSTEM": "/dev/null",
+	})
 	command.Stdin = strings.NewReader(control.contract)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
