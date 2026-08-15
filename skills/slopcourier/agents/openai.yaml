@@ -8,8 +8,8 @@ interface:
     (github → gh, gitlab → glab, otherwise stop and report), branch, commit
     conventionally, push, open the change request from the repository's
     template, attach the single clearest visual evidence without committing
-    proof assets, and return the URL. Never merge, review, force-push, or
-    batch unrelated work; when a slopshipper run asked for the delivery,
+    proof assets, and return the URL. Never merge, review, or batch
+    unrelated work, and never force-push without explicit approval; when a slopshipper run asked for the delivery,
     hand the URL back through its deliver evidence.
 
 policy:
