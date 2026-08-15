@@ -13,7 +13,7 @@ adversarial review for shipping slop that survives contact with reality.
 | [`skills/slopspec`](skills/slopspec/) | Turn agreed work into durable tracker plans |
 | [`skills/slopscriber`](skills/slopscriber/) | Audit and rewrite repo docs and agent guidance |
 | [`skills/slopprep`](skills/slopprep/) | Make a repository agent-ready |
-| skills/slopcourier | Forge-neutral delivery skill — planned ([uinaf/skills#57](https://github.com/uinaf/skills/issues/57)) |
+| [`skills/slopcourier`](skills/slopcourier/) | Deliver finished work as a change request on the repo's forge, with the visual-evidence ladder |
 
 Reference bindings elsewhere in the family: slopzapper (forge review bot),
 slopscouter (QA, planned), slopbench (evals, planned), slopwake.

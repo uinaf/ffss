@@ -16,6 +16,7 @@ jobs:
     outputs:
       slopshipper: ${{ steps.filter.outputs.slopshipper }}
       slopguard: ${{ steps.filter.outputs.slopguard }}
+      skills: ${{ steps.filter.outputs.skills }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: filter
@@ -26,6 +27,9 @@ jobs:
               - 'cli/slopshipper/**'
             slopguard:
               - 'cli/slopguard/**'
+            skills:
+              - 'skills/**'
+              - 'cli/*/skills/**'
 
   slopshipper:
     name: slopshipper verify
@@ -56,3 +60,25 @@ jobs:
         with:
           working_directory: cli/slopguard
       - run: mise run verify
+
+  skills:
+    name: skills lint
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.skills == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: tesslio/setup-tessl@33e1c9253e3673f28e1b8949475b250dbd57918e # v2
+        with:
+          version: "0.94.0"
+      - name: Lint every skill package
+        env:
+          TESSL_AUTO_UPDATE_INTERVAL_MINUTES: "0"
+        run: |
+          set -euo pipefail
+          for skill in skills/*/ cli/*/skills/*/; do
+            [ -d "$skill" ] || continue
+            tessl plugin lint "$skill"
+          done
