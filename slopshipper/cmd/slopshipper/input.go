@@ -12,6 +12,8 @@ type intakeInput struct {
 	Run               string          `json:"run,omitempty"`
 	DeliveryMode      *string         `json:"delivery_mode,omitempty"`
 	RequiredReviewers []string        `json:"required_reviewers,omitempty"`
+	RiskTier          *string         `json:"risk_tier,omitempty"`
+	Budget            *budgetDTO      `json:"budget,omitempty"`
 	SeriesBound       *int            `json:"series_bound,omitempty"`
 	Units             []intakeUnitDTO `json:"units,omitempty"`
 }

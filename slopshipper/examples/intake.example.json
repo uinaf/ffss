@@ -1,12 +1,15 @@
 {
   "delivery_mode": "pr-hold",
   "required_reviewers": ["autoreview"],
+  "risk_tier": "low",
   "series_bound": 1,
   "units": [
     {
       "id": "u1",
       "title": "First frontier unit",
-      "blockers": []
+      "blockers": [],
+      "acceptance_criteria": ["the agreed behavior is verifiable end to end"],
+      "complexity": "low"
     }
   ]
 }

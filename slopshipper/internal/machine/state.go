@@ -33,6 +33,25 @@ const (
 	CmdBlock   Command = "block"
 )
 
+// RiskTier classifies how much can go wrong when a run's work is wrong.
+// Recorded contract data: routing and review-depth policy consume it later.
+type RiskTier string
+
+const (
+	RiskLow    RiskTier = "low"
+	RiskMedium RiskTier = "medium"
+	RiskHigh   RiskTier = "high"
+)
+
+// Complexity classifies how hard one unit is expected to be.
+type Complexity string
+
+const (
+	ComplexityLow    Complexity = "low"
+	ComplexityMedium Complexity = "medium"
+	ComplexityHigh   Complexity = "high"
+)
+
 // DeliveryMode is how work is published.
 type DeliveryMode string
 

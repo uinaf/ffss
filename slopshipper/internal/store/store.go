@@ -16,7 +16,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 3
+const schemaVersion = 4
 
 // ErrStateUnavailable marks a resolved state location that cannot be
 // prepared (directory or database file creation failed). Callers recover by
@@ -190,6 +190,18 @@ func (s *Store) migrate() error {
 				return fmt.Errorf("register legacy human reviewer from schema 2: %w", err)
 			}
 			version = 3
+		case 3:
+			for _, ddl := range []string{
+				`ALTER TABLE runs ADD COLUMN risk_tier TEXT NOT NULL DEFAULT ''`,
+				`ALTER TABLE runs ADD COLUMN budget_json TEXT NOT NULL DEFAULT '{}'`,
+				`ALTER TABLE units ADD COLUMN acceptance_criteria_json TEXT NOT NULL DEFAULT '[]'`,
+				`ALTER TABLE units ADD COLUMN complexity TEXT NOT NULL DEFAULT ''`,
+			} {
+				if _, err := tx.Exec(ddl); err != nil {
+					return fmt.Errorf("migrate schema 3 to 4: %w", err)
+				}
+			}
+			version = 4
 		default:
 			return fmt.Errorf("unsupported schema version %d", version)
 		}
@@ -219,6 +231,8 @@ func createCurrentSchema(tx *sql.Tx) error {
 			revision INTEGER NOT NULL,
 			delivery_mode TEXT NOT NULL,
 			required_reviewers_json TEXT NOT NULL DEFAULT '[]',
+			risk_tier TEXT NOT NULL DEFAULT '',
+			budget_json TEXT NOT NULL DEFAULT '{}',
 			series_bound INTEGER NOT NULL,
 			completed_units INTEGER NOT NULL,
 				current_unit_id TEXT NOT NULL DEFAULT '',
@@ -236,6 +250,8 @@ func createCurrentSchema(tx *sql.Tx) error {
 			id TEXT NOT NULL,
 			title TEXT NOT NULL,
 			blockers_json TEXT NOT NULL,
+			acceptance_criteria_json TEXT NOT NULL DEFAULT '[]',
+			complexity TEXT NOT NULL DEFAULT '',
 			attempt INTEGER NOT NULL,
 			done INTEGER NOT NULL,
 			PRIMARY KEY (run_id, id),
@@ -297,14 +313,18 @@ func (s *Store) CreateRun(run machine.Run, units []machine.Unit) error {
 	if run.ReleasedRevision != nil {
 		released = *run.ReleasedRevision
 	}
+	budget, err := json.Marshal(run.Budget)
+	if err != nil {
+		return err
+	}
 	_, err = tx.Exec(`INSERT INTO runs(
 		id, repo_key, state, intake_revision, released_revision, revision,
-		delivery_mode, required_reviewers_json, series_bound, completed_units,
+		delivery_mode, required_reviewers_json, risk_tier, budget_json, series_bound, completed_units,
 		current_unit_id, completed_reviewers_json, blocker_reason, decision_question, return_state,
 		open, created_at, updated_at
-	) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)`,
+	) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)`,
 		run.ID, run.RepoKey, string(run.State), run.IntakeRevision, released, run.Revision,
-		string(run.DeliveryMode), requiredReviewers, run.SeriesBound, run.CompletedUnits,
+		string(run.DeliveryMode), requiredReviewers, string(run.RiskTier), string(budget), run.SeriesBound, run.CompletedUnits,
 		run.CurrentUnitID, string(completedReviewers), run.BlockerReason, run.DecisionQuestion, string(run.ReturnState),
 		now, now,
 	)
@@ -413,7 +433,7 @@ func (s *Store) runIDs(repoKey string, openOnly bool) ([]string, error) {
 func (s *Store) GetRun(runID string) (machine.Run, []machine.Unit, error) {
 	row := s.db.QueryRow(`SELECT
 		id, repo_key, state, intake_revision, released_revision, revision,
-		delivery_mode, required_reviewers_json, series_bound, completed_units,
+		delivery_mode, required_reviewers_json, risk_tier, budget_json, series_bound, completed_units,
 		current_unit_id, completed_reviewers_json, blocker_reason, decision_question, return_state
 	FROM runs WHERE id = ?`, runID)
 	run, err := scanRun(row)
@@ -433,11 +453,11 @@ type scannable interface {
 
 func scanRun(row scannable) (machine.Run, error) {
 	var run machine.Run
-	var state, delivery, requiredReviewers, returnState, completedReviewers string
+	var state, delivery, requiredReviewers, riskTier, budget, returnState, completedReviewers string
 	var released sql.NullInt64
 	err := row.Scan(
 		&run.ID, &run.RepoKey, &state, &run.IntakeRevision, &released, &run.Revision,
-		&delivery, &requiredReviewers, &run.SeriesBound, &run.CompletedUnits,
+		&delivery, &requiredReviewers, &riskTier, &budget, &run.SeriesBound, &run.CompletedUnits,
 		&run.CurrentUnitID, &completedReviewers, &run.BlockerReason, &run.DecisionQuestion, &returnState,
 	)
 	if err != nil {
@@ -445,6 +465,10 @@ func scanRun(row scannable) (machine.Run, error) {
 	}
 	run.State = machine.State(state)
 	run.DeliveryMode = machine.DeliveryMode(delivery)
+	run.RiskTier = machine.RiskTier(riskTier)
+	if err := json.Unmarshal([]byte(budget), &run.Budget); err != nil {
+		return machine.Run{}, fmt.Errorf("decode budget: %w", err)
+	}
 	run.ReturnState = machine.State(returnState)
 	if err := json.Unmarshal([]byte(requiredReviewers), &run.RequiredReviewers); err != nil {
 		return machine.Run{}, fmt.Errorf("decode required reviewers: %w", err)
@@ -460,7 +484,7 @@ func scanRun(row scannable) (machine.Run, error) {
 }
 
 func (s *Store) loadUnits(runID string) ([]machine.Unit, error) {
-	rows, err := s.db.Query(`SELECT id, title, blockers_json, attempt, done FROM units WHERE run_id = ? ORDER BY rowid`, runID)
+	rows, err := s.db.Query(`SELECT id, title, blockers_json, acceptance_criteria_json, complexity, attempt, done FROM units WHERE run_id = ? ORDER BY rowid`, runID)
 	if err != nil {
 		return nil, err
 	}
@@ -468,14 +492,18 @@ func (s *Store) loadUnits(runID string) ([]machine.Unit, error) {
 	var units []machine.Unit
 	for rows.Next() {
 		var u machine.Unit
-		var blockers string
+		var blockers, criteria, complexity string
 		var done int
-		if err := rows.Scan(&u.ID, &u.Title, &blockers, &u.Attempt, &done); err != nil {
+		if err := rows.Scan(&u.ID, &u.Title, &blockers, &criteria, &complexity, &u.Attempt, &done); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal([]byte(blockers), &u.Blockers); err != nil {
 			return nil, err
 		}
+		if err := json.Unmarshal([]byte(criteria), &u.AcceptanceCriteria); err != nil {
+			return nil, err
+		}
+		u.Complexity = machine.Complexity(complexity)
 		u.Done = done == 1
 		units = append(units, u)
 	}
@@ -516,14 +544,18 @@ func (s *Store) SaveApply(result machine.ApplyResult) error {
 		open = 0
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
+	budget, err := json.Marshal(run.Budget)
+	if err != nil {
+		return err
+	}
 	res, err := tx.Exec(`UPDATE runs SET
 		state=?, intake_revision=?, released_revision=?, revision=?,
-		delivery_mode=?, required_reviewers_json=?, series_bound=?, completed_units=?,
+		delivery_mode=?, required_reviewers_json=?, risk_tier=?, budget_json=?, series_bound=?, completed_units=?,
 		current_unit_id=?, completed_reviewers_json=?, blocker_reason=?, decision_question=?, return_state=?,
 		open=?, updated_at=?
 	WHERE id=? AND revision=?`,
 		string(run.State), run.IntakeRevision, released, run.Revision,
-		string(run.DeliveryMode), requiredReviewers, run.SeriesBound, run.CompletedUnits,
+		string(run.DeliveryMode), requiredReviewers, string(run.RiskTier), string(budget), run.SeriesBound, run.CompletedUnits,
 		run.CurrentUnitID, string(completedReviewers), run.BlockerReason, run.DecisionQuestion, string(run.ReturnState),
 		open, now, run.ID, prev,
 	)
@@ -598,8 +630,15 @@ func replaceUnitsTx(tx *sql.Tx, runID string, units []machine.Unit) error {
 		if u.Done {
 			done = 1
 		}
-		if _, err := tx.Exec(`INSERT INTO units(run_id, id, title, blockers_json, attempt, done) VALUES (?,?,?,?,?,?)`,
-			runID, u.ID, u.Title, string(b), u.Attempt, done); err != nil {
+		criteria, err := json.Marshal(u.AcceptanceCriteria)
+		if err != nil {
+			return err
+		}
+		if criteria == nil || string(criteria) == "null" {
+			criteria = []byte("[]")
+		}
+		if _, err := tx.Exec(`INSERT INTO units(run_id, id, title, blockers_json, acceptance_criteria_json, complexity, attempt, done) VALUES (?,?,?,?,?,?,?,?)`,
+			runID, u.ID, u.Title, string(b), string(criteria), string(u.Complexity), u.Attempt, done); err != nil {
 			return err
 		}
 	}

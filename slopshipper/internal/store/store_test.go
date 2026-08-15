@@ -282,6 +282,9 @@ func TestReviewerRegistryRoundTrip(t *testing.T) {
 }
 
 func TestResolveStatusRunBranchesAndReadOnlyVersionGate(t *testing.T) {
+	if _, err := store.Open(""); err == nil {
+		t.Fatal("empty database path accepted")
+	}
 	path := filepath.Join(t.TempDir(), "branches.sqlite")
 	s, err := store.Open(path)
 	if err != nil {
@@ -289,6 +292,12 @@ func TestResolveStatusRunBranchesAndReadOnlyVersionGate(t *testing.T) {
 	}
 	if err := s.CreateRun(machine.NewRun("first", "repo-x"), []machine.Unit{{ID: "u1"}}); err != nil {
 		t.Fatal(err)
+	}
+	if run, _, err := s.ResolveStatusRun("repo-x", ""); err != nil || run.ID != "first" {
+		t.Fatalf("single-open status resolution: %+v %v", run, err)
+	}
+	if _, _, err := s.GetRun("nope"); !errors.Is(err, machine.ErrNotFound) {
+		t.Fatalf("missing run: %v", err)
 	}
 	if err := s.CreateRun(machine.NewRun("second", "repo-x"), []machine.Unit{{ID: "u1"}}); err != nil {
 		t.Fatal(err)

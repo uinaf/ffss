@@ -10,6 +10,8 @@ type Run struct {
 	Revision           int64
 	DeliveryMode       DeliveryMode
 	RequiredReviewers  []ReviewerIdentity
+	RiskTier           RiskTier // empty until the contract declares it
+	Budget             Budget
 	SeriesBound        int
 	CompletedUnits     int
 	CurrentUnitID      string
@@ -21,12 +23,24 @@ type Run struct {
 
 // Unit is one graph node.
 type Unit struct {
-	ID       string   `json:"id"`
-	Title    string   `json:"title"`
-	Blockers []string `json:"blockers"`
-	Attempt  int      `json:"attempt"`
-	Done     bool     `json:"done"`
+	ID                 string     `json:"id"`
+	Title              string     `json:"title"`
+	Blockers           []string   `json:"blockers"`
+	AcceptanceCriteria []string   `json:"acceptance_criteria,omitempty"`
+	Complexity         Complexity `json:"complexity,omitempty"`
+	Attempt            int        `json:"attempt"`
+	Done               bool       `json:"done"`
 }
+
+// Budget bounds a run's spend as recorded contract data. Zero means the
+// dimension is unbounded; enforcement belongs to routing, not the machine.
+type Budget struct {
+	Tokens  int `json:"tokens,omitempty"`
+	Minutes int `json:"minutes,omitempty"`
+}
+
+// IsZero reports whether no budget dimension is set.
+func (b Budget) IsZero() bool { return b.Tokens == 0 && b.Minutes == 0 }
 
 // Released reports whether the human release latch is valid for the current intake.
 func (r *Run) Released() bool {
@@ -58,6 +72,8 @@ type DeliverEvidence struct {
 type IntakePatch struct {
 	DeliveryMode      *DeliveryMode
 	RequiredReviewers []ReviewerIdentity // replaces the required set when non-nil
+	RiskTier          *RiskTier
+	Budget            *Budget // replaces the whole budget when non-nil
 	SeriesBound       *int
 	Units             []Unit // replaces unit graph when non-nil
 }
@@ -72,6 +88,8 @@ type IntakeEvidence struct {
 	IntakeRevision    int64              `json:"intake_revision"`
 	DeliveryMode      DeliveryMode       `json:"delivery_mode"`
 	RequiredReviewers []ReviewerIdentity `json:"required_reviewers"`
+	RiskTier          RiskTier           `json:"risk_tier,omitempty"`
+	Budget            Budget             `json:"budget,omitzero"`
 	SeriesBound       int                `json:"series_bound"`
 	Units             []Unit             `json:"units"`
 }

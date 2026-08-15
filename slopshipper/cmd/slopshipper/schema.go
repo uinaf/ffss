@@ -84,15 +84,19 @@ func schemaDocument(command string) (introspectionDocument, error) {
 func allCommandSchemas() []commandSchema {
 	run := stringSchema("Optional run identifier. ASCII letters, digits, dot, underscore, and hyphen; must start alphanumeric.")
 	unit := objectSchema(map[string]jsonSchema{
-		"id":       stringSchema("Hardened unit identifier."),
-		"title":    stringSchema("Human-readable unit title."),
-		"blockers": arraySchema(stringSchema("ID of a prerequisite unit."), "Dependency-ordered blocker IDs."),
+		"id":                  stringSchema("Hardened unit identifier."),
+		"title":               stringSchema("Human-readable unit title."),
+		"blockers":            arraySchema(stringSchema("ID of a prerequisite unit."), "Dependency-ordered blocker IDs."),
+		"acceptance_criteria": arraySchema(stringSchema("One verifiable acceptance criterion."), "What must be true for the unit to count as done; at most 32 single-line criteria, each at most 500 bytes."),
+		"complexity":          enumSchema("Expected difficulty of the unit.", "low", "medium", "high"),
 	}, "id")
 	reviewer := stringSchema("Registered reviewer identity. Built-ins: autoreview, bugbot; register anything else (including a human sign-off identity) with slopshipper reviewers --add.")
 	intake := objectSchema(map[string]jsonSchema{
 		"run":                run,
 		"delivery_mode":      enumSchema("Delivery behavior.", "pr-hold", "pr-merge-when-ready", "direct-trunk"),
 		"required_reviewers": arraySchema(reviewer, "Replacement set of required registered reviewers; at least one."),
+		"risk_tier":          enumSchema("How much can go wrong when this work is wrong; consumed by routing and review-depth policy.", "low", "medium", "high"),
+		"budget":             objectSchema(map[string]jsonSchema{"tokens": minimumIntegerSchema("Token ceiling for the run.", 1), "minutes": minimumIntegerSchema("Wall-clock ceiling in minutes.", 1)}),
 		"series_bound":       minimumIntegerSchema("Maximum units this run may complete.", 1),
 		"units":              arraySchema(unit, "Replacement dependency graph."),
 	})

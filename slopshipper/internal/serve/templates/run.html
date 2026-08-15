@@ -26,6 +26,9 @@
         <div class="u-def"><span class="u-def-term">state</span><p class="u-def-desc">{{.Run.State}}</p></div>
         <div class="u-def"><span class="u-def-term">released</span><p class="u-def-desc">{{if .Released}}yes{{else}}no{{end}}</p></div>
         <div class="u-def"><span class="u-def-term">completed</span><p class="u-def-desc">{{.Run.CompletedUnits}}/{{.Run.SeriesBound}}</p></div>
+        {{if .RiskTier}}
+        <div class="u-def"><span class="u-def-term">risk</span><p class="u-def-desc">{{.RiskTier}}</p></div>
+        {{end}}
         {{if .ReviewRequired}}
         <div class="u-def"><span class="u-def-term">reviewers</span><p class="u-def-desc">{{if .ReviewCompleted}}{{join .ReviewCompleted ", "}}{{else}}none completed{{end}} / required {{join .ReviewRequired ", "}}</p></div>
         {{end}}

@@ -35,8 +35,9 @@ Do not replace a blocked run. If status shows `RUN_DONE` and the user requested
 new work, create a new run; otherwise report the completed run.
 
 Turn the agreed plan into intake immediately after init. Keep units concrete,
-bounded, and dependency-ordered; use stdin so the workflow does not leave
-evidence scratch files in the repository:
+bounded, and dependency-ordered; give each unit verifiable
+`acceptance_criteria` and declare the run's `risk_tier`; use stdin so the
+workflow does not leave evidence scratch files in the repository:
 
 ```bash
 slopshipper intake --input - --dry-run --json <<'JSON'
@@ -44,9 +45,11 @@ slopshipper intake --input - --dry-run --json <<'JSON'
   "run": "run-id-from-status",
   "delivery_mode": "pr-hold",
   "required_reviewers": ["autoreview"],
+  "risk_tier": "low",
   "series_bound": 1,
   "units": [
-    {"id": "u1", "title": "Implement and verify the agreed change", "blockers": []}
+    {"id": "u1", "title": "Implement and verify the agreed change", "blockers": [],
+     "acceptance_criteria": ["the agreed behavior is proven end to end"]}
   ]
 }
 JSON

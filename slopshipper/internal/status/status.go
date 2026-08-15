@@ -27,6 +27,9 @@ type Document struct {
 	Released            bool     `json:"released"`
 	ReleasedRevision    *int64   `json:"released_revision,omitempty"`
 	DeliveryMode        string   `json:"delivery_mode"`
+	RiskTier            string   `json:"risk_tier,omitempty"`
+	BudgetTokens        int      `json:"budget_tokens,omitempty"`
+	BudgetMinutes       int      `json:"budget_minutes,omitempty"`
 	SeriesBound         int      `json:"series_bound"`
 	CompletedUnits      int      `json:"completed_units"`
 	CurrentUnitID       string   `json:"current_unit_id,omitempty"`
@@ -68,6 +71,9 @@ func From(run machine.Run, units []machine.Unit) Document {
 		Released:           run.Released(),
 		ReleasedRevision:   run.ReleasedRevision,
 		DeliveryMode:       string(run.DeliveryMode),
+		RiskTier:           string(run.RiskTier),
+		BudgetTokens:       run.Budget.Tokens,
+		BudgetMinutes:      run.Budget.Minutes,
 		SeriesBound:        run.SeriesBound,
 		CompletedUnits:     run.CompletedUnits,
 		CurrentUnitID:      run.CurrentUnitID,

@@ -1,17 +1,23 @@
 {
   "delivery_mode": "pr-hold",
   "required_reviewers": ["bugbot"],
+  "risk_tier": "medium",
+  "budget": {"tokens": 400000, "minutes": 60},
   "series_bound": 2,
   "units": [
     {
       "id": "u1",
       "title": "First frontier unit",
-      "blockers": []
+      "blockers": [],
+      "acceptance_criteria": ["contract tests cover the new edge"],
+      "complexity": "medium"
     },
     {
       "id": "u2",
       "title": "Depends on u1",
-      "blockers": ["u1"]
+      "blockers": ["u1"],
+      "acceptance_criteria": ["the end-to-end fixture passes"],
+      "complexity": "low"
     }
   ]
 }

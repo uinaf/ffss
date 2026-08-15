@@ -1257,11 +1257,34 @@ func TestRunReviewersRegistryAndCustomFlowInProcess(t *testing.T) {
 	intake := filepath.Join(t.TempDir(), "intake.json")
 	mustWrite(t, intake, `{
 		"required_reviewers":["slopzapper","autoreview"],
+		"risk_tier":"high",
+		"budget":{"tokens":250000,"minutes":45},
 		"series_bound":1,
-		"units":[{"id":"u1","title":"one"}]
+		"units":[{"id":"u1","title":"one","complexity":"medium","acceptance_criteria":["registry gate enforced"]}]
 	}`)
 	if code := run([]string{"intake", "--file", intake, "--run", "reg"}); code != 0 {
 		t.Fatalf("intake=%d", code)
+	}
+	emptyComplexity := filepath.Join(t.TempDir(), "empty-complexity.json")
+	mustWrite(t, emptyComplexity, `{"units":[{"id":"e1","title":"e","complexity":""}]}`)
+	if out, code := captureStdoutResult(t, func() int {
+		return run([]string{"intake", "--file", emptyComplexity, "--run", "reg"})
+	}); code != 2 {
+		t.Fatalf("explicit empty complexity exit=%d output=%s", code, out)
+	}
+	zeroBudget := filepath.Join(t.TempDir(), "zero-budget.json")
+	mustWrite(t, zeroBudget, `{"budget":{"tokens":0},"units":[{"id":"z1","title":"z"}]}`)
+	if out, code := captureStdoutResult(t, func() int {
+		return run([]string{"intake", "--file", zeroBudget, "--run", "reg"})
+	}); code != 2 {
+		t.Fatalf("explicit zero budget exit=%d output=%s", code, out)
+	}
+	contract, code := captureStdoutResult(t, func() int {
+		return run([]string{"status", "--json", "--fields", "risk_tier,budget_tokens,budget_minutes", "--run", "reg"})
+	})
+	if code != 0 || !strings.Contains(contract, `"risk_tier": "high"`) ||
+		!strings.Contains(contract, `"budget_tokens": 250000`) || !strings.Contains(contract, `"budget_minutes": 45`) {
+		t.Fatalf("contract status exit=%d output=%s", code, contract)
 	}
 	if code := run([]string{"release", "--revision", "2", "--run", "reg"}); code != 0 {
 		t.Fatalf("release=%d", code)

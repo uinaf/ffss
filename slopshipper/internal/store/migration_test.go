@@ -42,6 +42,16 @@ func TestMigratesVersionOneTransactionally(t *testing.T) {
 	if _, err := db.Exec(`ALTER TABLE runs DROP COLUMN required_reviewers_json`); err != nil {
 		t.Fatal(err)
 	}
+	for _, ddl := range []string{
+		`ALTER TABLE runs DROP COLUMN risk_tier`,
+		`ALTER TABLE runs DROP COLUMN budget_json`,
+		`ALTER TABLE units DROP COLUMN acceptance_criteria_json`,
+		`ALTER TABLE units DROP COLUMN complexity`,
+	} {
+		if _, err := db.Exec(ddl); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if _, err := db.Exec(`ALTER TABLE runs ADD COLUMN review_consent TEXT NOT NULL DEFAULT 'autoreview'`); err != nil {
 		t.Fatal(err)
 	}

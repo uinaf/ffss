@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"unicode"
 )
 
 // NewRun constructs an INTAKE run after init.
@@ -91,6 +92,18 @@ func applyIntake(run *Run, units *[]Unit, in ApplyInput) error {
 			return err
 		}
 		run.RequiredReviewers = required
+	}
+	if patch.RiskTier != nil {
+		if err := validRiskTier(*patch.RiskTier); err != nil {
+			return err
+		}
+		run.RiskTier = *patch.RiskTier
+	}
+	if patch.Budget != nil {
+		if err := validBudget(*patch.Budget); err != nil {
+			return err
+		}
+		run.Budget = *patch.Budget
 	}
 	if patch.SeriesBound != nil {
 		if *patch.SeriesBound < 1 {
@@ -342,6 +355,56 @@ func AllowedCommands(run Run, units []Unit) []Command {
 	}
 }
 
+func validRiskTier(tier RiskTier) error {
+	switch tier {
+	case RiskLow, RiskMedium, RiskHigh:
+		return nil
+	default:
+		return fmt.Errorf("%w: risk_tier must be low|medium|high", ErrBadArgs)
+	}
+}
+
+func validComplexity(c Complexity) error {
+	switch c {
+	case "", ComplexityLow, ComplexityMedium, ComplexityHigh:
+		return nil
+	default:
+		return fmt.Errorf("%w: complexity must be low|medium|high", ErrBadArgs)
+	}
+}
+
+const (
+	maxAcceptanceCriteria       = 32
+	maxAcceptanceCriterionBytes = 500
+)
+
+func validAcceptanceCriteria(unitID string, criteria []string) error {
+	if len(criteria) > maxAcceptanceCriteria {
+		return fmt.Errorf("%w: unit %q has more than %d acceptance criteria", ErrBadArgs, unitID, maxAcceptanceCriteria)
+	}
+	for _, criterion := range criteria {
+		if strings.TrimSpace(criterion) == "" {
+			return fmt.Errorf("%w: unit %q has an empty acceptance criterion", ErrBadArgs, unitID)
+		}
+		if len(criterion) > maxAcceptanceCriterionBytes {
+			return fmt.Errorf("%w: unit %q acceptance criterion exceeds %d bytes", ErrBadArgs, unitID, maxAcceptanceCriterionBytes)
+		}
+		for _, r := range criterion {
+			if unicode.IsControl(r) || r == '\u2028' || r == '\u2029' {
+				return fmt.Errorf("%w: unit %q acceptance criterion must be a single line without control characters", ErrBadArgs, unitID)
+			}
+		}
+	}
+	return nil
+}
+
+func validBudget(b Budget) error {
+	if b.Tokens < 0 || b.Minutes < 0 {
+		return fmt.Errorf("%w: budget dimensions must be positive when set", ErrBadArgs)
+	}
+	return nil
+}
+
 func validDelivery(m DeliveryMode) error {
 	switch m {
 	case DeliveryPRHold, DeliveryPRMergeWhenReady, DeliveryDirectTrunk:
@@ -395,6 +458,12 @@ func validateGraph(units []Unit) error {
 		}
 		if _, ok := ids[u.ID]; ok {
 			return fmt.Errorf("%w: duplicate unit id %q", ErrBadArgs, u.ID)
+		}
+		if err := validComplexity(u.Complexity); err != nil {
+			return fmt.Errorf("%w (unit %q)", err, u.ID)
+		}
+		if err := validAcceptanceCriteria(u.ID, u.AcceptanceCriteria); err != nil {
+			return err
 		}
 		ids[u.ID] = struct{}{}
 	}
@@ -491,6 +560,9 @@ func cloneUnits(units []Unit) []Unit {
 		if u.Blockers != nil {
 			out[i].Blockers = append([]string(nil), u.Blockers...)
 		}
+		if u.AcceptanceCriteria != nil {
+			out[i].AcceptanceCriteria = append([]string(nil), u.AcceptanceCriteria...)
+		}
 	}
 	return out
 }
@@ -514,6 +586,8 @@ func canonicalEvidence(run Run, units []Unit, cmd Command, in ApplyInput) any {
 			IntakeRevision:    run.IntakeRevision,
 			DeliveryMode:      run.DeliveryMode,
 			RequiredReviewers: append([]ReviewerIdentity(nil), run.RequiredReviewers...),
+			RiskTier:          run.RiskTier,
+			Budget:            run.Budget,
 			SeriesBound:       run.SeriesBound,
 			Units:             cloneUnits(units),
 		}

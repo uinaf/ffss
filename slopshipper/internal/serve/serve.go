@@ -157,6 +157,7 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 		"Events":           events,
 		"Released":         run.Released(),
 		"NextAction":       doc.NextAction,
+		"RiskTier":         doc.RiskTier,
 		"ReviewRequired":   doc.RequiredReviewers,
 		"ReviewCompleted":  doc.CompletedReviewers,
 		"DecisionQuestion": doc.DecisionQuestion,

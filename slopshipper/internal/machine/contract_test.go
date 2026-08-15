@@ -35,6 +35,17 @@ func TestIntakeRejectsInvalidContracts(t *testing.T) {
 		{"duplicate reviewer", &machine.IntakePatch{RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview, machine.ReviewerAutoreview}}},
 		{"unregistered reviewer", &machine.IntakePatch{RequiredReviewers: []machine.ReviewerIdentity{"slopzapper"}}},
 		{"zero series", &machine.IntakePatch{SeriesBound: &zero}},
+		{"bad risk tier", &machine.IntakePatch{RiskTier: riskPtr("extreme")}},
+		{"negative budget", &machine.IntakePatch{Budget: &machine.Budget{Tokens: -1}}},
+		{"bad complexity", &machine.IntakePatch{Units: []machine.Unit{{ID: "u1", Complexity: "impossible"}}}},
+		{"empty criterion", &machine.IntakePatch{Units: []machine.Unit{{ID: "u1", AcceptanceCriteria: []string{"  "}}}}},
+		{"control criterion", &machine.IntakePatch{Units: []machine.Unit{{ID: "u1", AcceptanceCriteria: []string{"ok\x00bad"}}}}},
+		{"multiline criterion", &machine.IntakePatch{Units: []machine.Unit{{ID: "u1", AcceptanceCriteria: []string{"line one\nline two"}}}}},
+		{"tab criterion", &machine.IntakePatch{Units: []machine.Unit{{ID: "u1", AcceptanceCriteria: []string{"a\tb"}}}}},
+		{"unicode NEL criterion", &machine.IntakePatch{Units: []machine.Unit{{ID: "u1", AcceptanceCriteria: []string{"a\u0085b"}}}}},
+		{"line separator criterion", &machine.IntakePatch{Units: []machine.Unit{{ID: "u1", AcceptanceCriteria: []string{"a\u2028b"}}}}},
+		{"oversize criterion", &machine.IntakePatch{Units: []machine.Unit{{ID: "u1", AcceptanceCriteria: []string{strings.Repeat("x", 501)}}}}},
+		{"too many criteria", &machine.IntakePatch{Units: []machine.Unit{{ID: "u1", AcceptanceCriteria: manyCriteria(33)}}}},
 		{"empty id", &machine.IntakePatch{Units: []machine.Unit{{Title: "missing"}}}},
 		{"duplicate id", &machine.IntakePatch{Units: []machine.Unit{{ID: "u1"}, {ID: "u1"}}}},
 		{"unknown blocker", &machine.IntakePatch{Units: []machine.Unit{{ID: "u1", Blockers: []string{"u2"}}}}},
@@ -50,6 +61,45 @@ func TestIntakeRejectsInvalidContracts(t *testing.T) {
 				t.Fatal("expected validation error")
 			}
 		})
+	}
+}
+
+func riskPtr(v machine.RiskTier) *machine.RiskTier { return &v }
+
+func manyCriteria(n int) []string {
+	out := make([]string, n)
+	for i := range out {
+		out[i] = "criterion"
+	}
+	return out
+}
+
+func TestIntakeCarriesTaskContractFields(t *testing.T) {
+	run := machine.NewRun("r", "repo")
+	res, err := machine.Apply(run, nil, machine.CmdIntake, machine.ApplyInput{
+		ExpectedRevision: run.Revision,
+		Intake: &machine.IntakePatch{
+			RiskTier: riskPtr(machine.RiskHigh),
+			Budget:   &machine.Budget{Tokens: 500000, Minutes: 90},
+			Units: []machine.Unit{{
+				ID: "u1", Title: "one", Complexity: machine.ComplexityMedium,
+				AcceptanceCriteria: []string{"status exposes tier", "budget survives a round trip"},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Run.RiskTier != machine.RiskHigh || res.Run.Budget.Tokens != 500000 || res.Run.Budget.Minutes != 90 {
+		t.Fatalf("run contract fields: %+v", res.Run)
+	}
+	if res.Units[0].Complexity != machine.ComplexityMedium || len(res.Units[0].AcceptanceCriteria) != 2 {
+		t.Fatalf("unit contract fields: %+v", res.Units[0])
+	}
+	evidence, ok := res.Evidence.(machine.IntakeEvidence)
+	if !ok || evidence.RiskTier != machine.RiskHigh || evidence.Budget.Minutes != 90 ||
+		len(evidence.Units[0].AcceptanceCriteria) != 2 {
+		t.Fatalf("intake evidence snapshot: %+v", res.Evidence)
 	}
 }
 

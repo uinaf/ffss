@@ -208,7 +208,8 @@ Create a run for the current Git repository. The next action is intake.
 		"intake": `Usage: slopshipper intake --file PATH [--run ID]
 
 Load the released-work contract from JSON. Use --file - to read stdin.
-Fields: delivery_mode, required_reviewers, series_bound, units.
+Fields: delivery_mode, required_reviewers, risk_tier, budget, series_bound,
+units (id, title, blockers, acceptance_criteria, complexity).
 `,
 		"release": `Usage: slopshipper release --revision N [--run ID]
 
@@ -383,9 +384,47 @@ func cmdInit(st *store.Store, args []string, opts runOptions) int {
 }
 
 type intakeUnitDTO struct {
-	ID       string   `json:"id"`
-	Title    string   `json:"title"`
-	Blockers []string `json:"blockers"`
+	ID                 string   `json:"id"`
+	Title              string   `json:"title"`
+	Blockers           []string `json:"blockers"`
+	AcceptanceCriteria []string `json:"acceptance_criteria,omitempty"`
+	Complexity         *string  `json:"complexity,omitempty"`
+}
+
+// unitComplexity distinguishes an omitted complexity from an explicitly
+// empty one; only omission is valid.
+func (u intakeUnitDTO) unitComplexity() (machine.Complexity, error) {
+	if u.Complexity == nil {
+		return "", nil
+	}
+	if *u.Complexity == "" {
+		return "", fmt.Errorf("unit %q complexity must be low|medium|high when set; omit the field instead of passing an empty value", u.ID)
+	}
+	return machine.Complexity(*u.Complexity), nil
+}
+
+type budgetDTO struct {
+	Tokens  *int `json:"tokens,omitempty"`
+	Minutes *int `json:"minutes,omitempty"`
+}
+
+// toBudget rejects explicit non-positive dimensions at the boundary; an
+// omitted dimension stays unbounded, matching the advertised schema minimum.
+func (b budgetDTO) toBudget() (machine.Budget, error) {
+	var budget machine.Budget
+	if b.Tokens != nil {
+		if *b.Tokens < 1 {
+			return machine.Budget{}, fmt.Errorf("budget.tokens must be >= 1 when set; omit the field to leave it unbounded")
+		}
+		budget.Tokens = *b.Tokens
+	}
+	if b.Minutes != nil {
+		if *b.Minutes < 1 {
+			return machine.Budget{}, fmt.Errorf("budget.minutes must be >= 1 when set; omit the field to leave it unbounded")
+		}
+		budget.Minutes = *b.Minutes
+	}
+	return budget, nil
 }
 
 func cmdIntake(st *store.Store, args []string, opts runOptions) int {
@@ -406,6 +445,8 @@ func cmdIntake(st *store.Store, args []string, opts runOptions) int {
 		var filePatch struct {
 			DeliveryMode      *string         `json:"delivery_mode"`
 			RequiredReviewers []string        `json:"required_reviewers"`
+			RiskTier          *string         `json:"risk_tier"`
+			Budget            *budgetDTO      `json:"budget"`
 			SeriesBound       *int            `json:"series_bound"`
 			Units             []intakeUnitDTO `json:"units"`
 		}
@@ -414,6 +455,7 @@ func cmdIntake(st *store.Store, args []string, opts runOptions) int {
 		}
 		patch = intakeInput{
 			DeliveryMode: filePatch.DeliveryMode, RequiredReviewers: filePatch.RequiredReviewers,
+			RiskTier: filePatch.RiskTier, Budget: filePatch.Budget,
 			SeriesBound: filePatch.SeriesBound, Units: filePatch.Units,
 		}
 	}
@@ -424,9 +466,27 @@ func cmdIntake(st *store.Store, args []string, opts runOptions) int {
 	if patch.Units != nil {
 		units := make([]machine.Unit, len(patch.Units))
 		for i, u := range patch.Units {
-			units[i] = machine.Unit{ID: u.ID, Title: u.Title, Blockers: u.Blockers}
+			complexity, err := u.unitComplexity()
+			if err != nil {
+				return writeFailure(opts, 2, err)
+			}
+			units[i] = machine.Unit{
+				ID: u.ID, Title: u.Title, Blockers: u.Blockers,
+				AcceptanceCriteria: u.AcceptanceCriteria, Complexity: complexity,
+			}
 		}
 		ip.Units = units
+	}
+	if patch.RiskTier != nil {
+		tier := machine.RiskTier(*patch.RiskTier)
+		ip.RiskTier = &tier
+	}
+	if patch.Budget != nil {
+		budget, err := patch.Budget.toBudget()
+		if err != nil {
+			return writeFailure(opts, 2, err)
+		}
+		ip.Budget = &budget
 	}
 	if patch.DeliveryMode != nil {
 		m := machine.DeliveryMode(*patch.DeliveryMode)
