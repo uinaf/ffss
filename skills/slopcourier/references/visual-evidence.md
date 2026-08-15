@@ -30,10 +30,13 @@ The response carries a `markdown` field (`![…](/uploads/…)`); paste it into
 the change-request description or a comment. Uploads inherit project
 visibility.
 
-## 3. GitHub deliveries (`gh` + user-attachments endpoint)
+## 3. github.com deliveries (`gh` + user-attachments endpoint)
 
-Images and video upload to the same CDN the web drag-drop uses; the asset
-inherits repository visibility and needs no browser:
+This rung is github.com only — the endpoint is `uploads.github.com`, and a
+GitHub Enterprise token must never be sent there (Enterprise deliveries
+fall through to rung 4). Images and video upload to the same CDN the web
+drag-drop uses; the asset inherits repository visibility and needs no
+browser:
 
 ```bash
 repo_id=$(gh api repos/{owner}/{repo} -q .id)
@@ -42,7 +45,7 @@ curl -s "https://uploads.github.com/user-attachments/assets?name=${name}&content
   -X POST \
   -H @- \
   --data-binary @<file> <<EOF
-Authorization: Bearer $(gh auth token)
+Authorization: Bearer $(gh auth token --hostname github.com)
 Accept: application/json
 EOF
 ```
