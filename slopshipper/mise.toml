@@ -38,6 +38,16 @@ run = "go vet ./..."
 description = "Build the slopshipper CLI into ./bin"
 run = "mkdir -p bin && go build -o bin/slopshipper ./cmd/slopshipper"
 
+[tasks.conformance]
+description = "Prove a skill-less shell agent drives a full run via the protocol"
+run = '''
+set -e
+bash -n scripts/test-conformance.sh
+shellcheck -s bash scripts/test-conformance.sh
+bash scripts/test-conformance.sh --self-test
+bash scripts/test-conformance.sh
+'''
+
 [tasks."installer:test"]
 description = "Run the offline installer and PATH fixture tests"
 run = '''
@@ -110,4 +120,4 @@ run = "go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./..."
 
 [tasks.verify]
 description = "Run deterministic repository verification"
-depends = ["fmt:check", "test", "test:coverage", "test:race", "vet", "build", "installer:check", "release:check"]
+depends = ["fmt:check", "test", "test:coverage", "test:race", "vet", "build", "conformance", "installer:check", "release:check"]

@@ -4,6 +4,16 @@
 the binary validates them, applies the state machine, and stores the resulting
 event. Do not reproduce transition logic in a skill, prompt, or script.
 
+## Harness conformance
+
+The protocol is harness-independent. Any agent that can run shell commands,
+pipe JSON through stdin, and read stdout completes a full run using
+`status --json --fields`, `schema`, and the executable commands `next_action`
+returns — no bundled skill, no harness features. `next_action` never names a
+harness capability; placeholders in angle brackets are fields for the caller
+to fill. `scripts/test-conformance.sh` proves this bar with a skill-less
+shell driver and runs inside `mise run verify`.
+
 ## Discover the live contract
 
 Inspect runtime schemas before composing an unfamiliar command:
