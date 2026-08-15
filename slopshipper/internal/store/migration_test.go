@@ -33,7 +33,19 @@ func TestMigratesVersionOneTransactionally(t *testing.T) {
 	}
 
 	db := openSQLite(t, path)
+	// Rewind the current schema to the version-1 shape: no completed
+	// reviewers, a review_consent column instead of required reviewers,
+	// and no reviewers registry.
 	if _, err := db.Exec(`ALTER TABLE runs DROP COLUMN completed_reviewers_json`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`ALTER TABLE runs DROP COLUMN required_reviewers_json`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`ALTER TABLE runs ADD COLUMN review_consent TEXT NOT NULL DEFAULT 'autoreview'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`DROP TABLE reviewers`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`UPDATE runs SET state='BLOCKED', current_unit_id='u1', blocker_reason='old verify failure', open=0 WHERE id='run'`); err != nil {
@@ -86,12 +98,27 @@ func TestMigratesVersionOneTransactionally(t *testing.T) {
 	if deliver.State != machine.StateReview || len(deliver.CompletedReviewers) != 0 {
 		t.Fatalf("legacy review migration did not fail closed: %+v", deliver)
 	}
+	if len(deliver.RequiredReviewers) != 1 || deliver.RequiredReviewers[0] != machine.ReviewerAutoreview {
+		t.Fatalf("legacy autoreview consent mapping: %+v", deliver.RequiredReviewers)
+	}
 	closed, _, err := s.GetRun("closed-deliver")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if closed.State != machine.StateReview || len(closed.CompletedReviewers) != 0 {
 		t.Fatalf("closed legacy review migration did not fail closed: %+v", closed)
+	}
+	if len(closed.RequiredReviewers) != 1 || closed.RequiredReviewers[0] != machine.ReviewerHuman {
+		t.Fatalf("legacy human consent mapping: %+v", closed.RequiredReviewers)
+	}
+	// Human is no longer built in; the migration registers it because a
+	// legacy run required it.
+	registered, err := s.ListReviewers()
+	if err != nil || len(registered) != 1 || registered[0] != machine.ReviewerHuman {
+		t.Fatalf("legacy human registration: %v %v", registered, err)
+	}
+	if err := s.RegisterReviewer("slopzapper"); err != nil {
+		t.Fatalf("registry missing after migration: %v", err)
 	}
 	if active, _, err := s.ResolveActiveRun("repo-closed", "closed-deliver"); err != nil || active.State != machine.StateReview {
 		t.Fatalf("closed legacy review was not reopened: %+v %v", active, err)
@@ -105,6 +132,44 @@ func TestMigratesVersionOneTransactionally(t *testing.T) {
 	}
 	if active, _, err := s.ResolveActiveRun("repo-parked", "parked-deliver"); err != nil || active.ReturnState != machine.StateReview {
 		t.Fatalf("parked legacy delivery target was not reopened: %+v %v", active, err)
+	}
+}
+
+func TestMigrationRefusesUnknownLegacyConsent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bogus.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateRun(machine.NewRun("bogus", "repo-bogus"), []machine.Unit{{ID: "u1"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db := openSQLite(t, path)
+	for _, ddl := range []string{
+		`ALTER TABLE runs DROP COLUMN required_reviewers_json`,
+		`ALTER TABLE runs ADD COLUMN review_consent TEXT NOT NULL DEFAULT 'sketchy'`,
+		`DROP TABLE reviewers`,
+		`UPDATE meta SET value='2' WHERE key='schema_version'`,
+	} {
+		if _, err := db.Exec(ddl); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Open(path); err == nil || !strings.Contains(err.Error(), "unknown legacy review_consent") {
+		t.Fatalf("unknown consent migrated: %v", err)
+	}
+	// The refused migration is transactional: version stays 2.
+	db = openSQLite(t, path)
+	defer db.Close()
+	var version string
+	if err := db.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil || version != "2" {
+		t.Fatalf("version=%q err=%v", version, err)
 	}
 }
 

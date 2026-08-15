@@ -1,6 +1,6 @@
 {
   "delivery_mode": "pr-hold",
-  "review_consent": "bugbot",
+  "required_reviewers": ["bugbot"],
   "series_bound": 2,
   "units": [
     {

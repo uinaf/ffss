@@ -13,7 +13,7 @@ Prefer these fields:
 | `next_action` | Preferred next CLI invocation (e.g. `slopshipper build`) |
 | `allowed_commands` | Only run commands from this list |
 | `required_evidence` | Evidence keys needed for verify / review / deliver |
-| `required_reviewers` | Review identities required by intake consent |
+| `required_reviewers` | Registered reviewer identities the intake requires |
 | `completed_reviewers` | Distinct clean reviews already recorded |
 | `intake_revision` | Pass to `slopshipper release --revision` |
 | `blocker` | Human-facing blocker reason when present |
@@ -56,5 +56,5 @@ Field masks validate every requested name and omit optional fields that are not
 present in the canonical status document; they never synthesize `null` values.
 Structured intake, review, and delivery actions use stdin through `--file -` or
 `--evidence -`; do not create the payload in the repository.
-When review consent is `both`, record one clean `autoreview` result and one
-clean `bugbot` result. Repeating the same reviewer does not satisfy the gate.
+Delivery requires one clean result from every identity in
+`required_reviewers`. Repeating the same reviewer does not satisfy the gate.

@@ -18,9 +18,9 @@ func TestHappyPathMultiUnit(t *testing.T) {
 	res, err := machine.Apply(run, units, machine.CmdIntake, machine.ApplyInput{
 		ExpectedRevision: run.Revision,
 		Intake: &machine.IntakePatch{
-			SeriesBound:   intPtr(2),
-			ReviewConsent: consentPtr(machine.ReviewBugbot),
-			Units:         units,
+			SeriesBound:       intPtr(2),
+			RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerBugbot},
+			Units:             units,
 		},
 	})
 	if err != nil {
@@ -248,9 +248,9 @@ func TestBuildFromDeliverFails(t *testing.T) {
 	res, err := machine.Apply(run, units, machine.CmdIntake, machine.ApplyInput{
 		ExpectedRevision: 1,
 		Intake: &machine.IntakePatch{
-			SeriesBound:   intPtr(1),
-			ReviewConsent: consentPtr(machine.ReviewBugbot),
-			Units:         units,
+			SeriesBound:       intPtr(1),
+			RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerBugbot},
+			Units:             units,
 		},
 	})
 	if err != nil {
@@ -395,7 +395,7 @@ func TestIllegalTransition(t *testing.T) {
 }
 
 func TestReviewBothRequiresDistinctCleanReviews(t *testing.T) {
-	run, units := reviewRun(machine.ReviewBoth)
+	run, units := reviewRun(machine.ReviewerAutoreview, machine.ReviewerBugbot)
 	first, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 		ExpectedRevision: run.Revision,
 		Review: &machine.ReviewEvidence{
@@ -439,7 +439,7 @@ func TestReviewOutcomesRouteWithoutUnlockingDelivery(t *testing.T) {
 		{machine.ReviewAmbiguous, machine.StateNeedsDecision},
 	} {
 		t.Run(string(tt.verdict), func(t *testing.T) {
-			run, units := reviewRun(machine.ReviewAutoreview)
+			run, units := reviewRun(machine.ReviewerAutoreview)
 			res, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 				ExpectedRevision: run.Revision,
 				Review: &machine.ReviewEvidence{
@@ -510,7 +510,7 @@ func TestBlockedRetryRejectsInvalidCurrentUnit(t *testing.T) {
 }
 
 func TestRetryClearsReviewProgress(t *testing.T) {
-	run, units := reviewRun(machine.ReviewBoth)
+	run, units := reviewRun(machine.ReviewerAutoreview, machine.ReviewerBugbot)
 	res, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 		ExpectedRevision: run.Revision,
 		Review: &machine.ReviewEvidence{
@@ -549,10 +549,10 @@ func TestEmptyRunCannotRelease(t *testing.T) {
 	}
 }
 
-func reviewRun(consent machine.ReviewConsent) (machine.Run, []machine.Unit) {
+func reviewRun(required ...machine.ReviewerIdentity) (machine.Run, []machine.Unit) {
 	run := machine.NewRun("r", "repo")
 	run.State = machine.StateReview
-	run.ReviewConsent = consent
+	run.RequiredReviewers = required
 	run.CurrentUnitID = "u1"
 	return run, []machine.Unit{{ID: "u1", Attempt: 1}}
 }
@@ -564,8 +564,8 @@ func releasedAtBuild(t *testing.T) (machine.Run, []machine.Unit) {
 	res, err := machine.Apply(run, units, machine.CmdIntake, machine.ApplyInput{
 		ExpectedRevision: 1,
 		Intake: &machine.IntakePatch{
-			ReviewConsent: consentPtr(machine.ReviewAutoreview),
-			Units:         units,
+			RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview},
+			Units:             units,
 		},
 	})
 	if err != nil {
@@ -600,5 +600,4 @@ func releasedAtReview(t *testing.T) (machine.Run, []machine.Unit) {
 	return res.Run, res.Units
 }
 
-func intPtr(v int) *int                                         { return &v }
-func consentPtr(v machine.ReviewConsent) *machine.ReviewConsent { return &v }
+func intPtr(v int) *int { return &v }

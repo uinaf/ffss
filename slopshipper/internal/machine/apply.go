@@ -9,14 +9,14 @@ import (
 // NewRun constructs an INTAKE run after init.
 func NewRun(id, repoKey string) Run {
 	return Run{
-		ID:             id,
-		RepoKey:        repoKey,
-		State:          StateIntake,
-		IntakeRevision: 1,
-		Revision:       1,
-		DeliveryMode:   DeliveryPRHold,
-		ReviewConsent:  ReviewAutoreview,
-		SeriesBound:    1,
+		ID:                id,
+		RepoKey:           repoKey,
+		State:             StateIntake,
+		IntakeRevision:    1,
+		Revision:          1,
+		DeliveryMode:      DeliveryPRHold,
+		RequiredReviewers: []ReviewerIdentity{ReviewerAutoreview},
+		SeriesBound:       1,
 	}
 }
 
@@ -85,11 +85,12 @@ func applyIntake(run *Run, units *[]Unit, in ApplyInput) error {
 		}
 		run.DeliveryMode = *patch.DeliveryMode
 	}
-	if patch.ReviewConsent != nil {
-		if err := validConsent(*patch.ReviewConsent); err != nil {
+	if patch.RequiredReviewers != nil {
+		required, err := validRequiredReviewers(patch.RequiredReviewers, in.RegisteredReviewers)
+		if err != nil {
 			return err
 		}
-		run.ReviewConsent = *patch.ReviewConsent
+		run.RequiredReviewers = required
 	}
 	if patch.SeriesBound != nil {
 		if *patch.SeriesBound < 1 {
@@ -124,6 +125,14 @@ func applyRelease(run *Run, in ApplyInput) error {
 	}
 	if in.IntakeRevision != run.IntakeRevision {
 		return fmt.Errorf("%w: release revision %d does not match intake_revision %d", ErrUnmetGuard, in.IntakeRevision, run.IntakeRevision)
+	}
+	// Re-check registration at the human latch: a reviewer unregistered
+	// after intake must fail closed here, not at review time.
+	allowed := registeredSet(in.RegisteredReviewers)
+	for _, reviewer := range run.RequiredReviewers {
+		if _, ok := allowed[reviewer]; !ok {
+			return fmt.Errorf("%w: required reviewer %q is not registered", ErrUnmetGuard, reviewer)
+		}
 	}
 	rev := run.IntakeRevision
 	run.ReleasedRevision = &rev
@@ -191,7 +200,7 @@ func applyVerify(run *Run, in ApplyInput) error {
 }
 
 func applyReview(run *Run, in ApplyInput) error {
-	if err := validateReviewEvidence(in.Review, run.ReviewConsent); err != nil {
+	if err := validateReviewEvidence(in.Review, run.RequiredReviewers); err != nil {
 		return err
 	}
 	switch in.Review.Verdict {
@@ -200,7 +209,7 @@ func applyReview(run *Run, in ApplyInput) error {
 			return fmt.Errorf("%w: reviewer %q already recorded", ErrUnmetGuard, in.Review.Reviewer)
 		}
 		run.CompletedReviewers = append(run.CompletedReviewers, in.Review.Reviewer)
-		if reviewsSatisfied(run.ReviewConsent, run.CompletedReviewers) {
+		if reviewsSatisfied(run.RequiredReviewers, run.CompletedReviewers) {
 			run.State = StateDeliver
 		}
 	case ReviewFindings:
@@ -342,13 +351,40 @@ func validDelivery(m DeliveryMode) error {
 	}
 }
 
-func validConsent(c ReviewConsent) error {
-	switch c {
-	case ReviewAutoreview, ReviewBugbot, ReviewBoth, ReviewHuman:
-		return nil
-	default:
-		return fmt.Errorf("%w: invalid review_consent %q", ErrBadArgs, c)
+// validRequiredReviewers validates the replacement set: non-empty, valid
+// identities, no duplicates, every identity built-in or registered.
+func validRequiredReviewers(required, registered []ReviewerIdentity) ([]ReviewerIdentity, error) {
+	if len(required) == 0 {
+		return nil, fmt.Errorf("%w: required_reviewers must name at least one registered reviewer", ErrBadArgs)
 	}
+	allowed := registeredSet(registered)
+	seen := make(map[ReviewerIdentity]struct{}, len(required))
+	out := make([]ReviewerIdentity, 0, len(required))
+	for _, reviewer := range required {
+		if err := ValidateResourceID("reviewer identity", string(reviewer)); err != nil {
+			return nil, err
+		}
+		if _, dup := seen[reviewer]; dup {
+			return nil, fmt.Errorf("%w: duplicate required reviewer %q", ErrBadArgs, reviewer)
+		}
+		if _, ok := allowed[reviewer]; !ok {
+			return nil, fmt.Errorf("%w: reviewer %q is not registered; register it with slopshipper reviewers --add or use a built-in (autoreview, bugbot)", ErrBadArgs, reviewer)
+		}
+		seen[reviewer] = struct{}{}
+		out = append(out, reviewer)
+	}
+	return out, nil
+}
+
+func registeredSet(registered []ReviewerIdentity) map[ReviewerIdentity]struct{} {
+	allowed := make(map[ReviewerIdentity]struct{}, len(registered)+3)
+	for _, reviewer := range BuiltinReviewers() {
+		allowed[reviewer] = struct{}{}
+	}
+	for _, reviewer := range registered {
+		allowed[reviewer] = struct{}{}
+	}
+	return allowed
 }
 
 func validateGraph(units []Unit) error {
@@ -459,30 +495,27 @@ func cloneUnits(units []Unit) []Unit {
 	return out
 }
 
-func reviewsSatisfied(consent ReviewConsent, completed []ReviewerIdentity) bool {
-	switch consent {
-	case ReviewAutoreview:
-		return slices.Contains(completed, ReviewerAutoreview)
-	case ReviewBugbot:
-		return slices.Contains(completed, ReviewerBugbot)
-	case ReviewHuman:
-		return slices.Contains(completed, ReviewerHuman)
-	case ReviewBoth:
-		return slices.Contains(completed, ReviewerAutoreview) && slices.Contains(completed, ReviewerBugbot)
-	default:
+func reviewsSatisfied(required, completed []ReviewerIdentity) bool {
+	if len(required) == 0 {
 		return false
 	}
+	for _, reviewer := range required {
+		if !slices.Contains(completed, reviewer) {
+			return false
+		}
+	}
+	return true
 }
 
 func canonicalEvidence(run Run, units []Unit, cmd Command, in ApplyInput) any {
 	switch cmd {
 	case CmdIntake:
 		return IntakeEvidence{
-			IntakeRevision: run.IntakeRevision,
-			DeliveryMode:   run.DeliveryMode,
-			ReviewConsent:  run.ReviewConsent,
-			SeriesBound:    run.SeriesBound,
-			Units:          cloneUnits(units),
+			IntakeRevision:    run.IntakeRevision,
+			DeliveryMode:      run.DeliveryMode,
+			RequiredReviewers: append([]ReviewerIdentity(nil), run.RequiredReviewers...),
+			SeriesBound:       run.SeriesBound,
+			Units:             cloneUnits(units),
 		}
 	case CmdRelease:
 		return ReleaseEvidence{IntakeRevision: in.IntakeRevision}

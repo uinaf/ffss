@@ -16,7 +16,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 2
+const schemaVersion = 3
 
 // ErrStateUnavailable marks a resolved state location that cannot be
 // prepared (directory or database file creation failed). Callers recover by
@@ -152,6 +152,44 @@ func (s *Store) migrate() error {
 				return fmt.Errorf("reopen blocked schema 1 runs: %w", err)
 			}
 			version = 2
+		case 2:
+			var unknownConsent int
+			if err := tx.QueryRow(`SELECT COUNT(*) FROM runs
+				WHERE review_consent NOT IN ('autoreview','bugbot','both','human')`).Scan(&unknownConsent); err != nil {
+				return fmt.Errorf("inspect legacy review consent: %w", err)
+			}
+			if unknownConsent > 0 {
+				return fmt.Errorf("%d run(s) carry an unknown legacy review_consent; refusing to map them to a weaker policy", unknownConsent)
+			}
+			if _, err := tx.Exec(`ALTER TABLE runs ADD COLUMN required_reviewers_json TEXT NOT NULL DEFAULT '[]'`); err != nil {
+				return fmt.Errorf("migrate schema 2 to 3: %w", err)
+			}
+			if _, err := tx.Exec(`UPDATE runs SET required_reviewers_json = CASE review_consent
+				WHEN 'autoreview' THEN '["autoreview"]'
+				WHEN 'bugbot' THEN '["bugbot"]'
+				WHEN 'both' THEN '["autoreview","bugbot"]'
+				WHEN 'human' THEN '["human"]'
+			END`); err != nil {
+				return fmt.Errorf("map review_consent to required reviewers: %w", err)
+			}
+			if _, err := tx.Exec(`ALTER TABLE runs DROP COLUMN review_consent`); err != nil {
+				return fmt.Errorf("drop review_consent from schema 2: %w", err)
+			}
+			if _, err := tx.Exec(`CREATE TABLE IF NOT EXISTS reviewers (
+				name TEXT PRIMARY KEY,
+				created_at TEXT NOT NULL
+			)`); err != nil {
+				return fmt.Errorf("create reviewers registry from schema 2: %w", err)
+			}
+			// Human is no longer a built-in reviewer; keep legacy human-consent
+			// runs valid by registering the identity those runs require.
+			if _, err := tx.Exec(`INSERT OR IGNORE INTO reviewers(name, created_at)
+				SELECT 'human', ? WHERE EXISTS (
+					SELECT 1 FROM runs WHERE required_reviewers_json = '["human"]'
+				)`, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+				return fmt.Errorf("register legacy human reviewer from schema 2: %w", err)
+			}
+			version = 3
 		default:
 			return fmt.Errorf("unsupported schema version %d", version)
 		}
@@ -180,7 +218,7 @@ func createCurrentSchema(tx *sql.Tx) error {
 			released_revision INTEGER,
 			revision INTEGER NOT NULL,
 			delivery_mode TEXT NOT NULL,
-			review_consent TEXT NOT NULL,
+			required_reviewers_json TEXT NOT NULL DEFAULT '[]',
 			series_bound INTEGER NOT NULL,
 			completed_units INTEGER NOT NULL,
 				current_unit_id TEXT NOT NULL DEFAULT '',
@@ -202,6 +240,10 @@ func createCurrentSchema(tx *sql.Tx) error {
 			done INTEGER NOT NULL,
 			PRIMARY KEY (run_id, id),
 			FOREIGN KEY (run_id) REFERENCES runs(id)
+		)`,
+		`CREATE TABLE IF NOT EXISTS reviewers (
+			name TEXT PRIMARY KEY,
+			created_at TEXT NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS events (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -247,18 +289,22 @@ func (s *Store) CreateRun(run machine.Run, units []machine.Unit) error {
 	if err != nil {
 		return err
 	}
+	requiredReviewers, err := marshalReviewers(run.RequiredReviewers)
+	if err != nil {
+		return err
+	}
 	var released any
 	if run.ReleasedRevision != nil {
 		released = *run.ReleasedRevision
 	}
 	_, err = tx.Exec(`INSERT INTO runs(
 		id, repo_key, state, intake_revision, released_revision, revision,
-		delivery_mode, review_consent, series_bound, completed_units,
+		delivery_mode, required_reviewers_json, series_bound, completed_units,
 		current_unit_id, completed_reviewers_json, blocker_reason, decision_question, return_state,
 		open, created_at, updated_at
 	) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)`,
 		run.ID, run.RepoKey, string(run.State), run.IntakeRevision, released, run.Revision,
-		string(run.DeliveryMode), string(run.ReviewConsent), run.SeriesBound, run.CompletedUnits,
+		string(run.DeliveryMode), requiredReviewers, run.SeriesBound, run.CompletedUnits,
 		run.CurrentUnitID, string(completedReviewers), run.BlockerReason, run.DecisionQuestion, string(run.ReturnState),
 		now, now,
 	)
@@ -269,7 +315,7 @@ func (s *Store) CreateRun(run machine.Run, units []machine.Unit) error {
 		return err
 	}
 	initEvidence, err := json.Marshal(machine.InitEvidence{
-		DeliveryMode: run.DeliveryMode, ReviewConsent: run.ReviewConsent, SeriesBound: run.SeriesBound,
+		DeliveryMode: run.DeliveryMode, RequiredReviewers: run.RequiredReviewers, SeriesBound: run.SeriesBound,
 	})
 	if err != nil {
 		return err
@@ -367,7 +413,7 @@ func (s *Store) runIDs(repoKey string, openOnly bool) ([]string, error) {
 func (s *Store) GetRun(runID string) (machine.Run, []machine.Unit, error) {
 	row := s.db.QueryRow(`SELECT
 		id, repo_key, state, intake_revision, released_revision, revision,
-		delivery_mode, review_consent, series_bound, completed_units,
+		delivery_mode, required_reviewers_json, series_bound, completed_units,
 		current_unit_id, completed_reviewers_json, blocker_reason, decision_question, return_state
 	FROM runs WHERE id = ?`, runID)
 	run, err := scanRun(row)
@@ -387,11 +433,11 @@ type scannable interface {
 
 func scanRun(row scannable) (machine.Run, error) {
 	var run machine.Run
-	var state, delivery, consent, returnState, completedReviewers string
+	var state, delivery, requiredReviewers, returnState, completedReviewers string
 	var released sql.NullInt64
 	err := row.Scan(
 		&run.ID, &run.RepoKey, &state, &run.IntakeRevision, &released, &run.Revision,
-		&delivery, &consent, &run.SeriesBound, &run.CompletedUnits,
+		&delivery, &requiredReviewers, &run.SeriesBound, &run.CompletedUnits,
 		&run.CurrentUnitID, &completedReviewers, &run.BlockerReason, &run.DecisionQuestion, &returnState,
 	)
 	if err != nil {
@@ -399,8 +445,10 @@ func scanRun(row scannable) (machine.Run, error) {
 	}
 	run.State = machine.State(state)
 	run.DeliveryMode = machine.DeliveryMode(delivery)
-	run.ReviewConsent = machine.ReviewConsent(consent)
 	run.ReturnState = machine.State(returnState)
+	if err := json.Unmarshal([]byte(requiredReviewers), &run.RequiredReviewers); err != nil {
+		return machine.Run{}, fmt.Errorf("decode required reviewers: %w", err)
+	}
 	if err := json.Unmarshal([]byte(completedReviewers), &run.CompletedReviewers); err != nil {
 		return machine.Run{}, fmt.Errorf("decode completed reviewers: %w", err)
 	}
@@ -443,7 +491,18 @@ func (s *Store) SaveApply(result machine.ApplyResult) error {
 	defer func() { _ = tx.Rollback() }()
 
 	run := result.Run
+	// The registry predicate holds transactionally: a reviewer unregistered
+	// between the machine's check and this commit still fails the latch.
+	if result.Command == machine.CmdIntake || result.Command == machine.CmdRelease {
+		if err := ensureReviewersRegisteredTx(tx, run.RequiredReviewers); err != nil {
+			return err
+		}
+	}
 	completedReviewers, err := json.Marshal(run.CompletedReviewers)
+	if err != nil {
+		return err
+	}
+	requiredReviewers, err := marshalReviewers(run.RequiredReviewers)
 	if err != nil {
 		return err
 	}
@@ -459,12 +518,12 @@ func (s *Store) SaveApply(result machine.ApplyResult) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	res, err := tx.Exec(`UPDATE runs SET
 		state=?, intake_revision=?, released_revision=?, revision=?,
-		delivery_mode=?, review_consent=?, series_bound=?, completed_units=?,
+		delivery_mode=?, required_reviewers_json=?, series_bound=?, completed_units=?,
 		current_unit_id=?, completed_reviewers_json=?, blocker_reason=?, decision_question=?, return_state=?,
 		open=?, updated_at=?
 	WHERE id=? AND revision=?`,
 		string(run.State), run.IntakeRevision, released, run.Revision,
-		string(run.DeliveryMode), string(run.ReviewConsent), run.SeriesBound, run.CompletedUnits,
+		string(run.DeliveryMode), requiredReviewers, run.SeriesBound, run.CompletedUnits,
 		run.CurrentUnitID, string(completedReviewers), run.BlockerReason, run.DecisionQuestion, string(run.ReturnState),
 		open, now, run.ID, prev,
 	)
@@ -502,6 +561,27 @@ func (s *Store) SaveApply(result machine.ApplyResult) error {
 	return tx.Commit()
 }
 
+func ensureReviewersRegisteredTx(tx *sql.Tx, required []machine.ReviewerIdentity) error {
+	builtin := make(map[machine.ReviewerIdentity]struct{})
+	for _, reviewer := range machine.BuiltinReviewers() {
+		builtin[reviewer] = struct{}{}
+	}
+	for _, reviewer := range required {
+		if _, ok := builtin[reviewer]; ok {
+			continue
+		}
+		var one int
+		err := tx.QueryRow(`SELECT 1 FROM reviewers WHERE name = ?`, string(reviewer)).Scan(&one)
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w: required reviewer %q is no longer registered", machine.ErrUnmetGuard, reviewer)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func replaceUnitsTx(tx *sql.Tx, runID string, units []machine.Unit) error {
 	if _, err := tx.Exec(`DELETE FROM units WHERE run_id = ?`, runID); err != nil {
 		return err
@@ -529,6 +609,48 @@ func replaceUnitsTx(tx *sql.Tx, runID string, units []machine.Unit) error {
 func (s *Store) beginImmediate() (*sql.Tx, error) {
 	// Open DSN sets _txlock=immediate; MaxOpenConns(1) serializes writers for v0.
 	return s.db.Begin()
+}
+
+func marshalReviewers(reviewers []machine.ReviewerIdentity) (string, error) {
+	if reviewers == nil {
+		reviewers = []machine.ReviewerIdentity{}
+	}
+	encoded, err := json.Marshal(reviewers)
+	if err != nil {
+		return "", err
+	}
+	return string(encoded), nil
+}
+
+// RegisterReviewer records a custom reviewer identity; idempotent.
+func (s *Store) RegisterReviewer(name machine.ReviewerIdentity) error {
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	return s.exec(`INSERT INTO reviewers(name, created_at) VALUES (?, ?)
+		ON CONFLICT(name) DO NOTHING`, string(name), now)
+}
+
+// UnregisterReviewer removes a custom reviewer identity; idempotent.
+func (s *Store) UnregisterReviewer(name machine.ReviewerIdentity) error {
+	return s.exec(`DELETE FROM reviewers WHERE name = ?`, string(name))
+}
+
+// ListReviewers returns the custom registry in registration order. Built-in
+// identities are not stored; callers combine them via machine.BuiltinReviewers.
+func (s *Store) ListReviewers() ([]machine.ReviewerIdentity, error) {
+	rows, err := s.db.Query(`SELECT name FROM reviewers ORDER BY created_at, name`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var reviewers []machine.ReviewerIdentity
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		reviewers = append(reviewers, machine.ReviewerIdentity(name))
+	}
+	return reviewers, rows.Err()
 }
 
 // SetPref / GetPref for global defaults.

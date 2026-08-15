@@ -10,7 +10,7 @@ then enforces each build, verification, review, and delivery transition.
 plan  →  /slopshipper  →  clarify  →  human releases  →  machine runs
 ```
 
-- **Human-controlled:** scope, release, review consent, and recovery stay
+- **Human-controlled:** scope, release, required reviewers, and recovery stay
   explicit.
 - **Deterministic:** a Go state machine decides what can happen next.
 - **Auditable:** structured evidence and an SQLite event log make every
@@ -68,7 +68,7 @@ slopshipper init --run demo
 slopshipper intake --file - --run demo <<'JSON'
 {
   "delivery_mode": "pr-hold",
-  "review_consent": "autoreview",
+  "required_reviewers": ["autoreview"],
   "series_bound": 1,
   "units": [
     {"id": "u1", "title": "Ship the change", "blockers": []}
@@ -156,9 +156,13 @@ The bundled [agent skill](skills/slopshipper/SKILL.md) teaches agents to drive
 the installed CLI and obey `next_action`. It is intentionally thin: the binary
 owns the state machine, schemas, and store.
 
-Independent review remains a companion step. Use the installed
-[`autoreview`](https://github.com/uinaf/autoreview) CLI, or Cursor's
-`/review-bugbot` when the intake grants consent.
+Independent review remains a companion step. Reviewer identities are
+registered, not hardcoded: `autoreview` and `bugbot` are built in,
+and `slopshipper reviewers --add NAME` registers others (a hosted bot such as
+slopzapper, a CI reviewer, a QA provider). The intake's `required_reviewers`
+selects among them; run the matching installed tool — such as the
+[`autoreview`](https://github.com/uinaf/autoreview) CLI or Cursor's
+`/review-bugbot` — when the intake requires it.
 
 ## Documentation
 

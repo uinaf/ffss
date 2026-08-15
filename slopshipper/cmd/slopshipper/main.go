@@ -153,6 +153,8 @@ func runWithOptions(args []string, opts runOptions) int {
 		return cmdBlock(st, rest, opts)
 	case "status":
 		return cmdStatus(st, rest, opts)
+	case "reviewers":
+		return cmdReviewers(st, rest, opts)
 	case "serve":
 		return cmdServe(st, rest, opts)
 	default:
@@ -186,6 +188,7 @@ Usage:
   slopshipper retry --reason TEXT [--run ID]
   slopshipper block --reason TEXT [--run ID]
   slopshipper status [--json] [--run ID]
+  slopshipper reviewers [--add NAME | --remove NAME] [--json]
   slopshipper schema [--command NAME] [--json]
   slopshipper storage [--json]
   slopshipper serve [--addr 127.0.0.1:7780]
@@ -205,7 +208,7 @@ Create a run for the current Git repository. The next action is intake.
 		"intake": `Usage: slopshipper intake --file PATH [--run ID]
 
 Load the released-work contract from JSON. Use --file - to read stdin.
-Fields: delivery_mode, review_consent, series_bound, units.
+Fields: delivery_mode, required_reviewers, series_bound, units.
 `,
 		"release": `Usage: slopshipper release --revision N [--run ID]
 
@@ -223,7 +226,8 @@ A failed command is recorded as BLOCKED and exits with code 6.
 		"review": `Usage: slopshipper review --evidence PATH [--run ID]
 
 Record strict JSON review evidence. Use --evidence - for stdin.
-Verdicts: clean, findings, ambiguous. Reviewers: autoreview, bugbot, human.
+Verdicts: clean, findings, ambiguous. The reviewer must be one of the run's
+required registered identities; inspect the registry with slopshipper reviewers.
 `,
 		"rework": `Usage: slopshipper rework [--run ID]
 
@@ -256,6 +260,13 @@ Show the current state and an actionable next command.
 		"schema": `Usage: slopshipper schema [--command NAME] [--json]
 
 Describe commands, flags, strict input schemas, enums, and outputs as JSON.
+`,
+		"reviewers": `Usage: slopshipper reviewers [--add NAME | --remove NAME] [--json]
+
+List built-in and registered reviewer identities, or register/unregister a
+custom identity. Registration is declarative and idempotent; built-ins
+(autoreview, bugbot) cannot be changed. Humans hold release and recovery
+latches; a human sign-off reviewer must be registered explicitly.
 `,
 		"storage": `Usage: slopshipper storage [--json]
 
@@ -393,16 +404,16 @@ func cmdIntake(st *store.Store, args []string, opts runOptions) int {
 			return writeFailure(opts, 2, fmt.Errorf("intake requires --file or --input"))
 		}
 		var filePatch struct {
-			DeliveryMode  *string         `json:"delivery_mode"`
-			ReviewConsent *string         `json:"review_consent"`
-			SeriesBound   *int            `json:"series_bound"`
-			Units         []intakeUnitDTO `json:"units"`
+			DeliveryMode      *string         `json:"delivery_mode"`
+			RequiredReviewers []string        `json:"required_reviewers"`
+			SeriesBound       *int            `json:"series_bound"`
+			Units             []intakeUnitDTO `json:"units"`
 		}
 		if err := readJSON(file, &filePatch); err != nil {
 			return writeFailure(opts, 2, fmt.Errorf("invalid intake json: %w", err))
 		}
 		patch = intakeInput{
-			DeliveryMode: filePatch.DeliveryMode, ReviewConsent: filePatch.ReviewConsent,
+			DeliveryMode: filePatch.DeliveryMode, RequiredReviewers: filePatch.RequiredReviewers,
 			SeriesBound: filePatch.SeriesBound, Units: filePatch.Units,
 		}
 	}
@@ -421,9 +432,12 @@ func cmdIntake(st *store.Store, args []string, opts runOptions) int {
 		m := machine.DeliveryMode(*patch.DeliveryMode)
 		ip.DeliveryMode = &m
 	}
-	if patch.ReviewConsent != nil {
-		c := machine.ReviewConsent(*patch.ReviewConsent)
-		ip.ReviewConsent = &c
+	if patch.RequiredReviewers != nil {
+		reviewers := make([]machine.ReviewerIdentity, len(patch.RequiredReviewers))
+		for i, reviewer := range patch.RequiredReviewers {
+			reviewers[i] = machine.ReviewerIdentity(reviewer)
+		}
+		ip.RequiredReviewers = reviewers
 	}
 	runID := fs["run"]
 	if raw {
@@ -781,6 +795,13 @@ func prepareApply(st *store.Store, runID string, cmd machine.Command, opts runOp
 func applyPrepared(st *store.Store, prepared preparedApply, cmd machine.Command, in machine.ApplyInput, opts runOptions) (machine.ApplyResult, int) {
 	run := prepared.run
 	in.ExpectedRevision = run.Revision
+	if cmd == machine.CmdIntake || cmd == machine.CmdRelease {
+		registered, err := st.ListReviewers()
+		if err != nil {
+			return machine.ApplyResult{}, mapErr(err, opts)
+		}
+		in.RegisteredReviewers = registered
+	}
 	res, err := machine.Apply(run, prepared.units, cmd, in)
 	if err != nil {
 		return machine.ApplyResult{}, mapErr(err, opts)
@@ -849,23 +870,110 @@ func mapErr(err error, opts runOptions) int {
 }
 
 var commandFlags = map[string]map[string]bool{
-	"init":    {"run": true, "input": true},
-	"intake":  {"file": true, "run": true, "input": true},
-	"release": {"revision": true, "run": true, "input": true},
-	"build":   {"run": true, "input": true},
-	"verify":  {"cmd": true, "evidence": true, "run": true, "input": true},
-	"review":  {"evidence": true, "run": true, "input": true},
-	"rework":  {"run": true, "input": true},
-	"deliver": {"evidence": true, "run": true, "input": true},
-	"ask":     {"question": true, "run": true, "input": true},
-	"decide":  {"answer": true, "run": true, "input": true},
-	"retry":   {"reason": true, "run": true, "input": true},
-	"block":   {"reason": true, "run": true, "input": true},
-	"status":  {"json": true, "run": true, "fields": true},
-	"schema":  {"json": true, "command": true},
-	"storage": {"json": true},
-	"serve":   {"addr": true},
-	"version": {},
+	"init":      {"run": true, "input": true},
+	"intake":    {"file": true, "run": true, "input": true},
+	"release":   {"revision": true, "run": true, "input": true},
+	"build":     {"run": true, "input": true},
+	"verify":    {"cmd": true, "evidence": true, "run": true, "input": true},
+	"review":    {"evidence": true, "run": true, "input": true},
+	"rework":    {"run": true, "input": true},
+	"deliver":   {"evidence": true, "run": true, "input": true},
+	"ask":       {"question": true, "run": true, "input": true},
+	"decide":    {"answer": true, "run": true, "input": true},
+	"retry":     {"reason": true, "run": true, "input": true},
+	"block":     {"reason": true, "run": true, "input": true},
+	"status":    {"json": true, "run": true, "fields": true},
+	"reviewers": {"add": true, "remove": true, "json": true},
+	"schema":    {"json": true, "command": true},
+	"storage":   {"json": true},
+	"serve":     {"addr": true},
+	"version":   {},
+}
+
+type reviewersDocument struct {
+	SchemaVersion    int      `json:"schema_version"`
+	Builtin          []string `json:"builtin"`
+	Registered       []string `json:"registered"`
+	DryRun           bool     `json:"dry_run,omitempty"`
+	ValidatedCommand string   `json:"validated_command,omitempty"`
+}
+
+func cmdReviewers(st *store.Store, args []string, opts runOptions) int {
+	fs, code := requireFlags("reviewers", args, opts)
+	if code != 0 {
+		return code
+	}
+	add, hasAdd := fs["add"]
+	remove, hasRemove := fs["remove"]
+	if hasAdd && hasRemove {
+		return writeFailure(opts, 2, fmt.Errorf("--add cannot be combined with --remove"))
+	}
+	if opts.dryRun && !hasAdd && !hasRemove {
+		return writeFailure(opts, 2, fmt.Errorf("--dry-run requires --add or --remove"))
+	}
+	name := add
+	if hasRemove {
+		name = remove
+	}
+	if hasAdd || hasRemove {
+		if err := machine.ValidateResourceID("reviewer identity", name); err != nil {
+			return writeFailure(opts, 2, err)
+		}
+		if slices.Contains(machine.BuiltinReviewers(), machine.ReviewerIdentity(name)) {
+			return writeFailure(opts, 2, fmt.Errorf("reviewer %q is built-in and always registered", name))
+		}
+	}
+	if !opts.dryRun {
+		var err error
+		if hasAdd {
+			err = st.RegisterReviewer(machine.ReviewerIdentity(name))
+		} else if hasRemove {
+			err = st.UnregisterReviewer(machine.ReviewerIdentity(name))
+		}
+		if err != nil {
+			return mapErr(err, opts)
+		}
+	}
+	registered, err := st.ListReviewers()
+	if err != nil {
+		return mapErr(err, opts)
+	}
+	names := make([]string, 0, len(registered)+1)
+	for _, reviewer := range registered {
+		names = append(names, string(reviewer))
+	}
+	// A dry run projects the registry the mutation would leave behind.
+	if opts.dryRun && hasAdd && !slices.Contains(names, name) {
+		names = append(names, name)
+	}
+	if opts.dryRun && hasRemove {
+		names = slices.DeleteFunc(names, func(candidate string) bool { return candidate == name })
+	}
+	builtin := make([]string, 0, len(machine.BuiltinReviewers()))
+	for _, reviewer := range machine.BuiltinReviewers() {
+		builtin = append(builtin, string(reviewer))
+	}
+	doc := reviewersDocument{SchemaVersion: 1, Builtin: builtin, Registered: names}
+	if opts.dryRun {
+		doc.DryRun = true
+		doc.ValidatedCommand = "reviewers"
+	}
+	if opts.json {
+		if err := writeJSON(doc); err != nil {
+			return writeFailure(opts, 10, err)
+		}
+		return 0
+	}
+	registeredText := "(none)"
+	if len(names) > 0 {
+		registeredText = strings.Join(names, ",")
+	}
+	prefix := "slopshipper reviewers"
+	if doc.DryRun {
+		prefix += " dry-run"
+	}
+	fmt.Fprintf(os.Stdout, "%s builtin=%s registered=%s\n", prefix, strings.Join(builtin, ","), registeredText)
+	return 0
 }
 
 func cmdSchema(args []string, opts runOptions) int {

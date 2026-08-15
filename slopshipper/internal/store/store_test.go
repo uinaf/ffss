@@ -239,6 +239,127 @@ func TestListRunsAndEvents(t *testing.T) {
 	}
 }
 
+func TestReviewerRegistryRoundTrip(t *testing.T) {
+	s, err := store.Open(filepath.Join(t.TempDir(), "registry.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+
+	reviewers, err := s.ListReviewers()
+	if err != nil || len(reviewers) != 0 {
+		t.Fatalf("initial registry: %v %v", reviewers, err)
+	}
+	for _, name := range []machine.ReviewerIdentity{"slopzapper", "slopzapper", "qa-bot"} {
+		if err := s.RegisterReviewer(name); err != nil {
+			t.Fatalf("register %s: %v", name, err)
+		}
+	}
+	reviewers, err = s.ListReviewers()
+	if err != nil || len(reviewers) != 2 {
+		t.Fatalf("registry after adds: %v %v", reviewers, err)
+	}
+	for _, name := range []machine.ReviewerIdentity{"slopzapper", "slopzapper"} {
+		if err := s.UnregisterReviewer(name); err != nil {
+			t.Fatalf("unregister %s: %v", name, err)
+		}
+	}
+	reviewers, err = s.ListReviewers()
+	if err != nil || len(reviewers) != 1 || reviewers[0] != "qa-bot" {
+		t.Fatalf("registry after removes: %v %v", reviewers, err)
+	}
+
+	// A run stored with a nil required set reads back as empty, not null.
+	bare := machine.NewRun("bare", "repo-bare")
+	bare.RequiredReviewers = nil
+	if err := s.CreateRun(bare, nil); err != nil {
+		t.Fatal(err)
+	}
+	loaded, _, err := s.GetRun("bare")
+	if err != nil || loaded.RequiredReviewers == nil || len(loaded.RequiredReviewers) != 0 {
+		t.Fatalf("nil reviewers round trip: %+v %v", loaded.RequiredReviewers, err)
+	}
+}
+
+func TestResolveStatusRunBranchesAndReadOnlyVersionGate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "branches.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateRun(machine.NewRun("first", "repo-x"), []machine.Unit{{ID: "u1"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateRun(machine.NewRun("second", "repo-x"), []machine.Unit{{ID: "u1"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.ResolveStatusRun("repo-x", ""); !errors.Is(err, machine.ErrAmbiguousRun) {
+		t.Fatalf("ambiguous status resolution: %v", err)
+	}
+	if run, _, err := s.ResolveStatusRun("repo-x", "first"); err != nil || run.ID != "first" {
+		t.Fatalf("explicit status resolution: %+v %v", run, err)
+	}
+	if _, _, err := s.ResolveStatusRun("repo-y", "first"); !errors.Is(err, machine.ErrNotFound) {
+		t.Fatalf("cross-repo status resolution: %v", err)
+	}
+	if _, _, err := s.ResolveStatusRun("repo-none", ""); !errors.Is(err, machine.ErrNotFound) {
+		t.Fatalf("empty repo status resolution: %v", err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	db := openSQLite(t, path)
+	if _, err := db.Exec(`UPDATE meta SET value='2' WHERE key='schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.OpenReadOnly(path); err == nil || !strings.Contains(err.Error(), "requires a normal command to migrate") {
+		t.Fatalf("read-only version gate: %v", err)
+	}
+}
+
+func TestSaveApplyReenforcesReviewerRegistryTransactionally(t *testing.T) {
+	s, err := store.Open(filepath.Join(t.TempDir(), "guard.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if err := s.RegisterReviewer("slopzapper"); err != nil {
+		t.Fatal(err)
+	}
+	run := machine.NewRun("guarded", "repo-guard")
+	if err := s.CreateRun(run, nil); err != nil {
+		t.Fatal(err)
+	}
+	res, err := machine.Apply(run, nil, machine.CmdIntake, machine.ApplyInput{
+		ExpectedRevision:    run.Revision,
+		RegisteredReviewers: []machine.ReviewerIdentity{"slopzapper"},
+		Intake: &machine.IntakePatch{
+			RequiredReviewers: []machine.ReviewerIdentity{"slopzapper"},
+			Units:             []machine.Unit{{ID: "u1", Title: "one"}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The registry changes between the machine check and the store commit.
+	if err := s.UnregisterReviewer("slopzapper"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SaveApply(res); !errors.Is(err, machine.ErrUnmetGuard) {
+		t.Fatalf("stale registry commit: %v", err)
+	}
+	if err := s.RegisterReviewer("slopzapper"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SaveApply(res); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRunIDsAreGloballyUnique(t *testing.T) {
 	s, err := store.Open(filepath.Join(t.TempDir(), "t.sqlite"))
 	if err != nil {
@@ -262,7 +383,7 @@ func TestPersistsCanonicalEvidenceAndReviewProgress(t *testing.T) {
 	defer s.Close()
 	run := machine.NewRun("review", "repo")
 	run.State = machine.StateReview
-	run.ReviewConsent = machine.ReviewBoth
+	run.RequiredReviewers = []machine.ReviewerIdentity{machine.ReviewerAutoreview, machine.ReviewerBugbot}
 	run.CurrentUnitID = "u1"
 	units := []machine.Unit{{ID: "u1", Attempt: 1}}
 	if err := s.CreateRun(run, units); err != nil {

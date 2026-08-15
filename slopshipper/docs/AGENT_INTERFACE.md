@@ -38,7 +38,7 @@ slopshipper intake --input - --dry-run --json <<'JSON'
 {
   "run": "demo",
   "delivery_mode": "pr-hold",
-  "review_consent": "autoreview",
+  "required_reviewers": ["autoreview"],
   "series_bound": 1,
   "units": [
     {"id": "u1", "title": "Ship the change", "blockers": []}

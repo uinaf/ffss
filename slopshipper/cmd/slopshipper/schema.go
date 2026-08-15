@@ -88,12 +88,13 @@ func allCommandSchemas() []commandSchema {
 		"title":    stringSchema("Human-readable unit title."),
 		"blockers": arraySchema(stringSchema("ID of a prerequisite unit."), "Dependency-ordered blocker IDs."),
 	}, "id")
+	reviewer := stringSchema("Registered reviewer identity. Built-ins: autoreview, bugbot; register anything else (including a human sign-off identity) with slopshipper reviewers --add.")
 	intake := objectSchema(map[string]jsonSchema{
-		"run":            run,
-		"delivery_mode":  enumSchema("Delivery behavior.", "pr-hold", "pr-merge-when-ready", "direct-trunk"),
-		"review_consent": enumSchema("Required independent review.", "autoreview", "bugbot", "both", "human"),
-		"series_bound":   minimumIntegerSchema("Maximum units this run may complete.", 1),
-		"units":          arraySchema(unit, "Replacement dependency graph."),
+		"run":                run,
+		"delivery_mode":      enumSchema("Delivery behavior.", "pr-hold", "pr-merge-when-ready", "direct-trunk"),
+		"required_reviewers": arraySchema(reviewer, "Replacement set of required registered reviewers; at least one."),
+		"series_bound":       minimumIntegerSchema("Maximum units this run may complete.", 1),
+		"units":              arraySchema(unit, "Replacement dependency graph."),
 	})
 	commands := []commandSchema{
 		mutationSchema("init", "Create a run for the current repository.", objectSchema(map[string]jsonSchema{"run": run}), flags("run", "input")),
@@ -107,7 +108,7 @@ func allCommandSchemas() []commandSchema {
 			"exit_code": integerSchema("Verification exit code."), "output_digest": stringSchema("Optional output digest."),
 		}, "command", "exit_code"), flags("cmd", "evidence", "run", "input")),
 		mutationSchema("review", "Record strict independent-review evidence.", objectSchema(map[string]jsonSchema{
-			"run": run, "reviewer": enumSchema("Reviewer identity.", "autoreview", "bugbot", "human"),
+			"run": run, "reviewer": reviewer,
 			"verdict":      enumSchema("Review outcome.", "clean", "findings", "ambiguous"),
 			"artifact_ref": stringSchema("Stable review artifact reference."),
 		}, "reviewer", "verdict", "artifact_ref"), flags("evidence", "run", "input")),
@@ -129,6 +130,7 @@ func allCommandSchemas() []commandSchema {
 			"run": run, "reason": stringSchema("External blocker reason."),
 		}, "reason"), flags("reason", "run", "input")),
 		{Name: "status", Description: "Return compact state and the next allowed action.", Flags: flags("json", "run", "fields"), Output: "status"},
+		{Name: "reviewers", Description: "List the reviewer registry, or register/unregister a custom identity.", Mutating: true, Flags: flags("add", "remove", "json"), Output: "reviewers"},
 		{Name: "schema", Description: "Describe commands, flags, raw inputs, enums, and outputs as JSON.", Flags: flags("json", "command"), Output: "schema"},
 		{Name: "storage", Description: "Inspect database path resolution and Git safety without mutation.", Flags: flags("json"), Output: "storage"},
 		{Name: "serve", Description: "Serve the read-only projector on loopback.", Flags: flags("addr"), Output: "long-running"},
@@ -162,6 +164,10 @@ func flags(names ...string) []flagSchema {
 			description = "Hardened run identifier."
 		case "command":
 			description = "Limit schema output to one command."
+		case "add":
+			description = "Register a custom reviewer identity; idempotent."
+		case "remove":
+			description = "Unregister a custom reviewer identity; idempotent."
 		}
 		result = append(result, flagSchema{Name: "--" + name, Type: typeName, Description: description})
 	}

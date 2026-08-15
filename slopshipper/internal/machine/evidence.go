@@ -2,6 +2,7 @@ package machine
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -15,7 +16,7 @@ func validateVerifyCommand(ev *VerifyEvidence) error {
 	return nil
 }
 
-func validateReviewEvidence(ev *ReviewEvidence, consent ReviewConsent) error {
+func validateReviewEvidence(ev *ReviewEvidence, required []ReviewerIdentity) error {
 	if ev == nil {
 		return fmt.Errorf("%w: review evidence required", ErrUnmetGuard)
 	}
@@ -27,30 +28,21 @@ func validateReviewEvidence(ev *ReviewEvidence, consent ReviewConsent) error {
 	if strings.TrimSpace(ev.ArtifactRef) == "" {
 		return fmt.Errorf("%w: review.artifact_ref required", ErrUnmetGuard)
 	}
-	switch ev.Reviewer {
-	case ReviewerAutoreview, ReviewerBugbot, ReviewerHuman:
-	default:
-		return fmt.Errorf("%w: review.reviewer must be autoreview|bugbot|human", ErrUnmetGuard)
+	if err := ValidateResourceID("review.reviewer", string(ev.Reviewer)); err != nil {
+		return err
 	}
-	if !reviewerMatchesConsent(ev.Reviewer, consent) {
-		return fmt.Errorf("%w: review.reviewer %q does not match review_consent %q", ErrUnmetGuard, ev.Reviewer, consent)
+	if !slices.Contains(required, ev.Reviewer) {
+		return fmt.Errorf("%w: review.reviewer %q is not a required reviewer for this run (%s)", ErrUnmetGuard, ev.Reviewer, joinReviewers(required))
 	}
 	return nil
 }
 
-func reviewerMatchesConsent(reviewer ReviewerIdentity, consent ReviewConsent) bool {
-	switch consent {
-	case ReviewBoth:
-		return reviewer == ReviewerAutoreview || reviewer == ReviewerBugbot
-	case ReviewAutoreview:
-		return reviewer == ReviewerAutoreview
-	case ReviewBugbot:
-		return reviewer == ReviewerBugbot
-	case ReviewHuman:
-		return reviewer == ReviewerHuman
-	default:
-		return false
+func joinReviewers(reviewers []ReviewerIdentity) string {
+	names := make([]string, 0, len(reviewers))
+	for _, reviewer := range reviewers {
+		names = append(names, string(reviewer))
 	}
+	return strings.Join(names, ", ")
 }
 
 func validateDeliverEvidence(ev *DeliverEvidence, mode DeliveryMode) error {

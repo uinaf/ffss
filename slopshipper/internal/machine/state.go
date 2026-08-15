@@ -42,17 +42,9 @@ const (
 	DeliveryDirectTrunk      DeliveryMode = "direct-trunk"
 )
 
-// ReviewConsent records the human's chosen review approach for the run.
-type ReviewConsent string
-
-const (
-	ReviewAutoreview ReviewConsent = "autoreview"
-	ReviewBugbot     ReviewConsent = "bugbot"
-	ReviewBoth       ReviewConsent = "both"
-	ReviewHuman      ReviewConsent = "human"
-)
-
-// ReviewerIdentity is who produced review evidence.
+// ReviewerIdentity names one registered independent reviewer. Identities
+// follow resource-ID rules; the built-ins below are always registered and
+// custom identities register through the reviewers registry.
 type ReviewerIdentity string
 
 const (
@@ -60,6 +52,13 @@ const (
 	ReviewerBugbot     ReviewerIdentity = "bugbot"
 	ReviewerHuman      ReviewerIdentity = "human"
 )
+
+// BuiltinReviewers returns the identities that are registered in every
+// installation. Humans hold the release and recovery latches, not a default
+// review identity; a human sign-off reviewer must be registered explicitly.
+func BuiltinReviewers() []ReviewerIdentity {
+	return []ReviewerIdentity{ReviewerAutoreview, ReviewerBugbot}
+}
 
 // ReviewVerdict is the normalized outcome of one independent review.
 type ReviewVerdict string

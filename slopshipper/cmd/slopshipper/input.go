@@ -9,11 +9,11 @@ type initInput struct {
 }
 
 type intakeInput struct {
-	Run           string          `json:"run,omitempty"`
-	DeliveryMode  *string         `json:"delivery_mode,omitempty"`
-	ReviewConsent *string         `json:"review_consent,omitempty"`
-	SeriesBound   *int            `json:"series_bound,omitempty"`
-	Units         []intakeUnitDTO `json:"units,omitempty"`
+	Run               string          `json:"run,omitempty"`
+	DeliveryMode      *string         `json:"delivery_mode,omitempty"`
+	RequiredReviewers []string        `json:"required_reviewers,omitempty"`
+	SeriesBound       *int            `json:"series_bound,omitempty"`
+	Units             []intakeUnitDTO `json:"units,omitempty"`
 }
 
 type releaseInput struct {

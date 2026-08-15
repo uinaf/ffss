@@ -191,7 +191,7 @@ func TestStorageCommandAndUnsafeJSONError(t *testing.T) {
 		t.Fatalf("safe storage JSON=%+v err=%v output=%s", doc, err, out)
 	}
 	h.must("init", "--run", "safe")
-	h.mustInput(`{"run":"safe","delivery_mode":"pr-hold","review_consent":"human","series_bound":1,"units":[{"id":"u1","title":"repository-local dry run","blockers":[]}]}`, "intake", "--input", "-", "--json")
+	h.mustInput(`{"run":"safe","delivery_mode":"pr-hold","required_reviewers":["bugbot"],"series_bound":1,"units":[{"id":"u1","title":"repository-local dry run","blockers":[]}]}`, "intake", "--input", "-", "--json")
 	h.must("release", "--revision", "2", "--run", "safe", "--json")
 	dryRun := h.must("build", "--run", "safe", "--dry-run", "--json")
 	if !strings.Contains(dryRun, `"dry_run": true`) || !strings.Contains(dryRun, `"state": "BUILD"`) {

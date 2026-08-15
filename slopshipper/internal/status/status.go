@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	schemaVersion      = 2
+	schemaVersion      = 3
 	stateUninitialized = "UNINITIALIZED"
 	AgentFieldMask     = "state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivery_mode,blocker,decision_question"
 )
@@ -27,7 +27,6 @@ type Document struct {
 	Released            bool     `json:"released"`
 	ReleasedRevision    *int64   `json:"released_revision,omitempty"`
 	DeliveryMode        string   `json:"delivery_mode"`
-	ReviewConsent       string   `json:"review_consent"`
 	SeriesBound         int      `json:"series_bound"`
 	CompletedUnits      int      `json:"completed_units"`
 	CurrentUnitID       string   `json:"current_unit_id,omitempty"`
@@ -54,7 +53,10 @@ func From(run machine.Run, units []machine.Unit) Document {
 	for _, reviewer := range run.CompletedReviewers {
 		completedReviewers = append(completedReviewers, string(reviewer))
 	}
-	requiredReviewers := requiredReviewers(run.ReviewConsent)
+	requiredReviewers := make([]string, 0, len(run.RequiredReviewers))
+	for _, reviewer := range run.RequiredReviewers {
+		requiredReviewers = append(requiredReviewers, string(reviewer))
+	}
 	requiredEvidence := requiredEvidence(allowed)
 	return Document{
 		SchemaVersion:      schemaVersion,
@@ -66,7 +68,6 @@ func From(run machine.Run, units []machine.Unit) Document {
 		Released:           run.Released(),
 		ReleasedRevision:   run.ReleasedRevision,
 		DeliveryMode:       string(run.DeliveryMode),
-		ReviewConsent:      string(run.ReviewConsent),
 		SeriesBound:        run.SeriesBound,
 		CompletedUnits:     run.CompletedUnits,
 		CurrentUnitID:      run.CurrentUnitID,
@@ -236,19 +237,4 @@ func requiredEvidence(allowed []machine.Command) []string {
 		}
 	}
 	return []string{}
-}
-
-func requiredReviewers(consent machine.ReviewConsent) []string {
-	switch consent {
-	case machine.ReviewAutoreview:
-		return []string{string(machine.ReviewerAutoreview)}
-	case machine.ReviewBugbot:
-		return []string{string(machine.ReviewerBugbot)}
-	case machine.ReviewBoth:
-		return []string{string(machine.ReviewerAutoreview), string(machine.ReviewerBugbot)}
-	case machine.ReviewHuman:
-		return []string{string(machine.ReviewerHuman)}
-	default:
-		return []string{}
-	}
 }

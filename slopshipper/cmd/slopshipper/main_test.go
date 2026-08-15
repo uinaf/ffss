@@ -115,7 +115,7 @@ func TestCLINorthStarSmoke(t *testing.T) {
 
 	intake := filepath.Join(t.TempDir(), "intake.json")
 	mustWrite(t, intake, `{
-		"review_consent":"autoreview",
+		"required_reviewers":["autoreview"],
 		"series_bound":1,
 		"units":[{"id":"u1","title":"one"}]
 	}`)
@@ -554,7 +554,7 @@ func TestAgentDXRawInputsDryRunAndFieldMask(t *testing.T) {
 	out := h.mustInput(`{"run":"agent"}`, "init", "--input", "-", "--json")
 	assertJSONState(t, out, "INTAKE")
 
-	intake := `{"run":"agent","delivery_mode":"pr-hold","review_consent":"autoreview","series_bound":1,"units":[{"id":"u1","title":"Agent DX","blockers":[]}]}`
+	intake := `{"run":"agent","delivery_mode":"pr-hold","required_reviewers":["autoreview"],"series_bound":1,"units":[{"id":"u1","title":"Agent DX","blockers":[]}]}`
 	dry := h.mustInput(intake, "intake", "--input", "-", "--dry-run", "--json")
 	var projection struct {
 		DryRun              bool   `json:"dry_run"`
@@ -651,7 +651,7 @@ func TestCLIMultiUnitAskDecide(t *testing.T) {
 
 	intake := filepath.Join(t.TempDir(), "intake.json")
 	mustWrite(t, intake, `{
-		"review_consent":"bugbot",
+		"required_reviewers":["bugbot"],
 		"series_bound":2,
 		"units":[
 			{"id":"u1","title":"first"},
@@ -723,7 +723,7 @@ func TestCLIFailClosedGuards(t *testing.T) {
 
 	intake := filepath.Join(t.TempDir(), "intake.json")
 	mustWrite(t, intake, `{
-		"review_consent":"autoreview",
+		"required_reviewers":["autoreview"],
 		"series_bound":1,
 		"units":[{"id":"u1","title":"one"}]
 	}`)
@@ -740,7 +740,7 @@ func TestCLIFailClosedGuards(t *testing.T) {
 		field, value := spoofed.field, spoofed.value
 		spoof := filepath.Join(t.TempDir(), "spoof-"+field+".json")
 		mustWrite(t, spoof, fmt.Sprintf(`{
-			"review_consent":"autoreview",
+			"required_reviewers":["autoreview"],
 			"series_bound":1,
 			"units":[{"id":"u1","title":"one",%q:%s}]
 		}`, field, value))
@@ -1005,7 +1005,7 @@ func TestRunEntryPointsAndFullRecoveryFlow(t *testing.T) {
 	}
 
 	intake := filepath.Join(t.TempDir(), "intake.json")
-	mustWrite(t, intake, `{"delivery_mode":"direct-trunk","review_consent":"both","series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	mustWrite(t, intake, `{"delivery_mode":"direct-trunk","required_reviewers":["autoreview","bugbot"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
 	if code := run([]string{"intake", "--file", intake, "--run", "direct"}); code != 0 {
 		t.Fatalf("intake=%d", code)
 	}
@@ -1113,6 +1113,185 @@ func TestCLIFirstRunCreatesDefaultStateAndReturnsBootstrapStatus(t *testing.T) {
 	}
 	if err := json.Unmarshal([]byte(out), &initialized); err != nil || initialized.State != "INTAKE" {
 		t.Fatalf("initialized status: %v %s", err, out)
+	}
+}
+
+func TestCLIRegisteredCustomReviewerFlow(t *testing.T) {
+	h := newCLIHarness(t)
+	h.must("init", "--run", "custom")
+
+	var registry struct {
+		Builtin    []string `json:"builtin"`
+		Registered []string `json:"registered"`
+		DryRun     bool     `json:"dry_run"`
+	}
+	out := h.must("reviewers", "--json")
+	if err := json.Unmarshal([]byte(out), &registry); err != nil ||
+		len(registry.Builtin) != 2 || len(registry.Registered) != 0 {
+		t.Fatalf("initial registry: %v %s", err, out)
+	}
+
+	// Built-ins are immutable; unregistered requirements fail closed at intake.
+	if out, code := h.run("reviewers", "--add", "autoreview", "--json"); code != 2 || !strings.Contains(out, "built-in") {
+		t.Fatalf("builtin add exit=%d output=%s", code, out)
+	}
+	if out, code := h.run("reviewers", "--add", "slopzapper", "--remove", "slopzapper"); code != 2 {
+		t.Fatalf("add+remove exit=%d output=%s", code, out)
+	}
+	intake := `{"run":"custom","delivery_mode":"pr-hold","required_reviewers":["slopzapper","autoreview"],"series_bound":1,"units":[{"id":"u1","title":"one","blockers":[]}]}`
+	if out, code := h.runInput(intake, "intake", "--input", "-", "--json"); code != 2 || !strings.Contains(out, "not registered") {
+		t.Fatalf("unregistered intake exit=%d output=%s", code, out)
+	}
+
+	// A dry run projects the registry without persisting it.
+	out = h.must("reviewers", "--add", "slopzapper", "--dry-run", "--json")
+	if err := json.Unmarshal([]byte(out), &registry); err != nil || !registry.DryRun ||
+		len(registry.Registered) != 1 || registry.Registered[0] != "slopzapper" {
+		t.Fatalf("dry-run projection: %v %s", err, out)
+	}
+	out = h.must("reviewers", "--json")
+	if err := json.Unmarshal([]byte(out), &registry); err != nil || len(registry.Registered) != 0 {
+		t.Fatalf("dry run persisted state: %v %s", err, out)
+	}
+
+	h.must("reviewers", "--add", "slopzapper")
+	h.must("reviewers", "--add", "slopzapper") // idempotent
+	if out := h.must("reviewers"); !strings.Contains(out, "registered=slopzapper") {
+		t.Fatalf("plain registry output: %s", out)
+	}
+
+	h.mustInput(intake, "intake", "--input", "-", "--json")
+	h.must("release", "--revision", "2", "--run", "custom")
+	h.must("build", "--run", "custom")
+	h.must("verify", "--cmd", "true", "--run", "custom")
+
+	// A registered reviewer outside the required set is refused.
+	if out, code := h.runInput(`{"run":"custom","reviewer":"bugbot","verdict":"clean","artifact_ref":"bugbot://x"}`,
+		"review", "--input", "-", "--json"); code != 3 || !strings.Contains(out, "not a required reviewer") {
+		t.Fatalf("non-required reviewer exit=%d output=%s", code, out)
+	}
+
+	out = h.mustInput(`{"run":"custom","reviewer":"slopzapper","verdict":"clean","artifact_ref":"slopzapper://run/1"}`,
+		"review", "--input", "-", "--json")
+	var afterFirst struct {
+		State              string   `json:"state"`
+		CompletedReviewers []string `json:"completed_reviewers"`
+	}
+	if err := json.Unmarshal([]byte(out), &afterFirst); err != nil ||
+		afterFirst.State != "REVIEW" || len(afterFirst.CompletedReviewers) != 1 {
+		t.Fatalf("first custom review: %v %s", err, out)
+	}
+	out = h.mustInput(`{"run":"custom","reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://approval"}`,
+		"review", "--input", "-", "--json")
+	if err := json.Unmarshal([]byte(out), &afterFirst); err != nil || afterFirst.State != "DELIVER" {
+		t.Fatalf("second review: %v %s", err, out)
+	}
+	h.mustInput(`{"run":"custom","delivery_mode":"pr-hold","pr_url":"https://example.com/pr/9"}`,
+		"deliver", "--input", "-", "--json")
+
+	// Flag and identity validation fail closed.
+	if out, code := h.run("reviewers", "--dry-run"); code != 2 || !strings.Contains(out, "--add or --remove") {
+		t.Fatalf("bare dry-run exit=%d output=%s", code, out)
+	}
+	if out, code := h.run("reviewers", "--add", "bad..name", "--json"); code != 2 || !strings.Contains(out, "reviewer identity") {
+		t.Fatalf("invalid identity exit=%d output=%s", code, out)
+	}
+
+	// A remove dry run projects the shrunken registry without persisting.
+	if out := h.must("reviewers", "--remove", "slopzapper", "--dry-run"); !strings.Contains(out, "dry-run") ||
+		!strings.Contains(out, "registered=(none)") {
+		t.Fatalf("remove dry-run plain output: %s", out)
+	}
+	out = h.must("reviewers", "--json")
+	if err := json.Unmarshal([]byte(out), &registry); err != nil || len(registry.Registered) != 1 {
+		t.Fatalf("remove dry run persisted: %v %s", err, out)
+	}
+
+	// Registry removal is idempotent and fails closed at the next release.
+	h.must("reviewers", "--remove", "slopzapper")
+	h.must("reviewers", "--remove", "slopzapper")
+}
+
+func TestRunReviewersRegistryAndCustomFlowInProcess(t *testing.T) {
+	repoDir := t.TempDir()
+	runGit(t, repoDir, "init")
+	withWorkingDirectory(t, repoDir)
+	t.Setenv("SLOPSHIPPER_DB", filepath.Join(t.TempDir(), "registry.sqlite"))
+
+	if code := run([]string{"init", "--run", "reg"}); code != 0 {
+		t.Fatalf("init=%d", code)
+	}
+	out, code := captureStdoutResult(t, func() int { return run([]string{"reviewers", "--json"}) })
+	if code != 0 || !strings.Contains(out, `"builtin"`) || !strings.Contains(out, `"registered": []`) {
+		t.Fatalf("registry list exit=%d output=%s", code, out)
+	}
+	if out, code = captureStdoutResult(t, func() int { return run([]string{"reviewers", "--add", "autoreview"}) }); code != 2 {
+		t.Fatalf("builtin add exit=%d output=%s", code, out)
+	}
+	if out, code = captureStdoutResult(t, func() int {
+		return run([]string{"reviewers", "--add", "slopzapper", "--remove", "slopzapper"})
+	}); code != 2 {
+		t.Fatalf("conflicting flags exit=%d output=%s", code, out)
+	}
+	if out, code = captureStdoutResult(t, func() int { return run([]string{"reviewers", "--dry-run", "--json"}) }); code != 2 {
+		t.Fatalf("bare dry-run exit=%d output=%s", code, out)
+	}
+	if out, code = captureStdoutResult(t, func() int { return run([]string{"reviewers", "--add", "bad..name"}) }); code != 2 {
+		t.Fatalf("invalid identity exit=%d output=%s", code, out)
+	}
+	if out, code = captureStdoutResult(t, func() int {
+		return run([]string{"reviewers", "--add", "slopzapper", "--dry-run", "--json"})
+	}); code != 0 || !strings.Contains(out, `"dry_run": true`) || !strings.Contains(out, "slopzapper") {
+		t.Fatalf("dry-run add exit=%d output=%s", code, out)
+	}
+	if out, code = captureStdoutResult(t, func() int { return run([]string{"reviewers", "--add", "slopzapper"}) }); code != 0 ||
+		!strings.Contains(out, "registered=slopzapper") {
+		t.Fatalf("add exit=%d output=%s", code, out)
+	}
+	if out, code = captureStdoutResult(t, func() int {
+		return run([]string{"reviewers", "--remove", "slopzapper", "--dry-run"})
+	}); code != 0 || !strings.Contains(out, "dry-run") || !strings.Contains(out, "registered=(none)") {
+		t.Fatalf("dry-run remove exit=%d output=%s", code, out)
+	}
+
+	intake := filepath.Join(t.TempDir(), "intake.json")
+	mustWrite(t, intake, `{
+		"required_reviewers":["slopzapper","autoreview"],
+		"series_bound":1,
+		"units":[{"id":"u1","title":"one"}]
+	}`)
+	if code := run([]string{"intake", "--file", intake, "--run", "reg"}); code != 0 {
+		t.Fatalf("intake=%d", code)
+	}
+	if code := run([]string{"release", "--revision", "2", "--run", "reg"}); code != 0 {
+		t.Fatalf("release=%d", code)
+	}
+	if code := run([]string{"build", "--run", "reg"}); code != 0 {
+		t.Fatalf("build=%d", code)
+	}
+	if code := run([]string{"verify", "--cmd", "true", "--run", "reg"}); code != 0 {
+		t.Fatalf("verify=%d", code)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.json")
+	mustWrite(t, outside, `{"reviewer":"bugbot","verdict":"clean","artifact_ref":"bugbot://x"}`)
+	if code := run([]string{"review", "--evidence", outside, "--run", "reg"}); code != 3 {
+		t.Fatalf("non-required reviewer=%d", code)
+	}
+	first := filepath.Join(t.TempDir(), "first.json")
+	mustWrite(t, first, `{"reviewer":"slopzapper","verdict":"clean","artifact_ref":"slopzapper://1"}`)
+	if code := run([]string{"review", "--evidence", first, "--run", "reg"}); code != 0 {
+		t.Fatalf("custom review=%d", code)
+	}
+	// The registry lost the custom reviewer: a fresh run requiring it fails
+	// closed at intake with a caller-recoverable error.
+	if code := run([]string{"reviewers", "--remove", "slopzapper"}); code != 0 {
+		t.Fatal("remove failed")
+	}
+	if code := run([]string{"init", "--run", "reg2"}); code != 0 {
+		t.Fatal("second init failed")
+	}
+	if code := run([]string{"intake", "--file", intake, "--run", "reg2"}); code != 2 {
+		t.Fatalf("unregistered intake=%d", code)
 	}
 }
 

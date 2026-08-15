@@ -43,7 +43,7 @@ slopshipper intake --input - --dry-run --json <<'JSON'
 {
   "run": "run-id-from-status",
   "delivery_mode": "pr-hold",
-  "review_consent": "autoreview",
+  "required_reviewers": ["autoreview"],
   "series_bound": 1,
   "units": [
     {"id": "u1", "title": "Implement and verify the agreed change", "blockers": []}
@@ -59,9 +59,10 @@ then apply. A dry run never advances canonical state.
 `outcome_undetermined: true`, validate the command and current state instead of
 expecting a post-verification transition.
 
-Show the human a compact intake summary: units, delivery mode, review consent,
-and exact `intake_revision`. Wait for explicit release approval, then run the
-exact `slopshipper release --revision N` command printed by `next_action`.
+Show the human a compact intake summary: units, delivery mode, required
+reviewers, and exact `intake_revision`. Wait for explicit release approval,
+then run the exact `slopshipper release --revision N` command printed by
+`next_action`.
 
 ## Status leash
 
@@ -112,8 +113,10 @@ what you need — never a wall of CLI JSON. Plain words over machine dumps.
 
 1. **Release** — confirm table (what/how/review), wait, then
    `slopshipper release --revision` using `intake_revision` from status JSON.
-2. **Review consent** — once at intake: `autoreview` CLI, Cursor `/review-bugbot`,
-   both, or human. Store via intake `review_consent`. Do not auto-fire reviewers.
+2. **Required reviewers** — once at intake: pick from the registered
+   identities (`slopshipper reviewers` lists them; `autoreview` and `bugbot`
+   are built in). Store via intake `required_reviewers`. Do not auto-fire
+   reviewers.
 3. **Decide** — `slopshipper ask --question …`, then
    `slopshipper decide --answer …`.
 
@@ -132,8 +135,8 @@ next action means the run is done or needs human inspection.
 
 ## Post-review flow
 
-- `clean` records that reviewer. Consent `both` requires distinct clean
-  `autoreview` and `bugbot` evidence before delivery.
+- `clean` records that reviewer. Delivery requires a distinct clean result
+  from every identity in `required_reviewers`.
 - `findings` moves directly to `REWORK`; summarize findings, then obey the next
   build command.
 - `ambiguous` moves to `NEEDS_DECISION`; ask the human and record the answer.
@@ -145,8 +148,9 @@ default "most expensive everywhere."
 
 ## Companion tools
 
-Installed `autoreview` binary preferred; Cursor `/review-bugbot` is a cheap
-local option with consent.
+Run whichever installed tool matches a required reviewer: the `autoreview`
+binary, Cursor `/review-bugbot`, or the registered custom reviewer's own
+surface. Never simulate a reviewer.
 
 ## Done
 

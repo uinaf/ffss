@@ -23,7 +23,6 @@ func TestResourceIDHardening(t *testing.T) {
 
 func TestIntakeRejectsInvalidContracts(t *testing.T) {
 	badDelivery := machine.DeliveryMode("other")
-	badConsent := machine.ReviewConsent("other")
 	zero := 0
 	tests := []struct {
 		name  string
@@ -31,7 +30,10 @@ func TestIntakeRejectsInvalidContracts(t *testing.T) {
 	}{
 		{"missing patch", nil},
 		{"bad delivery", &machine.IntakePatch{DeliveryMode: &badDelivery}},
-		{"bad consent", &machine.IntakePatch{ReviewConsent: &badConsent}},
+		{"empty reviewers", &machine.IntakePatch{RequiredReviewers: []machine.ReviewerIdentity{}}},
+		{"invalid reviewer id", &machine.IntakePatch{RequiredReviewers: []machine.ReviewerIdentity{"nope name"}}},
+		{"duplicate reviewer", &machine.IntakePatch{RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview, machine.ReviewerAutoreview}}},
+		{"unregistered reviewer", &machine.IntakePatch{RequiredReviewers: []machine.ReviewerIdentity{"slopzapper"}}},
 		{"zero series", &machine.IntakePatch{SeriesBound: &zero}},
 		{"empty id", &machine.IntakePatch{Units: []machine.Unit{{Title: "missing"}}}},
 		{"duplicate id", &machine.IntakePatch{Units: []machine.Unit{{ID: "u1"}, {ID: "u1"}}}},
@@ -51,21 +53,24 @@ func TestIntakeRejectsInvalidContracts(t *testing.T) {
 	}
 }
 
-func TestReviewConsentMatrix(t *testing.T) {
+func TestRequiredReviewerMatrix(t *testing.T) {
 	tests := []struct {
-		consent  machine.ReviewConsent
+		name     string
+		required []machine.ReviewerIdentity
 		reviewer machine.ReviewerIdentity
 		state    machine.State
 	}{
-		{machine.ReviewAutoreview, machine.ReviewerAutoreview, machine.StateDeliver},
-		{machine.ReviewBugbot, machine.ReviewerBugbot, machine.StateDeliver},
-		{machine.ReviewHuman, machine.ReviewerHuman, machine.StateDeliver},
-		{machine.ReviewBoth, machine.ReviewerAutoreview, machine.StateReview},
-		{machine.ReviewBoth, machine.ReviewerBugbot, machine.StateReview},
+		{"single autoreview", []machine.ReviewerIdentity{machine.ReviewerAutoreview}, machine.ReviewerAutoreview, machine.StateDeliver},
+		{"single bugbot", []machine.ReviewerIdentity{machine.ReviewerBugbot}, machine.ReviewerBugbot, machine.StateDeliver},
+		{"single human", []machine.ReviewerIdentity{machine.ReviewerHuman}, machine.ReviewerHuman, machine.StateDeliver},
+		{"single custom", []machine.ReviewerIdentity{"slopzapper"}, "slopzapper", machine.StateDeliver},
+		{"pair first", []machine.ReviewerIdentity{machine.ReviewerAutoreview, machine.ReviewerBugbot}, machine.ReviewerAutoreview, machine.StateReview},
+		{"pair second", []machine.ReviewerIdentity{machine.ReviewerAutoreview, machine.ReviewerBugbot}, machine.ReviewerBugbot, machine.StateReview},
+		{"custom pair partial", []machine.ReviewerIdentity{"slopzapper", machine.ReviewerHuman}, "slopzapper", machine.StateReview},
 	}
 	for _, tt := range tests {
-		t.Run(string(tt.consent)+"/"+string(tt.reviewer), func(t *testing.T) {
-			run, units := reviewRun(tt.consent)
+		t.Run(tt.name, func(t *testing.T) {
+			run, units := reviewRun(tt.required...)
 			res, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 				ExpectedRevision: run.Revision,
 				Review:           &machine.ReviewEvidence{Reviewer: tt.reviewer, Verdict: machine.ReviewClean, ArtifactRef: "test://1"},
@@ -80,6 +85,54 @@ func TestReviewConsentMatrix(t *testing.T) {
 	}
 }
 
+func TestIntakeAcceptsRegisteredCustomReviewer(t *testing.T) {
+	run := machine.NewRun("r", "repo")
+	res, err := machine.Apply(run, nil, machine.CmdIntake, machine.ApplyInput{
+		ExpectedRevision:    run.Revision,
+		RegisteredReviewers: []machine.ReviewerIdentity{"slopzapper"},
+		Intake: &machine.IntakePatch{
+			RequiredReviewers: []machine.ReviewerIdentity{"slopzapper", machine.ReviewerBugbot},
+			Units:             []machine.Unit{{ID: "u1", Title: "one"}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Run.RequiredReviewers) != 2 || res.Run.RequiredReviewers[0] != "slopzapper" {
+		t.Fatalf("required reviewers: %+v", res.Run.RequiredReviewers)
+	}
+}
+
+func TestReleaseFailsClosedWhenRequiredReviewerUnregistered(t *testing.T) {
+	run := machine.NewRun("r", "repo")
+	res, err := machine.Apply(run, nil, machine.CmdIntake, machine.ApplyInput{
+		ExpectedRevision:    run.Revision,
+		RegisteredReviewers: []machine.ReviewerIdentity{"slopzapper"},
+		Intake: &machine.IntakePatch{
+			RequiredReviewers: []machine.ReviewerIdentity{"slopzapper"},
+			Units:             []machine.Unit{{ID: "u1", Title: "one"}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The registry lost slopzapper before the human latch: release must refuse.
+	if _, err := machine.Apply(res.Run, res.Units, machine.CmdRelease, machine.ApplyInput{
+		ExpectedRevision: res.Run.Revision,
+		IntakeRevision:   res.Run.IntakeRevision,
+	}); !errors.Is(err, machine.ErrUnmetGuard) {
+		t.Fatalf("release with unregistered reviewer: %v", err)
+	}
+	// With the registry intact, the same release succeeds.
+	if _, err := machine.Apply(res.Run, res.Units, machine.CmdRelease, machine.ApplyInput{
+		ExpectedRevision:    res.Run.Revision,
+		IntakeRevision:      res.Run.IntakeRevision,
+		RegisteredReviewers: []machine.ReviewerIdentity{"slopzapper"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestReviewEvidenceValidation(t *testing.T) {
 	tests := []machine.ReviewEvidence{
 		{},
@@ -89,7 +142,7 @@ func TestReviewEvidenceValidation(t *testing.T) {
 		{Reviewer: machine.ReviewerBugbot, Verdict: machine.ReviewClean, ArtifactRef: "test://1"},
 	}
 	for i := range tests {
-		run, units := reviewRun(machine.ReviewAutoreview)
+		run, units := reviewRun(machine.ReviewerAutoreview)
 		if _, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 			ExpectedRevision: run.Revision, Review: &tests[i],
 		}); !errors.Is(err, machine.ErrUnmetGuard) {
@@ -151,7 +204,7 @@ func TestDeliveryModesAndValidation(t *testing.T) {
 }
 
 func TestReworkBlockAndCorruptStateGuards(t *testing.T) {
-	run, units := reviewRun(machine.ReviewAutoreview)
+	run, units := reviewRun(machine.ReviewerAutoreview)
 	released := run.IntakeRevision
 	run.ReleasedRevision = &released
 	rework, err := machine.Apply(run, units, machine.CmdRework, machine.ApplyInput{ExpectedRevision: run.Revision})

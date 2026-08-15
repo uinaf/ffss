@@ -1,6 +1,6 @@
 {
   "delivery_mode": "pr-hold",
-  "review_consent": "autoreview",
+  "required_reviewers": ["autoreview"],
   "series_bound": 1,
   "units": [
     {

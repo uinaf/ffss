@@ -9,7 +9,7 @@ type Run struct {
 	ReleasedRevision   *int64
 	Revision           int64
 	DeliveryMode       DeliveryMode
-	ReviewConsent      ReviewConsent
+	RequiredReviewers  []ReviewerIdentity
 	SeriesBound        int
 	CompletedUnits     int
 	CurrentUnitID      string
@@ -56,10 +56,10 @@ type DeliverEvidence struct {
 
 // IntakePatch updates contract fields; always bumps intake revision.
 type IntakePatch struct {
-	DeliveryMode  *DeliveryMode
-	ReviewConsent *ReviewConsent
-	SeriesBound   *int
-	Units         []Unit // replaces unit graph when non-nil
+	DeliveryMode      *DeliveryMode
+	RequiredReviewers []ReviewerIdentity // replaces the required set when non-nil
+	SeriesBound       *int
+	Units             []Unit // replaces unit graph when non-nil
 }
 
 // Decision resolves NEEDS_DECISION.
@@ -69,17 +69,17 @@ type Decision struct {
 
 // IntakeEvidence is the complete contract snapshot created by an intake event.
 type IntakeEvidence struct {
-	IntakeRevision int64         `json:"intake_revision"`
-	DeliveryMode   DeliveryMode  `json:"delivery_mode"`
-	ReviewConsent  ReviewConsent `json:"review_consent"`
-	SeriesBound    int           `json:"series_bound"`
-	Units          []Unit        `json:"units"`
+	IntakeRevision    int64              `json:"intake_revision"`
+	DeliveryMode      DeliveryMode       `json:"delivery_mode"`
+	RequiredReviewers []ReviewerIdentity `json:"required_reviewers"`
+	SeriesBound       int                `json:"series_bound"`
+	Units             []Unit             `json:"units"`
 }
 
 type InitEvidence struct {
-	DeliveryMode  DeliveryMode  `json:"delivery_mode"`
-	ReviewConsent ReviewConsent `json:"review_consent"`
-	SeriesBound   int           `json:"series_bound"`
+	DeliveryMode      DeliveryMode       `json:"delivery_mode"`
+	RequiredReviewers []ReviewerIdentity `json:"required_reviewers"`
+	SeriesBound       int                `json:"series_bound"`
 }
 
 type ReleaseEvidence struct {
@@ -106,14 +106,17 @@ type BlockEvidence struct {
 type ApplyInput struct {
 	ExpectedRevision int64 // 0 means "use current" for tests; store always passes real revision
 	IntakeRevision   int64 // required for release
-	Intake           *IntakePatch
-	Verify           *VerifyEvidence
-	Review           *ReviewEvidence
-	Deliver          *DeliverEvidence
-	Decision         *Decision
-	RetryReason      string
-	BlockReason      string
-	Question         string // when forcing NEEDS_DECISION from a command path
+	// RegisteredReviewers is the custom registry snapshot the caller loaded;
+	// built-in identities are always allowed in addition to this set.
+	RegisteredReviewers []ReviewerIdentity
+	Intake              *IntakePatch
+	Verify              *VerifyEvidence
+	Review              *ReviewEvidence
+	Deliver             *DeliverEvidence
+	Decision            *Decision
+	RetryReason         string
+	BlockReason         string
+	Question            string // when forcing NEEDS_DECISION from a command path
 }
 
 // ApplyResult is the post-transition snapshot hint for status/next_action.
