@@ -55,5 +55,9 @@ ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4
 
 ## 4. Non-media artifacts or endpoint failure
 
-Publish the artifact through Crabbox artifact publishing and link the
-manifest URL instead of forcing it through a media endpoint.
+Do not force non-media artifacts through a media endpoint. Fall back to
+the change request itself: paste the decisive excerpt as fenced, sanitized
+text (contract input/output, log lines), or link an artifact the forge
+already hosts, such as a CI job artifact or check run. If no honest
+attachment path exists, deliver without the aid and say so instead of
+inventing one.
