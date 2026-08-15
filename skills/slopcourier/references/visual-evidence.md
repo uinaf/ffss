@@ -12,11 +12,18 @@ dispatched to (never upload through the other forge's API just because its
 CLI is installed). Never commit proof assets to any product repository
 branch (no `.github/pr-assets` or similar).
 
-## 1. attach (when installed, any forge)
+## 1. attach — the uinaf uploader (when installed, any forge)
 
-If `command -v attach` succeeds or `gh extension list` shows `gh attach`,
-that tool owns attachment end to end: discover its interface from
-`--help`, upload the asset, and embed the reference it returns.
+This rung means the [uinaf attach](https://github.com/uinaf/attach) CLI
+specifically, not any binary that happens to be named `attach`. Verify the
+identity before trusting it: `attach help` must show the `attach put
+<file> [--repo <owner/name>] [--pr <n>]` command shape (or `gh extension
+list` shows `gh attach` from `uinaf/gh-attach`). Anything else on PATH
+under that name is not this rung — fall through.
+
+When it is the real tool, it owns attachment end to end: `attach put` the
+asset (scope with `--repo`/`--pr`), and embed the returned reference
+(`--markdown` or `--url`).
 
 ## 2. GitLab deliveries (`glab`)
 
