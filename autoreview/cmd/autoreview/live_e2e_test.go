@@ -84,6 +84,32 @@ func TestBinaryLiveProviderMatrix(t *testing.T) {
 	}
 }
 
+func TestLiveReviewEnvironmentIsolation(t *testing.T) {
+	t.Setenv("AUTOREVIEW_REASONING_EFFORT", "low")
+	t.Setenv("CURSOR_CONFIG_DIR", "/provider/state")
+	t.Setenv("GIT_CONFIG_GLOBAL", "/host/global.gitconfig")
+	t.Setenv("GIT_CONFIG_SYSTEM", "/host/system.gitconfig")
+	t.Setenv("XDG_CONFIG_HOME", "/host/xdg")
+
+	values := make(map[string]string)
+	for _, entry := range liveReviewEnvironment(t) {
+		name, value, _ := strings.Cut(entry, "=")
+		if strings.HasPrefix(name, "AUTOREVIEW_") {
+			t.Fatalf("live environment retained %s", name)
+		}
+		values[name] = value
+	}
+	if values["CURSOR_CONFIG_DIR"] != "/provider/state" {
+		t.Fatalf("CURSOR_CONFIG_DIR = %q", values["CURSOR_CONFIG_DIR"])
+	}
+	if values["GIT_CONFIG_GLOBAL"] != "/dev/null" || values["GIT_CONFIG_SYSTEM"] != "/dev/null" {
+		t.Fatalf("Git config environment = %q, %q", values["GIT_CONFIG_GLOBAL"], values["GIT_CONFIG_SYSTEM"])
+	}
+	if values["XDG_CONFIG_HOME"] == "/host/xdg" || !filepath.IsAbs(values["XDG_CONFIG_HOME"]) {
+		t.Fatalf("XDG_CONFIG_HOME = %q", values["XDG_CONFIG_HOME"])
+	}
+}
+
 func selectedLiveProviders(t *testing.T) []liveProvider {
 	t.Helper()
 	available := []liveProvider{
@@ -226,10 +252,7 @@ func runLiveReview(t *testing.T, binary string, live liveProvider, control liveC
 		arguments = append(arguments, "--web-access=false", "--reasoning-effort", "high")
 	}
 	command := exec.CommandContext(t.Context(), binary, arguments...)
-	command.Env = replaceEnvironment(os.Environ(), map[string]string{
-		"GIT_CONFIG_GLOBAL": "/dev/null",
-		"GIT_CONFIG_SYSTEM": "/dev/null",
-	})
+	command.Env = liveReviewEnvironment(t)
 	command.Stdin = strings.NewReader(control.contract)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -244,6 +267,26 @@ func runLiveReview(t *testing.T, binary string, live liveProvider, control liveC
 		t.Fatalf("decode live %s %s report: %v\nstdout: %s\nstderr: %s", live.name, control.name, err, stdout.String(), stderr.String())
 	}
 	return report
+}
+
+func liveReviewEnvironment(t *testing.T) []string {
+	t.Helper()
+	return replaceEnvironment(withoutEnvironmentPrefix(os.Environ(), "AUTOREVIEW_"), map[string]string{
+		"GIT_CONFIG_GLOBAL": "/dev/null",
+		"GIT_CONFIG_SYSTEM": "/dev/null",
+		"XDG_CONFIG_HOME":   t.TempDir(),
+	})
+}
+
+func withoutEnvironmentPrefix(environment []string, prefix string) []string {
+	filtered := make([]string, 0, len(environment))
+	for _, entry := range environment {
+		name, _, _ := strings.Cut(entry, "=")
+		if !strings.HasPrefix(name, prefix) {
+			filtered = append(filtered, entry)
+		}
+	}
+	return filtered
 }
 
 func validateLiveReport(t *testing.T, report protocol.Report, live liveProvider, control liveControl) {
