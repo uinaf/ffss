@@ -6,16 +6,19 @@ motion, a focused diagram, or sanitized contract input/output as fenced
 text. Skip visual evidence for trivial or text-only changes rather than
 manufacturing filler.
 
-Pick the FIRST rung whose tool is available; never commit proof assets to
-any product repository branch (no `.github/pr-assets` or similar).
+Pick the first APPLICABLE rung: the `attach` tool works on any forge when
+installed; the forge-specific rungs apply only to the forge the delivery
+dispatched to (never upload through the other forge's API just because its
+CLI is installed). Never commit proof assets to any product repository
+branch (no `.github/pr-assets` or similar).
 
-## 1. attach-cli (when installed)
+## 1. attach (when installed, any forge)
 
-If `command -v attach-cli` succeeds, it owns attachment end to end: run it
-against the change request URL and the asset per its `--help`, and embed
-whatever reference it returns.
+If `command -v attach` succeeds or `gh extension list` shows `gh attach`,
+that tool owns attachment end to end: discover its interface from
+`--help`, upload the asset, and embed the reference it returns.
 
-## 2. GitLab (`glab`)
+## 2. GitLab deliveries (`glab`)
 
 Upload through the project uploads API and embed the returned markdown:
 
@@ -27,14 +30,15 @@ The response carries a `markdown` field (`![…](/uploads/…)`); paste it into
 the change-request description or a comment. Uploads inherit project
 visibility.
 
-## 3. GitHub (`gh` + user-attachments endpoint)
+## 3. GitHub deliveries (`gh` + user-attachments endpoint)
 
 Images and video upload to the same CDN the web drag-drop uses; the asset
 inherits repository visibility and needs no browser:
 
 ```bash
 repo_id=$(gh api repos/{owner}/{repo} -q .id)
-curl -s "https://uploads.github.com/user-attachments/assets?name=<file>&content_type=<mime>&repository_id=${repo_id}" \
+name=$(jq -rn --arg v "<file basename>" '$v|@uri')
+curl -s "https://uploads.github.com/user-attachments/assets?name=${name}&content_type=<mime>&repository_id=${repo_id}" \
   -X POST \
   -H @- \
   --data-binary @<file> <<EOF
