@@ -187,7 +187,7 @@ maintainer's own profile doubles as the reference integration:
 | Role | Binding |
 | --- | --- |
 | Spine | slopshipper |
-| Review | [slopzapper](https://slopzapper.uinaf.dev), [autoreview](https://github.com/uinaf/autoreview) |
+| Review | [slopzapper](https://slopzapper.uinaf.dev), [slopguard](https://github.com/uinaf/ffsstack/tree/main/cli/slopguard) |
 | QA | unbound today; slopscouter is the planned binding |
 | Remote execution | [crabbox](https://github.com/openclaw/crabbox) |
 | Readiness audits | agent-readiness skill |

@@ -68,7 +68,7 @@ slopshipper init --run demo
 slopshipper intake --file - --run demo <<'JSON'
 {
   "delivery_mode": "pr-hold",
-  "required_reviewers": ["autoreview"],
+  "required_reviewers": ["slopguard"],
   "risk_tier": "low",
   "series_bound": 1,
   "units": [
@@ -90,7 +90,7 @@ the human approval boundary: the machine loop cannot begin without it.
 slopshipper build --run demo
 slopshipper verify --cmd 'go test ./...' --run demo
 slopshipper review --evidence - --run demo <<'JSON'
-{"reviewer":"autoreview","verdict":"clean","artifact_ref":"autoreview://local"}
+{"reviewer":"slopguard","verdict":"clean","artifact_ref":"slopguard://local"}
 JSON
 slopshipper deliver --evidence - --run demo <<'JSON'
 {"delivery_mode":"pr-hold","pr_url":"https://github.com/example/repo/pull/1"}
@@ -161,7 +161,7 @@ slopshipper reviewers --add slopzapper
 slopshipper repo register \
   --forge github --trust low \
   --verify-cmd 'mise run verify' --delivery pr-hold \
-  --bind 'review=autoreview,review=slopzapper' \
+  --bind 'review=slopguard,review=slopzapper' \
   --forge-reviewer 'slopzapper=slopzapper'
 ```
 
@@ -209,11 +209,11 @@ the installed CLI and obey `next_action`. It is intentionally thin: the binary
 owns the state machine, schemas, and store.
 
 Independent review remains a companion step. Reviewer identities are
-registered, not hardcoded: `autoreview` and `bugbot` are built in,
+registered, not hardcoded: `slopguard` and `bugbot` are built in,
 and `slopshipper reviewers --add NAME` registers others (a hosted bot such as
 slopzapper, a CI reviewer, a QA provider). The intake's `required_reviewers`
 selects among them; run the matching installed tool — such as the
-[`autoreview`](https://github.com/uinaf/autoreview) CLI or Cursor's
+[`slopguard`](https://github.com/uinaf/ffsstack/tree/main/cli/slopguard) CLI or Cursor's
 `/review-bugbot` — when the intake requires it.
 
 ## Documentation

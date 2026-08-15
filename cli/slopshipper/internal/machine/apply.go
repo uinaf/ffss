@@ -16,7 +16,7 @@ func NewRun(id, repoKey string) Run {
 		IntakeRevision:    1,
 		Revision:          1,
 		DeliveryMode:      DeliveryPRHold,
-		RequiredReviewers: []ReviewerIdentity{ReviewerAutoreview},
+		RequiredReviewers: []ReviewerIdentity{ReviewerSlopguard},
 		SeriesBound:       1,
 	}
 }
@@ -625,7 +625,10 @@ func validRequiredReviewers(required, registered []ReviewerIdentity) ([]Reviewer
 			return nil, fmt.Errorf("%w: duplicate required reviewer %q", ErrBadArgs, reviewer)
 		}
 		if _, ok := allowed[reviewer]; !ok {
-			return nil, fmt.Errorf("%w: reviewer %q is not registered; register it with slopshipper reviewers --add or use a built-in (autoreview, bugbot)", ErrBadArgs, reviewer)
+			if renamed := LegacyReviewerRename(reviewer); renamed != "" {
+				return nil, fmt.Errorf("%w: reviewer identity %q was renamed to %q", ErrBadArgs, reviewer, renamed)
+			}
+			return nil, fmt.Errorf("%w: reviewer %q is not registered; register it with slopshipper reviewers --add or use a built-in (slopguard, bugbot)", ErrBadArgs, reviewer)
 		}
 		seen[reviewer] = struct{}{}
 		out = append(out, reviewer)

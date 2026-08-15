@@ -1,0 +1,38 @@
+name: slopshipper bug report
+description: Report a reproducible slopshipper defect with sanitized diagnostics
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include private source, credentials, private paths, or raw
+        provider output. Report security issues privately through the Security tab.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+      description: Describe the failure using sanitized details.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include only a synthetic or public reproduction.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: slopshipper version
+      placeholder: slopshipper vX.Y.Z
+    validations:
+      required: true

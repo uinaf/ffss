@@ -40,7 +40,7 @@ func deliverWatchableRun(t *testing.T, h *cliHarness, runID string) {
 	h.must("init", "--run", runID)
 	intake := filepath.Join(t.TempDir(), "intake.json")
 	mustWrite(t, intake, `{
-		"required_reviewers":["autoreview"],
+		"required_reviewers":["slopguard"],
 		"series_bound":1,
 		"units":[{"id":"u1","title":"one"}]
 	}`)
@@ -49,7 +49,7 @@ func deliverWatchableRun(t *testing.T, h *cliHarness, runID string) {
 	h.must("build", "--run", runID)
 	h.must("verify", "--cmd", "true", "--run", runID)
 	review := filepath.Join(t.TempDir(), "review.json")
-	mustWrite(t, review, `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"test://1"}`)
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1"}`)
 	h.must("review", "--evidence", review, "--run", runID)
 	deliver := filepath.Join(t.TempDir(), "deliver.json")
 	mustWrite(t, deliver, `{"delivery_mode":"pr-hold","pr_url":"https://github.com/o/r/pull/1","commit_sha":"aaaa1111aaaa1111"}`)
@@ -174,7 +174,7 @@ func TestWatchDoesNotLoopOnUnchangedFeedback(t *testing.T) {
 	h.must("build", "--run", "w8")
 	h.must("verify", "--cmd", "true", "--run", "w8")
 	review := filepath.Join(t.TempDir(), "review.json")
-	mustWrite(t, review, `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"test://2"}`)
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://2"}`)
 	h.must("review", "--evidence", review, "--run", "w8")
 	deliver := filepath.Join(t.TempDir(), "deliver.json")
 	mustWrite(t, deliver, `{"delivery_mode":"pr-hold","pr_url":"https://github.com/o/r/pull/1","commit_sha":"aaaa1111aaaa1111"}`)
@@ -220,7 +220,7 @@ func TestWatchFeedbackSubsetDoesNotRetrigger(t *testing.T) {
 		h.must("build", "--run", "w9")
 		h.must("verify", "--cmd", "true", "--run", "w9")
 		review := filepath.Join(t.TempDir(), "review.json")
-		mustWrite(t, review, `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"test://r"}`)
+		mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://r"}`)
 		h.must("review", "--evidence", review, "--run", "w9")
 		deliver := filepath.Join(t.TempDir(), "deliver.json")
 		mustWrite(t, deliver, `{"delivery_mode":"pr-hold","pr_url":"https://github.com/o/r/pull/1","commit_sha":"aaaa1111aaaa1111"}`)
@@ -262,7 +262,7 @@ func TestWatchFeedbackBeyondSampleBoundStillTriggers(t *testing.T) {
 	h.must("build", "--run", "w10")
 	h.must("verify", "--cmd", "true", "--run", "w10")
 	review := filepath.Join(t.TempDir(), "review.json")
-	mustWrite(t, review, `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"test://r"}`)
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://r"}`)
 	h.must("review", "--evidence", review, "--run", "w10")
 	deliver := filepath.Join(t.TempDir(), "deliver.json")
 	mustWrite(t, deliver, `{"delivery_mode":"pr-hold","pr_url":"https://github.com/o/r/pull/1","commit_sha":"aaaa1111aaaa1111"}`)
@@ -282,13 +282,13 @@ func TestDeliverRejectsCallerSuppliedUnitField(t *testing.T) {
 	h := newCLIHarness(t)
 	h.must("init", "--run", "d1")
 	intake := filepath.Join(t.TempDir(), "intake.json")
-	mustWrite(t, intake, `{"required_reviewers":["autoreview"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	mustWrite(t, intake, `{"required_reviewers":["slopguard"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
 	h.must("intake", "--file", intake, "--run", "d1")
 	h.must("release", "--revision", "2", "--run", "d1")
 	h.must("build", "--run", "d1")
 	h.must("verify", "--cmd", "true", "--run", "d1")
 	review := filepath.Join(t.TempDir(), "review.json")
-	mustWrite(t, review, `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"test://1"}`)
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1"}`)
 	h.must("review", "--evidence", review, "--run", "d1")
 
 	for unitField, want := range map[string]string{
@@ -442,7 +442,7 @@ func TestDirectWatchCommand(t *testing.T) {
 		run(args)
 	}
 	intake := filepath.Join(t.TempDir(), "intake.json")
-	mustWrite(t, intake, `{"required_reviewers":["autoreview"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	mustWrite(t, intake, `{"required_reviewers":["slopguard"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
 	steps := [][]string{
 		{"intake", "--file", intake, "--run", "dw"},
 		{"release", "--revision", "2", "--run", "dw"},
@@ -455,7 +455,7 @@ func TestDirectWatchCommand(t *testing.T) {
 		}
 	}
 	review := filepath.Join(t.TempDir(), "review.json")
-	mustWrite(t, review, `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"test://1"}`)
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1"}`)
 	if code := run([]string{"review", "--evidence", review, "--run", "dw"}); code != 0 {
 		t.Fatal("review failed")
 	}
@@ -488,7 +488,7 @@ func TestDirectWatchCommand(t *testing.T) {
 		t.Fatal("init dw2")
 	}
 	intake2 := filepath.Join(t.TempDir(), "intake2.json")
-	mustWrite(t, intake2, `{"required_reviewers":["autoreview"],"series_bound":2,"units":[{"id":"u1","title":"one"},{"id":"u2","title":"two"}]}`)
+	mustWrite(t, intake2, `{"required_reviewers":["slopguard"],"series_bound":2,"units":[{"id":"u1","title":"one"},{"id":"u2","title":"two"}]}`)
 	if code := run([]string{"intake", "--file", intake2, "--run", "dw2"}); code != 0 {
 		t.Fatal("intake dw2")
 	}
@@ -566,7 +566,7 @@ func TestDirectWatchProjectionAndAbort(t *testing.T) {
 		t.Fatal("init")
 	}
 	intake := filepath.Join(t.TempDir(), "intake.json")
-	mustWrite(t, intake, `{"required_reviewers":["autoreview"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	mustWrite(t, intake, `{"required_reviewers":["slopguard"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
 	for _, args := range [][]string{
 		{"intake", "--file", intake, "--run", "dp"},
 		{"release", "--revision", "2", "--run", "dp"},
@@ -578,7 +578,7 @@ func TestDirectWatchProjectionAndAbort(t *testing.T) {
 		}
 	}
 	review := filepath.Join(t.TempDir(), "review.json")
-	mustWrite(t, review, `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"test://1"}`)
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1"}`)
 	if code := run([]string{"review", "--evidence", review, "--run", "dp"}); code != 0 {
 		t.Fatal("review")
 	}

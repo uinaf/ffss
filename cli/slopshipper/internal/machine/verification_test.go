@@ -13,7 +13,7 @@ func deliverAt(t *testing.T) (machine.Run, []machine.Unit) {
 	run, units := releasedAtReview(t)
 	res, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 		ExpectedRevision: run.Revision,
-		Review:           &machine.ReviewEvidence{Reviewer: machine.ReviewerAutoreview, Verdict: "clean", ArtifactRef: "test://1"},
+		Review:           &machine.ReviewEvidence{Reviewer: machine.ReviewerSlopguard, Verdict: "clean", ArtifactRef: "test://1"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -83,11 +83,11 @@ func TestDeliverOverrideReasonBounds(t *testing.T) {
 
 func TestReviewVerificationValidatedToo(t *testing.T) {
 	run, units := releasedAtReview(t)
-	bad := &machine.ReviewEvidence{Reviewer: machine.ReviewerAutoreview, Verdict: "clean", ArtifactRef: "test://1", Verification: "narrated"}
+	bad := &machine.ReviewEvidence{Reviewer: machine.ReviewerSlopguard, Verdict: "clean", ArtifactRef: "test://1", Verification: "narrated"}
 	if _, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{ExpectedRevision: run.Revision, Review: bad}); !errors.Is(err, machine.ErrUnmetGuard) {
 		t.Fatalf("unknown review verification must fail closed: %v", err)
 	}
-	good := &machine.ReviewEvidence{Reviewer: machine.ReviewerAutoreview, Verdict: "clean", ArtifactRef: "test://1", Verification: machine.VerificationOverridden, UnverifiedReason: "corroboration bypassed for fixture"}
+	good := &machine.ReviewEvidence{Reviewer: machine.ReviewerSlopguard, Verdict: "clean", ArtifactRef: "test://1", Verification: machine.VerificationOverridden, UnverifiedReason: "corroboration bypassed for fixture"}
 	if _, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{ExpectedRevision: run.Revision, Review: good}); err != nil {
 		t.Fatalf("overridden review with reason must pass: %v", err)
 	}
@@ -135,5 +135,19 @@ func TestNormalizeForgeLogin(t *testing.T) {
 	}
 	if machine.NormalizeForgeLogin("zapbot") == machine.NormalizeForgeLogin("other") {
 		t.Fatal("distinct logins must stay distinct")
+	}
+}
+
+func TestRetiredReviewerNameIsRejectedWithRename(t *testing.T) {
+	run := machine.NewRun("r", "repo")
+	_, err := machine.Apply(run, nil, machine.CmdIntake, machine.ApplyInput{
+		ExpectedRevision: 1,
+		Intake: &machine.IntakePatch{
+			RequiredReviewers: []machine.ReviewerIdentity{"autoreview"},
+			Units:             []machine.Unit{{ID: "u1", Title: "t"}},
+		},
+	})
+	if !errors.Is(err, machine.ErrBadArgs) || !strings.Contains(err.Error(), `renamed to "slopguard"`) {
+		t.Fatalf("retired identity must point at its successor: %v", err)
 	}
 }

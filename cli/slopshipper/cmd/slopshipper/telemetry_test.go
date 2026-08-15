@@ -27,7 +27,7 @@ func TestDirectTelemetryRecording(t *testing.T) {
 		t.Fatal("init")
 	}
 	intake := filepath.Join(t.TempDir(), "intake.json")
-	mustWrite(t, intake, `{"required_reviewers":["autoreview"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	mustWrite(t, intake, `{"required_reviewers":["slopguard"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
 	if code := run([]string{"intake", "--file", intake, "--run", "tm"}); code != 0 {
 		t.Fatal("intake")
 	}
@@ -69,7 +69,7 @@ func TestTelemetryTotalsSurfaceInStatus(t *testing.T) {
 	h := newCLIHarness(t)
 	h.must("init", "--run", "tt")
 	intake := filepath.Join(t.TempDir(), "intake.json")
-	mustWrite(t, intake, `{"required_reviewers":["autoreview"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	mustWrite(t, intake, `{"required_reviewers":["slopguard"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
 	h.must("intake", "--file", intake, "--run", "tt")
 	h.must("release", "--revision", "2", "--run", "tt")
 	tel := filepath.Join(t.TempDir(), "tel.json")
@@ -92,7 +92,7 @@ func TestTelemetryTotalsSurfaceInStatus(t *testing.T) {
 	}
 
 	// Raw --input transitions accept a telemetry object.
-	review := `{"run":"tt","reviewer":"autoreview","verdict":"clean","artifact_ref":"test://1","telemetry":{"tokens":500}}`
+	review := `{"run":"tt","reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1","telemetry":{"tokens":500}}`
 	h.mustInput(review, "review", "--input", "-")
 	out = h.must("status", "--json", "--run", "tt")
 	if err := json.Unmarshal([]byte(out), &st); err != nil {

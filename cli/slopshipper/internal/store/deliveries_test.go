@@ -42,7 +42,7 @@ func TestLatestDeliveriesKeepsNewestPerUnit(t *testing.T) {
 		apply(machine.CmdBuild, machine.ApplyInput{})
 		apply(machine.CmdVerify, machine.ApplyInput{Verify: &machine.VerifyEvidence{Command: "true", ExitCode: 0}})
 		apply(machine.CmdReview, machine.ApplyInput{Review: &machine.ReviewEvidence{
-			Reviewer: machine.ReviewerAutoreview, Verdict: machine.ReviewClean, ArtifactRef: "test://r",
+			Reviewer: machine.ReviewerSlopguard, Verdict: machine.ReviewClean, ArtifactRef: "test://r",
 		}})
 		apply(machine.CmdDeliver, machine.ApplyInput{Deliver: &machine.DeliverEvidence{
 			DeliveryMode: machine.DeliveryPRHold, PRURL: prURL, CommitSHA: sha,

@@ -16,7 +16,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 8
+const schemaVersion = 9
 
 // timestampNow returns a fixed-width UTC timestamp. RFC3339Nano trims
 // trailing zeros, which breaks the lexicographic ordering the run queries
@@ -261,6 +261,108 @@ func (s *Store) migrate() error {
 				return fmt.Errorf("migrate schema 7 to 8: %w", err)
 			}
 			version = 8
+		case 8:
+			// The autoreview built-in identity was renamed to slopguard.
+			// Live run state and profile bindings follow the rename; the
+			// event ledger keeps historical evidence verbatim. The quoted
+			// JSON tokens are unambiguous because identities are whole JSON
+			// strings in these documents.
+			//
+			// At v8 "slopguard" can only be a CUSTOM identity; renaming
+			// autoreview onto it would merge two distinct reviewers and
+			// weaken existing review gates, in any row or field. Refuse
+			// whenever the name occupies the reviewer-identity namespace —
+			// the registry, run reviewer arrays, REVIEW role bindings, and
+			// forge-reviewer keys. Other role bindings and forge-reviewer
+			// values are vendor/login names, not reviewer identities, and
+			// are deliberately neither inspected nor renamed.
+			var occupied int
+			if err := tx.QueryRow(`SELECT
+				(SELECT COUNT(*) FROM reviewers WHERE name = 'slopguard')
+				+ (SELECT COUNT(*) FROM runs
+					WHERE instr(required_reviewers_json, '"slopguard"') > 0
+					   OR instr(completed_reviewers_json, '"slopguard"') > 0)`).Scan(&occupied); err != nil {
+				return fmt.Errorf("inspect reviewer rename collisions: %w", err)
+			}
+			type profileRewrite struct {
+				key, bindings, forge string
+			}
+			var rewrites []profileRewrite
+			rows, err := tx.Query(`SELECT repo_key, bindings_json, forge_reviewers_json FROM repos`)
+			if err != nil {
+				return fmt.Errorf("read profiles for reviewer rename: %w", err)
+			}
+			for rows.Next() {
+				var key, rawBindings, rawForge string
+				if err := rows.Scan(&key, &rawBindings, &rawForge); err != nil {
+					_ = rows.Close()
+					return fmt.Errorf("scan profile for reviewer rename: %w", err)
+				}
+				var bindings map[string][]string
+				var forge map[string]string
+				if err := json.Unmarshal([]byte(rawBindings), &bindings); err != nil {
+					_ = rows.Close()
+					return fmt.Errorf("decode profile %q bindings for reviewer rename: %w", key, err)
+				}
+				if err := json.Unmarshal([]byte(rawForge), &forge); err != nil {
+					_ = rows.Close()
+					return fmt.Errorf("decode profile %q forge reviewers for reviewer rename: %w", key, err)
+				}
+				changed := false
+				for i, name := range bindings["review"] {
+					if name == "slopguard" {
+						occupied++
+					}
+					if name == "autoreview" {
+						bindings["review"][i] = "slopguard"
+						changed = true
+					}
+				}
+				if _, taken := forge["slopguard"]; taken {
+					occupied++
+				}
+				if login, renamed := forge["autoreview"]; renamed {
+					delete(forge, "autoreview")
+					forge["slopguard"] = login
+					changed = true
+				}
+				if !changed {
+					continue
+				}
+				encodedBindings, err := json.Marshal(bindings)
+				if err != nil {
+					_ = rows.Close()
+					return err
+				}
+				encodedForge, err := json.Marshal(forge)
+				if err != nil {
+					_ = rows.Close()
+					return err
+				}
+				rewrites = append(rewrites, profileRewrite{key: key, bindings: string(encodedBindings), forge: string(encodedForge)})
+			}
+			if err := rows.Err(); err != nil {
+				_ = rows.Close()
+				return fmt.Errorf("iterate profiles for reviewer rename: %w", err)
+			}
+			if err := rows.Close(); err != nil {
+				return err
+			}
+			if occupied > 0 {
+				return fmt.Errorf("%d row(s) already use a custom reviewer identity \"slopguard\", which the renamed built-in \"autoreview\" would silently merge with; rename or remove the custom identity and its references, then rerun", occupied)
+			}
+			for _, rewrite := range rewrites {
+				if _, err := tx.Exec(`UPDATE repos SET bindings_json = ?, forge_reviewers_json = ? WHERE repo_key = ?`,
+					rewrite.bindings, rewrite.forge, rewrite.key); err != nil {
+					return fmt.Errorf("migrate schema 8 to 9 profiles: %w", err)
+				}
+			}
+			if _, err := tx.Exec(`UPDATE runs SET
+				required_reviewers_json = REPLACE(required_reviewers_json, '"autoreview"', '"slopguard"'),
+				completed_reviewers_json = REPLACE(completed_reviewers_json, '"autoreview"', '"slopguard"')`); err != nil {
+				return fmt.Errorf("migrate schema 8 to 9: %w", err)
+			}
+			version = 9
 		default:
 			return fmt.Errorf("unsupported schema version %d", version)
 		}

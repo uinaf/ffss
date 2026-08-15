@@ -69,12 +69,12 @@ func forgeBoundRun(t *testing.T, h *cliHarness, runID string) {
 	t.Helper()
 	h.must("reviewers", "--add", "slopzapper")
 	h.must("repo", "register", "--forge", "github",
-		"--bind", "review=autoreview,review=slopzapper",
+		"--bind", "review=slopguard,review=slopzapper",
 		"--forge-reviewer", "slopzapper=zapbot")
 	h.must("init", "--run", runID)
 	intake := filepath.Join(t.TempDir(), "intake.json")
 	mustWrite(t, intake, `{
-		"required_reviewers":["autoreview","slopzapper"],
+		"required_reviewers":["slopguard","slopzapper"],
 		"series_bound":1,
 		"units":[{"id":"u1","title":"one"}]
 	}`)
@@ -83,7 +83,7 @@ func forgeBoundRun(t *testing.T, h *cliHarness, runID string) {
 	h.must("build", "--run", runID)
 	h.must("verify", "--cmd", "true", "--run", runID)
 	review := filepath.Join(t.TempDir(), "review.json")
-	mustWrite(t, review, `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"test://1"}`)
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1"}`)
 	h.must("review", "--evidence", review, "--run", runID)
 }
 
@@ -212,7 +212,7 @@ func TestUnverifiedRejectedWhenNothingWouldVerify(t *testing.T) {
 	h := newCLIHarness(t)
 	deliverWatchableRunToReview(t, h, "v6")
 	review := filepath.Join(t.TempDir(), "review.json")
-	mustWrite(t, review, `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"test://1"}`)
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1"}`)
 	if out, code := h.run("review", "--evidence", review, "--unverified", "--reason", "why", "--json", "--run", "v6"); code != 2 {
 		t.Fatalf("override on a recorded-input review must be rejected: code=%d %s", code, out)
 	}
@@ -230,7 +230,7 @@ func deliverWatchableRunToReview(t *testing.T, h *cliHarness, runID string) {
 	t.Helper()
 	h.must("init", "--run", runID)
 	intake := filepath.Join(t.TempDir(), "intake.json")
-	mustWrite(t, intake, `{"required_reviewers":["autoreview"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	mustWrite(t, intake, `{"required_reviewers":["slopguard"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
 	h.must("intake", "--file", intake, "--run", runID)
 	h.must("release", "--revision", "2", "--run", runID)
 	h.must("build", "--run", runID)
@@ -254,7 +254,7 @@ func TestEvidenceRejectsCallerSuppliedVerification(t *testing.T) {
 	h := newCLIHarness(t)
 	forgeBoundRun(t, h, "v8")
 	review := filepath.Join(t.TempDir(), "review.json")
-	mustWrite(t, review, `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"test://1","verification":"observed"}`)
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1","verification":"observed"}`)
 	if out, code := h.run("review", "--evidence", review, "--run", "v8"); code != 2 || !strings.Contains(out, "machine stamps it") {
 		t.Fatalf("caller-supplied review verification must be rejected: code=%d %s", code, out)
 	}
@@ -359,22 +359,22 @@ func TestRepoForgeReviewerFlag(t *testing.T) {
 	if out, code := h.run("repo", "register", "--forge", "github", "--forge-reviewer", "ghost=ghostbot", "--json"); code != 2 || !strings.Contains(out, "ghost") {
 		t.Fatalf("unregistered identity must be rejected: code=%d %s", code, out)
 	}
-	if out, code := h.run("repo", "register", "--forge-reviewer", "autoreview=bot"); code != 2 || !strings.Contains(out, "forge kind") {
+	if out, code := h.run("repo", "register", "--forge-reviewer", "slopguard=bot"); code != 2 || !strings.Contains(out, "forge kind") {
 		t.Fatalf("mapping without forge kind must be rejected: code=%d %s", code, out)
 	}
-	if out, code := h.run("repo", "register", "--forge", "github", "--forge-reviewer", "autoreview=a,autoreview=b"); code != 2 || !strings.Contains(out, "twice") {
+	if out, code := h.run("repo", "register", "--forge", "github", "--forge-reviewer", "slopguard=a,slopguard=b"); code != 2 || !strings.Contains(out, "twice") {
 		t.Fatalf("duplicate mapping must be rejected: code=%d %s", code, out)
 	}
 
-	out := h.must("repo", "register", "--forge", "github", "--forge-reviewer", "autoreview=autobot", "--json")
+	out := h.must("repo", "register", "--forge", "github", "--forge-reviewer", "slopguard=autobot", "--json")
 	var doc repoProfileDocument
 	if err := json.Unmarshal([]byte(out), &doc); err != nil {
 		t.Fatal(err)
 	}
-	if doc.ForgeReviewers["autoreview"] != "autobot" {
+	if doc.ForgeReviewers["slopguard"] != "autobot" {
 		t.Fatalf("mapping must round-trip: %s", out)
 	}
-	if text := h.must("repo", "show"); !strings.Contains(text, "forge-reviewers=autoreview=autobot") {
+	if text := h.must("repo", "show"); !strings.Contains(text, "forge-reviewers=slopguard=autobot") {
 		t.Fatalf("text output must show the mapping: %s", text)
 	}
 	if text := h.must("repo", "update", "--forge-reviewer", ""); strings.Contains(text, "forge-reviewers=") {
@@ -421,12 +421,12 @@ esac
 		t.Fatal("reviewers --add failed")
 	}
 	if code := run([]string{"repo", "register", "--forge", "github",
-		"--bind", "review=autoreview,review=slopzapper",
+		"--bind", "review=slopguard,review=slopzapper",
 		"--forge-reviewer", "slopzapper=zapbot"}); code != 0 {
 		t.Fatal("repo register failed")
 	}
 	intake := filepath.Join(t.TempDir(), "intake.json")
-	mustWrite(t, intake, `{"required_reviewers":["autoreview","slopzapper"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	mustWrite(t, intake, `{"required_reviewers":["slopguard","slopzapper"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
 	steps := [][]string{
 		{"init", "--run", "dv"},
 		{"intake", "--file", intake, "--run", "dv"},
@@ -440,7 +440,7 @@ esac
 		}
 	}
 	local := filepath.Join(t.TempDir(), "auto.json")
-	mustWrite(t, local, `{"reviewer":"autoreview","verdict":"clean","artifact_ref":"test://1"}`)
+	mustWrite(t, local, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1"}`)
 	if code := run([]string{"review", "--evidence", local, "--run", "dv"}); code != 0 {
 		t.Fatal("local review failed")
 	}

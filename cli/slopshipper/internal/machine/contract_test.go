@@ -33,7 +33,7 @@ func TestIntakeRejectsInvalidContracts(t *testing.T) {
 		{"bad delivery", &machine.IntakePatch{DeliveryMode: &badDelivery}},
 		{"empty reviewers", &machine.IntakePatch{RequiredReviewers: []machine.ReviewerIdentity{}}},
 		{"invalid reviewer id", &machine.IntakePatch{RequiredReviewers: []machine.ReviewerIdentity{"nope name"}}},
-		{"duplicate reviewer", &machine.IntakePatch{RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview, machine.ReviewerAutoreview}}},
+		{"duplicate reviewer", &machine.IntakePatch{RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard, machine.ReviewerSlopguard}}},
 		{"unregistered reviewer", &machine.IntakePatch{RequiredReviewers: []machine.ReviewerIdentity{"slopzapper"}}},
 		{"zero series", &machine.IntakePatch{SeriesBound: &zero}},
 		{"bad risk tier", &machine.IntakePatch{RiskTier: riskPtr("extreme")}},
@@ -111,12 +111,12 @@ func TestRequiredReviewerMatrix(t *testing.T) {
 		reviewer machine.ReviewerIdentity
 		state    machine.State
 	}{
-		{"single autoreview", []machine.ReviewerIdentity{machine.ReviewerAutoreview}, machine.ReviewerAutoreview, machine.StateDeliver},
+		{"single slopguard", []machine.ReviewerIdentity{machine.ReviewerSlopguard}, machine.ReviewerSlopguard, machine.StateDeliver},
 		{"single bugbot", []machine.ReviewerIdentity{machine.ReviewerBugbot}, machine.ReviewerBugbot, machine.StateDeliver},
 		{"single human", []machine.ReviewerIdentity{machine.ReviewerHuman}, machine.ReviewerHuman, machine.StateDeliver},
 		{"single custom", []machine.ReviewerIdentity{"slopzapper"}, "slopzapper", machine.StateDeliver},
-		{"pair first", []machine.ReviewerIdentity{machine.ReviewerAutoreview, machine.ReviewerBugbot}, machine.ReviewerAutoreview, machine.StateReview},
-		{"pair second", []machine.ReviewerIdentity{machine.ReviewerAutoreview, machine.ReviewerBugbot}, machine.ReviewerBugbot, machine.StateReview},
+		{"pair first", []machine.ReviewerIdentity{machine.ReviewerSlopguard, machine.ReviewerBugbot}, machine.ReviewerSlopguard, machine.StateReview},
+		{"pair second", []machine.ReviewerIdentity{machine.ReviewerSlopguard, machine.ReviewerBugbot}, machine.ReviewerBugbot, machine.StateReview},
 		{"custom pair partial", []machine.ReviewerIdentity{"slopzapper", machine.ReviewerHuman}, "slopzapper", machine.StateReview},
 	}
 	for _, tt := range tests {
@@ -222,7 +222,7 @@ func TestUnitLatchBabysitLoop(t *testing.T) {
 	walkToDeliver := func() {
 		t.Helper()
 		run, units = mustApply(t, run, units, machine.CmdVerify, machine.ApplyInput{Verify: &machine.VerifyEvidence{Command: "true", ExitCode: 0}})
-		run, units = mustApply(t, run, units, machine.CmdReview, machine.ApplyInput{Review: &machine.ReviewEvidence{Reviewer: machine.ReviewerAutoreview, Verdict: machine.ReviewClean, ArtifactRef: "a://1"}})
+		run, units = mustApply(t, run, units, machine.CmdReview, machine.ApplyInput{Review: &machine.ReviewEvidence{Reviewer: machine.ReviewerSlopguard, Verdict: machine.ReviewClean, ArtifactRef: "a://1"}})
 		run, units = mustApply(t, run, units, machine.CmdDeliver, machine.ApplyInput{Deliver: &machine.DeliverEvidence{DeliveryMode: machine.DeliveryPRHold, PRURL: "https://example.com/pr"}})
 	}
 
@@ -288,7 +288,7 @@ func TestObserveWorksInParkedStatesWithoutDisturbingThem(t *testing.T) {
 	base := machine.Run{
 		ID: "r", RepoKey: "repo", IntakeRevision: 1, Revision: 5,
 		ReleasedRevision: &released, SeriesBound: 2,
-		RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview},
+		RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard},
 	}
 	units := []machine.Unit{
 		{ID: "u1", Phase: machine.PhaseDelivered},
@@ -339,7 +339,7 @@ func TestDecideReprojectsStaleRestingStates(t *testing.T) {
 	base := machine.Run{
 		ID: "r", RepoKey: "repo", IntakeRevision: 1, Revision: 7,
 		ReleasedRevision: &released, SeriesBound: 1,
-		RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview},
+		RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard},
 		State:             machine.StateNeedsDecision,
 		DecisionQuestion:  "hold?",
 		ReturnState:       machine.StateAwaitingSignals,
@@ -410,7 +410,7 @@ func TestUnreleasedRunsNeverSettleThroughObserve(t *testing.T) {
 	run := machine.Run{
 		ID: "r", RepoKey: "repo", IntakeRevision: 1, Revision: 4,
 		ReleasedRevision: &released, SeriesBound: 1,
-		RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview},
+		RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard},
 		State:             machine.StateAwaitingSignals,
 	}
 	units := []machine.Unit{{ID: "u1", Phase: machine.PhaseDelivered, Attempt: 1}}
@@ -459,7 +459,7 @@ func TestReworkClaimsRespectBlockers(t *testing.T) {
 	run := machine.Run{
 		ID: "r", RepoKey: "repo", IntakeRevision: 1, Revision: 9,
 		ReleasedRevision: &released, SeriesBound: 2, State: machine.StateIntake,
-		RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerAutoreview},
+		RequiredReviewers: []machine.ReviewerIdentity{machine.ReviewerSlopguard},
 	}
 	// The dependent is listed first and both took feedback.
 	units := []machine.Unit{
@@ -577,13 +577,13 @@ func TestSeriesBoundBlocksFreshClaimsNotRework(t *testing.T) {
 func TestReviewEvidenceValidation(t *testing.T) {
 	tests := []machine.ReviewEvidence{
 		{},
-		{Reviewer: machine.ReviewerAutoreview, Verdict: "other", ArtifactRef: "test://1"},
+		{Reviewer: machine.ReviewerSlopguard, Verdict: "other", ArtifactRef: "test://1"},
 		{Reviewer: "other", Verdict: machine.ReviewClean, ArtifactRef: "test://1"},
-		{Reviewer: machine.ReviewerAutoreview, Verdict: machine.ReviewClean},
+		{Reviewer: machine.ReviewerSlopguard, Verdict: machine.ReviewClean},
 		{Reviewer: machine.ReviewerBugbot, Verdict: machine.ReviewClean, ArtifactRef: "test://1"},
 	}
 	for i := range tests {
-		run, units := reviewRun(machine.ReviewerAutoreview)
+		run, units := reviewRun(machine.ReviewerSlopguard)
 		if _, err := machine.Apply(run, units, machine.CmdReview, machine.ApplyInput{
 			ExpectedRevision: run.Revision, Review: &tests[i],
 		}); !errors.Is(err, machine.ErrUnmetGuard) {
@@ -648,7 +648,7 @@ func TestDeliveryModesAndValidation(t *testing.T) {
 }
 
 func TestReworkBlockAndCorruptStateGuards(t *testing.T) {
-	run, units := reviewRun(machine.ReviewerAutoreview)
+	run, units := reviewRun(machine.ReviewerSlopguard)
 	released := run.IntakeRevision
 	run.ReleasedRevision = &released
 	rework, err := machine.Apply(run, units, machine.CmdRework, machine.ApplyInput{ExpectedRevision: run.Revision})

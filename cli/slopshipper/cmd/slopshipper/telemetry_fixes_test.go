@@ -26,7 +26,7 @@ func TestInitAcceptsTelemetryAndDryRunTotalsProject(t *testing.T) {
 	}
 
 	intake := filepath.Join(t.TempDir(), "intake.json")
-	mustWrite(t, intake, `{"required_reviewers":["autoreview"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	mustWrite(t, intake, `{"required_reviewers":["slopguard"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
 	h.must("intake", "--file", intake, "--run", "it")
 
 	// Dry-run totals include the proposed telemetry without persisting it.
@@ -84,7 +84,7 @@ func TestVerifyRejectsBadTelemetryBeforeExecution(t *testing.T) {
 	h := newCLIHarness(t)
 	h.must("init", "--run", "vt")
 	intake := filepath.Join(t.TempDir(), "intake.json")
-	mustWrite(t, intake, `{"required_reviewers":["autoreview"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	mustWrite(t, intake, `{"required_reviewers":["slopguard"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
 	h.must("intake", "--file", intake, "--run", "vt")
 	h.must("release", "--revision", "2", "--run", "vt")
 	h.must("build", "--run", "vt")

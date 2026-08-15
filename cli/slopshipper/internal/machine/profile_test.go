@@ -17,7 +17,7 @@ func validProfile() machine.RepoProfile {
 		DeliveryMode:  machine.DeliveryPRHold,
 		Readiness:     machine.ReadinessReady,
 		Bindings: map[machine.Role][]string{
-			machine.RoleReview: {"autoreview", "slopzapper"},
+			machine.RoleReview: {"slopguard", "slopzapper"},
 			machine.RoleQA:     {"slopscouter"},
 		},
 	}
@@ -63,7 +63,7 @@ func TestValidateProfileFailsClosed(t *testing.T) {
 			p.Bindings[machine.RoleQA] = []string{"bad name"}
 		},
 		"duplicate binding": func(p *machine.RepoProfile) {
-			p.Bindings[machine.RoleReview] = []string{"autoreview", "autoreview"}
+			p.Bindings[machine.RoleReview] = []string{"slopguard", "slopguard"}
 		},
 	}
 	for name, mutate := range mutations {
@@ -77,7 +77,7 @@ func TestValidateProfileFailsClosed(t *testing.T) {
 }
 
 func TestProfileAllowsReviewers(t *testing.T) {
-	required := []machine.ReviewerIdentity{"autoreview", "slopzapper"}
+	required := []machine.ReviewerIdentity{"slopguard", "slopzapper"}
 	if err := machine.ProfileAllowsReviewers(nil, required); err != nil {
 		t.Fatalf("nil profile keeps profile-less behavior: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestProfileAllowsReviewers(t *testing.T) {
 	if err := machine.ProfileAllowsReviewers(&profile, required); err != nil {
 		t.Fatal(err)
 	}
-	profile.Bindings[machine.RoleReview] = []string{"autoreview"}
+	profile.Bindings[machine.RoleReview] = []string{"slopguard"}
 	err := machine.ProfileAllowsReviewers(&profile, required)
 	if !errors.Is(err, machine.ErrUnmetGuard) || !strings.Contains(err.Error(), "slopzapper") {
 		t.Fatalf("unbound reviewer must fail closed with the name: %v", err)
@@ -126,7 +126,7 @@ func TestIntakeAndReleaseEnforceProfileBindings(t *testing.T) {
 
 	// Release re-checks the binding: a profile change after intake fails closed.
 	narrowed := validProfile()
-	narrowed.Bindings[machine.RoleReview] = []string{"autoreview"}
+	narrowed.Bindings[machine.RoleReview] = []string{"slopguard"}
 	_, err = machine.Apply(res.Run, res.Units, machine.CmdRelease, machine.ApplyInput{
 		IntakeRevision: res.Run.IntakeRevision,
 		Profile:        &narrowed,

@@ -54,7 +54,7 @@ func TestDirectRepoCommand(t *testing.T) {
 	if code := run([]string{"repo", "register",
 		"--forge", "github", "--trust", "low", "--verify-cmd", "echo 'x'",
 		"--delivery", "pr-hold", "--readiness", "ready",
-		"--bind", "review=autoreview,review=slopzapper,qa=slopscouter"}); code != 0 {
+		"--bind", "review=slopguard,review=slopzapper,qa=slopscouter"}); code != 0 {
 		t.Fatalf("register=%d", code)
 	}
 	if code := run([]string{"repo"}); code != 0 {
@@ -110,7 +110,7 @@ func TestRepoProfileLifecycle(t *testing.T) {
 	out = h.must("repo", "register",
 		"--forge", "github", "--trust", "low", "--verify-cmd", "true",
 		"--delivery", "pr-merge-when-ready", "--readiness", "ready",
-		"--bind", "review=autoreview,review=slopzapper,qa=slopscouter", "--json")
+		"--bind", "review=slopguard,review=slopzapper,qa=slopscouter", "--json")
 	doc := decodeRepoDoc(t, out)
 	if !doc.Registered || doc.ForgeKind != "github" || doc.VerifyCommand != "true" ||
 		doc.DeliveryMode != "pr-merge-when-ready" || len(doc.Bindings["review"]) != 2 {
@@ -188,7 +188,7 @@ func TestRepoDryRunProjectsWithoutPersisting(t *testing.T) {
 	h := newCLIHarness(t)
 	// A fresh installation (no database yet) projects against empty state,
 	// matching what the real command would create.
-	out := h.must("--dry-run", "repo", "register", "--trust", "high", "--bind", "review=autoreview", "--json")
+	out := h.must("--dry-run", "repo", "register", "--trust", "high", "--bind", "review=slopguard", "--json")
 	doc := decodeRepoDoc(t, out)
 	if !doc.DryRun || !doc.Registered || doc.TrustTier != "high" {
 		t.Fatalf("dry-run register must project the profile: %s", out)
@@ -209,7 +209,7 @@ func TestRegisteredRepoDrivesContractDefaultsAndGates(t *testing.T) {
 	h.must("reviewers", "--add", "slopzapper")
 	h.must("repo", "register",
 		"--verify-cmd", "true", "--delivery", "pr-merge-when-ready",
-		"--bind", "review=autoreview,review=slopzapper")
+		"--bind", "review=slopguard,review=slopzapper")
 
 	// init inherits the profile's delivery policy.
 	h.must("init", "--run", "prof")
@@ -235,7 +235,7 @@ func TestRegisteredRepoDrivesContractDefaultsAndGates(t *testing.T) {
 	// The two-reviewer gate: contract requires both bound reviewers.
 	intake := filepath.Join(t.TempDir(), "intake.json")
 	mustWrite(t, intake, `{
-		"required_reviewers":["autoreview","slopzapper"],
+		"required_reviewers":["slopguard","slopzapper"],
 		"series_bound":1,
 		"units":[{"id":"u1","title":"one"}]
 	}`)
@@ -246,14 +246,14 @@ func TestRegisteredRepoDrivesContractDefaultsAndGates(t *testing.T) {
 	}
 
 	// Narrowing the review bindings blocks the release fail-closed.
-	h.must("repo", "update", "--bind", "review=autoreview")
+	h.must("repo", "update", "--bind", "review=slopguard")
 	out, code := h.run("release", "--revision", itoa(st.IntakeRevision), "--run", "prof")
 	if code != 3 || !strings.Contains(out, "slopzapper") {
 		t.Fatalf("release must fail when a required reviewer loses its binding: exit %d\n%s", code, out)
 	}
 
 	// Restoring the binding satisfies the two-reviewer gate.
-	h.must("repo", "update", "--bind", "review=autoreview,review=slopzapper")
+	h.must("repo", "update", "--bind", "review=slopguard,review=slopzapper")
 	h.must("release", "--revision", itoa(st.IntakeRevision), "--run", "prof")
 	h.must("build", "--run", "prof")
 

@@ -1,5 +1,5 @@
 {
-  "reviewer": "autoreview",
+  "reviewer": "slopguard",
   "verdict": "clean",
-  "artifact_ref": "autoreview://local"
+  "artifact_ref": "slopguard://local"
 }

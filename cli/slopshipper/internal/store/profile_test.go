@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,7 +20,7 @@ func testProfile(repoKey string) machine.RepoProfile {
 		DeliveryMode:  machine.DeliveryPRHold,
 		Readiness:     machine.ReadinessReady,
 		Bindings: map[machine.Role][]string{
-			machine.RoleReview: {"autoreview", "bugbot"},
+			machine.RoleReview: {"slopguard", "bugbot"},
 		},
 	}
 }
@@ -114,11 +115,11 @@ func TestSaveApplyReenforcesProfileBindingsTransactionally(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = s.SaveApply(res)
-	if !errors.Is(err, machine.ErrUnmetGuard) || !strings.Contains(err.Error(), "autoreview") {
+	if !errors.Is(err, machine.ErrUnmetGuard) || !strings.Contains(err.Error(), "slopguard") {
 		t.Fatalf("save must re-check profile bindings transactionally: %v", err)
 	}
 
-	profile.Bindings = map[machine.Role][]string{machine.RoleReview: {"autoreview"}}
+	profile.Bindings = map[machine.Role][]string{machine.RoleReview: {"slopguard"}}
 	if err := s.UpdateRepoProfile(profile); err != nil {
 		t.Fatal(err)
 	}
@@ -142,6 +143,10 @@ func TestMigratesVersionFiveAddsRepos(t *testing.T) {
 
 	db := openSQLite(t, path)
 	if _, err := db.Exec(`DROP TABLE repos`); err != nil {
+		t.Fatal(err)
+	}
+	// Pre-rename databases spelled the identity autoreview.
+	if _, err := db.Exec(`UPDATE runs SET required_reviewers_json = REPLACE(required_reviewers_json, '"slopguard"', '"autoreview"')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`ALTER TABLE events DROP COLUMN telemetry_json`); err != nil {
@@ -268,6 +273,13 @@ func TestMigratesVersionSevenAddsForgeReviewers(t *testing.T) {
 	if _, err := db.Exec(`ALTER TABLE repos DROP COLUMN forge_reviewers_json`); err != nil {
 		t.Fatal(err)
 	}
+	// Pre-rename databases spelled the identity autoreview.
+	if _, err := db.Exec(`UPDATE runs SET required_reviewers_json = REPLACE(required_reviewers_json, '"slopguard"', '"autoreview"')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE repos SET bindings_json = REPLACE(bindings_json, '"slopguard"', '"autoreview"')`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := db.Exec(`UPDATE meta SET value = '7' WHERE key = 'schema_version'`); err != nil {
 		t.Fatal(err)
 	}
@@ -290,5 +302,251 @@ func TestMigratesVersionSevenAddsForgeReviewers(t *testing.T) {
 	got.ForgeReviewers = map[string]string{"slopzapper": "zapbot"}
 	if err := s.UpdateRepoProfile(got); err != nil {
 		t.Fatalf("migrated database must accept forge reviewers: %v", err)
+	}
+}
+
+func TestMigratesVersionEightRenamesRetiredReviewer(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v8.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := machine.NewRun("run", "repo")
+	run.RequiredReviewers = []machine.ReviewerIdentity{machine.ReviewerSlopguard, machine.ReviewerBugbot}
+	if err := s.CreateRun(run, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RegisterRepoProfile(testProfile("repo")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Rewind to v8 with the retired identity in live state, exactly as a
+	// pre-rename database would hold it.
+	db := openSQLite(t, path)
+	if _, err := db.Exec(`UPDATE runs SET
+		required_reviewers_json = '["autoreview","bugbot"]',
+		completed_reviewers_json = '["autoreview"]'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE repos SET
+		bindings_json = '{"review":["autoreview","bugbot"]}',
+		forge_reviewers_json = '{"autoreview":"autoreview"}'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	s, err = store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	got, _, err := s.GetRun("run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RequiredReviewers[0] != machine.ReviewerSlopguard || got.CompletedReviewers[0] != machine.ReviewerSlopguard {
+		t.Fatalf("live run state must follow the rename: %+v", got)
+	}
+	profile, _, err := s.GetRepoProfile("repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if profile.Bindings[machine.RoleReview][0] != "slopguard" {
+		t.Fatalf("bindings must follow the rename: %+v", profile.Bindings)
+	}
+	// The mapping KEY is an identity and renames; the VALUE is a forge
+	// login and must stay untouched.
+	if login, ok := profile.ForgeReviewers["slopguard"]; !ok || login != "autoreview" {
+		t.Fatalf("forge reviewer keys rename, values stay: %+v", profile.ForgeReviewers)
+	}
+}
+
+func TestMigrationRefusesReviewerRenameCollision(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v8-collision.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateRun(machine.NewRun("run", "repo"), nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db := openSQLite(t, path)
+	// A v8 world where slopguard already existed as a custom identity in a
+	// DIFFERENT row than the built-in autoreview: merging them would weaken
+	// the gate just the same.
+	if _, err := db.Exec(`UPDATE runs SET required_reviewers_json = '["slopguard"]'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Open(path); err == nil || !strings.Contains(err.Error(), "silently merge") {
+		t.Fatalf("collision must refuse the migration: %v", err)
+	}
+}
+
+func TestMigrationRefusesCustomSlopguardRegistration(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v8-custom.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RegisterReviewer("shadow"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db := openSQLite(t, path)
+	if _, err := db.Exec(`UPDATE reviewers SET name = 'slopguard' WHERE name = 'shadow'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Open(path); err == nil || !strings.Contains(err.Error(), "silently merge") {
+		t.Fatalf("an occupied name must refuse the migration even with no autoreview overlap: %v", err)
+	}
+}
+
+func TestMigrationScopesRenameToReviewerNamespace(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v8-scoped.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RegisterRepoProfile(testProfile("repo")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db := openSQLite(t, path)
+	// A qa binding named slopguard is a vendor name, not a reviewer
+	// identity: it must neither block the migration nor be renamed. An
+	// autoreview qa binding likewise stays untouched.
+	if _, err := db.Exec(`UPDATE repos SET bindings_json = '{"review":["autoreview"],"qa":["slopguard","autoreview"]}'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s, err = store.Open(path)
+	if err != nil {
+		t.Fatalf("non-reviewer vendor names must not block migration: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+	profile, _, err := s.GetRepoProfile("repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if profile.Bindings[machine.RoleReview][0] != "slopguard" {
+		t.Fatalf("review binding must rename: %+v", profile.Bindings)
+	}
+	if qa := profile.Bindings[machine.RoleQA]; qa[0] != "slopguard" || qa[1] != "autoreview" {
+		t.Fatalf("qa vendor names must stay verbatim: %+v", profile.Bindings)
+	}
+}
+
+func TestMigrationRejectsCorruptProfileDocuments(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v8-corrupt.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RegisterRepoProfile(testProfile("repo")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for column, fragment := range map[string]string{
+		"bindings_json":        "bindings",
+		"forge_reviewers_json": "forge reviewers",
+	} {
+		corrupt := filepath.Join(t.TempDir(), column+".sqlite")
+		copyFile(t, path, corrupt)
+		db := openSQLite(t, corrupt)
+		if _, err := db.Exec(`UPDATE repos SET ` + column + ` = 'not json'`); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := store.Open(corrupt); err == nil || !strings.Contains(err.Error(), fragment) {
+			t.Fatalf("corrupt %s must fail the migration with its cause: %v", column, err)
+		}
+	}
+}
+
+func copyFile(t *testing.T, src, dst string) {
+	t.Helper()
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMigrationCollisionCheckIsCaseSensitive(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v8-case.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateRun(machine.NewRun("run", "repo"), nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db := openSQLite(t, path)
+	// SlopGuard is a distinct, valid custom identity; lowercase autoreview
+	// cannot merge with it, so it must not block the migration.
+	if _, err := db.Exec(`UPDATE runs SET required_reviewers_json = '["autoreview","SlopGuard"]'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s, err = store.Open(path)
+	if err != nil {
+		t.Fatalf("case-distinct identities must not block: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+	got, _, err := s.GetRun("run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RequiredReviewers[0] != machine.ReviewerSlopguard || got.RequiredReviewers[1] != "SlopGuard" {
+		t.Fatalf("rename must be exact-case: %+v", got.RequiredReviewers)
 	}
 }
