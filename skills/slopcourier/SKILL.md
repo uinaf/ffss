@@ -29,12 +29,14 @@ invents a second workflow runtime.
 The vocabulary is "change request"; the forge decides the tool:
 
 1. Read the remote: `git remote get-url origin`.
-2. Dispatch on its host: `github.com` → `gh`; a GitLab host → `glab`;
-   anything else → stop and report the unsupported forge. Never guess at a
-   forge API.
-3. Require the dispatched CLI installed and authenticated (`gh auth status`
-   or `glab auth status`). Report a missing dependency; do not install
-   tooling or switch identities.
+2. Dispatch on its host: `github.com` or a GitHub Enterprise host that
+   `gh` is authenticated for → `gh`; a GitLab host that `glab` is
+   authenticated for → `glab`; anything else → stop and report the
+   unsupported forge. Never guess at a forge API.
+3. Verify authentication for that exact host (`gh auth status --hostname
+   <host>` or `glab auth status --hostname <host>`); credentials for an
+   unrelated host prove nothing. Report a missing dependency; do not
+   install tooling or switch identities.
 
 ## Deliver
 
@@ -62,10 +64,14 @@ forge-bound repo verifies the change request and head before accepting).
 `delivery_mode` must match the run — read it from the status document
 (`delivery_mode` field) instead of assuming one:
 
+Validate first, then apply, per the slopship protocol — the same payload
+with `--dry-run --json`, proceed only when the projection matches:
+
 ```bash
-slopshipper deliver --evidence - --run <run-id> <<'JSON'
+slopshipper deliver --evidence - --dry-run --json --run <run-id> <<'JSON'
 {"delivery_mode":"<delivery_mode from status>","pr_url":"<change request URL>","commit_sha":"<delivered head>"}
 JSON
+# projection ok -> repeat without --dry-run
 ```
 
 A rejection means the forge disagreed with the claim; fix the delivery, not
