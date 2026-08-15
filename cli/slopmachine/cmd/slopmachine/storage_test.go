@@ -298,3 +298,16 @@ func TestDefaultStoragePathInsideWorktreeFailsClosed(t *testing.T) {
 		t.Fatalf("default path inside the worktree must fail closed: %v", err)
 	}
 }
+
+func TestDefaultStorageWorksWithoutHomeWhenXDGSet(t *testing.T) {
+	t.Setenv("SLOPMACHINE_DB", "")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("HOME", "")
+	doc, err := resolveStorage(true)
+	if err != nil {
+		t.Fatalf("XDG-only configuration must not require HOME: %v", err)
+	}
+	if doc.Source != "xdg-data" {
+		t.Fatalf("unexpected source: %+v", doc)
+	}
+}

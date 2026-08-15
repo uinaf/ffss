@@ -32,9 +32,15 @@ func resolveStorage(requireGitSafe bool) (storageDocument, error) {
 		if xdgDataHome != "" && !filepath.IsAbs(xdgDataHome) {
 			return storageDocument{}, fmt.Errorf("%w: XDG_DATA_HOME must be an absolute path (got %q)", errInvalidStateConfig, xdgDataHome)
 		}
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return storageDocument{}, err
+		// HOME is only needed when XDG_DATA_HOME does not decide the base;
+		// containers configured solely through XDG must not require it.
+		home := ""
+		if xdgDataHome == "" {
+			var err error
+			home, err = os.UserHomeDir()
+			if err != nil {
+				return storageDocument{}, err
+			}
 		}
 		path, err := physicalPath(store.DefaultPath(xdgDataHome, home))
 		if err != nil {
