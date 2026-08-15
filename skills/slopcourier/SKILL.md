@@ -29,14 +29,12 @@ invents a second workflow runtime.
 The vocabulary is "change request"; the forge decides the tool:
 
 1. Read the remote: `git remote get-url origin`.
-2. Dispatch on its host: `github.com` or a GitHub Enterprise host that
-   `gh` is authenticated for → `gh`; a GitLab host that `glab` is
-   authenticated for → `glab`; anything else → stop and report the
-   unsupported forge. Never guess at a forge API.
-3. Verify authentication for that exact host (`gh auth status --hostname
-   <host>` or `glab auth status --hostname <host>`); credentials for an
-   unrelated host prove nothing. Report a missing dependency; do not
-   install tooling or switch identities.
+2. Dispatch on its host: `github.com` → `gh`; a GitLab host → `glab`;
+   anything else → stop and report the unsupported forge. Never guess at
+   a forge API.
+3. Verify authentication for that host (`gh auth status` or
+   `glab auth status --hostname <host>`). Report a missing dependency;
+   do not install tooling or switch identities.
 
 ## Deliver
 

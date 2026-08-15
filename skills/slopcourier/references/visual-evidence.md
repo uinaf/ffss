@@ -39,9 +39,7 @@ visibility.
 
 ## 3. github.com deliveries (`gh` + user-attachments endpoint)
 
-This rung is github.com only — the endpoint is `uploads.github.com`, and a
-GitHub Enterprise token must never be sent there (Enterprise deliveries
-fall through to rung 4). Images and video upload to the same CDN the web
+Images and video upload to the same CDN the web
 drag-drop uses; the asset inherits repository visibility and needs no
 browser:
 
@@ -52,7 +50,7 @@ curl -s "https://uploads.github.com/user-attachments/assets?name=${name}&content
   -X POST \
   -H @- \
   --data-binary @<file> <<EOF
-Authorization: Bearer $(gh auth token --hostname github.com)
+Authorization: Bearer $(gh auth token)
 Accept: application/json
 EOF
 ```
