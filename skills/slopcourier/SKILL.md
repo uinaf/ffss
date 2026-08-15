@@ -19,8 +19,10 @@ invents a second workflow runtime.
    `delivery_mode: direct-trunk` is out of this skill's lane — do not open
    a change request for it; the delivery is the trunk commit itself,
    recorded with `slopshipper deliver` and its `commit_sha`.
-4. The worktree contains only the intended change. Preserve unrelated work;
-   never sweep it into the delivery.
+4. The delivery contains only the intended change — both the worktree and,
+   when reusing a task branch, its commits ahead of the default branch
+   (`git log <default>..HEAD`). Preserve unrelated work; never sweep it
+   into the change request.
 
 ## Forge dispatch
 
