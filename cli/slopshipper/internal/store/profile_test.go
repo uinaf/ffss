@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -422,5 +423,92 @@ func TestMigrationRefusesCustomSlopguardRegistration(t *testing.T) {
 	}
 	if _, err := store.Open(path); err == nil || !strings.Contains(err.Error(), "silently merge") {
 		t.Fatalf("an occupied name must refuse the migration even with no autoreview overlap: %v", err)
+	}
+}
+
+func TestMigrationScopesRenameToReviewerNamespace(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v8-scoped.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RegisterRepoProfile(testProfile("repo")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db := openSQLite(t, path)
+	// A qa binding named slopguard is a vendor name, not a reviewer
+	// identity: it must neither block the migration nor be renamed. An
+	// autoreview qa binding likewise stays untouched.
+	if _, err := db.Exec(`UPDATE repos SET bindings_json = '{"review":["autoreview"],"qa":["slopguard","autoreview"]}'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s, err = store.Open(path)
+	if err != nil {
+		t.Fatalf("non-reviewer vendor names must not block migration: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+	profile, _, err := s.GetRepoProfile("repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if profile.Bindings[machine.RoleReview][0] != "slopguard" {
+		t.Fatalf("review binding must rename: %+v", profile.Bindings)
+	}
+	if qa := profile.Bindings[machine.RoleQA]; qa[0] != "slopguard" || qa[1] != "autoreview" {
+		t.Fatalf("qa vendor names must stay verbatim: %+v", profile.Bindings)
+	}
+}
+
+func TestMigrationRejectsCorruptProfileDocuments(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v8-corrupt.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RegisterRepoProfile(testProfile("repo")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for column, fragment := range map[string]string{
+		"bindings_json":        "bindings",
+		"forge_reviewers_json": "forge reviewers",
+	} {
+		corrupt := filepath.Join(t.TempDir(), column+".sqlite")
+		copyFile(t, path, corrupt)
+		db := openSQLite(t, corrupt)
+		if _, err := db.Exec(`UPDATE repos SET ` + column + ` = 'not json'`); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.Exec(`UPDATE meta SET value = '8' WHERE key = 'schema_version'`); err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := store.Open(corrupt); err == nil || !strings.Contains(err.Error(), fragment) {
+			t.Fatalf("corrupt %s must fail the migration with its cause: %v", column, err)
+		}
+	}
+}
+
+func copyFile(t *testing.T, src, dst string) {
+	t.Helper()
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst, data, 0o600); err != nil {
+		t.Fatal(err)
 	}
 }
