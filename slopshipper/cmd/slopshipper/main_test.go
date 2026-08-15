@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,13 +13,63 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/uinaf/slopshipper/internal/machine"
 	"github.com/uinaf/slopshipper/internal/repo"
 	"github.com/uinaf/slopshipper/internal/status"
 	"github.com/uinaf/slopshipper/internal/store"
 )
+
+func TestRunShellCancellationReapsProcessGroup(t *testing.T) {
+	pidFile := filepath.Join(t.TempDir(), "pids")
+	ctx, cancel := context.WithCancel(context.Background())
+	type result struct {
+		code int
+		err  error
+	}
+	done := make(chan result, 1)
+	command := fmt.Sprintf(`trap '' TERM; sh -c 'trap "" TERM; printf "%%s %%s\n" "$PPID" "$$" > "$1"; while :; do sleep 1; done' child %q & wait`, pidFile)
+	go func() {
+		code, _, err := runShell(ctx, command, true)
+		done <- result{code: code, err: err}
+	}()
+
+	var groupPID, childPID int
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		contents, err := os.ReadFile(pidFile)
+		if err == nil {
+			if n, _ := fmt.Sscanf(string(contents), "%d %d", &groupPID, &childPID); n == 2 {
+				break
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if groupPID == 0 || childPID == 0 {
+		t.Fatal("verification descendants did not start")
+	}
+	cancel()
+
+	select {
+	case got := <-done:
+		if got.code != 130 || !errors.Is(got.err, errVerificationCommandCancelled) {
+			t.Fatalf("runShell cancellation = (%d, %v)", got.code, got.err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("runShell did not finish cancellation")
+	}
+	if shellGroupAlive(groupPID) {
+		t.Fatalf("process group %d remains alive", groupPID)
+	}
+	for _, pid := range []int{groupPID, childPID} {
+		if err := syscall.Kill(pid, 0); !errors.Is(err, syscall.ESRCH) {
+			t.Fatalf("process %d remains: %v", pid, err)
+		}
+	}
+}
 
 type cliHarness struct {
 	t       *testing.T
@@ -289,7 +340,11 @@ func TestAgentDXProtocolHelperBranches(t *testing.T) {
 		t.Fatalf("mirrored output=%q digest=%q expected=%q", mirror.String(), digest, expectedDigest.String())
 	}
 	streamed, shellCode, shellDigest := captureStderrResult(t, func() (int, string) {
-		return runShell("printf out; printf err >&2", true)
+		code, digest, err := runShell(context.Background(), "printf out; printf err >&2", true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return code, digest
 	})
 	stdoutExpected, stderrExpected := newOutputDigester(), newOutputDigester()
 	_, _ = stdoutExpected.Write([]byte("out"))
@@ -301,7 +356,11 @@ func TestAgentDXProtocolHelperBranches(t *testing.T) {
 	_, _ = plainExpected.Write([]byte("plain-error"))
 	emptyExpected := newOutputDigester()
 	plainStreamed, plainCode, plainDigest := captureStderrResult(t, func() (int, string) {
-		return runShell("printf plain-error >&2", false)
+		code, digest, err := runShell(context.Background(), "printf plain-error >&2", false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return code, digest
 	})
 	if plainCode != 0 || plainStreamed != "plain-error" || plainDigest != digestOutputs(emptyExpected, plainExpected) {
 		t.Fatalf("plain runShell code=%d output=%q digest=%q", plainCode, plainStreamed, plainDigest)

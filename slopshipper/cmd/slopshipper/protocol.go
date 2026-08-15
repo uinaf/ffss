@@ -177,6 +177,8 @@ func errorKind(code int, err error) string {
 		return "not_found"
 	case errors.Is(err, machine.ErrCorruptState):
 		return "corrupt_state"
+	case errors.Is(err, errVerificationCommandCancelled):
+		return "cancelled"
 	case code == 6:
 		return "verification_failed"
 	default:

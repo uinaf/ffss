@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/mattn/go-isatty"
 	"github.com/uinaf/slopshipper/internal/buildinfo"
@@ -625,7 +626,43 @@ func cmdVerify(st *store.Store, args []string, opts runOptions) int {
 			doc.OutcomeUndetermined = true
 			return writeStatus(doc, opts)
 		}
-		code, outputDigest := runShell(c, opts.json)
+		ctx, cancel := context.WithCancel(context.Background())
+		signals := make(chan os.Signal, 1)
+		caught := make(chan os.Signal, 1)
+		signalDone := make(chan struct{})
+		signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+		go func() {
+			defer close(signalDone)
+			select {
+			case sig := <-signals:
+				caught <- sig
+				cancel()
+			case <-ctx.Done():
+			}
+		}()
+		code, outputDigest, err := runShell(ctx, c, opts.json)
+		signal.Stop(signals)
+		cancel()
+		<-signalDone
+		var received os.Signal
+		select {
+		case received = <-caught:
+		default:
+			select {
+			case received = <-signals:
+			default:
+			}
+		}
+		if received != nil && err == nil {
+			err = errVerificationCommandCancelled
+		}
+		if err != nil {
+			cancelCode := 130
+			if unixSignal, ok := received.(syscall.Signal); ok {
+				cancelCode = 128 + int(unixSignal)
+			}
+			return writeFailure(opts, cancelCode, err)
+		}
 		ev = machine.VerifyEvidence{Command: c, ExitCode: code, OutputDigest: outputDigest}
 	}
 	_, code = applyPrepared(st, prepared, machine.CmdVerify, machine.ApplyInput{Verify: &ev}, opts)
@@ -1332,8 +1369,13 @@ func rejectDuplicateJSONKeys(raw []byte) error {
 	return walk()
 }
 
-func runShell(command string, jsonOut bool) (int, string) {
+const verificationTerminationGrace = 500 * time.Millisecond
+
+var errVerificationCommandCancelled = errors.New("verification command cancelled")
+
+func runShell(ctx context.Context, command string, jsonOut bool) (int, string, error) {
 	cmd := exec.Command("sh", "-c", command)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stdoutDigest := newOutputDigester()
 	stderrDigest := newOutputDigester()
 	if jsonOut {
@@ -1343,16 +1385,68 @@ func runShell(command string, jsonOut bool) (int, string) {
 		cmd.Stdout = stdoutDigest.Mirror(os.Stdout)
 		cmd.Stderr = stderrDigest.Mirror(os.Stderr)
 	}
-	code := 0
-	if err := cmd.Run(); err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			code = ee.ExitCode()
-		} else {
-			code = 1
+	if err := cmd.Start(); err != nil {
+		return 1, digestOutputs(stdoutDigest, stderrDigest), nil
+	}
+	waited := make(chan error, 1)
+	go func() { waited <- cmd.Wait() }()
+
+	select {
+	case err := <-waited:
+		return shellExitCode(err), digestOutputs(stdoutDigest, stderrDigest), nil
+	case <-ctx.Done():
+		select {
+		case err := <-waited:
+			return shellExitCode(err), digestOutputs(stdoutDigest, stderrDigest), nil
+		default:
 		}
 	}
-	return code, digestOutputs(stdoutDigest, stderrDigest)
+
+	pid := cmd.Process.Pid
+	_ = signalShellGroup(pid, syscall.SIGTERM)
+	timer := time.NewTimer(verificationTerminationGrace)
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer timer.Stop()
+	defer ticker.Stop()
+	waitComplete := false
+	for {
+		if waitComplete && !shellGroupAlive(pid) {
+			return 130, digestOutputs(stdoutDigest, stderrDigest), errVerificationCommandCancelled
+		}
+		select {
+		case <-waited:
+			waitComplete = true
+		case <-timer.C:
+			if shellGroupAlive(pid) {
+				_ = signalShellGroup(pid, syscall.SIGKILL)
+			}
+		case <-ticker.C:
+		}
+	}
+}
+
+func shellExitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode()
+	}
+	return 1
+}
+
+func signalShellGroup(pid int, sig syscall.Signal) error {
+	err := syscall.Kill(-pid, sig)
+	if errors.Is(err, syscall.ESRCH) {
+		return nil
+	}
+	return err
+}
+
+func shellGroupAlive(pid int) bool {
+	err := syscall.Kill(-pid, 0)
+	return err == nil || errors.Is(err, syscall.EPERM)
 }
 
 func randomID() (string, error) {
