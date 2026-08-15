@@ -2,7 +2,7 @@ interface:
   display_name: "Slopscriber"
   short_description: "Update repo docs and agent-facing guidance"
   default_prompt: |
-    Use $slopscriber.
+    Use $docs.
 
     Goal: make repo documentation accurate, decision-dense, and easy for agents to retrieve.
 
