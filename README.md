@@ -19,6 +19,7 @@ adversarial review for shipping slop that survives contact with reality.
 | [`slopguard`](skills/slopguard/) | Run one independent review through the slopguard CLI |
 | [`slopcourier`](skills/slopcourier/) | Deliver finished work as a change request on the repo's forge, with the visual-evidence ladder |
 | [`slopnanny`](skills/slopnanny/) | Babysit a delivered change request through review and CI to a settled outcome |
+| [`slopclean`](skills/slopclean/) | Strip AI tells from writing or a diff |
 | [`slopspec`](skills/slopspec/) | Turn agreed work into durable tracker plans |
 | [`slopscriber`](skills/slopscriber/) | Audit and rewrite repo docs and agent guidance |
 | [`slopprep`](skills/slopprep/) | Make a repository agent-ready |
