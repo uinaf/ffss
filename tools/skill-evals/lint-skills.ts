@@ -28,7 +28,9 @@ function lintSkill(dir: string): void {
     return;
   }
 
-  const fields = new Map<string, string>();
+  // Raw tokens are kept alongside unquoted values: scalar type matters
+  // (disable-model-invocation must be the bare YAML boolean, not "true").
+  const fields = new Map<string, { raw: string; value: string }>();
   for (const line of lines.slice(1, close)) {
     const m = line.match(/^([a-z-]+):\s*(.*)$/);
     if (!m) {
@@ -44,26 +46,33 @@ function lintSkill(dir: string): void {
       errors.push(`${skillMd}: duplicate frontmatter key: ${key}`);
       continue;
     }
-    fields.set(key, raw.replace(/^"(.*)"$/s, "$1").trim());
+    const value = raw.replace(/^"(.*)"$/s, "$1").replace(/^'(.*)'$/s, "$1").trim();
+    fields.set(key, { raw: raw.trim(), value });
   }
 
-  const name = fields.get("name") ?? "";
+  const name = fields.get("name")?.value ?? "";
   if (name !== path.basename(dir)) {
     errors.push(`${skillMd}: frontmatter name ${JSON.stringify(name)} != directory ${path.basename(dir)}`);
   }
-  if (!fields.get("description")) {
+  if (!fields.get("description")?.value) {
     errors.push(`${skillMd}: description is required and must be non-empty`);
   }
   const dmi = fields.get("disable-model-invocation");
-  if (dmi !== undefined && dmi !== "true") {
-    errors.push(`${skillMd}: disable-model-invocation must be true when present, got ${JSON.stringify(dmi)}`);
+  if (dmi !== undefined && dmi.raw !== "true") {
+    errors.push(`${skillMd}: disable-model-invocation must be the literal boolean true, got ${JSON.stringify(dmi.raw)}`);
   }
 
   // Relative links in the body must resolve; external and anchor links pass.
-  const body = lines.slice(close + 1).join("\n");
-  for (const link of body.matchAll(/\]\(([^)\s]+)\)/g)) {
-    const target = link[1];
-    if (/^[a-z]+:/.test(target) || target.startsWith("#")) continue;
+  // Code spans and fences are stripped first so example links never lint, and
+  // optional link titles ("...") are parsed rather than hiding the target.
+  const body = lines
+    .slice(close + 1)
+    .join("\n")
+    .replace(/^```[\s\S]*?^```/gm, "")
+    .replace(/`[^`\n]*`/g, "");
+  for (const link of body.matchAll(/\]\(\s*(<[^>\n]*>|[^)\s]+)(?:\s+"[^"\n]*")?\s*\)/g)) {
+    const target = link[1].replace(/^<(.*)>$/, "$1");
+    if (/^[a-z][a-z+.-]*:/.test(target) || target.startsWith("#") || target === "") continue;
     const resolved = path.join(dir, target.split("#")[0]);
     if (!fs.existsSync(resolved)) {
       errors.push(`${skillMd}: link target does not exist: ${target}`);
