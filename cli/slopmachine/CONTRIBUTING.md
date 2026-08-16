@@ -77,13 +77,14 @@ Skill publication uses a separate `skill-release` Environment with
 `TESSL_TOKEN` (Tessl workspace `uinaf` publisher). GitHub Actions runs Tessl
 plugin lint before merge, then `uinaf/tessl-publish-action` publishes the
 manifest version and smokes a Codex install. Local skill lint additionally
-requires Tessl CLI 0.94.0:
+requires Tessl CLI 0.94.0 and runs from the repository root (the root CI
+skills-lint job is the gate):
 
 ```bash
-mise run skill:lint
+tessl plugin lint skills/slopmachine
 ```
 
-Bump `skills/slopmachine/.tessl-plugin/plugin.json` when the skill should ship a
+Bump `skills/slopmachine/.tessl-plugin/plugin.json` (repo root) when the skill should ship a
 new immutable revision.
 
 A scheduled `govulncheck` scan covers changes in the vulnerability database
