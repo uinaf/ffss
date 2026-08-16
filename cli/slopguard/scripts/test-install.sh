@@ -110,7 +110,20 @@ case "$url" in
 esac
 EOF
 
-chmod 755 "$fake_bin/uname" "$fake_bin/sha256sum" "$fake_bin/curl"
+cat > "$fake_bin/git" <<'EOF'
+#!/bin/sh
+# Fake git: serves the tag listing the installer's latest-resolution reads.
+if [ "$1" = ls-remote ]; then
+  if [ "${FAKE_CURL_MODE:-}" = malformed-latest ]; then
+    exit 0
+  fi
+  printf '%s\n' "0000000000000000000000000000000000000000	refs/tags/slopguard/v1.2.3"
+  exit 0
+fi
+exit 1
+EOF
+
+chmod 755 "$fake_bin/uname" "$fake_bin/sha256sum" "$fake_bin/curl" "$fake_bin/git"
 
 case_number=0
 new_case() {

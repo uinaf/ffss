@@ -128,17 +128,18 @@ valid_release_tag() {
 # tags (slopguard/vX.Y.Z); "latest" means this member's newest release.
 api_url=${SLOPGUARD_INSTALL_API_URL:-https://api.github.com/repos/uinaf/ffsstack/releases}
 if [ "$requested_version" = latest ]; then
-  release_tag=
-  page=1
-  while [ "$page" -le 10 ]; do
+  # Tag listing over git avoids the unauthenticated API quota entirely.
+  if command -v git >/dev/null 2>&1; then
+    release_tag=$(git ls-remote --tags "$repository_url.git" "refs/tags/slopguard/v*" |
+      sed 's|.*refs/tags/slopguard/||; s|\^{}$||' | sort -u -V | tail -1) ||
+      fail "failed to list releases"
+  else
     body=$(curl --proto '=https' --tlsv1.2 -fsSL \
-      -H "Accept: application/vnd.github+json" "$api_url?per_page=100&page=$page") ||
+      -H "Accept: application/vnd.github+json" "$api_url?per_page=100") ||
       fail "failed to resolve the latest release"
     release_tag=$(printf '%s' "$body" |
       grep -o '"tag_name": *"slopguard/v[0-9.]*"' | head -1 | sed 's/.*"slopguard\///; s/"$//')
-    [ -n "$release_tag" ] && break
-    case "$body" in *'"tag_name"'*) page=$((page + 1)) ;; *) break ;; esac
-  done
+  fi
   [ -n "$release_tag" ] || fail "no slopguard release found"
 else
   case "$requested_version" in

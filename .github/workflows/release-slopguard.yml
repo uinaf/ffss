@@ -17,8 +17,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify:
+    name: verify slopguard
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: cli/slopguard
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+        with:
+          working_directory: cli/slopguard
+      - run: mise run verify
+
   release:
     name: release slopguard
+    needs: verify
     runs-on: macos-latest
     timeout-minutes: 45
     environment:
@@ -64,9 +83,6 @@ jobs:
         uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
         with:
           working_directory: cli/slopguard
-
-      - name: Verify
-        run: mise run verify
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
@@ -156,6 +172,15 @@ jobs:
           EXPECTED_APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
           GORELEASER_CURRENT_TAG: ${{ steps.tag.outputs.version }}
         run: ./scripts/verify-apple-release.sh
+
+      - name: Attest build provenance
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/slopguard_*.tar.gz
+            dist/checksums.txt
+            dist/checksums.txt.sigstore.json
 
       - name: Publish assets to the release
         if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
