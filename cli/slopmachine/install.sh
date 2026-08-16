@@ -133,6 +133,14 @@ if [ "$requested_version" = latest ]; then
   if command -v git >/dev/null 2>&1; then
     release_tag=$(git ls-remote --tags "$repository_url.git" "refs/tags/slopmachine/v*" 2>/dev/null |
       sed 's|.*refs/tags/slopmachine/||; s|\^{}$||' | sort -u -V | tail -1) || release_tag=
+    # A crash between tag push and publish leaves a tag whose release is
+    # still a draft, so its assets are not public yet. Probe one asset and
+    # fall back to the API, which lists published releases only.
+    if [ -n "$release_tag" ]; then
+      curl --proto '=https' --tlsv1.2 -fsSL -o /dev/null \
+        "$repository_url/releases/download/slopmachine%2F$release_tag/checksums.txt" ||
+        release_tag=
+    fi
   fi
   if [ -z "$release_tag" ]; then
     release_tag=
