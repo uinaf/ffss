@@ -14,14 +14,23 @@ export default function transform(output, context) {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) {
         if (e.name !== ".claude") walk(p);
-      } else {
+      } else if (e.isFile()) {
         const rel = path.relative(workdir, p);
         visited.add(rel);
-        const body = fs.readFileSync(p);
+        let body;
+        try {
+          body = fs.readFileSync(p);
+        } catch (err) {
+          sections.push(`=== UNREADABLE FILE: ${rel} === (${err.code ?? err.message})`);
+          continue;
+        }
         const hash = createHash("sha256").update(body).digest("hex");
         if (manifest[rel] !== hash) {
           sections.push(`=== OUTPUT FILE: ${rel} ===\n${body.toString("utf8")}\n=== END OUTPUT FILE ===`);
         }
+      } else {
+        // Symlinks, FIFOs, sockets: name them for the judge, never read them.
+        sections.push(`=== NON-REGULAR FILE: ${path.relative(workdir, p)} ===`);
       }
     }
   };
