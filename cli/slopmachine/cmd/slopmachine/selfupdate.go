@@ -64,8 +64,9 @@ func selfupdateError(err error) error {
 	return fmt.Errorf("%w: %v", machine.ErrUnmetGuard, err)
 }
 
-// writeSelfupdateResult renders one pass; --check exits 4 when an update is
-// available so automation can branch without parsing output.
+// writeSelfupdateResult renders one pass; --check exits 5 when an update is
+// available so automation can branch without parsing output (4 belongs to
+// revision_conflict in this CLI's taxonomy).
 func writeSelfupdateResult(result selfupdate.Result, check bool, opts runOptions) int {
 	available := result.To != result.From
 	if opts.json {
@@ -90,7 +91,7 @@ func writeSelfupdateResult(result selfupdate.Result, check bool, opts runOptions
 		}
 	}
 	if check && available {
-		return 4
+		return 5
 	}
 	return 0
 }

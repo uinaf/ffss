@@ -138,6 +138,11 @@ func withDefaults(opts Options) (Options, error) {
 			// not bounce the release list, checksums, or archive onto
 			// cleartext HTTP.
 			CheckRedirect: func(request *http.Request, via []*http.Request) error {
+				// Keep Go's default hop bound; the rail alone would follow
+				// a redirect cycle until the client timeout.
+				if len(via) >= 10 {
+					return fmt.Errorf("stopped after 10 redirects")
+				}
 				return requireHTTPS(request.URL.String())
 			},
 		}
@@ -319,12 +324,16 @@ func extractBinary(archive []byte, member string) ([]byte, error) {
 		if filepath.Clean(header.Name) != member || header.Typeflag != tar.TypeReg {
 			continue
 		}
-		binary, err := io.ReadAll(io.LimitReader(reader, 512<<20))
-		if err != nil {
-			return nil, fmt.Errorf("extract %s: %w", member, err)
+		// A limit reader would truncate silently at the bound; reject the
+		// declared size first and then require the full read, so an
+		// oversized or short entry can never install a corrupt binary.
+		const maxBinaryBytes = 512 << 20
+		if header.Size <= 0 || header.Size > maxBinaryBytes {
+			return nil, fmt.Errorf("archive entry %s has unreasonable size %d", member, header.Size)
 		}
-		if len(binary) == 0 {
-			return nil, fmt.Errorf("archive entry %s is empty", member)
+		binary := make([]byte, header.Size)
+		if _, err := io.ReadFull(reader, binary); err != nil {
+			return nil, fmt.Errorf("extract %s: %w", member, err)
 		}
 		return binary, nil
 	}

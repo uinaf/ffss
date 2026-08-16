@@ -18,7 +18,7 @@ import (
 // knob for both surfaces.
 func runSelfupdate(ctx context.Context, arguments []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("slopguard selfupdate", flag.ContinueOnError)
-	check := flags.Bool("check", false, "report the target release without touching the binary; exits 4 when an update is available")
+	check := flags.Bool("check", false, "report the target release without touching the binary; exits 5 when an update is available")
 	release := flags.String("release", "", "pin the target release (vX.Y.Z); default is the newest published release")
 	if err := parseFlags(flags, arguments, stdout, stderr); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -61,7 +61,7 @@ func runSelfupdate(ctx context.Context, arguments []string, stdout, stderr io.Wr
 		fmt.Fprintf(stdout, "slopguard %s is up to date\n", result.From)
 	}
 	if *check && available {
-		return 4
+		return 5
 	}
 	return 0
 }

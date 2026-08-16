@@ -54,8 +54,8 @@ func TestWriteSelfupdateResultExitCodes(t *testing.T) {
 		if got := writeSelfupdateResult(upToDate, true, opts); got != 0 {
 			t.Fatalf("check up-to-date must exit 0, got %d", got)
 		}
-		if got := writeSelfupdateResult(available, true, opts); got != 4 {
-			t.Fatalf("check with update available must exit 4, got %d", got)
+		if got := writeSelfupdateResult(available, true, opts); got != 5 {
+			t.Fatalf("check with update available must exit 5, got %d", got)
 		}
 		if got := writeSelfupdateResult(updated, false, opts); got != 0 {
 			t.Fatalf("performed update must exit 0, got %d", got)

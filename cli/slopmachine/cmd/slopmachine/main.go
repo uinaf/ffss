@@ -352,7 +352,7 @@ Show the resolved database path, source, scope, existence, and Git safety.
 
 Replace this binary with the newest published release (or the pinned
 --release), verifying the archive against the release's checksums.txt.
---check reports without touching the binary; it exits 4 when an update is
+--check reports without touching the binary; it exits 5 when an update is
 available. Homebrew-managed installs are refused: use brew upgrade --cask.
 `,
 		"serve": `Usage: slopmachine serve [--addr 127.0.0.1:7780]
