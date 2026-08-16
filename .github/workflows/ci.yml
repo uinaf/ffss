@@ -31,6 +31,7 @@ jobs:
             skills:
               - 'skills/**'
               - 'cli/*/skills/**'
+              - 'tools/skill-evals/lint-skills.ts'
 
   slopmachine:
     name: slopmachine verify
@@ -89,15 +90,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: tesslio/setup-tessl@33e1c9253e3673f28e1b8949475b250dbd57918e # v2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          version: "0.94.0"
+          node-version: "24"
       - name: Lint every skill package
-        env:
-          TESSL_AUTO_UPDATE_INTERVAL_MINUTES: "0"
-        run: |
-          set -euo pipefail
-          for skill in skills/*/ cli/*/skills/*/; do
-            [ -d "$skill" ] || continue
-            tessl plugin lint "$skill"
-          done
+        run: node tools/skill-evals/lint-skills.ts

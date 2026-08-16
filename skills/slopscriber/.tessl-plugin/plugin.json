@@ -1,9 +1,0 @@
-{
-  "name": "uinaf/docs",
-  "version": "2.0.9",
-  "description": "Audit and update repository documentation, agent guidance, specifications, decisions, and runbooks while keeping tactical plans and tracker work out of the documentation surface.",
-  "private": false,
-  "skills": [
-    "SKILL.md"
-  ]
-}

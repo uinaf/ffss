@@ -73,19 +73,15 @@ secrets with other uinaf CLIs) and the `uinaf-releaser` GitHub App scoped to
 `slopmachine` + `homebrew-tap`. Do not delete published tags to retry; re-run
 the workflow on the tagged HEAD instead.
 
-Skill publication uses a separate `skill-release` Environment with
-`TESSL_TOKEN` (Tessl workspace `uinaf` publisher). GitHub Actions runs Tessl
-plugin lint before merge, then `uinaf/tessl-publish-action` publishes the
-manifest version and smokes a Codex install. Local skill lint additionally
-requires Tessl CLI 0.94.0 and runs from the repository root (the root CI
-skills-lint job is the gate):
+The skill ships through this repo's agent-plugin marketplace
+(`.claude-plugin/marketplace.json`); merging to `main` is the publication.
+The root CI skills-lint job is the gate; run it locally from the repository
+root (node 24 or newer — the script is TypeScript run via native type
+stripping):
 
 ```bash
-tessl plugin lint skills/slopmachine
+node tools/skill-evals/lint-skills.ts
 ```
-
-Bump `skills/slopmachine/.tessl-plugin/plugin.json` (repo root) when the skill should ship a
-new immutable revision.
 
 A scheduled `govulncheck` scan covers changes in the vulnerability database
 without making the deterministic local gate depend on the network.

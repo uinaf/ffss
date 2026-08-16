@@ -103,31 +103,14 @@ release step. Never delete or move a published tag to retry a release.
 
 ## Version tracks
 
-CLI SemVer describes the Go executable contract. Tessl skill SemVer describes
-the independently published agent package and may advance without changing the
-CLI version. The skill documents its compatible CLI requirement; the two
-version numbers are not required to match.
+CLI SemVer describes the Go executable contract. The skill ships with the
+repo's agent plugin and carries no separate version; it documents its
+compatible CLI requirement.
 
 ## Skill publication
 
-Changes under the repo-root `skills/slopmachine` publish only after they merge to protected
-`main` (or via `workflow_dispatch` on that workflow). The dedicated
-`skill-release` Environment exposes a Tessl API key with the workspace-scoped
-`publisher` role; pull-request jobs remain secretless. The pinned
-`uinaf/tessl-publish-action` runs free Tessl plugin lint (default) and publishes the
-explicit version from `skills/slopmachine/.tessl-plugin/plugin.json` (repo root) without
-mutating the repository.
-
-Publication is immutable and rerunnable. If the declared version already
-exists, the shared action treats it as an idempotent retry and does not replace
-it. After either a new publication or a retry, the workflow strict-installs the
-exact version into a clean temporary Codex project and confirms that Codex can
-discover the installed skill. This is a live consumer smoke, not a local
-simulation of Tessl's packaging or registry layout. Because Tessl moderation is
-asynchronous, the clean install retries the registry's temporary hidden-content
-response for up to five minutes; other install failures stop immediately, and an
-unapproved version remains a failure.
-
-The skill must not embed agent-executable install pipelines. Installation of
-the `slopmachine` CLI belongs to a user-approved host package or release
-workflow; the skill only requires the binary already on `PATH`.
+The skill ships through this repo's agent-plugin marketplace
+(`.claude-plugin/marketplace.json`): merging skill changes to `main` is the
+publication, and installed plugins are SHA-versioned by the marketplace
+commit. The root CI skills-lint job (`node tools/skill-evals/lint-skills.ts`)
+gates the package shape.
