@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-slopguard
+  group: ffsstack-release
   cancel-in-progress: false
 
 jobs:

@@ -6,8 +6,22 @@
 set -euo pipefail
 
 member=${1:?member name required}
+case "$member" in
+  slopguard) depends_stanza='  depends_on formula: [
+      "git",
+      "trufflehog",
+    ]
+' ;;
+  *) depends_stanza='' ;;
+esac
 [[ "${VERSION:-}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "VERSION missing or invalid" >&2; exit 1; }
 [[ "${TAG:-}" == "$member/$VERSION" ]] || { echo "TAG must be $member/VERSION" >&2; exit 1; }
+
+# A retry after publish has no dist/; the published release is the source.
+if [ ! -f dist/checksums.txt ]; then
+  mkdir -p dist
+  gh release download "$TAG" --repo uinaf/ffsstack -p checksums.txt -D dist
+fi
 
 sum() {
   awk -v f="${member}_${VERSION}_$1.tar.gz" '$2 == f { print $1 }' dist/checksums.txt
@@ -57,13 +71,18 @@ cask "${member}" do
     end
   end
 
-  binary "${member}"
+${depends_stanza}  binary "${member}"
 
   homepage "https://github.com/uinaf/ffsstack"
   desc "${description:-$member}"
 end
 CASK
 
+git -C "$tap_dir" add "Casks/${member}.rb"
+if git -C "$tap_dir" diff --cached --quiet; then
+  echo "cask already current; nothing to publish"
+  exit 0
+fi
 git -C "$tap_dir" -c user.name="$BOT_NAME" -c user.email="$BOT_EMAIL" \
-  commit -am "chore(${member}): update to ${VERSION}"
+  commit -m "chore(${member}): update to ${VERSION}"
 git -C "$tap_dir" push origin HEAD:main
