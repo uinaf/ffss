@@ -2,6 +2,7 @@ package buildinfo
 
 import (
 	"fmt"
+	"regexp"
 	"runtime/debug"
 	"strings"
 )
@@ -18,6 +19,36 @@ func Version() string {
 	v, c := resolve(version, commit, build, ok)
 	return format(v, c)
 }
+
+// Release returns the bare release version (for example v1.0.1) when this
+// binary is a published release, and "" otherwise; selfupdate refuses to
+// replace non-release builds. Published member tags are exactly vX.Y.Z, so
+// anything else — snapshots, pseudo-versions from go install, dirty builds —
+// is not a release.
+func Release() string {
+	build, ok := debug.ReadBuildInfo()
+	v, _ := resolve(version, commit, build, ok)
+	if !releaseTagPattern.MatchString(v) {
+		return ""
+	}
+	if ok && vcsModified(build) {
+		return ""
+	}
+	return v
+}
+
+// vcsModified reports a build stamped from a dirty checkout; a release
+// version string on modified sources is not a release.
+func vcsModified(build *debug.BuildInfo) bool {
+	for _, setting := range build.Settings {
+		if setting.Key == "vcs.modified" {
+			return setting.Value == "true"
+		}
+	}
+	return false
+}
+
+var releaseTagPattern = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
 
 func format(resolvedVersion, resolvedCommit string) string {
 	if resolvedCommit == "unknown" && isReleaseVersion(resolvedVersion) {

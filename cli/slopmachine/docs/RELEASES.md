@@ -36,6 +36,17 @@ For independent verification, download the artifacts instead and use the
 Cosign signature and GitHub build attestation workflow below before installing
 the binary.
 
+## Self-update
+
+`slopmachine selfupdate` replaces the installed binary with the newest published
+release (or a pinned `--release vX.Y.Z`), verifying the platform archive
+against the release's `checksums.txt`; `--check` reports without touching
+the binary and exits 8 when an update is available. It shares the Linux
+installer's trust boundary (checksum and archive over one HTTPS hosting
+boundary) — use the Cosign and attestation workflow below for independent
+provenance. Homebrew-managed installs are refused: use
+`brew upgrade --cask slopmachine`. Non-release builds refuse to self-update.
+
 ## Verify a release
 
 Download one archive plus the manifest and signature bundle from the matching
