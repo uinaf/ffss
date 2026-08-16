@@ -1,0 +1,28 @@
+{
+  "ran_at": "2026-08-16T20:52:44.332Z",
+  "skills_tree_sha": "799dab4dedb1452a8480344c34394c0de8a4de94",
+  "scenarios": [
+    {
+      "skill": "slopspec",
+      "scenario": "single-item-minimality",
+      "harness": "codex",
+      "score": 0.958,
+      "pass": true,
+      "agent_model": "codex-default",
+      "judge_model": "claude-opus-5",
+      "latency_ms": 93028,
+      "tokens": 238831
+    },
+    {
+      "skill": "slopspec",
+      "scenario": "single-item-minimality",
+      "harness": "claude",
+      "score": 0.48350000000000004,
+      "pass": false,
+      "agent_model": "claude-opus-5",
+      "judge_model": "claude-opus-5",
+      "latency_ms": 54044,
+      "tokens": 7831
+    }
+  ]
+}

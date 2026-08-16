@@ -2,16 +2,20 @@
   "name": "skill-evals",
   "private": true,
   "type": "module",
+  "description": "promptfoo harness for skills/*/evals fixtures (uinaf/ffsstack#10)",
   "scripts": {
-    "grade": "promptfoo eval --no-cache --no-progress-bar",
-    "typecheck": "tsc --noEmit --strict --module nodenext --target es2023 --skipLibCheck generate.ts transform.ts"
+    "typecheck": "tsc --noEmit --strict --module nodenext --target es2023 --types node --skipLibCheck --allowImportingTsExtensions evals.ts scenario.ts transform.ts lint-skills.ts",
+    "run": "node evals.ts run",
+    "sweep": "node evals.ts sweep",
+    "summarize": "node evals.ts summarize"
   },
-  "description": "promptfoo trial harness for skills/*/evals fixtures (uinaf/ffsstack#10)",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.233",
+    "@openai/codex-sdk": "^0.144.0",
     "promptfoo": "^0.122.0"
   },
   "devDependencies": {
-    "typescript": "^5.9.0"
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
   }
 }

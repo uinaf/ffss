@@ -1,0 +1,228 @@
+// Library: turn one skill-eval scenario (task.md + criteria.json) into a
+// promptfoo run directory. Composed by evals.ts; no CLI surface of its own.
+
+import { createHash } from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+export type Harness = "claude" | "codex";
+
+export interface ChecklistItem {
+  name: string;
+  description: string;
+  max_score: number;
+}
+
+export interface Criteria {
+  type: string;
+  context?: string;
+  checklist: ChecklistItem[];
+}
+
+export interface Scenario {
+  skill: string;
+  scenario: string;
+  name: string; // "<skill>--<scenario>"
+  skillDir: string;
+  prompt: string;
+  files: { name: string; content: string }[];
+  criteria: Criteria;
+}
+
+export interface RunOptions {
+  harness: Harness;
+  agentModel?: string; // undefined on codex = let the Codex CLI pick its default
+  judgeModel: string;
+}
+
+export function loadScenario(scenarioDir: string): Scenario {
+  const match = scenarioDir.match(/skills\/([^/]+)\/evals\/([^/]+)$/);
+  if (!match) throw new Error(`not a scenario dir (want .../skills/<skill>/evals/<scenario>): ${scenarioDir}`);
+  const [, skill, scenario] = match;
+
+  const taskMd = fs.readFileSync(path.join(scenarioDir, "task.md"), "utf8");
+  const criteria: Criteria = JSON.parse(fs.readFileSync(path.join(scenarioDir, "criteria.json"), "utf8"));
+  if (criteria.type !== "weighted_checklist" || !Array.isArray(criteria.checklist) || criteria.checklist.length === 0) {
+    throw new Error(`unsupported or empty criteria in ${scenarioDir}`);
+  }
+  for (const item of criteria.checklist) {
+    const ok =
+      typeof item?.name === "string" && item.name.trim() !== "" &&
+      typeof item?.description === "string" && item.description.trim() !== "" &&
+      Number.isFinite(item?.max_score) && item.max_score > 0;
+    if (!ok) throw new Error(`invalid checklist item in ${scenarioDir}: ${JSON.stringify(item)}`);
+  }
+
+  // Extract embedded input files; replace each block with a pointer to the file on disk.
+  const files: Scenario["files"] = [];
+  const fileBlock = /^=+ FILE: (.+?) =+\n([\s\S]*?)\n=+ END FILE =+$/gm;
+  const prompt = taskMd.replace(fileBlock, (_, name: string, content: string) => {
+    files.push({ name: name.trim(), content: content + "\n" });
+    return `(Input file \`${name.trim()}\` is available in your working directory.)`;
+  });
+
+  return { skill, scenario, name: `${skill}--${scenario}`, skillDir: path.resolve(scenarioDir, "../.."), prompt, files, criteria };
+}
+
+// Reserved top-level workdir entries: fixtures may not write agent config roots.
+const RESERVED = new Set([".claude", ".agents"]);
+
+export function materialize(s: Scenario, runDir: string, harness: Harness): { workdir: string; manifestPath: string } {
+  const workdir = path.join(runDir, "workdir");
+  fs.rmSync(runDir, { recursive: true, force: true });
+  fs.mkdirSync(workdir, { recursive: true });
+
+  // Validate every embedded filename before writing anything: destinations must
+  // stay strictly below workdir, must not land under .claude/ or .agents/ (a
+  // fixture could inject settings the harness would load), and must not collide.
+  const seen = new Set<string>();
+  const planned = s.files.map((f) => {
+    const dest = path.resolve(workdir, f.name);
+    const rel = path.relative(workdir, dest);
+    if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) throw new Error(`embedded file escapes workdir: ${f.name}`);
+    if (RESERVED.has(rel.split(path.sep)[0])) throw new Error(`embedded file targets reserved dir: ${f.name}`);
+    if (seen.has(dest)) throw new Error(`duplicate embedded file: ${f.name}`);
+    seen.add(dest);
+    return { dest, content: f.content };
+  });
+  for (const { dest, content } of planned) {
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, content);
+  }
+
+  // Install the skill under test, excluding its evals (criteria must not leak
+  // into the agent's context). Claude discovers .claude/skills/; codex
+  // discovers .agents/skills/ — install both for codex.
+  const roots = harness === "codex" ? [".claude", ".agents"] : [".claude"];
+  for (const root of roots) {
+    fs.cpSync(s.skillDir, path.join(workdir, root, "skills", s.skill), {
+      recursive: true,
+      filter: (src) => path.basename(src) !== "evals",
+    });
+  }
+
+  // Manifest of pre-existing files so transform.ts can find what the agent
+  // wrote. Only .claude/ is excluded (matching transform.ts's walk): .agents/
+  // files are hashed so the transform sees them as unchanged inputs.
+  const manifest: Record<string, string> = {};
+  const walk = (dir: string): void => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        if (e.name !== ".claude") walk(p);
+      } else {
+        manifest[path.relative(workdir, p)] = createHash("sha256").update(fs.readFileSync(p)).digest("hex");
+      }
+    }
+  };
+  walk(workdir);
+  const manifestPath = path.join(runDir, "manifest.json");
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  return { workdir, manifestPath };
+}
+
+function agentProvider(opts: RunOptions, workdir: string, skill: string): object {
+  if (opts.harness === "codex") {
+    return {
+      id: "openai:codex-sdk",
+      config: {
+        ...(opts.agentModel ? { model: opts.agentModel } : {}), // omitted = current Codex CLI default
+        working_dir: workdir,
+        skip_git_repo_check: true,
+        enable_streaming: true, // required for skill-used evidence
+        sandbox_mode: "workspace-write",
+        cli_env: { CODEX_HOME: process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex") },
+      },
+    };
+  }
+  return {
+    id: "anthropic:claude-agent-sdk",
+    config: {
+      model: opts.agentModel ?? "claude-opus-5",
+      // Without ANTHROPIC_API_KEY, fall back to the local Claude Code session
+      // (documented promptfoo path for subscription auth).
+      apiKeyRequired: false,
+      working_dir: workdir,
+      setting_sources: ["project"],
+      skills: [skill],
+      permission_mode: "acceptEdits",
+      append_allowed_tools: ["Read", "Write", "Edit", "Glob", "Grep"],
+      max_turns: 50,
+    },
+  };
+}
+
+export function buildConfig(s: Scenario, workdir: string, manifestPath: string, opts: RunOptions, transformPath: string): object {
+  return {
+    description: `${s.skill}/${s.scenario}`,
+    prompts: ["{{task}}"],
+    providers: [agentProvider(opts, workdir, s.skill)],
+    defaultTest: {
+      options: {
+        // With ANTHROPIC_API_KEY set, grade over the plain messages API;
+        // otherwise grade through the agent SDK provider with local Claude
+        // Code session auth. The SDK judge needs a forced verdict schema —
+        // the messages judge relies on promptfoo's own rubric JSON prompt.
+        provider: process.env.ANTHROPIC_API_KEY
+          ? `anthropic:messages:${opts.judgeModel}`
+          : {
+              id: "anthropic:claude-agent-sdk",
+              config: {
+                model: opts.judgeModel,
+                apiKeyRequired: false,
+                max_turns: 3,
+                output_format: {
+                  type: "json_schema",
+                  schema: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["reason", "pass", "score"],
+                    properties: {
+                      reason: { type: "string" },
+                      pass: { type: "boolean" },
+                      score: { type: "number", minimum: 0, maximum: 1 },
+                    },
+                  },
+                },
+              },
+            },
+        transform: `file://${transformPath}`,
+      },
+    },
+    tests: [
+      {
+        description: s.criteria.context,
+        vars: { task: s.prompt, workdir, manifest: manifestPath },
+        // No test-level threshold: the test passes only if every top-level
+        // assertion passes — the checklist assert-set (weighted score >= its
+        // own threshold) AND the mandatory skill-used routing check, which
+        // stays outside the weighted aggregate.
+        assert: [
+          {
+            type: "assert-set",
+            threshold: 0.7,
+            assert: s.criteria.checklist.map((item) => ({
+              type: "llm-rubric",
+              value: `${item.name}: ${item.description}`,
+              weight: item.max_score,
+            })),
+          },
+          { type: "skill-used", value: s.skill },
+        ],
+      },
+    ],
+  };
+}
+
+// Full pipeline: load + materialize + write promptfooconfig.json under baseDir/scratch.
+export function generateRun(scenarioDir: string, opts: RunOptions, baseDir: string): { name: string; configPath: string } {
+  const s = loadScenario(scenarioDir);
+  const name = opts.harness === "codex" ? `${s.name}--codex` : s.name;
+  const runDir = path.join(baseDir, "scratch", name);
+  const { workdir, manifestPath } = materialize(s, runDir, opts.harness);
+  const config = buildConfig(s, workdir, manifestPath, opts, path.join(baseDir, "transform.ts"));
+  const configPath = path.join(runDir, "promptfooconfig.json");
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  return { name, configPath };
+}
