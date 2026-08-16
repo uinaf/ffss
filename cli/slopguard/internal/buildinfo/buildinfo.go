@@ -19,6 +19,18 @@ func Version() string {
 	return format(resolvedVersion, resolvedCommit)
 }
 
+// Release returns the bare release version (for example v1.0.1) when this
+// binary is a published release, and "" otherwise; selfupdate refuses to
+// replace non-release builds.
+func Release() string {
+	build, ok := debug.ReadBuildInfo()
+	resolvedVersion, _ := resolve(version, commit, build, ok)
+	if !isReleaseModuleVersion(resolvedVersion) {
+		return ""
+	}
+	return resolvedVersion
+}
+
 func format(resolvedVersion, resolvedCommit string) string {
 	if resolvedCommit == "unknown" && isReleaseModuleVersion(resolvedVersion) {
 		return fmt.Sprintf("slopguard %s", resolvedVersion)

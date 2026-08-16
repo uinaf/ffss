@@ -373,7 +373,7 @@ func TestTopLevelAndCommandHelp(t *testing.T) {
 	t.Parallel()
 
 	var stdout bytes.Buffer
-	if exit := run(t.Context(), []string{"--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "slopguard <review|config|schema|version>") || !strings.Contains(stdout.String(), "canonical review or result JSON Schema") {
+	if exit := run(t.Context(), []string{"--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "slopguard <review|config|schema|selfupdate|version>") || !strings.Contains(stdout.String(), "canonical review or result JSON Schema") {
 		t.Fatalf("top-level help exit=%d output=%q", exit, stdout.String())
 	}
 	stdout.Reset()

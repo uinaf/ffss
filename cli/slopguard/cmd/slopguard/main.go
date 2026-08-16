@@ -52,11 +52,14 @@ func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, depe
 	if len(arguments) > 0 && arguments[0] == "schema" {
 		return runSchema(arguments[1:], stdout, stderr)
 	}
+	if len(arguments) > 0 && arguments[0] == "selfupdate" {
+		return runSelfupdate(arguments[1:], stdout, stderr)
+	}
 	if len(arguments) == 1 && (arguments[0] == "--help" || arguments[0] == "-h" || arguments[0] == "help") {
-		report(stdout, "usage: slopguard <review|config|schema|version> [options]\n\nreview  review a frozen local, branch, or commit target\nconfig  print the effective configuration and its sources\nschema  print the canonical review or result JSON Schema\nversion print the binary version\n")
+		report(stdout, "usage: slopguard <review|config|schema|selfupdate|version> [options]\n\nreview     review a frozen local, branch, or commit target\nconfig     print the effective configuration and its sources\nschema     print the canonical review or result JSON Schema\nselfupdate replace this binary with a published release\nversion    print the binary version\n")
 		return 0
 	}
-	report(stderr, "usage: slopguard <review|config|schema|version> [options]\n")
+	report(stderr, "usage: slopguard <review|config|schema|selfupdate|version> [options]\n")
 	return 2
 }
 

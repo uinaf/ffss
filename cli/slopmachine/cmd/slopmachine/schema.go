@@ -187,6 +187,7 @@ func allCommandSchemas() []commandSchema {
 		{Name: "repo", Description: "Show or declare the repo profile: role bindings (review, qa, venue, memory) and policy (forge kind, trust tier, verify command, delivery mode, readiness). Subcommands: show, register, update, unregister.", Mutating: true, Flags: flags("forge", "trust", "verify-cmd", "delivery", "readiness", "bind", "forge-reviewer", "json"), Output: "repo"},
 		{Name: "schema", Description: "Describe commands, flags, raw inputs, enums, and outputs as JSON.", Flags: flags("json", "command"), Output: "schema"},
 		{Name: "storage", Description: "Inspect database path resolution and Git safety without mutation.", Flags: flags("json"), Output: "storage"},
+		{Name: "selfupdate", Description: "Replace this binary with a published release after checksum verification.", Flags: flags("check", "release", "json"), Output: "selfupdate"},
 		{Name: "serve", Description: "Serve the read-only projector on loopback.", Flags: flags("addr"), Output: "long-running"},
 		{Name: "version", Description: "Print build version and source revision.", Flags: flags("json"), Output: "version"},
 	}

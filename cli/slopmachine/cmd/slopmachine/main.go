@@ -107,6 +107,12 @@ func runWithOptions(args []string, opts runOptions) int {
 		}
 		return cmdStorage(args[1:], opts)
 	}
+	if args[0] == "selfupdate" {
+		if opts.dryRun {
+			return writeFailure(opts, 2, fmt.Errorf("--dry-run requires a mutating command"))
+		}
+		return cmdSelfupdate(args[1:], opts)
+	}
 	if opts.dryRun && !isMutatingCommand(args[0]) {
 		return writeFailure(opts, 2, fmt.Errorf("--dry-run requires a mutating command"))
 	}
@@ -201,6 +207,7 @@ Usage:
   slopmachine repo [show|register|update|unregister] [flags] [--json]
   slopmachine schema [--command NAME] [--json]
   slopmachine storage [--json]
+  slopmachine selfupdate [--check] [--release vX.Y.Z] [--json]
   slopmachine serve [--addr 127.0.0.1:7780]
   slopmachine version
 
@@ -340,6 +347,13 @@ and corroborates mapped reviewers. unregister restores profile-less behavior.
 		"storage": `Usage: slopmachine storage [--json]
 
 Show the resolved database path, source, scope, existence, and Git safety.
+`,
+		"selfupdate": `Usage: slopmachine selfupdate [--check] [--release vX.Y.Z] [--json]
+
+Replace this binary with the newest published release (or the pinned
+--release), verifying the archive against the release's checksums.txt.
+--check reports without touching the binary; it exits 4 when an update is
+available. Homebrew-managed installs are refused: use brew upgrade --cask.
 `,
 		"serve": `Usage: slopmachine serve [--addr 127.0.0.1:7780]
 
@@ -1372,27 +1386,28 @@ func mapErr(err error, opts runOptions) int {
 }
 
 var commandFlags = map[string]map[string]bool{
-	"init":      {"run": true, "input": true, "telemetry": true},
-	"intake":    {"file": true, "run": true, "input": true, "telemetry": true},
-	"release":   {"revision": true, "run": true, "input": true, "telemetry": true},
-	"build":     {"run": true, "input": true, "telemetry": true},
-	"verify":    {"cmd": true, "evidence": true, "run": true, "input": true, "telemetry": true},
-	"review":    {"evidence": true, "run": true, "input": true, "telemetry": true, "unverified": true, "reason": true},
-	"rework":    {"run": true, "input": true, "telemetry": true},
-	"deliver":   {"evidence": true, "run": true, "input": true, "telemetry": true, "unverified": true, "reason": true},
-	"observe":   {"signal": true, "unit": true, "reference": true, "run": true, "input": true, "telemetry": true},
-	"ask":       {"question": true, "run": true, "input": true, "telemetry": true},
-	"decide":    {"answer": true, "run": true, "input": true, "telemetry": true},
-	"retry":     {"reason": true, "run": true, "input": true, "telemetry": true},
-	"block":     {"reason": true, "run": true, "input": true, "telemetry": true},
-	"status":    {"json": true, "run": true, "fields": true},
-	"reviewers": {"add": true, "remove": true, "json": true},
-	"watch":     {"once": true, "interval": true, "iterations": true, "run": true, "json": true},
-	"repo":      {"forge": true, "trust": true, "verify-cmd": true, "delivery": true, "readiness": true, "bind": true, "forge-reviewer": true, "json": true},
-	"schema":    {"json": true, "command": true},
-	"storage":   {"json": true},
-	"serve":     {"addr": true},
-	"version":   {},
+	"init":       {"run": true, "input": true, "telemetry": true},
+	"intake":     {"file": true, "run": true, "input": true, "telemetry": true},
+	"release":    {"revision": true, "run": true, "input": true, "telemetry": true},
+	"build":      {"run": true, "input": true, "telemetry": true},
+	"verify":     {"cmd": true, "evidence": true, "run": true, "input": true, "telemetry": true},
+	"review":     {"evidence": true, "run": true, "input": true, "telemetry": true, "unverified": true, "reason": true},
+	"rework":     {"run": true, "input": true, "telemetry": true},
+	"deliver":    {"evidence": true, "run": true, "input": true, "telemetry": true, "unverified": true, "reason": true},
+	"observe":    {"signal": true, "unit": true, "reference": true, "run": true, "input": true, "telemetry": true},
+	"ask":        {"question": true, "run": true, "input": true, "telemetry": true},
+	"decide":     {"answer": true, "run": true, "input": true, "telemetry": true},
+	"retry":      {"reason": true, "run": true, "input": true, "telemetry": true},
+	"block":      {"reason": true, "run": true, "input": true, "telemetry": true},
+	"status":     {"json": true, "run": true, "fields": true},
+	"reviewers":  {"add": true, "remove": true, "json": true},
+	"watch":      {"once": true, "interval": true, "iterations": true, "run": true, "json": true},
+	"repo":       {"forge": true, "trust": true, "verify-cmd": true, "delivery": true, "readiness": true, "bind": true, "forge-reviewer": true, "json": true},
+	"schema":     {"json": true, "command": true},
+	"storage":    {"json": true},
+	"selfupdate": {"check": true, "release": true, "json": true},
+	"serve":      {"addr": true},
+	"version":    {},
 }
 
 type reviewersDocument struct {
@@ -1557,7 +1572,7 @@ func parseFlagsWith(args []string, allowed map[string]bool) (map[string]string, 
 		if _, dup := out[key]; dup {
 			return nil, fmt.Errorf("flag --%s may be specified only once", key)
 		}
-		if key == "json" || key == "once" || key == "unverified" {
+		if key == "json" || key == "once" || key == "unverified" || key == "check" {
 			if hasVal {
 				return nil, fmt.Errorf("flag --%s does not accept a value", key)
 			}
