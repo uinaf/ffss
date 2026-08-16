@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // Convert one skill-eval scenario (task.md + criteria.json) into a promptfoo run.
 //
-// Usage: node generate.mjs <scenario-dir> [agent-model] [judge-model]
-//   e.g. node generate.mjs ../../skills/slopspec/evals/single-item-minimality
+// Usage: node generate.ts <scenario-dir> [agent-model] [judge-model]
+//   e.g. node generate.ts ../../skills/slopspec/evals/single-item-minimality
 //
 // Produces scratch/<skill>--<scenario>/ containing:
 //   workdir/            input files from task.md + the skill at .claude/skills/<skill>/
-//   manifest.json       hashes of pre-existing workdir files (transform.mjs diffs against it)
+//   manifest.json       hashes of pre-existing workdir files (transform.ts diffs against it)
 //   promptfooconfig.json  one llm-rubric assertion per checklist item, weight = max_score
 //
 // Run: npx promptfoo eval -c scratch/<name>/promptfooconfig.json --no-cache -o results/<name>.json
@@ -23,14 +23,25 @@ const judgeModel = process.argv[4] ?? "claude-opus-5";
 
 const match = scenarioDir.match(/skills\/([^/]+)\/evals\/([^/]+)$/);
 if (!match) {
-  console.error("usage: generate.mjs <repo>/skills/<skill>/evals/<scenario>");
+  console.error("usage: generate.ts <repo>/skills/<skill>/evals/<scenario>");
   process.exit(1);
 }
 const [, skill, scenario] = match;
 const skillDir = path.resolve(scenarioDir, "../..");
 
 const taskMd = fs.readFileSync(path.join(scenarioDir, "task.md"), "utf8");
-const criteria = JSON.parse(fs.readFileSync(path.join(scenarioDir, "criteria.json"), "utf8"));
+interface ChecklistItem {
+  name: string;
+  description: string;
+  max_score: number;
+}
+interface Criteria {
+  type: string;
+  context?: string;
+  checklist: ChecklistItem[];
+}
+
+const criteria: Criteria = JSON.parse(fs.readFileSync(path.join(scenarioDir, "criteria.json"), "utf8"));
 if (
   criteria.type !== "weighted_checklist" ||
   !Array.isArray(criteria.checklist) ||
@@ -51,9 +62,9 @@ for (const item of criteria.checklist) {
 }
 
 // Extract embedded input files; replace each block with a pointer to the file on disk.
-const files = [];
+const files: { name: string; content: string }[] = [];
 const fileBlock = /^=+ FILE: (.+?) =+\n([\s\S]*?)\n=+ END FILE =+$/gm;
-const prompt = taskMd.replace(fileBlock, (_, name, content) => {
+const prompt = taskMd.replace(fileBlock, (_, name: string, content: string) => {
   files.push({ name: name.trim(), content: content + "\n" });
   return `(Input file \`${name.trim()}\` is available in your working directory.)`;
 });
@@ -68,7 +79,7 @@ fs.mkdirSync(workdir, { recursive: true });
 // stay strictly below workdir, must not land under .claude/ (a fixture could
 // inject project settings that setting_sources: ['project'] would load), and
 // must not collide.
-const seen = new Set();
+const seen = new Set<string>();
 const planned = files.map((f) => {
   const dest = path.resolve(workdir, f.name);
   const rel = path.relative(workdir, dest);
@@ -100,9 +111,9 @@ fs.cpSync(skillDir, skillDest, {
   filter: (src) => path.basename(src) !== "evals",
 });
 
-// Manifest of pre-existing files so transform.mjs can find what the agent wrote.
-const manifest = {};
-const walk = (dir) => {
+// Manifest of pre-existing files so transform.ts can find what the agent wrote.
+const manifest: Record<string, string> = {};
+const walk = (dir: string): void => {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) {
@@ -165,7 +176,7 @@ const config = {
               },
             },
           },
-      transform: `file://${path.join(here, "transform.mjs")}`,
+      transform: `file://${path.join(here, "transform.ts")}`,
     },
   },
   tests: [

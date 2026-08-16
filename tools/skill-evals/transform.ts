@@ -4,12 +4,16 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-export default function transform(output, context) {
+interface TransformContext {
+  vars: { workdir: string; manifest: string; [key: string]: string };
+}
+
+export default function transform(output: string, context: TransformContext): string {
   const workdir = context.vars.workdir;
-  const manifest = JSON.parse(fs.readFileSync(context.vars.manifest, "utf8"));
-  const sections = [];
-  const visited = new Set();
-  const walk = (dir) => {
+  const manifest: Record<string, string> = JSON.parse(fs.readFileSync(context.vars.manifest, "utf8"));
+  const sections: string[] = [];
+  const visited = new Set<string>();
+  const walk = (dir: string): void => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) {
@@ -21,7 +25,8 @@ export default function transform(output, context) {
         try {
           body = fs.readFileSync(p);
         } catch (err) {
-          sections.push(`=== UNREADABLE FILE: ${rel} === (${err.code ?? err.message})`);
+          const detail = err instanceof Error ? err.message : String(err);
+          sections.push(`=== UNREADABLE FILE: ${rel} === (${detail})`);
           continue;
         }
         const hash = createHash("sha256").update(body).digest("hex");
