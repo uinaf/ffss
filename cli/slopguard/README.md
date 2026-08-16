@@ -42,8 +42,8 @@ go install github.com/uinaf/ffsstack/cli/slopguard/cmd/slopguard@latest
 slopguard --version
 ```
 
-Go-built binaries track `main`, report `dev (unknown)`, and are refused by
-`selfupdate`; signed, versioned builds come from the tap or the installer.
+Go-built binaries track `main` and report `dev (unknown)`; `selfupdate`
+refuses them. Signed, versioned builds come from the tap or the installer.
 
 Runtime dependencies are Git 2.41 or newer, the `trufflehog` executable, and
 the selected review harness available on `PATH`. Multiple supported harnesses

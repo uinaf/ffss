@@ -35,7 +35,7 @@ builds, Cosign-signed checksums, GitHub build attestations, Homebrew casks
 in [`uinaf/homebrew-tap`](https://github.com/uinaf/homebrew-tap), Linux
 installers, and in-place `selfupdate`. CI runs each member's own gate
 (`mise run verify` inside `cli/slopmachine/` and `cli/slopguard/`) plus a
-skills lint. The factory's next frontier is
+skills lint. Next:
 [M3 dispatch + M4 learn](https://github.com/uinaf/ffsstack/issues/27).
 
 ## License
