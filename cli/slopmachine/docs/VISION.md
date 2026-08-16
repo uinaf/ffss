@@ -3,7 +3,7 @@
 Status: agreed direction, 2026-08-14. This document describes the target
 state. [AGENT_INTERFACE.md](AGENT_INTERFACE.md) and the installed binary
 describe what exists; when they disagree with this document, they win until
-the tracker — [epic #25](https://github.com/uinaf/slopshipper/issues/25) and
+the tracker — [epic #27](https://github.com/uinaf/ffsstack/issues/27) and
 its children — says otherwise.
 
 ## North star
@@ -214,7 +214,7 @@ not change.
 
 ## Sequence
 
-Detail lives in [epic #25](https://github.com/uinaf/slopshipper/issues/25);
+Detail lives in [epic #27](https://github.com/uinaf/ffsstack/issues/27);
 this is the shape.
 
 - **M0 — credibility.** Fix first-run initialization and install-path

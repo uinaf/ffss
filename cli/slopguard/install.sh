@@ -2,9 +2,9 @@
 
 set -eu
 
-# slopguard release assets ship from the ffsstack monorepo starting with
-# the first slopguard release (uinaf/slopshipper#50); earlier artifacts are
-# autoreview releases in the legacy repository.
+# slopguard release assets ship from the ffsstack monorepo on
+# slopguard/vX.Y.Z tags; earlier artifacts are autoreview releases in the
+# legacy uinaf/autoreview repository.
 repository_url=${SLOPGUARD_INSTALL_REPOSITORY_URL:-https://github.com/uinaf/ffsstack}
 while [ "${repository_url%/}" != "$repository_url" ]; do
   repository_url=${repository_url%/}
