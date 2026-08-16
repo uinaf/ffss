@@ -13,6 +13,17 @@ agent behaves. Ships slop; checks receipts.
 
 ## Skills
 
+Install all eight as a Claude Code plugin (skills only, ~570K payload):
+
+```text
+/plugin marketplace add uinaf/ffsstack
+/plugin install ffsstack@ffsstack
+```
+
+The plugin is SHA-versioned; updates follow this repo's `main`. The repo root
+also carries a [`plugin.json`](plugin.json) manifest per the
+[agent plugins standard](https://agent-plugins.org/) for other harnesses.
+
 | Skill | What it does |
 | --- | --- |
 | [`slopmachine`](skills/slopmachine/) | Drive the slopmachine CLI through a governed run |
