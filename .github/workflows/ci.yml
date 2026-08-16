@@ -80,6 +80,6 @@ jobs:
         run: |
           set -euo pipefail
           for skill in skills/*/ cli/*/skills/*/; do
-            [ -f "$skill/SKILL.md" ] || continue
+            [ -d "$skill" ] || continue
             tessl plugin lint "$skill"
           done

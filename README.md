@@ -13,16 +13,28 @@ agent behaves. Ships slop; checks receipts.
 
 ## Skills
 
-Install all eight as a Claude Code plugin (skills only, ~570K payload):
+Install all eight as a plugin (skills only, ~570K payload). Codex and Cursor
+read the same marketplace:
 
 ```text
+# Claude Code
 /plugin marketplace add uinaf/ffsstack
 /plugin install ffsstack@ffsstack
+
+# Codex CLI
+codex plugin marketplace add uinaf/ffsstack
+codex plugin add ffsstack@ffsstack
+
+# Cursor CLI (then /plugins in interactive mode to install)
+cursor-agent plugin marketplace add https://github.com/uinaf/ffsstack
 ```
 
-The plugin is SHA-versioned; updates follow this repo's `main`. The repo root
-also carries a [`plugin.json`](plugin.json) manifest per the
-[agent plugins standard](https://agent-plugins.org/) for other harnesses.
+The plugin is SHA-versioned; updates follow this repo's `main`. Skills marked
+`disable-model-invocation` load only on explicit `/name` invocation in
+harnesses that support the flag. The repo root also carries a
+[`plugin.json`](plugin.json) manifest per the
+[agent plugins standard](https://agent-plugins.org/) for when its clients
+grow install flows.
 
 | Skill | What it does |
 | --- | --- |

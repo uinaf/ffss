@@ -1,6 +1,7 @@
 ---
 name: slopspec
 description: "Turn an agreed change, specification, or conversation into a durable, resumable work plan in the repository's preferred tracker. Use when asked to plan future work, write or make a plan, save a plan, create an epic or tickets, break work into tickets, decompose work for parallel execution, or prepare work for another session. Do not use for routine in-session checklists, implementation, general documentation cleanup, or open-ended discovery where requirements still need substantive product decisions."
+disable-model-invocation: true
 ---
 
 # Slopspec
