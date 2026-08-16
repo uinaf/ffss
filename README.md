@@ -1,8 +1,8 @@
 # ffsstack
 
-**ffsstack** — short for *flipflopslopstack* — is an agentic software factory,
-not another \*stack. Deterministic state machines, observed evidence, and
-adversarial review for shipping slop that survives contact with reality.
+**ffsstack** — the flipflopslopstack. A state machine that doesn't believe
+the agent, a reviewer that doesn't like the agent, and some skills so the
+agent behaves. Ships slop; checks receipts.
 
 ## CLIs
 
