@@ -127,10 +127,17 @@ valid_release_tag() {
 # tags (slopmachine/vX.Y.Z); "latest" means this member's newest release.
 api_url=${SLOPMACHINE_INSTALL_API_URL:-https://api.github.com/repos/uinaf/ffsstack/releases}
 if [ "$requested_version" = latest ]; then
-  release_tag=$(curl --proto '=https' --tlsv1.2 -fsSL \
-    -H "Accept: application/vnd.github+json" "$api_url?per_page=100" |
-    grep -o '"tag_name": *"slopmachine/v[0-9.]*"' | head -1 | sed 's/.*"slopmachine\///; s/"$//') ||
-    fail "failed to resolve the latest release"
+  release_tag=
+  page=1
+  while [ "$page" -le 10 ]; do
+    body=$(curl --proto '=https' --tlsv1.2 -fsSL \
+      -H "Accept: application/vnd.github+json" "$api_url?per_page=100&page=$page") ||
+      fail "failed to resolve the latest release"
+    release_tag=$(printf '%s' "$body" |
+      grep -o '"tag_name": *"slopmachine/v[0-9.]*"' | head -1 | sed 's/.*"slopmachine\///; s/"$//')
+    [ -n "$release_tag" ] && break
+    case "$body" in *'"tag_name"'*) page=$((page + 1)) ;; *) break ;; esac
+  done
   [ -n "$release_tag" ] || fail "no slopmachine release found"
 else
   case "$requested_version" in

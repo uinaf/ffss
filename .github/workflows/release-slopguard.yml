@@ -9,8 +9,11 @@ on:
 permissions:
   contents: read
 
+# Per-member groups: a shared group would let a queued run replace the
+# other member's pending release. Tap-write races are handled by the cask
+# script's bounded retry instead.
 concurrency:
-  group: ffsstack-release
+  group: release-slopguard
   cancel-in-progress: false
 
 jobs:

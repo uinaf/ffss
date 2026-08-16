@@ -85,4 +85,14 @@ if git -C "$tap_dir" diff --cached --quiet; then
 fi
 git -C "$tap_dir" -c user.name="$BOT_NAME" -c user.email="$BOT_EMAIL" \
   commit -m "chore(${member}): update to ${VERSION}"
-git -C "$tap_dir" push origin HEAD:main
+# Both member releases write to the tap; retry on a concurrent push
+# instead of failing the release.
+for attempt in 1 2 3; do
+  if git -C "$tap_dir" push origin HEAD:main; then
+    exit 0
+  fi
+  echo "tap push rejected (attempt ${attempt}); rebasing onto fresh main"
+  git -C "$tap_dir" pull --rebase origin main
+done
+echo "tap push failed after 3 attempts" >&2
+exit 1
