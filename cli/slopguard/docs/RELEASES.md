@@ -103,33 +103,14 @@ release step. Never delete or move a published tag to retry a release.
 
 ## Version tracks
 
-CLI SemVer describes the Go executable contract. Tessl skill SemVer describes
-the independently published agent package and may advance without changing the
-CLI version. The skill documents its compatible CLI requirement; the two
-version numbers are not required to match.
+CLI SemVer describes the Go executable contract. The skill ships with the
+repo's agent plugin and carries no separate version; it documents its
+compatible CLI requirement.
 
 ## Skill publication
 
-Changes under `skills/slopguard` publish only after they merge to protected
-`main`. The dedicated `skill-release` Environment exposes a Tessl API key with
-the workspace-scoped `publisher` role; pull-request jobs remain secretless.
-The publisher runs the deterministic package contract, then the pinned
-`uinaf/tessl-publish-action` runs free Tessl plugin lint (default) and publishes the
-explicit version from `plugin.json` without mutating the repository.
-
-Publication is immutable and rerunnable. If the declared version already
-exists, the shared action treats it as an idempotent retry and does not replace
-it. After either a new publication or a retry, the workflow strict-installs the
-exact version into a clean temporary Codex project and confirms that Codex can
-discover the installed skill. This is a live consumer smoke, not a local
-simulation of Tessl's packaging or registry layout. The package gate separately
-validates repository-owned publication input such as `agents/openai.yaml`.
-Because Tessl moderation is asynchronous, the clean install retries the
-registry's temporary hidden-content response for up to five minutes; other
-install failures stop immediately, and an unapproved version remains a failure.
-
-The first automated publication, skill version `2.1.0`, was rejected by Tessl
-moderation because the skill included an agent-executable remote installer
-pipeline. That immutable version remains hidden. Version `2.1.1` removes remote
-installation from the skill boundary; installation belongs to a user-approved
-host package or release workflow.
+The skill ships through this repo's agent-plugin marketplace
+(`.claude-plugin/marketplace.json`): merging skill changes to `main` is the
+publication, and installed plugins are SHA-versioned by the marketplace
+commit. The root CI skills-lint job (`node tools/skill-evals/lint-skills.ts`)
+gates the package shape.
