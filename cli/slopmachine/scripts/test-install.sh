@@ -92,7 +92,11 @@ case "$url" in
     if [ "${FAKE_CURL_MODE:-}" = malformed-latest ]; then
       printf '%s' '{"message":"rate limited"}'
     else
-      printf '%s' '[{"tag_name": "slopmachine/v1.2.3"}]'
+      case "$url" in
+        *"page=1") printf '%s' '[{"tag_name": "othermember/v9.9.9"}]' ;;
+        *"page=2") printf '%s' '[{"tag_name": "slopmachine/v1.2.3"}]' ;;
+        *) printf '%s' '[]' ;;
+      esac
     fi
     ;;
   *)
@@ -113,6 +117,10 @@ EOF
 cat > "$fake_bin/git" <<'EOF'
 #!/bin/sh
 # Fake git: serves the tag listing the installer's latest-resolution reads.
+# FAKE_GIT_MODE=absent simulates a host without git, forcing the API path.
+if [ "${FAKE_GIT_MODE:-}" = absent ]; then
+  exit 127
+fi
 if [ "$1" = ls-remote ]; then
   if [ "${FAKE_CURL_MODE:-}" = malformed-latest ]; then
     exit 0
@@ -150,6 +158,7 @@ run_installer() {
     TEST_UNAME_S="${TEST_UNAME_S:-Linux}" \
     TEST_UNAME_M="${TEST_UNAME_M:-x86_64}" \
     FAKE_CURL_MODE="${FAKE_CURL_MODE:-}" \
+    FAKE_GIT_MODE="${FAKE_GIT_MODE:-}" \
     /bin/sh "$installer" "$@"
 }
 
@@ -165,6 +174,7 @@ run_installer_without_home() {
     TEST_UNAME_S="${TEST_UNAME_S:-Linux}" \
     TEST_UNAME_M="${TEST_UNAME_M:-x86_64}" \
     FAKE_CURL_MODE="${FAKE_CURL_MODE:-}" \
+    FAKE_GIT_MODE="${FAKE_GIT_MODE:-}" \
     /bin/sh "$installer" "$@"
 }
 
@@ -276,6 +286,14 @@ printf '#!/bin/sh\nprintf '\''old slopmachine\\n'\''\n' > \
 chmod 755 "$case_home/.local/bin/slopmachine"
 FAKE_CURL_MODE=fail-download expect_failure 'failed to download' run_installer
 test "$("$case_home/.local/bin/slopmachine")" = 'old slopmachine'
+
+# Case: no git on the host — the paginated API fallback resolves latest
+# from a later page.
+new_case
+FAKE_GIT_MODE=absent run_installer >/dev/null
+test "$("$case_home/.local/bin/slopmachine" --version)" = \
+  'slopmachine v1.2.3 (fixture-amd64)'
+assert_no_residue
 assert_no_residue
 
 new_case
