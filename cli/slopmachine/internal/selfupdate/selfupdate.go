@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // Options configures one selfupdate pass. Zero-value fields take the
@@ -121,7 +122,10 @@ func withDefaults(opts Options) (Options, error) {
 		opts.DownloadBase = "https://github.com/uinaf/ffsstack"
 	}
 	if opts.Client == nil {
-		opts.Client = http.DefaultClient
+		// Bounded end to end: a stalled server must fail the update, not
+		// hang automation. Archives are a few megabytes; ten minutes is
+		// generous for the slowest links.
+		opts.Client = &http.Client{Timeout: 10 * time.Minute}
 	}
 	if opts.OS == "" {
 		opts.OS = runtime.GOOS
