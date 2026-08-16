@@ -65,35 +65,6 @@ changelog:
   disable: true
 
 release:
-  github:
-    owner: uinaf
-    name: slopguard
-  draft: true
-  use_existing_draft: true
-  mode: keep-existing
-  replace_existing_artifacts: true
-  prerelease: auto
-
-homebrew_casks:
-  - name: slopguard
-    ids:
-      - slopguard
-    binaries:
-      - slopguard
-    repository:
-      owner: uinaf
-      name: homebrew-tap
-      branch: main
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    directory: Casks
-    commit_author:
-      use_github_app_token: true
-    commit_msg_template: "chore(slopguard): update to {{ .Tag }}"
-    homepage: https://github.com/uinaf/ffsstack
-    description: Structured independent code review CLI
-    license: MIT
-    dependencies:
-      - formula: git
-      - formula: trufflehog
-    url:
-      verified: github.com/uinaf/ffsstack/
+  # Publishing is workflow-owned; goreleaser only builds, signs, and
+  # notarizes (release workflows run with --skip=publish).
+  disable: true

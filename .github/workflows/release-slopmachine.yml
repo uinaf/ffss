@@ -1,0 +1,204 @@
+name: release slopmachine
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cli/slopmachine/**"
+      - "skills/slopmachine/**"
+
+permissions:
+  contents: read
+
+# Per-member groups: a shared group would let a queued run replace the
+# other member's pending release. Tap-write races are handled by the cask
+# script's bounded retry instead.
+concurrency:
+  group: release-slopmachine
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: verify slopmachine
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: cli/slopmachine
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+        with:
+          working_directory: cli/slopmachine
+      - run: mise run verify
+
+  release:
+    name: release slopmachine
+    needs: verify
+    runs-on: macos-latest
+    timeout-minutes: 45
+    environment:
+      name: release
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    defaults:
+      run:
+        working-directory: cli/slopmachine
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Create release bot token
+        id: release-bot
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.UINAF_RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.UINAF_RELEASE_APP_PRIVATE_KEY }}
+          owner: uinaf
+          repositories: |
+            ffsstack
+            homebrew-tap
+          permission-contents: write
+
+      - name: Resolve release bot identity
+        id: release-bot-identity
+        env:
+          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
+          APP_SLUG: ${{ steps.release-bot.outputs.app-slug }}
+        run: |
+          set -euo pipefail
+          user_id="$(gh api "/users/${APP_SLUG}[bot]" --jq .id)"
+          [[ "$user_id" =~ ^[0-9]+$ ]] || { echo "failed to resolve bot user id" >&2; exit 1; }
+          echo "user-id=${user_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up mise
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+        with:
+          working_directory: cli/slopmachine
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Evaluate release
+        uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
+        with:
+          semantic_version: 25.0.8
+          working_directory: cli/slopmachine
+          extra_plugins: |
+            @semantic-release/commit-analyzer@13.0.1
+            @semantic-release/release-notes-generator@14.1.1
+            @semantic-release/github@12.0.9
+            conventional-changelog-conventionalcommits@9.3.1
+        env:
+          GITHUB_TOKEN: ${{ steps.release-bot.outputs.token }}
+          GIT_AUTHOR_NAME: ${{ steps.release-bot.outputs.app-slug }}[bot]
+          GIT_AUTHOR_EMAIL: ${{ steps.release-bot-identity.outputs.user-id }}+${{ steps.release-bot.outputs.app-slug }}[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: ${{ steps.release-bot.outputs.app-slug }}[bot]
+          GIT_COMMITTER_EMAIL: ${{ steps.release-bot-identity.outputs.user-id }}+${{ steps.release-bot.outputs.app-slug }}[bot]@users.noreply.github.com
+
+      - name: Detect release tag at HEAD
+        id: tag
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          if tag=$(git describe --exact-match --tags --match "slopmachine/v*" HEAD 2>/dev/null); then
+            {
+              echo "present=true"
+              echo "tag=${tag}"
+              echo "version=${tag#slopmachine/}"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Detect release state
+        id: release-state
+        if: steps.tag.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # semantic-release pushes the tag before creating the release; a
+          # crash between the two leaves a tag with no release. Recover by
+          # recreating the draft instead of failing every rerun.
+          if draft=$(gh release view "$TAG" --repo uinaf/ffsstack --json isDraft --jq .isDraft 2>/dev/null); then
+            echo "published=$([ "$draft" = "false" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          else
+            gh release create "$TAG" --repo uinaf/ffsstack --draft --verify-tag --title "$TAG" --notes "Recovered draft; see the tagged commit history."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build, sign, and notarize
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
+        env:
+          APPLE_DEVELOPER_ID_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_P12_BASE64 }}
+          APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          APPLE_NOTARY_API_ISSUER_ID: ${{ vars.APPLE_NOTARY_API_ISSUER_ID }}
+          APPLE_NOTARY_API_KEY_ID: ${{ vars.APPLE_NOTARY_API_KEY_ID }}
+          APPLE_NOTARY_API_KEY_P8_BASE64: ${{ secrets.APPLE_NOTARY_API_KEY_P8_BASE64 }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          GORELEASER_CURRENT_TAG: ${{ steps.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          ./scripts/verify-apple-credentials.sh "$APPLE_TEAM_ID"
+          # goreleaser OSS needs a plain semver tag; the member prefix lives
+          # only on the pushed tag. The local alias is never pushed.
+          git tag -f "${{ steps.tag.outputs.version }}"
+          exec goreleaser release --clean --skip=publish
+
+      - name: Verify checksums and signature
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
+        run: |
+          set -euo pipefail
+          (cd dist && shasum -a 256 -c checksums.txt)
+          cosign verify-blob \
+            --bundle dist/checksums.txt.sigstore.json \
+            --certificate-identity "https://github.com/uinaf/ffsstack/.github/workflows/release-slopmachine.yml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            dist/checksums.txt
+
+      - name: Verify Apple signatures
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
+        env:
+          EXPECTED_APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          GORELEASER_CURRENT_TAG: ${{ steps.tag.outputs.version }}
+        run: ./scripts/verify-apple-release.sh
+
+      - name: Attest build provenance
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            cli/slopmachine/dist/slopmachine_*.tar.gz
+            cli/slopmachine/dist/checksums.txt
+            cli/slopmachine/dist/checksums.txt.sigstore.json
+
+      - name: Publish assets to the release
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
+        env:
+          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" dist/*.tar.gz dist/checksums.txt dist/checksums.txt.sigstore.json --clobber --repo uinaf/ffsstack
+          gh release edit "$TAG" --draft=false --repo uinaf/ffsstack
+
+      - name: Publish Homebrew cask
+        if: steps.tag.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          VERSION: ${{ steps.tag.outputs.version }}
+          BOT_NAME: ${{ steps.release-bot.outputs.app-slug }}[bot]
+          BOT_EMAIL: ${{ steps.release-bot-identity.outputs.user-id }}+${{ steps.release-bot.outputs.app-slug }}[bot]@users.noreply.github.com
+        run: ./scripts/publish-cask.sh slopmachine

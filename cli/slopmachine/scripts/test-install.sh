@@ -88,11 +88,15 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$url" in
-  */releases/latest)
+  *"/releases?per_page="*)
     if [ "${FAKE_CURL_MODE:-}" = malformed-latest ]; then
-      printf '%s' 'https://github.com/uinaf/slopshipper/issues/61'
+      printf '%s' '{"message":"rate limited"}'
     else
-      printf '%s' 'https://fixture.invalid/releases/tag/v1.2.3'
+      case "$url" in
+        *"page=1") printf '%s' '[{"tag_name": "othermember/v9.9.9"}]' ;;
+        *"page=2") printf '%s' '[{"tag_name": "slopmachine/v1.2.3"}]' ;;
+        *) printf '%s' '[]' ;;
+      esac
     fi
     ;;
   *)
@@ -110,7 +114,24 @@ case "$url" in
 esac
 EOF
 
-chmod 755 "$fake_bin/uname" "$fake_bin/sha256sum" "$fake_bin/curl"
+cat > "$fake_bin/git" <<'EOF'
+#!/bin/sh
+# Fake git: serves the tag listing the installer's latest-resolution reads.
+# FAKE_GIT_MODE=absent simulates a host without git, forcing the API path.
+if [ "${FAKE_GIT_MODE:-}" = absent ]; then
+  exit 127
+fi
+if [ "$1" = ls-remote ]; then
+  if [ "${FAKE_CURL_MODE:-}" = malformed-latest ]; then
+    exit 0
+  fi
+  printf '%s\n' "0000000000000000000000000000000000000000	refs/tags/slopmachine/v1.2.3"
+  exit 0
+fi
+exit 1
+EOF
+
+chmod 755 "$fake_bin/uname" "$fake_bin/sha256sum" "$fake_bin/curl" "$fake_bin/git"
 
 case_number=0
 new_case() {
@@ -137,6 +158,7 @@ run_installer() {
     TEST_UNAME_S="${TEST_UNAME_S:-Linux}" \
     TEST_UNAME_M="${TEST_UNAME_M:-x86_64}" \
     FAKE_CURL_MODE="${FAKE_CURL_MODE:-}" \
+    FAKE_GIT_MODE="${FAKE_GIT_MODE:-}" \
     /bin/sh "$installer" "$@"
 }
 
@@ -152,6 +174,7 @@ run_installer_without_home() {
     TEST_UNAME_S="${TEST_UNAME_S:-Linux}" \
     TEST_UNAME_M="${TEST_UNAME_M:-x86_64}" \
     FAKE_CURL_MODE="${FAKE_CURL_MODE:-}" \
+    FAKE_GIT_MODE="${FAKE_GIT_MODE:-}" \
     /bin/sh "$installer" "$@"
 }
 
@@ -197,17 +220,17 @@ run_installer >/dev/null
 test "$("$case_home/.local/bin/slopmachine" --version)" = \
   'slopmachine v1.2.3 (fixture-amd64)'
 grep -Fx \
-  'https://fixture.invalid/releases/download/v1.2.3/slopmachine_v1.2.3_linux_amd64.tar.gz' \
+  'https://fixture.invalid/releases/download/slopmachine%2Fv1.2.3/slopmachine_v1.2.3_linux_amd64.tar.gz' \
   "$case_log" >/dev/null
 grep -Fx \
-  'https://fixture.invalid/releases/download/v1.2.3/checksums.txt' \
+  'https://fixture.invalid/releases/download/slopmachine%2Fv1.2.3/checksums.txt' \
   "$case_log" >/dev/null
 assert_no_residue
 
 new_case
 TEST_REPOSITORY_URL=https://fixture.invalid/ run_installer >/dev/null
 grep -Fx \
-  'https://fixture.invalid/releases/download/v1.2.3/slopmachine_v1.2.3_linux_amd64.tar.gz' \
+  'https://fixture.invalid/releases/download/slopmachine%2Fv1.2.3/slopmachine_v1.2.3_linux_amd64.tar.gz' \
   "$case_log" >/dev/null
 assert_no_residue
 
@@ -218,7 +241,7 @@ TEST_UNAME_M=aarch64 run_installer --version 1.2.3 \
 test "$("$custom_destination/slopmachine" --version)" = \
   'slopmachine v1.2.3 (fixture-arm64)'
 grep -Fx \
-  'https://fixture.invalid/releases/download/v1.2.3/slopmachine_v1.2.3_linux_arm64.tar.gz' \
+  'https://fixture.invalid/releases/download/slopmachine%2Fv1.2.3/slopmachine_v1.2.3_linux_arm64.tar.gz' \
   "$case_log" >/dev/null
 assert_no_residue
 
@@ -234,7 +257,7 @@ assert_no_residue
 
 new_case
 FAKE_CURL_MODE=malformed-latest expect_failure \
-  'latest release returned malformed metadata' run_installer
+  'no slopmachine release found' run_installer
 assert_no_residue
 
 new_case
@@ -263,6 +286,14 @@ printf '#!/bin/sh\nprintf '\''old slopmachine\\n'\''\n' > \
 chmod 755 "$case_home/.local/bin/slopmachine"
 FAKE_CURL_MODE=fail-download expect_failure 'failed to download' run_installer
 test "$("$case_home/.local/bin/slopmachine")" = 'old slopmachine'
+
+# Case: no git on the host — the paginated API fallback resolves latest
+# from a later page.
+new_case
+FAKE_GIT_MODE=absent run_installer >/dev/null
+test "$("$case_home/.local/bin/slopmachine" --version)" = \
+  'slopmachine v1.2.3 (fixture-amd64)'
+assert_no_residue
 assert_no_residue
 
 new_case
