@@ -716,6 +716,17 @@ func cmdVerify(st *store.Store, args []string, opts runOptions) int {
 	if code != 0 {
 		return code
 	}
+	// Recorded verify evidence is a self-attestation; at low trust only the
+	// machine-executed gate counts.
+	if raw || fs["evidence"] != "" {
+		profile, found, err := st.GetRepoProfile(prepared.repoKey)
+		if err != nil {
+			return mapErr(err, opts)
+		}
+		if found && profile.TrustTier == machine.TrustLow {
+			return writeFailure(opts, 3, fmt.Errorf("%w: trust tier low accepts only machine-executed verification; run the gate through verify --cmd (recorded verify evidence requires medium or high trust)", machine.ErrUnmetGuard))
+		}
+	}
 	if c := fs["cmd"]; !raw && c != "" {
 		if opts.dryRun {
 			ctx, err := statusContext(st, prepared.repoKey, prepared.run.ID)

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/uinaf/ffsstack/cli/slopmachine/internal/forge"
@@ -78,12 +80,24 @@ func resolveDeliverVerification(ctx context.Context, ev *machine.DeliverEvidence
 	if err != nil {
 		return writeFailure(opts, 3, fmt.Errorf("%w: deliver.pr_url is not a %s change request URL: %q", machine.ErrUnmetGuard, profile.ForgeKind, ev.PRURL))
 	}
-	// Existence and head are the whole delivery proof; the narrow read keeps
-	// faults in reads deliver does not need (review threads) out of it.
-	head, err := adapter.Head(ctx, ref)
+	// Existence, openness, and head are the whole delivery proof; the narrow
+	// read keeps faults in reads deliver does not need (review threads) out
+	// of it.
+	hs, err := adapter.Head(ctx, ref)
 	if err != nil {
 		return observationFailure(fmt.Sprintf("delivery change request %s", ref), err, opts)
 	}
+	// An already merged or closed change request cannot be the delivery of
+	// new work; accepting one lets a later watch pass settle the unit on
+	// somebody else's merge.
+	if hs.Merged || hs.Closed {
+		state := "closed"
+		if hs.Merged {
+			state = "merged"
+		}
+		return writeFailure(opts, 3, fmt.Errorf("%w: delivery change request %s is already %s; delivery evidence must name the open change request that ships this unit", machine.ErrUnmetGuard, ref, state))
+	}
+	head := hs.SHA
 	// A payload without a judgeable head cannot corroborate anything; that
 	// is an incomplete observation, never a silent pass.
 	if !validObservedHead(head) {
@@ -93,13 +107,36 @@ func resolveDeliverVerification(ctx context.Context, ev *machine.DeliverEvidence
 	if ev.CommitSHA != "" && watch.HeadMoved(ev.CommitSHA, head) {
 		return writeFailure(opts, 3, fmt.Errorf("%w: delivered head mismatch: evidence records %s but the forge head of %s is %s; re-deliver the current head or fix the evidence", machine.ErrUnmetGuard, ev.CommitSHA, ref, head))
 	}
-	// A verified delivery without a recorded revision adopts the observed
-	// head, giving watch a baseline for head_moved.
+	// Evidence without a recorded revision anchors to the built checkout:
+	// the forge head must match the local head before it is adopted as the
+	// delivered revision. Adopting an arbitrary observed head would let any
+	// open change request stand in for the delivered work.
 	if ev.CommitSHA == "" {
+		local, lerr := localHeadRevision(ctx)
+		if lerr != nil {
+			return writeFailure(opts, 3, fmt.Errorf("%w: cannot read the built checkout's head to corroborate the delivery (%v); record deliver.commit_sha for the revision that was actually delivered", machine.ErrUnmetGuard, lerr))
+		}
+		if watch.HeadMoved(local, head) {
+			return writeFailure(opts, 3, fmt.Errorf("%w: forge head of %s is %s but the built checkout head is %s; deliver the built revision or record deliver.commit_sha for the revision that was actually delivered", machine.ErrUnmetGuard, ref, head, local))
+		}
 		ev.CommitSHA = head
 	}
 	ev.Verification = machine.VerificationObserved
 	return 0
+}
+
+// localHeadRevision reads the built checkout's current head; delivery
+// evidence without an explicit revision anchors to it.
+func localHeadRevision(ctx context.Context) (string, error) {
+	out, err := exec.CommandContext(ctx, "git", "rev-parse", "HEAD").Output()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse HEAD: %v", err)
+	}
+	head := strings.TrimSpace(string(out))
+	if !validObservedHead(head) {
+		return "", fmt.Errorf("git rev-parse HEAD returned no usable revision")
+	}
+	return head, nil
 }
 
 // resolveReviewVerification corroborates forge-resident reviewer evidence
@@ -117,6 +154,14 @@ func resolveReviewVerification(ctx context.Context, ev *machine.ReviewEvidence, 
 	if !resident {
 		if override.Requested {
 			return writeFailure(opts, 2, fmt.Errorf("--unverified applies only to forge-corroborated reviewers (a forge-bound repo profile with a --forge-reviewer mapping for %q); this review is recorded input already", ev.Reviewer))
+		}
+		// On a forge-bound repo, a reviewer without a forge mapping must at
+		// least leave a resolvable artifact; a verdict with nothing behind
+		// it is a claim, not evidence.
+		if adapter != nil {
+			if err := resolveLocalArtifact(ev.ArtifactRef); err != nil {
+				return writeFailure(opts, 3, fmt.Errorf("%w: reviewer %q is recorded input on a forge-bound repo, so review.artifact_ref must resolve to the reviewer's result artifact (%v); point it at the result file, or map the reviewer to its forge login with repo update --forge-reviewer", machine.ErrUnmetGuard, ev.Reviewer, err))
+			}
 		}
 		ev.Verification = machine.VerificationRecorded
 		return 0
@@ -142,6 +187,31 @@ func resolveReviewVerification(ctx context.Context, ev *machine.ReviewEvidence, 
 		}
 	}
 	return writeFailure(opts, 3, fmt.Errorf("%w: no submitted review by %q found on %s; the forge does not corroborate this evidence", machine.ErrUnmetGuard, login, ref))
+}
+
+// resolveLocalArtifact requires a local review artifact reference to point
+// at an existing, non-empty file: a file:// URL or an absolute path.
+func resolveLocalArtifact(ref string) error {
+	var path string
+	switch {
+	case strings.HasPrefix(ref, "file://"):
+		path = strings.TrimPrefix(ref, "file://")
+	case strings.HasPrefix(ref, "/"):
+		path = ref
+	default:
+		return fmt.Errorf("artifact_ref %q is not a file:// URL or absolute path", ref)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("artifact %q is not readable: %v", path, err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("artifact %q is a directory", path)
+	}
+	if info.Size() == 0 {
+		return fmt.Errorf("artifact %q is empty", path)
+	}
+	return nil
 }
 
 // validObservedHead accepts only a judgeable commit identity: 7-64 hex

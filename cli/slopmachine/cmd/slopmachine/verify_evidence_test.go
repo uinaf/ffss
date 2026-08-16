@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -82,9 +83,24 @@ func forgeBoundRun(t *testing.T, h *cliHarness, runID string) {
 	h.must("release", "--revision", "2", "--run", runID)
 	h.must("build", "--run", runID)
 	h.must("verify", "--cmd", "true", "--run", runID)
+	// A recorded-input reviewer on a forge-bound repo must leave a
+	// resolvable artifact behind.
+	artifact := filepath.Join(t.TempDir(), "slopguard-result.json")
+	mustWrite(t, artifact, `{"status":"clean"}`)
 	review := filepath.Join(t.TempDir(), "review.json")
-	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1"}`)
+	mustWrite(t, review, fmt.Sprintf(`{"reviewer":"slopguard","verdict":"clean","artifact_ref":"file://%s"}`, artifact))
 	h.must("review", "--evidence", review, "--run", runID)
+}
+
+// localHead reads the harness repo's current head; adoption-path delivery
+// anchors to it.
+func localHead(t *testing.T, h *cliHarness) string {
+	t.Helper()
+	out, err := exec.Command("git", "-C", h.repoDir, "rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(string(out))
 }
 
 func latestDelivery(t *testing.T, h *cliHarness, runID string) machine.DeliverEvidence {
@@ -148,7 +164,8 @@ func TestDeliverHeadMismatchFailsClosed(t *testing.T) {
 func TestDeliverAdoptsObservedHead(t *testing.T) {
 	h := newCLIHarness(t)
 	forgeBoundRun(t, h, "v3")
-	installVerifyGH(t, h, openHeadView, zapbotApproved, "")
+	head := localHead(t, h)
+	installVerifyGH(t, h, fmt.Sprintf(`{"headRefOid":%q,"state":"OPEN","mergeable":"MERGEABLE","statusCheckRollup":[]}`, head), zapbotApproved, "")
 	corroboratedReview(t, h, "v3")
 
 	deliver := filepath.Join(t.TempDir(), "deliver.json")
@@ -156,9 +173,88 @@ func TestDeliverAdoptsObservedHead(t *testing.T) {
 	h.must("deliver", "--evidence", deliver, "--run", "v3")
 
 	ev := latestDelivery(t, h, "v3")
-	if ev.CommitSHA != "bbbb2222bbbb2222" || ev.Verification != machine.VerificationObserved {
+	if ev.CommitSHA != head || ev.Verification != machine.VerificationObserved {
 		t.Fatalf("verified delivery must adopt the observed head: %+v", ev)
 	}
+}
+
+func TestDeliverAdoptionAnchorsToBuiltCheckout(t *testing.T) {
+	h := newCLIHarness(t)
+	forgeBoundRun(t, h, "v18")
+	// The forge head is a real open change request, but it is not the built
+	// checkout's head: without an explicit commit_sha the delivery claim
+	// must be refused, not adopted.
+	installVerifyGH(t, h, openHeadView, zapbotApproved, "")
+	corroboratedReview(t, h, "v18")
+
+	deliver := filepath.Join(t.TempDir(), "deliver.json")
+	mustWrite(t, deliver, `{"delivery_mode":"pr-hold","pr_url":"https://github.com/o/r/pull/7"}`)
+	out, code := h.run("deliver", "--evidence", deliver, "--json", "--run", "v18")
+	if code != 3 || !strings.Contains(out, "built checkout head") {
+		t.Fatalf("adoption must anchor to the built checkout: code=%d %s", code, out)
+	}
+}
+
+func TestDeliverRejectsMergedOrClosedChangeRequest(t *testing.T) {
+	h := newCLIHarness(t)
+	forgeBoundRun(t, h, "v19")
+	head := localHead(t, h)
+	stub := installVerifyGH(t, h, fmt.Sprintf(`{"headRefOid":%q,"state":"MERGED","mergeable":"UNKNOWN","statusCheckRollup":[]}`, head), zapbotApproved, "")
+	corroboratedReview(t, h, "v19")
+
+	deliver := filepath.Join(t.TempDir(), "deliver.json")
+	mustWrite(t, deliver, fmt.Sprintf(`{"delivery_mode":"pr-hold","pr_url":"https://github.com/o/r/pull/7","commit_sha":%q}`, head))
+	out, code := h.run("deliver", "--evidence", deliver, "--json", "--run", "v19")
+	if code != 3 || !strings.Contains(out, "already merged") {
+		t.Fatalf("a merged change request cannot be a delivery: code=%d %s", code, out)
+	}
+	stub.setView(fmt.Sprintf(`{"headRefOid":%q,"state":"CLOSED","mergeable":"UNKNOWN","statusCheckRollup":[]}`, head))
+	out, code = h.run("deliver", "--evidence", deliver, "--json", "--run", "v19")
+	if code != 3 || !strings.Contains(out, "already closed") {
+		t.Fatalf("a closed change request cannot be a delivery: code=%d %s", code, out)
+	}
+}
+
+func TestVerifyEvidenceRequiresCmdAtLowTrust(t *testing.T) {
+	h := newCLIHarness(t)
+	h.must("repo", "register", "--forge", "github", "--trust", "low", "--bind", "review=slopguard")
+	deliverWatchableRunToReview(t, h, "v20") // walks through verify --cmd, which low trust allows
+	h2 := newCLIHarness(t)
+	h2.must("repo", "register", "--forge", "github", "--trust", "low", "--bind", "review=slopguard")
+	h2.must("init", "--run", "v21")
+	intake := filepath.Join(t.TempDir(), "intake.json")
+	mustWrite(t, intake, `{"required_reviewers":["slopguard"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	h2.must("intake", "--file", intake, "--run", "v21")
+	h2.must("release", "--revision", "2", "--run", "v21")
+	h2.must("build", "--run", "v21")
+	evidence := filepath.Join(t.TempDir(), "verify.json")
+	mustWrite(t, evidence, `{"command":"mise run verify","exit_code":0}`)
+	out, code := h2.run("verify", "--evidence", evidence, "--json", "--run", "v21")
+	if code != 3 || !strings.Contains(out, "machine-executed") {
+		t.Fatalf("low trust must reject recorded verify evidence: code=%d %s", code, out)
+	}
+	h2.must("verify", "--cmd", "true", "--run", "v21")
+}
+
+func TestReviewLocalArtifactMustResolve(t *testing.T) {
+	h := newCLIHarness(t)
+	h.must("repo", "register", "--forge", "github", "--bind", "review=slopguard")
+	deliverWatchableRunToReview(t, h, "v22")
+	review := filepath.Join(t.TempDir(), "review.json")
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"file:///nonexistent/result.json"}`)
+	out, code := h.run("review", "--evidence", review, "--json", "--run", "v22")
+	if code != 3 || !strings.Contains(out, "artifact") {
+		t.Fatalf("dangling artifact must be refused on a forge-bound repo: code=%d %s", code, out)
+	}
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"slopguard://local"}`)
+	out, code = h.run("review", "--evidence", review, "--json", "--run", "v22")
+	if code != 3 {
+		t.Fatalf("an opaque artifact_ref must be refused on a forge-bound repo: code=%d %s", code, out)
+	}
+	artifact := filepath.Join(t.TempDir(), "result.json")
+	mustWrite(t, artifact, `{"status":"clean"}`)
+	mustWrite(t, review, fmt.Sprintf(`{"reviewer":"slopguard","verdict":"clean","artifact_ref":%q}`, artifact))
+	h.must("review", "--evidence", review, "--run", "v22")
 }
 
 func TestDeliverNotFoundAndUnreachable(t *testing.T) {
@@ -385,6 +481,18 @@ func TestRepoForgeReviewerFlag(t *testing.T) {
 func TestDirectEvidenceVerification(t *testing.T) {
 	repoDir := t.TempDir()
 	runGit(t, repoDir, "init")
+	runGit(t, repoDir, "config", "user.email", "t@example.com")
+	runGit(t, repoDir, "config", "user.name", "t")
+	if err := os.WriteFile(filepath.Join(repoDir, "README"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, repoDir, "add", ".")
+	runGit(t, repoDir, "commit", "-m", "init")
+	headOut, err := exec.Command("git", "-C", repoDir, "rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	head := strings.TrimSpace(string(headOut))
 	oldDir, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -399,7 +507,7 @@ func TestDirectEvidenceVerification(t *testing.T) {
 	viewFile := filepath.Join(binDir, "view.json")
 	reviewsFile := filepath.Join(binDir, "reviews.json")
 	threadsFile := filepath.Join(binDir, "threads.json")
-	mustWrite(t, viewFile, openHeadView)
+	mustWrite(t, viewFile, fmt.Sprintf(`{"headRefOid":%q,"state":"OPEN","mergeable":"MERGEABLE","statusCheckRollup":[]}`, head))
 	mustWrite(t, reviewsFile, zapbotApproved)
 	mustWrite(t, threadsFile, emptyThreadsJSON)
 	script := fmt.Sprintf(`#!/bin/bash
@@ -439,8 +547,10 @@ esac
 			t.Fatalf("%v failed", args)
 		}
 	}
+	artifact := filepath.Join(t.TempDir(), "slopguard-result.json")
+	mustWrite(t, artifact, `{"status":"clean"}`)
 	local := filepath.Join(t.TempDir(), "auto.json")
-	mustWrite(t, local, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1"}`)
+	mustWrite(t, local, fmt.Sprintf(`{"reviewer":"slopguard","verdict":"clean","artifact_ref":%q}`, artifact))
 	if code := run([]string{"review", "--evidence", local, "--run", "dv"}); code != 0 {
 		t.Fatal("local review failed")
 	}
