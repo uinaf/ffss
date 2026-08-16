@@ -4,7 +4,8 @@
   "type": "module",
   "description": "promptfoo harness for skills/*/evals fixtures (uinaf/ffsstack#10)",
   "scripts": {
-    "typecheck": "tsc --noEmit --strict --module nodenext --target es2023 --types node --skipLibCheck --allowImportingTsExtensions evals.ts scenario.ts transform.ts lint-skills.ts",
+    "typecheck": "tsc --noEmit --strict --module nodenext --target es2023 --types node --skipLibCheck --allowImportingTsExtensions evals.ts evals.test.ts scenario.ts transform.ts lint-skills.ts",
+    "test": "node --test evals.test.ts",
     "run": "node evals.ts run",
     "sweep": "node evals.ts sweep",
     "summarize": "node evals.ts summarize"

@@ -8,7 +8,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { generateRun, runNameFor, type Harness, type RunOptions } from "./scenario.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -20,7 +20,8 @@ function fail(msg: string): never {
   process.exit(1);
 }
 
-function parseArgs(argv: string[]): { positional: string[]; flags: Map<string, string | true> } {
+// Throws on bad input; the CLI entrypoint catches and exits 1.
+export function parseArgs(argv: string[]): { positional: string[]; flags: Map<string, string | true> } {
   const positional: string[] = [];
   const flags = new Map<string, string | true>();
   const takesValue = new Set(["--agent", "--judge", "--harness"]);
@@ -30,12 +31,12 @@ function parseArgs(argv: string[]): { positional: string[]; flags: Map<string, s
       positional.push(a);
     } else if (takesValue.has(a)) {
       const v = argv[++i];
-      if (v === undefined || v.startsWith("--")) fail(`${a} needs a value`);
+      if (v === undefined || v.startsWith("--")) throw new Error(`${a} needs a value`);
       flags.set(a, v);
     } else if (a === "--all" || a === "--allow-mixed") {
       flags.set(a, true);
     } else {
-      fail(`unknown flag: ${a}`);
+      throw new Error(`unknown flag: ${a}`);
     }
   }
   return { positional, flags };
@@ -182,17 +183,28 @@ interface ScorecardEntry {
   tokens: number;
 }
 
-function cmdSummarize(argv: string[]): void {
-  const { positional, flags } = parseArgs(argv);
-  if (positional.length > 0) fail("usage: evals.ts summarize [--allow-mixed]");
-  if (!fs.existsSync(resultsDir)) fail("no results/ directory — run some evals first");
+// Pure reducer over a results directory. Skips files that are not promptfoo
+// results (warns to stderr, reported in `skipped`); throws on mixed
+// skills-tree revisions unless allowMixed.
+export function reduceResults(dir: string, allowMixed: boolean): { treeSha: string; entries: ScorecardEntry[]; skipped: string[] } {
   const entries: ScorecardEntry[] = [];
+  const skipped: string[] = [];
   const shas = new Set<string>();
-  for (const f of fs.readdirSync(resultsDir).filter((f) => f.endsWith(".json") && !f.endsWith(".meta.json")).sort()) {
-    const raw = JSON.parse(fs.readFileSync(path.join(resultsDir, f), "utf8"));
-    const res = raw.results.results[0];
-    const provider = raw.config.providers[0];
-    const judge = raw.config.defaultTest?.options?.provider;
+  for (const f of fs.readdirSync(dir).filter((f) => f.endsWith(".json") && !f.endsWith(".meta.json")).sort()) {
+    let raw;
+    try {
+      raw = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
+    } catch {
+      raw = undefined;
+    }
+    const res = raw?.results?.results?.[0];
+    if (typeof res?.score !== "number" || typeof res?.success !== "boolean") {
+      console.error(`skipping ${f}: not a promptfoo result`);
+      skipped.push(f);
+      continue;
+    }
+    const provider = raw.config?.providers?.[0];
+    const judge = raw.config?.defaultTest?.options?.provider;
     const base = f.replace(/\.json$/, "");
     const harness: Harness = base.endsWith("--codex") ? "codex" : "claude";
     const [skill, ...rest] = base.replace(/--codex$/, "").split("--");
@@ -200,7 +212,7 @@ function cmdSummarize(argv: string[]): void {
     // sidecar mechanism are "unattested".
     let sha = "unattested";
     try {
-      sha = JSON.parse(fs.readFileSync(path.join(resultsDir, `${base}.meta.json`), "utf8")).skills_tree_sha ?? "unattested";
+      sha = JSON.parse(fs.readFileSync(path.join(dir, `${base}.meta.json`), "utf8")).skills_tree_sha ?? "unattested";
     } catch {
       // no sidecar
     }
@@ -218,20 +230,35 @@ function cmdSummarize(argv: string[]): void {
       tokens: (res.tokenUsage?.total ?? 0) + (res.tokenUsage?.assertions?.total ?? 0),
     });
   }
-  if (shas.size > 1 && flags.get("--allow-mixed") !== true) {
-    fail(`results span multiple skills-tree revisions (${[...shas].join(", ")}); rerun stale ones or pass --allow-mixed`);
+  if (shas.size > 1 && !allowMixed) {
+    throw new Error(`results span multiple skills-tree revisions (${[...shas].join(", ")}); rerun stale ones or pass --allow-mixed`);
   }
-  const treeSha = shas.size === 1 ? [...shas][0] : "mixed";
+  const treeSha = shas.size === 1 ? [...shas][0] : shas.size === 0 ? "none" : "mixed";
+  return { treeSha, entries, skipped };
+}
+
+function cmdSummarize(argv: string[]): void {
+  const { positional, flags } = parseArgs(argv);
+  if (positional.length > 0) fail("usage: evals.ts summarize [--allow-mixed]");
+  if (!fs.existsSync(resultsDir)) fail("no results/ directory — run some evals first");
+  const { treeSha, entries, skipped } = reduceResults(resultsDir, flags.get("--allow-mixed") === true);
   const scorecard = { ran_at: new Date().toISOString(), skills_tree_sha: treeSha, scenarios: entries };
   const outDir = path.join(here, "scorecards");
   fs.mkdirSync(outDir, { recursive: true });
   const out = path.join(outDir, `${new Date().toISOString().slice(0, 10)}.json`);
   fs.writeFileSync(out, JSON.stringify(scorecard, null, 2) + "\n");
-  console.log(`${out}: ${entries.length} scenario(s), ${entries.filter((e) => e.pass).length} passing`);
+  console.log(`${out}: ${entries.length} scenario(s), ${entries.filter((e) => e.pass).length} passing, ${skipped.length} skipped file(s)`);
 }
 
-const [cmd, ...rest] = process.argv.slice(2);
-if (cmd === "run") cmdRun(rest);
-else if (cmd === "sweep") cmdSweep(rest);
-else if (cmd === "summarize") cmdSummarize(rest);
-else fail("usage: evals.ts <run|sweep|summarize> ...");
+const isMain = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  const [cmd, ...rest] = process.argv.slice(2);
+  try {
+    if (cmd === "run") cmdRun(rest);
+    else if (cmd === "sweep") cmdSweep(rest);
+    else if (cmd === "summarize") cmdSummarize(rest);
+    else fail("usage: evals.ts <run|sweep|summarize> ...");
+  } catch (err) {
+    fail(err instanceof Error ? err.message : String(err));
+  }
+}
