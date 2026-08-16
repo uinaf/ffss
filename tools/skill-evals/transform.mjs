@@ -1,0 +1,29 @@
+// promptfoo output transform: append files the agent created or changed in the
+// scenario workdir, so llm-rubric grades the deliverables, not just chat text.
+import { createHash } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+
+export default function transform(output, context) {
+  const workdir = context.vars.workdir;
+  const manifest = JSON.parse(fs.readFileSync(context.vars.manifest, "utf8"));
+  const sections = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        if (e.name !== ".claude") walk(p);
+      } else {
+        const rel = path.relative(workdir, p);
+        const body = fs.readFileSync(p);
+        const hash = createHash("sha256").update(body).digest("hex");
+        if (manifest[rel] !== hash) {
+          sections.push(`=== OUTPUT FILE: ${rel} ===\n${body.toString("utf8")}\n=== END OUTPUT FILE ===`);
+        }
+      }
+    }
+  };
+  walk(workdir);
+  if (sections.length === 0) return output;
+  return `${output}\n\n${sections.join("\n\n")}`;
+}

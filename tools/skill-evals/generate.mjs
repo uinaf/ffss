@@ -1,0 +1,150 @@
+#!/usr/bin/env node
+// Convert one skill-eval scenario (task.md + criteria.json) into a promptfoo run.
+//
+// Usage: node generate.mjs <scenario-dir> [agent-model] [judge-model]
+//   e.g. node generate.mjs ../../skills/slopspec/evals/single-item-minimality
+//
+// Produces scratch/<skill>--<scenario>/ containing:
+//   workdir/            input files from task.md + the skill at .claude/skills/<skill>/
+//   manifest.json       hashes of pre-existing workdir files (transform.mjs diffs against it)
+//   promptfooconfig.json  one llm-rubric assertion per checklist item, weight = max_score
+//
+// Run: npx promptfoo eval -c scratch/<name>/promptfooconfig.json --no-cache -o results/<name>.json
+
+import { createHash } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const scenarioDir = path.resolve(process.argv[2] ?? "");
+const agentModel = process.argv[3] ?? "claude-opus-5";
+const judgeModel = process.argv[4] ?? "claude-opus-5";
+
+const match = scenarioDir.match(/skills\/([^/]+)\/evals\/([^/]+)$/);
+if (!match) {
+  console.error("usage: generate.mjs <repo>/skills/<skill>/evals/<scenario>");
+  process.exit(1);
+}
+const [, skill, scenario] = match;
+const skillDir = path.resolve(scenarioDir, "../..");
+
+const taskMd = fs.readFileSync(path.join(scenarioDir, "task.md"), "utf8");
+const criteria = JSON.parse(fs.readFileSync(path.join(scenarioDir, "criteria.json"), "utf8"));
+if (criteria.type !== "weighted_checklist" || !Array.isArray(criteria.checklist)) {
+  console.error(`unsupported criteria type in ${scenarioDir}`);
+  process.exit(1);
+}
+
+// Extract embedded input files; replace each block with a pointer to the file on disk.
+const files = [];
+const fileBlock = /^=+ FILE: (.+?) =+\n([\s\S]*?)\n=+ END FILE =+$/gm;
+const prompt = taskMd.replace(fileBlock, (_, name, content) => {
+  files.push({ name: name.trim(), content: content + "\n" });
+  return `(Input file \`${name.trim()}\` is available in your working directory.)`;
+});
+
+// Materialize the scratch run directory.
+const runDir = path.join(here, "scratch", `${skill}--${scenario}`);
+const workdir = path.join(runDir, "workdir");
+fs.rmSync(runDir, { recursive: true, force: true });
+fs.mkdirSync(workdir, { recursive: true });
+for (const f of files) {
+  const dest = path.join(workdir, f.name);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, f.content);
+}
+
+// Install the skill under test at .claude/skills/<skill>/, excluding its evals
+// (criteria must not leak into the agent's context).
+const skillDest = path.join(workdir, ".claude", "skills", skill);
+fs.cpSync(skillDir, skillDest, {
+  recursive: true,
+  filter: (src) => path.basename(src) !== "evals",
+});
+
+// Manifest of pre-existing files so transform.mjs can find what the agent wrote.
+const manifest = {};
+const walk = (dir) => {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      if (e.name !== ".claude") walk(p);
+    } else {
+      manifest[path.relative(workdir, p)] = createHash("sha256").update(fs.readFileSync(p)).digest("hex");
+    }
+  }
+};
+walk(workdir);
+fs.writeFileSync(path.join(runDir, "manifest.json"), JSON.stringify(manifest, null, 2));
+
+const config = {
+  description: `${skill}/${scenario}`,
+  prompts: ["{{task}}"],
+  providers: [
+    {
+      id: "anthropic:claude-agent-sdk",
+      config: {
+        model: agentModel,
+        // No ANTHROPIC_API_KEY in this environment; use the local Claude Code
+        // session (documented promptfoo path for subscription auth).
+        apiKeyRequired: false,
+        working_dir: workdir,
+        setting_sources: ["project"],
+        skills: [skill],
+        permission_mode: "acceptEdits",
+        append_allowed_tools: ["Read", "Write", "Edit", "Glob", "Grep"],
+        max_turns: 50,
+      },
+    },
+  ],
+  defaultTest: {
+    options: {
+      // Preferred judge is `anthropic:messages:<model>` via ANTHROPIC_API_KEY.
+      // That env var is absent here, so grade through the agent SDK provider
+      // with local Claude Code session auth instead.
+      provider: {
+        id: "anthropic:claude-agent-sdk",
+        config: {
+          model: judgeModel,
+          apiKeyRequired: false,
+          max_turns: 3,
+          // llm-rubric parses a JSON verdict; force the judge to emit exactly that.
+          output_format: {
+            type: "json_schema",
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              required: ["reason", "pass", "score"],
+              properties: {
+                reason: { type: "string" },
+                pass: { type: "boolean" },
+                score: { type: "number" },
+              },
+            },
+          },
+        },
+      },
+      transform: `file://${path.join(here, "transform.mjs")}`,
+    },
+  },
+  tests: [
+    {
+      description: criteria.context,
+      vars: { task: prompt, workdir, manifest: path.join(runDir, "manifest.json") },
+      threshold: 0.7,
+      assert: [
+        { type: "skill-used", value: skill, weight: 1 },
+        ...criteria.checklist.map((item) => ({
+          type: "llm-rubric",
+          value: `${item.name}: ${item.description}`,
+          weight: item.max_score,
+        })),
+      ],
+    },
+  ],
+};
+
+const configPath = path.join(runDir, "promptfooconfig.json");
+fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+console.log(configPath);
