@@ -76,7 +76,8 @@ the workflow on the tagged HEAD instead.
 The skill ships through this repo's agent-plugin marketplace
 (`.claude-plugin/marketplace.json`); merging to `main` is the publication.
 The root CI skills-lint job is the gate; run it locally from the repository
-root:
+root (node 24 or newer — the script is TypeScript run via native type
+stripping):
 
 ```bash
 node tools/skill-evals/lint-skills.ts
