@@ -9,7 +9,7 @@
     {
       "name": "ffsstack",
       "source": "./skills",
-      "description": "All eight slop* skills: slopmachine, slopguard, slopcourier, slopnanny, slopspec, slopscriber, slopprep, slopclean.",
+      "description": "All nine skills: slopmachine, slopguard, slopcourier, slopnanny, slopspec, slopscriber, slopprep, slopclean, wat.",
       "category": "workflow"
     }
   ]
