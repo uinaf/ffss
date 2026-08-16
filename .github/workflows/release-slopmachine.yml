@@ -101,8 +101,19 @@ jobs:
             echo "present=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build, sign, and notarize
+      - name: Detect release state
+        id: release-state
         if: steps.tag.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ steps.release-bot.outputs.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          draft=$(gh release view "$TAG" --repo uinaf/ffsstack --json isDraft --jq .isDraft)
+          echo "published=$([ "$draft" = "false" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Build, sign, and notarize
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
         env:
           APPLE_DEVELOPER_ID_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_P12_BASE64 }}
           APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
@@ -120,7 +131,7 @@ jobs:
           exec goreleaser release --clean --skip=publish
 
       - name: Verify checksums and signature
-        if: steps.tag.outputs.present == 'true'
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
         run: |
           set -euo pipefail
           (cd dist && shasum -a 256 -c checksums.txt)
@@ -131,14 +142,14 @@ jobs:
             dist/checksums.txt
 
       - name: Verify Apple signatures
-        if: steps.tag.outputs.present == 'true'
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
         env:
           EXPECTED_APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
           GORELEASER_CURRENT_TAG: ${{ steps.tag.outputs.version }}
         run: ./scripts/verify-apple-release.sh
 
       - name: Publish assets to the release
-        if: steps.tag.outputs.present == 'true'
+        if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
         env:
           GH_TOKEN: ${{ steps.release-bot.outputs.token }}
           TAG: ${{ steps.tag.outputs.tag }}
