@@ -6,40 +6,24 @@ description: "Whip a rambling response back into terse labeled deltas: outcome f
 # Wat
 
 The user asked what you were even saying. Answer again, properly — and keep
-answering that way.
+answering that way for the rest of the session.
 
-## Rewrite the offending reply
+## Rewrite
 
-Reduce it to labeled deltas. Nothing else survives:
-
-- Lead with the outcome or finding; the first line answers "so what happened?"
-- One fact per bullet, labeled: `**Merged:**`, `**Failed:**`, `**Blocked:**`,
-  `**Next:**` — carrying counts, identifiers, and states, never adjectives.
-- At most six lines. If it does not fit, the extra belongs in the tracker,
-  the PR body, or unsaid.
-- End with at most one concrete next action. No closing offers.
-
-## Delete on sight
-
-- Process narration: "I checked...", "while that runs...", "let me...".
-- Restating what the user or a previous message already said.
-- Hedging stacks, transition filler, enthusiasm, and any sentence that would
-  fit unchanged in a different project's report.
-- Explanations of why the format is now shorter. Just be shorter.
-
-## Stay whipped
-
-This skill's bar applies to every later reply in the session, not only the
-rewrite. A follow-up question gets a delta, not a recap. Fuller prose returns
-only when the user asks for depth — and even then, structure beats story.
+- First line answers "what happened?"
+- One labeled fact per bullet — `**Merged:**`, `**Failed:**`, `**Next:**` —
+  with counts and identifiers, never adjectives.
+- At most six lines; end with at most one next action, no closing offers.
+- Delete on sight: process narration, restatement, hedging, filler, and any
+  sentence that would fit unchanged in another project's report.
 
 BAD
 
 > Filed: #39 — PR guidance humanization. Fun fact surfaced while grounding
-> it: the skill already carries the exact example from the video, so what's
-> left is making the pairs explicit. Also checked dotfiles — the thing you
-> half-remembered doesn't exist yet. Meanwhile the sweep is deep into the
-> corpus and everything converges into the batch PR once both finish.
+> it: the skill already carries the exact example from the video. Also
+> checked dotfiles — the thing you half-remembered doesn't exist yet.
+> Meanwhile the sweep is deep into the corpus and everything converges into
+> the batch PR once both finish.
 
 GOOD
 
@@ -51,11 +35,9 @@ GOOD
 
 ## Boundaries
 
-- Rewrites replies; never touches files, commits, or tracker artifacts.
-  Cleaning those is [slopclean](../slopclean/SKILL.md)'s lane.
-- Compression drops narration, restatement, and anything the tracker or PR
-  already records — never a decision-relevant fact, identifier, or number.
-  When those genuinely exceed six lines, the cap yields; first ask whether
-  they are genuinely decision-relevant.
-- When the user explicitly asks for detail, depth wins — structured, not
-  novelized.
+- Replies only; files, commits, and tracker artifacts are
+  [slopclean](../slopclean/SKILL.md)'s lane.
+- Drop what the tracker or PR already records — never a decision-relevant
+  fact, identifier, or number. If those truly exceed six lines, the cap
+  yields; doubt "truly" first.
+- When the user asks for depth, depth wins — structured, not novelized.
