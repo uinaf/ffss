@@ -31,9 +31,23 @@ const skillDir = path.resolve(scenarioDir, "../..");
 
 const taskMd = fs.readFileSync(path.join(scenarioDir, "task.md"), "utf8");
 const criteria = JSON.parse(fs.readFileSync(path.join(scenarioDir, "criteria.json"), "utf8"));
-if (criteria.type !== "weighted_checklist" || !Array.isArray(criteria.checklist)) {
-  console.error(`unsupported criteria type in ${scenarioDir}`);
+if (
+  criteria.type !== "weighted_checklist" ||
+  !Array.isArray(criteria.checklist) ||
+  criteria.checklist.length === 0
+) {
+  console.error(`unsupported or empty criteria in ${scenarioDir}`);
   process.exit(1);
+}
+for (const item of criteria.checklist) {
+  const ok =
+    typeof item?.name === "string" && item.name.trim() !== "" &&
+    typeof item?.description === "string" && item.description.trim() !== "" &&
+    Number.isFinite(item?.max_score) && item.max_score > 0;
+  if (!ok) {
+    console.error(`invalid checklist item in ${scenarioDir}: ${JSON.stringify(item)}`);
+    process.exit(1);
+  }
 }
 
 // Extract embedded input files; replace each block with a pointer to the file on disk.
@@ -49,10 +63,33 @@ const runDir = path.join(here, "scratch", `${skill}--${scenario}`);
 const workdir = path.join(runDir, "workdir");
 fs.rmSync(runDir, { recursive: true, force: true });
 fs.mkdirSync(workdir, { recursive: true });
-for (const f of files) {
-  const dest = path.join(workdir, f.name);
+
+// Validate every embedded filename before writing anything: destinations must
+// stay strictly below workdir, must not land under .claude/ (a fixture could
+// inject project settings that setting_sources: ['project'] would load), and
+// must not collide.
+const seen = new Set();
+const planned = files.map((f) => {
+  const dest = path.resolve(workdir, f.name);
+  const rel = path.relative(workdir, dest);
+  if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) {
+    console.error(`embedded file escapes workdir: ${f.name}`);
+    process.exit(1);
+  }
+  if (rel.split(path.sep)[0] === ".claude") {
+    console.error(`embedded file targets .claude/: ${f.name}`);
+    process.exit(1);
+  }
+  if (seen.has(dest)) {
+    console.error(`duplicate embedded file: ${f.name}`);
+    process.exit(1);
+  }
+  seen.add(dest);
+  return { dest, content: f.content };
+});
+for (const { dest, content } of planned) {
   fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.writeFileSync(dest, f.content);
+  fs.writeFileSync(dest, content);
 }
 
 // Install the skill under test at .claude/skills/<skill>/, excluding its evals
@@ -119,7 +156,7 @@ const config = {
               properties: {
                 reason: { type: "string" },
                 pass: { type: "boolean" },
-                score: { type: "number" },
+                score: { type: "number", minimum: 0, maximum: 1 },
               },
             },
           },
@@ -132,14 +169,22 @@ const config = {
     {
       description: criteria.context,
       vars: { task: prompt, workdir, manifest: path.join(runDir, "manifest.json") },
-      threshold: 0.7,
+      // No test-level threshold: the test passes only if every top-level
+      // assertion passes — the checklist assert-set (weighted score >= its own
+      // threshold) AND the mandatory skill-used routing check, which stays
+      // outside the weighted aggregate so it can neither dilute the checklist
+      // denominator nor be outvoted by a perfect checklist.
       assert: [
-        { type: "skill-used", value: skill, weight: 1 },
-        ...criteria.checklist.map((item) => ({
-          type: "llm-rubric",
-          value: `${item.name}: ${item.description}`,
-          weight: item.max_score,
-        })),
+        {
+          type: "assert-set",
+          threshold: 0.7,
+          assert: criteria.checklist.map((item) => ({
+            type: "llm-rubric",
+            value: `${item.name}: ${item.description}`,
+            weight: item.max_score,
+          })),
+        },
+        { type: "skill-used", value: skill },
       ],
     },
   ],

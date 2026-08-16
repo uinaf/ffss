@@ -8,6 +8,7 @@ export default function transform(output, context) {
   const workdir = context.vars.workdir;
   const manifest = JSON.parse(fs.readFileSync(context.vars.manifest, "utf8"));
   const sections = [];
+  const visited = new Set();
   const walk = (dir) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
@@ -15,6 +16,7 @@ export default function transform(output, context) {
         if (e.name !== ".claude") walk(p);
       } else {
         const rel = path.relative(workdir, p);
+        visited.add(rel);
         const body = fs.readFileSync(p);
         const hash = createHash("sha256").update(body).digest("hex");
         if (manifest[rel] !== hash) {
@@ -24,6 +26,9 @@ export default function transform(output, context) {
     }
   };
   walk(workdir);
+  for (const rel of Object.keys(manifest)) {
+    if (!visited.has(rel)) sections.push(`=== DELETED FILE: ${rel} === (input file removed by the agent)`);
+  }
   if (sections.length === 0) return output;
   return `${output}\n\n${sections.join("\n\n")}`;
 }
