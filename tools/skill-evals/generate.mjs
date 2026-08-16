@@ -137,31 +137,34 @@ const config = {
   ],
   defaultTest: {
     options: {
-      // Preferred judge is `anthropic:messages:<model>` via ANTHROPIC_API_KEY.
-      // That env var is absent here, so grade through the agent SDK provider
-      // with local Claude Code session auth instead.
-      provider: {
-        id: "anthropic:claude-agent-sdk",
-        config: {
-          model: judgeModel,
-          apiKeyRequired: false,
-          max_turns: 3,
-          // llm-rubric parses a JSON verdict; force the judge to emit exactly that.
-          output_format: {
-            type: "json_schema",
-            schema: {
-              type: "object",
-              additionalProperties: false,
-              required: ["reason", "pass", "score"],
-              properties: {
-                reason: { type: "string" },
-                pass: { type: "boolean" },
-                score: { type: "number", minimum: 0, maximum: 1 },
+      // With ANTHROPIC_API_KEY set, grade over the plain messages API;
+      // otherwise grade through the agent SDK provider with local Claude
+      // Code session auth. The SDK judge needs a forced verdict schema —
+      // the messages judge relies on promptfoo's own rubric JSON prompt.
+      provider: process.env.ANTHROPIC_API_KEY
+        ? `anthropic:messages:${judgeModel}`
+        : {
+            id: "anthropic:claude-agent-sdk",
+            config: {
+              model: judgeModel,
+              apiKeyRequired: false,
+              max_turns: 3,
+              // llm-rubric parses a JSON verdict; force the judge to emit exactly that.
+              output_format: {
+                type: "json_schema",
+                schema: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["reason", "pass", "score"],
+                  properties: {
+                    reason: { type: "string" },
+                    pass: { type: "boolean" },
+                    score: { type: "number", minimum: 0, maximum: 1 },
+                  },
+                },
               },
             },
           },
-        },
-      },
       transform: `file://${path.join(here, "transform.mjs")}`,
     },
   },
