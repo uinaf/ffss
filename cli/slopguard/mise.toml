@@ -152,8 +152,10 @@ test "$(find dist -maxdepth 1 -name 'slopguard_*_linux_arm64.tar.gz' -type f | w
 for archive in dist/slopguard_*.tar.gz; do
   test "$(tar -tzf "$archive" | LC_ALL=C sort | tr '\n' ' ')" = "LICENSE README.md slopguard "
 done
-if rg -n 'xattr|com\.apple\.quarantine' dist/homebrew/Casks/slopguard.rb; then
-  printf '%s\n' "generated Homebrew cask removes quarantine" >&2
+# The cask is rendered by the release workflow (scripts/publish-cask.sh);
+# the same quarantine guard applies to the template there.
+if rg -n 'xattr|com\.apple\.quarantine' scripts/publish-cask.sh; then
+  printf '%s\n' "cask template removes quarantine" >&2
   exit 1
 else
   rg_status=$?
