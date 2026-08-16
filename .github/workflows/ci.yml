@@ -25,6 +25,7 @@ jobs:
           filters: |
             slopmachine:
               - 'cli/slopmachine/**'
+              - 'skills/slopmachine/**'
             slopguard:
               - 'cli/slopguard/**'
             skills:

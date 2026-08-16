@@ -9,7 +9,7 @@ interface:
     conventionally, push, open the change request from the repository's
     template, attach the single clearest visual evidence without committing
     proof assets, and return the URL. Never merge, review, or batch
-    unrelated work, and never force-push without explicit approval; when a slopshipper run asked for the delivery,
+    unrelated work, and never force-push without explicit approval; when a slopmachine run asked for the delivery,
     hand the URL back through its deliver evidence.
 
 policy:

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -312,6 +313,9 @@ func validScheme(value string) bool {
 func gitOutput(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
+	// The not-a-repository sentinel matches git's fatal message; a stable
+	// locale keeps it matchable everywhere.
+	cmd.Env = append(os.Environ(), "LC_ALL=C", "LANG=C")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

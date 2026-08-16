@@ -52,7 +52,7 @@ curl -s "https://uploads.github.com/user-attachments/assets?name=${name}&content
   -X POST \
   -H @- \
   --data-binary @<file> <<EOF
-Authorization: Bearer $(gh auth token)
+Authorization: Bearer $(GH_HOST=github.com gh auth token)
 Accept: application/json
 EOF
 ```

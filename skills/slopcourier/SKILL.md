@@ -1,6 +1,6 @@
 ---
 name: slopcourier
-description: "Deliver a completed, verified change as a change request on the repository's forge: branch discipline, conventional commits, push, open the change request from the repo's template, attach the clearest visual evidence, and return the URL. Use when asked to deliver, ship, file, or open a pull/merge/change request for finished work, or when a slopshipper run reaches DELIVER. Do not use to implement or review changes, merge or enable auto-merge, or record slopshipper evidence by itself."
+description: "Deliver a completed, verified change as a change request on the repository's forge: branch discipline, conventional commits, push, open the change request from the repo's template, attach the clearest visual evidence, and return the URL. Use when asked to deliver, ship, file, or open a pull/merge/change request for finished work, or when a slopmachine run reaches DELIVER. Do not use to implement or review changes, merge or enable auto-merge, or record slopmachine evidence by itself."
 ---
 
 # Slopcourier
@@ -13,12 +13,12 @@ invents a second workflow runtime.
 
 1. The work is complete and the repository's own gates passed (builder-owned
    checks, run fresh). Report a missing or failing gate instead of delivering.
-2. Delivery is authorized: an explicit user request, or an active slopshipper
+2. Delivery is authorized: an explicit user request, or an active slopmachine
    run whose status allows `deliver`.
-3. The delivery is a change request. A slopshipper run with
+3. The delivery is a change request. A slopmachine run with
    `delivery_mode: direct-trunk` is out of this skill's lane — do not open
    a change request for it; the delivery is the trunk commit itself,
-   recorded with `slopshipper deliver` and its `commit_sha`.
+   recorded with `slopmachine deliver` and its `commit_sha`.
 4. The delivery contains only the intended change — both the worktree and,
    when reusing a task branch, its commits ahead of the default branch
    (`git log <default>..HEAD`). Preserve unrelated work; never sweep it
@@ -61,9 +61,9 @@ The vocabulary is "change request"; the forge decides the tool:
    for the attachment ladder. Never commit proof assets to the repository.
 7. Return the change-request URL as the result.
 
-## Compose with slopshipper
+## Compose with slopmachine
 
-When an active slopshipper run asked for this delivery, hand the URL
+When an active slopmachine run asked for this delivery, hand the URL
 straight back through stdin evidence and let the binary judge it (a
 forge-bound repo verifies the change request and head before accepting).
 `delivery_mode` must match the run — read it from the status document
@@ -73,7 +73,7 @@ Validate first, then apply, per the slopship protocol — the same payload
 with `--dry-run --json`, proceed only when the projection matches:
 
 ```bash
-slopshipper deliver --evidence - --dry-run --json --run <run-id> <<'JSON'
+slopmachine deliver --evidence - --dry-run --json --run <run-id> <<'JSON'
 {"delivery_mode":"<delivery_mode from status>","pr_url":"<change request URL>","commit_sha":"<delivered head>"}
 JSON
 # projection ok -> repeat without --dry-run

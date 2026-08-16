@@ -5,8 +5,8 @@
 Requirements: Go 1.26+ and [mise](https://mise.jdx.dev/).
 
 ```bash
-git clone https://github.com/uinaf/ffsstack/cli/slopmachine.git
-cd slopmachine
+git clone https://github.com/uinaf/ffsstack.git
+cd ffsstack/cli/slopmachine
 mise trust
 mise install
 ```
