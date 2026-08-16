@@ -88,11 +88,11 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$url" in
-  */releases/latest)
+  *"/releases?per_page="*)
     if [ "${FAKE_CURL_MODE:-}" = malformed-latest ]; then
-      printf '%s' 'https://github.com/uinaf/ffsstack/issues/61'
+      printf '%s' '{"message":"rate limited"}'
     else
-      printf '%s' 'https://fixture.invalid/releases/tag/v1.2.3'
+      printf '%s' '[{"tag_name": "slopguard/v1.2.3"}]'
     fi
     ;;
   *)
@@ -197,17 +197,17 @@ run_installer >/dev/null
 test "$("$case_home/.local/bin/slopguard" --version)" = \
   'slopguard v1.2.3 (fixture-amd64)'
 grep -Fx \
-  'https://fixture.invalid/releases/download/v1.2.3/slopguard_v1.2.3_linux_amd64.tar.gz' \
+  'https://fixture.invalid/releases/download/slopguard%2Fv1.2.3/slopguard_v1.2.3_linux_amd64.tar.gz' \
   "$case_log" >/dev/null
 grep -Fx \
-  'https://fixture.invalid/releases/download/v1.2.3/checksums.txt' \
+  'https://fixture.invalid/releases/download/slopguard%2Fv1.2.3/checksums.txt' \
   "$case_log" >/dev/null
 assert_no_residue
 
 new_case
 TEST_REPOSITORY_URL=https://fixture.invalid/ run_installer >/dev/null
 grep -Fx \
-  'https://fixture.invalid/releases/download/v1.2.3/slopguard_v1.2.3_linux_amd64.tar.gz' \
+  'https://fixture.invalid/releases/download/slopguard%2Fv1.2.3/slopguard_v1.2.3_linux_amd64.tar.gz' \
   "$case_log" >/dev/null
 assert_no_residue
 
@@ -218,7 +218,7 @@ TEST_UNAME_M=aarch64 run_installer --version 1.2.3 \
 test "$("$custom_destination/slopguard" --version)" = \
   'slopguard v1.2.3 (fixture-arm64)'
 grep -Fx \
-  'https://fixture.invalid/releases/download/v1.2.3/slopguard_v1.2.3_linux_arm64.tar.gz' \
+  'https://fixture.invalid/releases/download/slopguard%2Fv1.2.3/slopguard_v1.2.3_linux_arm64.tar.gz' \
   "$case_log" >/dev/null
 assert_no_residue
 
@@ -234,7 +234,7 @@ assert_no_residue
 
 new_case
 FAKE_CURL_MODE=malformed-latest expect_failure \
-  'latest release returned malformed metadata' run_installer
+  'no slopguard release found' run_installer
 assert_no_residue
 
 new_case

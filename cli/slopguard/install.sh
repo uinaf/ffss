@@ -124,15 +124,15 @@ valid_release_tag() {
   done
 }
 
+# Releases live in the shared ffsstack repository under member-prefixed
+# tags (slopguard/vX.Y.Z); "latest" means this member's newest release.
+api_url=${SLOPGUARD_INSTALL_API_URL:-https://api.github.com/repos/uinaf/ffsstack/releases}
 if [ "$requested_version" = latest ]; then
-  latest_url=$(curl --proto '=https' --tlsv1.2 -fsSL \
-    -o /dev/null -w '%{url_effective}' "$repository_url/releases/latest") ||
+  release_tag=$(curl --proto '=https' --tlsv1.2 -fsSL \
+    -H "Accept: application/vnd.github+json" "$api_url?per_page=100" |
+    grep -o '"tag_name": *"slopguard/v[0-9.]*"' | head -1 | sed 's/.*"slopguard\///; s/"$//') ||
     fail "failed to resolve the latest release"
-  release_prefix=$repository_url/releases/tag/
-  case "$latest_url" in
-    "$release_prefix"*) release_tag=${latest_url#"$release_prefix"} ;;
-    *) fail "latest release returned malformed metadata" ;;
-  esac
+  [ -n "$release_tag" ] || fail "no slopguard release found"
 else
   case "$requested_version" in
     v*) release_tag=$requested_version ;;
@@ -147,7 +147,7 @@ temporary_directory=$(mktemp -d "${TMPDIR:-/tmp}/slopguard-install.XXXXXX") ||
 archive=slopguard_${release_tag}_linux_${architecture}.tar.gz
 archive_path=$temporary_directory/$archive
 checksums_path=$temporary_directory/checksums.txt
-release_url=$repository_url/releases/download/$release_tag
+release_url=$repository_url/releases/download/slopguard%2F$release_tag
 
 curl --proto '=https' --tlsv1.2 -fsSL -o "$archive_path" \
   "$release_url/$archive" || fail "failed to download $archive"
