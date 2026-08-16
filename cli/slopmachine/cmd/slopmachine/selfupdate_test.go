@@ -48,16 +48,16 @@ func TestWriteSelfupdateResultExitCodes(t *testing.T) {
 	available := selfupdate.Result{From: "v1.0.0", To: "v1.2.3", Path: "/x"}
 	updated := selfupdate.Result{From: "v1.0.0", To: "v1.2.3", Updated: true, Path: "/x"}
 	for _, opts := range []runOptions{{}, {json: true}} {
-		if got := writeSelfupdateResult(upToDate, false, opts); got != 0 {
+		if got := writeSelfupdateResult(upToDate, false, false, opts); got != 0 {
 			t.Fatalf("up-to-date must exit 0, got %d", got)
 		}
-		if got := writeSelfupdateResult(upToDate, true, opts); got != 0 {
+		if got := writeSelfupdateResult(upToDate, true, false, opts); got != 0 {
 			t.Fatalf("check up-to-date must exit 0, got %d", got)
 		}
-		if got := writeSelfupdateResult(available, true, opts); got != 8 {
+		if got := writeSelfupdateResult(available, true, false, opts); got != 8 {
 			t.Fatalf("check with update available must exit 8, got %d", got)
 		}
-		if got := writeSelfupdateResult(updated, false, opts); got != 0 {
+		if got := writeSelfupdateResult(updated, false, false, opts); got != 0 {
 			t.Fatalf("performed update must exit 0, got %d", got)
 		}
 	}
@@ -83,5 +83,12 @@ func TestSelfupdateDryRunProjectsLikeCheck(t *testing.T) {
 	out, code := h.run("--dry-run", "selfupdate", "--json")
 	if code != 2 || !strings.Contains(out, "not a release build") {
 		t.Fatalf("dry-run selfupdate must project the check, not reject the flag: code=%d %s", code, out)
+	}
+}
+
+func TestWriteSelfupdateResultDryRunMarkers(t *testing.T) {
+	// The marker fields ride the JSON document; exit semantics match check.
+	if got := writeSelfupdateResult(selfupdate.Result{From: "v1", To: "v2"}, true, true, runOptions{json: true}); got != 8 {
+		t.Fatalf("dry-run projection with an update must exit 8, got %d", got)
 	}
 }

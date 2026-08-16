@@ -45,7 +45,7 @@ func cmdSelfupdate(args []string, opts runOptions) int {
 	if err != nil {
 		return writeFailure(opts, selfupdateErrorExit(err), selfupdateError(err))
 	}
-	return writeSelfupdateResult(result, check, opts)
+	return writeSelfupdateResult(result, check, opts.dryRun, opts)
 }
 
 // selfupdateErrorExit maps refusals (wrong install kind) to invalid-input
@@ -71,17 +71,24 @@ func selfupdateError(err error) error {
 // projects the same decision) exits 8 when an update is available so
 // automation can branch without parsing output. 4 and 5 already belong to
 // revision_conflict and not_found in this CLI's taxonomy.
-func writeSelfupdateResult(result selfupdate.Result, check bool, opts runOptions) int {
+func writeSelfupdateResult(result selfupdate.Result, check, dryRun bool, opts runOptions) int {
 	available := result.To != result.From
 	if opts.json {
-		if err := writeJSON(map[string]any{
+		doc := map[string]any{
 			"schema_version":   1,
 			"current":          result.From,
 			"target":           result.To,
 			"update_available": available,
 			"updated":          result.Updated,
 			"path":             result.Path,
-		}); err != nil {
+		}
+		// Projections carry the same markers as every other dry run, so
+		// agents can tell a projection from an applied no-op.
+		if dryRun {
+			doc["dry_run"] = true
+			doc["validated_command"] = "selfupdate"
+		}
+		if err := writeJSON(doc); err != nil {
 			return writeFailure(opts, 10, err)
 		}
 	} else {
