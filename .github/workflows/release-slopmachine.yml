@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - "cli/slopmachine/**"
+  # Reruns pin the original commit; once main advances, semantic-release
+  # skips ("local branch is behind the remote"). Dispatch runs at HEAD.
+  workflow_dispatch:
 
 permissions:
   contents: read
