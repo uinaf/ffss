@@ -1,0 +1,9 @@
+{
+  "name": "uinaf/slopclean",
+  "version": "0.1.0",
+  "description": "Strip AI tells from writing or from a diff: detect machine patterns (puffery, stock vocabulary, crutch punctuation, filler, narrating comments, defensive boilerplate), rewrite with a concrete human voice, and self-audit. Use when asked to unslop, de-slop, humanize, or clean up text, docs, commit messages, or a change before it ships. Do not use for correctness review (slopguard's lane), fact-checking, or translating.",
+  "private": false,
+  "skills": [
+    "SKILL.md"
+  ]
+}
