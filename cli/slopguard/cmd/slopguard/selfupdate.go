@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -15,7 +16,7 @@ import (
 // the installer's endpoint overrides (SLOPGUARD_INSTALL_API_URL,
 // SLOPGUARD_INSTALL_REPOSITORY_URL) so tests and mirrors configure one
 // knob for both surfaces.
-func runSelfupdate(arguments []string, stdout, stderr io.Writer) int {
+func runSelfupdate(ctx context.Context, arguments []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("slopguard selfupdate", flag.ContinueOnError)
 	check := flags.Bool("check", false, "report the target release without touching the binary; exits 4 when an update is available")
 	release := flags.String("release", "", "pin the target release (vX.Y.Z); default is the newest published release")
@@ -39,9 +40,9 @@ func runSelfupdate(arguments []string, stdout, stderr io.Writer) int {
 	var result selfupdate.Result
 	var err error
 	if *check {
-		result, err = selfupdate.Check(options)
+		result, err = selfupdate.Check(ctx, options)
 	} else {
-		result, err = selfupdate.Run(options)
+		result, err = selfupdate.Run(ctx, options)
 	}
 	if err != nil {
 		report(stderr, "slopguard selfupdate: %v\n", err)

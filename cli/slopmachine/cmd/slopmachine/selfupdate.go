@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/uinaf/ffsstack/cli/slopmachine/internal/buildinfo"
+	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
 	"github.com/uinaf/ffsstack/cli/slopmachine/internal/selfupdate"
 )
 
@@ -26,15 +30,17 @@ func cmdSelfupdate(args []string, opts runOptions) int {
 		APIBase:        os.Getenv("SLOPMACHINE_INSTALL_API_URL"),
 		DownloadBase:   os.Getenv("SLOPMACHINE_INSTALL_REPOSITORY_URL"),
 	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	var result selfupdate.Result
 	var err error
 	if check {
-		result, err = selfupdate.Check(options)
+		result, err = selfupdate.Check(ctx, options)
 	} else {
-		result, err = selfupdate.Run(options)
+		result, err = selfupdate.Run(ctx, options)
 	}
 	if err != nil {
-		return writeFailure(opts, selfupdateErrorExit(err), err)
+		return writeFailure(opts, selfupdateErrorExit(err), selfupdateError(err))
 	}
 	return writeSelfupdateResult(result, check, opts)
 }
@@ -46,6 +52,16 @@ func selfupdateErrorExit(err error) int {
 		return 2
 	}
 	return 3
+}
+
+// selfupdateError stamps the stable error taxonomy: refusals are invalid
+// input (exit 2 maps there already), everything else is an unmet guard —
+// the update's preconditions (resolvable release, intact archive) failed.
+func selfupdateError(err error) error {
+	if errors.Is(err, selfupdate.ErrNotRelease) || errors.Is(err, selfupdate.ErrBrewManaged) {
+		return err
+	}
+	return fmt.Errorf("%w: %v", machine.ErrUnmetGuard, err)
 }
 
 // writeSelfupdateResult renders one pass; --check exits 4 when an update is

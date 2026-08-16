@@ -7,7 +7,9 @@ package selfupdate
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -15,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -64,12 +67,12 @@ var ErrBrewManaged = errors.New("this binary is managed by Homebrew; run: brew u
 var releaseTag = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
 
 // Check resolves the target version without touching the binary.
-func Check(opts Options) (Result, error) {
+func Check(ctx context.Context, opts Options) (Result, error) {
 	opts, err := withDefaults(opts)
 	if err != nil {
 		return Result{}, err
 	}
-	target, err := targetVersion(opts)
+	target, err := targetVersion(ctx, opts)
 	if err != nil {
 		return Result{}, err
 	}
@@ -84,12 +87,12 @@ func Check(opts Options) (Result, error) {
 // Run updates the binary in place when the target differs from the current
 // version. The downloaded archive is verified against the release's
 // checksums.txt before a byte lands on the executable path.
-func Run(opts Options) (Result, error) {
+func Run(ctx context.Context, opts Options) (Result, error) {
 	opts, err := withDefaults(opts)
 	if err != nil {
 		return Result{}, err
 	}
-	target, err := targetVersion(opts)
+	target, err := targetVersion(ctx, opts)
 	if err != nil {
 		return Result{}, err
 	}
@@ -97,7 +100,7 @@ func Run(opts Options) (Result, error) {
 	if target == opts.CurrentVersion {
 		return result, nil
 	}
-	binary, err := fetchVerifiedBinary(opts, target)
+	binary, err := fetchVerifiedBinary(ctx, opts, target)
 	if err != nil {
 		return Result{}, err
 	}
@@ -152,21 +155,44 @@ func withDefaults(opts Options) (Options, error) {
 	if opts.RequestVersion != "" && !releaseTag.MatchString(opts.RequestVersion) {
 		return opts, fmt.Errorf("invalid release version: %s", opts.RequestVersion)
 	}
+	for _, base := range []string{opts.APIBase, opts.DownloadBase} {
+		if err := requireHTTPS(base); err != nil {
+			return opts, err
+		}
+	}
 	return opts, nil
 }
 
-func targetVersion(opts Options) (string, error) {
+// requireHTTPS keeps the installer's transport rail: release endpoints are
+// HTTPS, with loopback exempt so local fixtures and mirrors can serve tests.
+func requireHTTPS(endpoint string) error {
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return fmt.Errorf("release endpoint %q is not a valid URL: %v", endpoint, err)
+	}
+	if parsed.Scheme == "https" {
+		return nil
+	}
+	host := parsed.Hostname()
+	if parsed.Scheme == "http" && (host == "localhost" || host == "127.0.0.1" || host == "::1") {
+		return nil
+	}
+	return fmt.Errorf("release endpoint %q must use HTTPS", endpoint)
+}
+
+func targetVersion(ctx context.Context, opts Options) (string, error) {
 	if opts.RequestVersion != "" {
 		return opts.RequestVersion, nil
 	}
 	prefix := opts.Member + "/"
 	for page := 1; page <= 10; page++ {
 		url := fmt.Sprintf("%s?per_page=100&page=%d", opts.APIBase, page)
-		request, err := http.NewRequest(http.MethodGet, url, nil)
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			return "", err
 		}
 		request.Header.Set("Accept", "application/vnd.github+json")
+		request.Header.Set("User-Agent", opts.Member+"-selfupdate")
 		response, err := opts.Client.Do(request)
 		if err != nil {
 			return "", fmt.Errorf("list releases: %w", err)
@@ -200,10 +226,10 @@ func targetVersion(opts Options) (string, error) {
 
 // fetchVerifiedBinary downloads the platform archive and checksums.txt,
 // verifies the archive digest, and returns the extracted binary bytes.
-func fetchVerifiedBinary(opts Options, version string) ([]byte, error) {
+func fetchVerifiedBinary(ctx context.Context, opts Options, version string) ([]byte, error) {
 	archive := fmt.Sprintf("%s_%s_%s_%s.tar.gz", opts.Member, version, opts.OS, opts.Arch)
 	base := fmt.Sprintf("%s/releases/download/%s%%2F%s", opts.DownloadBase, opts.Member, version)
-	checksums, err := fetch(opts.Client, base+"/checksums.txt")
+	checksums, err := fetch(ctx, opts, base+"/checksums.txt")
 	if err != nil {
 		return nil, fmt.Errorf("download checksums.txt: %w", err)
 	}
@@ -211,7 +237,7 @@ func fetchVerifiedBinary(opts Options, version string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	payload, err := fetch(opts.Client, base+"/"+archive)
+	payload, err := fetch(ctx, opts, base+"/"+archive)
 	if err != nil {
 		return nil, fmt.Errorf("download %s: %w", archive, err)
 	}
@@ -222,8 +248,13 @@ func fetchVerifiedBinary(opts Options, version string) ([]byte, error) {
 	return extractBinary(payload, opts.Member)
 }
 
-func fetch(client *http.Client, url string) ([]byte, error) {
-	response, err := client.Get(url)
+func fetch(ctx context.Context, opts Options, url string) ([]byte, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("User-Agent", opts.Member+"-selfupdate")
+	response, err := opts.Client.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +291,7 @@ func checksumFor(checksums, archive string) (string, error) {
 }
 
 func extractBinary(archive []byte, member string) ([]byte, error) {
-	unzipped, err := gzip.NewReader(strings.NewReader(string(archive)))
+	unzipped, err := gzip.NewReader(bytes.NewReader(archive))
 	if err != nil {
 		return nil, fmt.Errorf("decompress archive: %w", err)
 	}

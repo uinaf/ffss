@@ -103,7 +103,7 @@ func options(t *testing.T, current string, server bool) Options {
 
 func TestRunUpdatesToLatest(t *testing.T) {
 	opts := options(t, "v1.0.0", true)
-	result, err := Run(opts)
+	result, err := Run(t.Context(), opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestRunUpdatesToLatest(t *testing.T) {
 
 func TestRunUpToDateIsNoOp(t *testing.T) {
 	opts := options(t, "v1.2.3", true)
-	result, err := Run(opts)
+	result, err := Run(t.Context(), opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestRunUpToDateIsNoOp(t *testing.T) {
 
 func TestCheckReportsWithoutTouching(t *testing.T) {
 	opts := options(t, "v1.0.0", true)
-	result, err := Check(opts)
+	result, err := Check(t.Context(), opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func TestPinnedVersionSkipsResolution(t *testing.T) {
 	opts := options(t, "v1.0.0", true)
 	opts.APIBase = "http://127.0.0.1:1/unreachable" // resolution must not run
 	opts.RequestVersion = "v1.2.3"
-	result, err := Run(opts)
+	result, err := Run(t.Context(), opts)
 	if err != nil || !result.Updated {
 		t.Fatalf("pinned update failed: %+v %v", result, err)
 	}
@@ -165,7 +165,7 @@ func TestPinnedVersionSkipsResolution(t *testing.T) {
 
 func TestNonReleaseBuildRefused(t *testing.T) {
 	opts := options(t, "", true)
-	if _, err := Run(opts); !errors.Is(err, ErrNotRelease) {
+	if _, err := Run(t.Context(), opts); !errors.Is(err, ErrNotRelease) {
 		t.Fatalf("non-release build must be refused: %v", err)
 	}
 }
@@ -180,7 +180,7 @@ func TestBrewManagedRefused(t *testing.T) {
 	if err := os.WriteFile(opts.ExecutablePath, []byte("brew binary"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Run(opts); !errors.Is(err, ErrBrewManaged) {
+	if _, err := Run(t.Context(), opts); !errors.Is(err, ErrBrewManaged) {
 		t.Fatalf("brew-managed binary must be refused: %v", err)
 	}
 }
@@ -202,7 +202,7 @@ func TestChecksumMismatchFailsClosed(t *testing.T) {
 	t.Cleanup(server.Close)
 	opts.APIBase = server.URL + "/releases-api"
 	opts.DownloadBase = server.URL
-	if _, err := Run(opts); err == nil || !strings.Contains(err.Error(), "checksum mismatch") {
+	if _, err := Run(t.Context(), opts); err == nil || !strings.Contains(err.Error(), "checksum mismatch") {
 		t.Fatalf("tampered archive must fail closed: %v", err)
 	}
 	body, _ := os.ReadFile(opts.ExecutablePath)
@@ -214,7 +214,7 @@ func TestChecksumMismatchFailsClosed(t *testing.T) {
 func TestInvalidPinnedVersionRejected(t *testing.T) {
 	opts := options(t, "v1.0.0", true)
 	opts.RequestVersion = "nightly"
-	if _, err := Run(opts); err == nil || !strings.Contains(err.Error(), "invalid release version") {
+	if _, err := Run(t.Context(), opts); err == nil || !strings.Contains(err.Error(), "invalid release version") {
 		t.Fatalf("invalid pin must be rejected: %v", err)
 	}
 }
@@ -231,7 +231,15 @@ func TestNoPublishedReleaseFound(t *testing.T) {
 	// same content only after the bound; keep it simple: the fake always
 	// returns the same page, so the resolver walks its bounded pages and
 	// reports no release.
-	if _, err := Run(opts); err == nil || !strings.Contains(err.Error(), "no published") {
+	if _, err := Run(t.Context(), opts); err == nil || !strings.Contains(err.Error(), "no published") {
 		t.Fatalf("foreign tags only must resolve nothing: %v", err)
+	}
+}
+
+func TestNonLoopbackHTTPRefused(t *testing.T) {
+	opts := options(t, "v1.0.0", true)
+	opts.APIBase = "http://mirror.example/releases"
+	if _, err := Run(t.Context(), opts); err == nil || !strings.Contains(err.Error(), "must use HTTPS") {
+		t.Fatalf("plain-HTTP endpoint must be refused: %v", err)
 	}
 }
