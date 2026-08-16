@@ -249,7 +249,7 @@ func TestReviewsDecodeAndClassify(t *testing.T) {
 	}
 }
 
-func TestHeadReadsOnlyTheRevision(t *testing.T) {
+func TestHeadReadsRevisionAndState(t *testing.T) {
 	g := NewGitHub(fakeRunner(`{"headRefOid":"abc1234","state":"OPEN"}`, emptyThreads, nil))
 	head, err := g.Head(context.Background(), ChangeRequestRef{Owner: "o", Repo: "r", Number: 1})
 	if err != nil || head.SHA != "abc1234" || head.Merged || head.Closed {

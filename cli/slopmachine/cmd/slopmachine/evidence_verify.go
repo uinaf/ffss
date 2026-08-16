@@ -131,6 +131,10 @@ func resolveDeliverVerification(ctx context.Context, ev *machine.DeliverEvidence
 func localHeadRevision(ctx context.Context) (string, error) {
 	out, err := exec.CommandContext(ctx, "git", "rev-parse", "HEAD").Output()
 	if err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && len(exit.Stderr) > 0 {
+			return "", fmt.Errorf("git rev-parse HEAD: %s", strings.TrimSpace(string(exit.Stderr)))
+		}
 		return "", fmt.Errorf("git rev-parse HEAD: %v", err)
 	}
 	head := strings.TrimSpace(string(out))
