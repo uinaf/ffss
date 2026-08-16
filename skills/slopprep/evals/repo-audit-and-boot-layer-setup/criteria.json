@@ -53,6 +53,11 @@
       "description": "app/package.json exposes the lifecycle program as a package script, and no parallel shell wrapper duplicates it"
     },
     {
+      "name": "Doctor gap surfaced",
+      "max_score": 7,
+      "description": "audit-report.md or improvements.md identifies the absence of a read-only is-this-instance-worth-driving check (doctor) as a gap with an owner, or delivers one that never mutates state"
+    },
+    {
       "name": "Target progression is explicit",
       "max_score": 7,
       "description": "improvements.md or audit-report.md prioritizes cold start before real-surface feedback and repeated trials, identifies the remaining path toward B and A, and does not present reaching C as completion"

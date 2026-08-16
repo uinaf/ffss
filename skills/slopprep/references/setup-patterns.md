@@ -23,9 +23,10 @@ scripts, Make/`just`, or checked-in scripts already used by CI.
 ### Doctor
 
 Give every driven target one read-only "is this instance worth driving?"
-check: process up, expected build or revision, port owned by the expected
-process, authentication valid. Drivers run it before driving and again after
-anything surprising. Doctor never mutates state, never repairs, and never
+check covering whichever contracts the target actually has — for example
+process up, expected build or revision, port owned by the expected process,
+authentication valid. Drivers run it before driving and again after anything
+surprising. Doctor never mutates state, never repairs, and never
 replaces bootstrap; it reports whether the running instance matches the
 declared contract and names the missing capability when it does not. A plain
 repo-local script is a complete implementation when it covers those checks.
@@ -85,10 +86,11 @@ Adopt an existing linter or hook shape before adding another. Baseline noisy
 checks before making them blocking. Error output should name the violated rule,
 affected boundary, and recovery action when one exists.
 
-For TypeScript repositories, offer vendoring the
-[dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) Oxlint rules during
-readiness setup: copy and own the rule files in the repository instead of
-adding a dependency, and baseline them before making them blocking.
+For TypeScript repositories that already lint with Oxlint, offer vendoring the
+[dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) rules during
+readiness setup: copy and own the rule source in the repository — the
+installed Oxlint toolchain still runs it — and baseline the rules before
+making them blocking. Do not introduce Oxlint itself solely to carry them.
 
 Treat a new shell script as the last adapter, not the first implementation. It
 may set strict process options and sequence a few established commands. Move to
