@@ -47,7 +47,7 @@ archive=slopmachine_v0.1.2_darwin_arm64.tar.gz
 cosign verify-blob \
   --bundle checksums.txt.sigstore.json \
   --certificate-identity \
-    "https://github.com/uinaf/ffsstack/.github/workflows/ci.yml@refs/heads/main" \
+    "https://github.com/uinaf/ffsstack/.github/workflows/release-slopmachine.yml@refs/heads/main" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   checksums.txt
 
