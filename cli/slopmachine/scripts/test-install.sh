@@ -105,8 +105,14 @@ case "$url" in
     case "${FAKE_CURL_MODE:-}" in
       fail-download) exit 22 ;;
       interrupt)
-        kill -TERM "$PPID"
-        exit 143
+        # Interrupt mid-install (during the archive download), not at the
+        # latest-resolution probe before the temporary directory exists.
+        case "$url" in
+          *.tar.gz)
+            kill -TERM "$PPID"
+            exit 143
+            ;;
+        esac
         ;;
       draft-tag)
         case "$url" in
