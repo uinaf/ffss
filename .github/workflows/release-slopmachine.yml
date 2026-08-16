@@ -21,8 +21,13 @@ concurrency:
 
 jobs:
   verify:
+    # PR CI already ran the full member verify for this tree on ubuntu;
+    # this job only keeps #16's gate: a broken GoReleaser config must fail
+    # before the release job injects Apple secrets and burns a
+    # semantic-release tag. Snapshot skips signing, and the member builds
+    # with CGO disabled, so a Linux runner cross-compiles every target.
     name: verify slopmachine
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
@@ -36,9 +41,6 @@ jobs:
       - uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
         with:
           working_directory: cli/slopmachine
-      - run: mise run verify
-      # A broken GoReleaser config must fail here, before the release job
-      # injects Apple secrets and burns a semantic-release tag.
       - run: mise run release:snapshot
 
   release:
