@@ -179,9 +179,9 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
-            dist/slopmachine_*.tar.gz
-            dist/checksums.txt
-            dist/checksums.txt.sigstore.json
+            cli/slopmachine/dist/slopmachine_*.tar.gz
+            cli/slopmachine/dist/checksums.txt
+            cli/slopmachine/dist/checksums.txt.sigstore.json
 
       - name: Publish assets to the release
         if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'
