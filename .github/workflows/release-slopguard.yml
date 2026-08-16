@@ -204,6 +204,4 @@ jobs:
           GH_TOKEN: ${{ steps.release-bot.outputs.token }}
           TAG: ${{ steps.tag.outputs.tag }}
           VERSION: ${{ steps.tag.outputs.version }}
-          BOT_NAME: ${{ steps.release-bot.outputs.app-slug }}[bot]
-          BOT_EMAIL: ${{ steps.release-bot-identity.outputs.user-id }}+${{ steps.release-bot.outputs.app-slug }}[bot]@users.noreply.github.com
         run: ./scripts/publish-cask.sh slopguard
