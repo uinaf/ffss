@@ -83,12 +83,17 @@ Reuse the repository's ordinary bootstrap, verify, and teardown commands — the
 same surface humans and CI already use. Do not invent a parallel `agent-*`
 script layer. If entrypoints are missing, extend the existing build manifest,
 task graph, compiler/linter/test framework, or typed project CLI. A shell file
-is not required merely to give the command a name.
+is not required merely to give the command a name; conversely, when a plain
+repo-local script satisfies the contract, it is the finished output — do not
+scaffold a generator or framework around it.
 
 Bootstrap validates prerequisites; verify is the CI-reused gate; teardown covers
-success, failure, timeout, and cancellation. Name the declared commands and
-their proof boundary in `AGENTS.md`. Key automation artifacts by task and
-attempt.
+success, failure, timeout, and cancellation. Give every driven target a doctor:
+one read-only "is this instance worth driving?" check (process up, right build,
+port owned, auth valid) run before driving and after anything surprising
+([references/setup-patterns.md](references/setup-patterns.md)). Name the
+declared commands and their proof boundary in `AGENTS.md`. Key automation
+artifacts by task and attempt.
 
 Treat heavyweight runtime resources as owned lifecycle state: simulators,
 emulators, virtual machines, containers, browsers, services, databases, and

@@ -11,6 +11,7 @@ Prefer one ordinary repository-owned surface used by humans, agents, and CI:
 | --- | --- |
 | bootstrap | validate prerequisites and install reproducibly without prompts |
 | boot | start the real target and expose a bounded readiness signal |
+| doctor | read-only check that the running instance is worth driving |
 | verify | run canonical guardrails plus the strongest cheap real surface |
 | teardown | release owned processes, heavyweight runtimes, and state on success, failure, timeout, and cancellation |
 
@@ -18,6 +19,16 @@ Keep each stage noninteractive, idempotent where practical, bounded, and
 explicit about whether a failure belongs to the repository or runner. Do not
 invent parallel `agent-*` wrappers; wire missing entrypoints into package
 scripts, Make/`just`, or checked-in scripts already used by CI.
+
+### Doctor
+
+Give every driven target one read-only "is this instance worth driving?"
+check: process up, expected build or revision, port owned by the expected
+process, authentication valid. Drivers run it before driving and again after
+anything surprising. Doctor never mutates state, never repairs, and never
+replaces bootstrap; it reports whether the running instance matches the
+declared contract and names the missing capability when it does not. A plain
+repo-local script is a complete implementation when it covers those checks.
 
 ### Runtime resource ownership
 
@@ -43,9 +54,11 @@ direct child PID.
   owned IDs and explicit teardown command as a handoff. Do not report the
   lifecycle complete until the resource is released or ownership is accepted.
 
-Avoid broad cleanup such as `killall`, `simctl shutdown all`, deleting every
-container, or stopping shared databases unless the command's declared scope
-owns the entire target set.
+Kill what the attempt started, by recorded ID or owned process group — never
+by process name. Avoid broad cleanup such as `killall`, `simctl shutdown all`,
+deleting every container, or stopping shared databases unless the command's
+declared scope owns the entire target set. Cleanup releases resources and
+never eats the evidence: captured artifacts and logs survive teardown.
 
 Own tool versions once. Preserve the repository's runtime and package-manager
 declarations, lockfile, catalogs, or tool manager. Make CI consume those owners
@@ -70,6 +83,11 @@ Put deterministic policy in the narrowest existing mechanical surface:
 Adopt an existing linter or hook shape before adding another. Baseline noisy
 checks before making them blocking. Error output should name the violated rule,
 affected boundary, and recovery action when one exists.
+
+For TypeScript repositories, offer vendoring the
+[dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) Oxlint rules during
+readiness setup: copy and own the rule files in the repository instead of
+adding a dependency, and baseline them before making them blocking.
 
 Treat a new shell script as the last adapter, not the first implementation. It
 may set strict process options and sequence a few established commands. Move to

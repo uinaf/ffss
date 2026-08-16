@@ -59,8 +59,11 @@ Choose the smallest check set that can honestly disprove the claim:
 - Deploy wiring: exercise the actual configured surface when the claim extends
   beyond local health.
 
-Prefer integration, contract, smoke, and end-to-end checks over mock-heavy unit
-tests at the seam being claimed. Mocked tests remain useful supporting evidence.
+Every proof exercises the real user path and captures both the action and the
+resulting state; a command transcript without its observed outcome is not
+evidence. Prefer integration, contract, smoke, and end-to-end checks over
+mock-heavy unit tests at the seam being claimed. Mocked tests remain useful
+supporting evidence.
 
 ## Failure Quality
 
