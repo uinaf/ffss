@@ -714,3 +714,11 @@ func TestResolveLocalArtifactURLForms(t *testing.T) {
 		t.Fatal("relative path must be refused")
 	}
 }
+
+func TestLocalHeadRevisionSurfacesGitStderr(t *testing.T) {
+	t.Chdir(t.TempDir())
+	_, err := localHeadRevision(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "not a git repository") {
+		t.Fatalf("failure must carry git's own diagnosis: %v", err)
+	}
+}
