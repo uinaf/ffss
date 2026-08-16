@@ -94,7 +94,7 @@ for attempt in 1 2 3; do
   existing_version=
   if existing=$(gh api "repos/uinaf/homebrew-tap/contents/${cask_path}" 2>/dev/null); then
     existing_sha=$(jq -r .sha <<<"$existing")
-    existing_content=$(jq -r .content <<<"$existing" | base64 -d)
+    existing_content=$(jq -r '.content | gsub("\n"; "") | @base64d' <<<"$existing")
     if [ "$existing_content" = "$(cat "$rendered")" ]; then
       echo "cask already current; nothing to publish"
       exit 0
