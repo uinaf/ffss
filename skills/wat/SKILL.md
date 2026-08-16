@@ -53,7 +53,9 @@ GOOD
 
 - Rewrites replies; never touches files, commits, or tracker artifacts.
   Cleaning those is [slopclean](../slopclean/SKILL.md)'s lane.
-- Preserve every fact, identifier, and number; compression loses words,
-  never information.
+- Compression drops narration, restatement, and anything the tracker or PR
+  already records — never a decision-relevant fact, identifier, or number.
+  When those genuinely exceed six lines, the cap yields; first ask whether
+  they are genuinely decision-relevant.
 - When the user explicitly asks for detail, depth wins — structured, not
   novelized.
