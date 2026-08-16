@@ -109,6 +109,16 @@ type Review struct {
 	SubmittedAt string
 }
 
+// HeadState is the narrow delivery-verification read: the current head
+// revision plus whether the change request is still open. A delivered
+// change request must be open — an already merged or closed one cannot be
+// the delivery of new work.
+type HeadState struct {
+	SHA    string
+	Merged bool
+	Closed bool
+}
+
 // Forge exposes the read-only observation seam over one change request.
 type Forge interface {
 	// Kind names the adapter.
@@ -119,9 +129,10 @@ type Forge interface {
 	// Observe fetches the current head SHA, checks state, mergeability, and
 	// unresolved review threads for ref in one read.
 	Observe(ctx context.Context, ref ChangeRequestRef) (Observation, error)
-	// Head fetches only existence and the current head revision; delivery
-	// verification must not fail on faults in reads it does not need.
-	Head(ctx context.Context, ref ChangeRequestRef) (string, error)
+	// Head fetches only existence, the current head revision, and whether
+	// the change request is still open; delivery verification must not fail
+	// on faults in reads it does not need.
+	Head(ctx context.Context, ref ChangeRequestRef) (HeadState, error)
 	// Reviews fetches the change request's reviews for evidence
 	// corroboration.
 	Reviews(ctx context.Context, ref ChangeRequestRef) ([]Review, error)

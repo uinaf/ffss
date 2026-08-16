@@ -23,6 +23,27 @@ If missing, stop and ask the user to install the CLI through their approved host
 package or release workflow. Do not download or run installers from this skill.
 Do not invent a second runtime.
 
+## Bind the repo profile
+
+```bash
+slopmachine repo show --json
+```
+
+If the repo is unregistered, register it before the first run — the profile
+is what arms forge-verified (`observed`) evidence and binds reviewers:
+
+```bash
+slopmachine repo register --forge github --trust low \
+  --verify-cmd "mise run verify" --delivery pr-hold \
+  --bind review=slopguard
+```
+
+Map forge-resident reviewers (bots that review on the change request) with
+`--forge-reviewer identity=login` so their evidence is corroborated against
+the live change request. At low trust the machine only accepts
+machine-executed verification (`verify --cmd`), and local reviewers must
+leave a resolvable result artifact.
+
 ## Bootstrap the run
 
 ```bash
@@ -40,9 +61,8 @@ bounded, and dependency-ordered; give each unit verifiable
 workflow does not leave evidence scratch files in the repository:
 
 ```bash
-slopmachine intake --input - --dry-run --json <<'JSON'
+slopmachine intake --file - --run run-id-from-status --dry-run --json <<'JSON'
 {
-  "run": "run-id-from-status",
   "delivery_mode": "pr-hold",
   "required_reviewers": ["slopguard"],
   "risk_tier": "low",
@@ -54,6 +74,10 @@ slopmachine intake --input - --dry-run --json <<'JSON'
 }
 JSON
 ```
+
+The `--file` payload carries only the intake document; the run travels in
+`--run`, exactly as `next_action` prints it. (The raw `--input` shape embeds
+`run` inside the payload instead — do not mix the two.)
 
 Inspect the dry-run projection. If it matches the agreed intake, repeat the
 same command without `--dry-run`. Do this for every mutation: validate first,
@@ -91,19 +115,27 @@ status.
 
 ```bash
 # after verify succeeds and status asks for review
-slopmachine review --input - --dry-run --json <<'JSON'
-{"run":"run-id-from-status","reviewer":"slopguard","verdict":"clean","artifact_ref":"slopguard://local"}
+slopmachine review --evidence - --run run-id-from-status --dry-run --json <<'JSON'
+{"reviewer":"slopguard","verdict":"clean","artifact_ref":"file:///tmp/slopguard-result.json"}
 JSON
 ```
+
+For a local reviewer, `artifact_ref` must point at the reviewer's real
+result file (save the slopguard JSON output and reference it); the machine
+refuses dangling or opaque refs on a forge-bound repo.
 
 Deliver only after every required reviewer is present in `completed_reviewers`.
 Use stdin evidence and match the intake delivery mode:
 
 ```bash
-slopmachine deliver --input - --dry-run --json <<'JSON'
-{"run":"run-id-from-status","delivery_mode":"pr-hold","pr_url":"https://github.com/example/repo/pull/1"}
+slopmachine deliver --evidence - --run run-id-from-status --dry-run --json <<'JSON'
+{"delivery_mode":"pr-hold","pr_url":"https://github.com/example/repo/pull/1"}
 JSON
 ```
+
+Deliver from the built checkout: the machine anchors the change request's
+head to the local head (or an explicit `commit_sha`) and refuses a change
+request that is already merged or closed.
 
 After each projection is accepted, repeat without `--dry-run`.
 

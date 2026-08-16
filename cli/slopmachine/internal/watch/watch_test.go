@@ -13,15 +13,27 @@ func target() watch.Target {
 	return watch.Target{UnitID: "u1", PRURL: "https://github.com/o/r/pull/1", CommitSHA: "aaaaaaaaaaaaaaaa"}
 }
 
-func TestDecideMergedWinsOverEverything(t *testing.T) {
+func TestDecideMergedAtDeliveredHeadSettles(t *testing.T) {
 	out := watch.Decide(target(), forge.Observation{
 		Mergeability:      forge.MergeableMerged,
-		HeadSHA:           "bbbbbbbbbbbbbbbb",
+		HeadSHA:           "aaaaaaaaaaaaaaaa",
 		Checks:            forge.ChecksFailing,
 		UnresolvedThreads: 3,
 	})
 	if out.Signal != machine.SignalMerged || out.Reference != "https://github.com/o/r/pull/1" {
-		t.Fatalf("merged must settle the unit: %+v", out)
+		t.Fatalf("merged at the delivered head must settle the unit: %+v", out)
+	}
+}
+
+func TestDecideMergedWithMovedHeadIsRework(t *testing.T) {
+	// A change request merged with a different head than delivered merged
+	// something the run never reviewed; that is rework, not settlement.
+	out := watch.Decide(target(), forge.Observation{
+		Mergeability: forge.MergeableMerged,
+		HeadSHA:      "bbbbbbbbbbbbbbbb",
+	})
+	if out.Signal != machine.SignalHeadMoved {
+		t.Fatalf("merged with a moved head must not settle: %+v", out)
 	}
 }
 

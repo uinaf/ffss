@@ -32,10 +32,17 @@ type Outcome struct {
 }
 
 // Decide maps one forge observation onto at most one observe signal.
-// Precedence: merged settles the unit; a moved head invalidates the delivery
-// evidence before check or review outcomes are trusted for it.
+// Precedence: a moved head invalidates the delivery evidence before any
+// other outcome is trusted for it — including merged: a change request
+// merged with a different head than delivered merged something the run
+// never reviewed, which is rework, not settlement.
 func Decide(target Target, obs forge.Observation) Outcome {
 	out := Outcome{UnitID: target.UnitID}
+	if HeadMoved(target.CommitSHA, obs.HeadSHA) {
+		out.Signal = machine.SignalHeadMoved
+		out.Reference = fmt.Sprintf("delivered %s but head is %s", shortSHA(target.CommitSHA), shortSHA(obs.HeadSHA))
+		return out
+	}
 	switch obs.Mergeability {
 	case forge.MergeableMerged:
 		out.Signal = machine.SignalMerged
@@ -43,11 +50,6 @@ func Decide(target Target, obs forge.Observation) Outcome {
 		return out
 	case forge.MergeableClosed:
 		out.Note = "change request closed without merge; ask for a decision or re-deliver"
-		return out
-	}
-	if HeadMoved(target.CommitSHA, obs.HeadSHA) {
-		out.Signal = machine.SignalHeadMoved
-		out.Reference = fmt.Sprintf("delivered %s but head is %s", shortSHA(target.CommitSHA), shortSHA(obs.HeadSHA))
 		return out
 	}
 	if obs.Checks == forge.ChecksFailing {

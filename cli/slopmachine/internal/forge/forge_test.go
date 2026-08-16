@@ -249,11 +249,19 @@ func TestReviewsDecodeAndClassify(t *testing.T) {
 	}
 }
 
-func TestHeadReadsOnlyTheRevision(t *testing.T) {
-	g := NewGitHub(fakeRunner(`{"headRefOid":"abc1234"}`, emptyThreads, nil))
+func TestHeadReadsRevisionAndState(t *testing.T) {
+	g := NewGitHub(fakeRunner(`{"headRefOid":"abc1234","state":"OPEN"}`, emptyThreads, nil))
 	head, err := g.Head(context.Background(), ChangeRequestRef{Owner: "o", Repo: "r", Number: 1})
-	if err != nil || head != "abc1234" {
-		t.Fatalf("head=%q err=%v", head, err)
+	if err != nil || head.SHA != "abc1234" || head.Merged || head.Closed {
+		t.Fatalf("head=%+v err=%v", head, err)
+	}
+	g = NewGitHub(fakeRunner(`{"headRefOid":"abc1234","state":"MERGED"}`, emptyThreads, nil))
+	if head, err = g.Head(context.Background(), ChangeRequestRef{Owner: "o", Repo: "r", Number: 1}); err != nil || !head.Merged {
+		t.Fatalf("merged state must be reported: head=%+v err=%v", head, err)
+	}
+	g = NewGitHub(fakeRunner(`{"headRefOid":"abc1234","state":"CLOSED"}`, emptyThreads, nil))
+	if head, err = g.Head(context.Background(), ChangeRequestRef{Owner: "o", Repo: "r", Number: 1}); err != nil || !head.Closed {
+		t.Fatalf("closed state must be reported: head=%+v err=%v", head, err)
 	}
 	g = NewGitHub(fakeRunner("", "", errors.New("HTTP 404: Not Found")))
 	var forgeErr *Error

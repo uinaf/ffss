@@ -107,20 +107,25 @@ func (g *GitHub) Observe(ctx context.Context, ref ChangeRequestRef) (Observation
 	return observation, nil
 }
 
-func (g *GitHub) Head(ctx context.Context, ref ChangeRequestRef) (string, error) {
+func (g *GitHub) Head(ctx context.Context, ref ChangeRequestRef) (HeadState, error) {
 	raw, err := g.run(ctx, "pr", "view", strconv.Itoa(ref.Number),
 		"--repo", ref.Owner+"/"+ref.Repo,
-		"--json", "headRefOid")
+		"--json", "headRefOid,state")
 	if err != nil {
-		return "", classify(err)
+		return HeadState{}, classify(err)
 	}
 	var pr struct {
 		HeadRefOid string `json:"headRefOid"`
+		State      string `json:"state"`
 	}
 	if err := json.Unmarshal(raw, &pr); err != nil {
-		return "", &Error{Kind: ErrorTransient, Err: fmt.Errorf("decode pr head for %s: %w", ref, err)}
+		return HeadState{}, &Error{Kind: ErrorTransient, Err: fmt.Errorf("decode pr head for %s: %w", ref, err)}
 	}
-	return pr.HeadRefOid, nil
+	return HeadState{
+		SHA:    pr.HeadRefOid,
+		Merged: pr.State == "MERGED",
+		Closed: pr.State == "CLOSED",
+	}, nil
 }
 
 func (g *GitHub) Reviews(ctx context.Context, ref ChangeRequestRef) ([]Review, error) {
