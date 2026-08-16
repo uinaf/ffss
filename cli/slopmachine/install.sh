@@ -2,8 +2,8 @@
 
 set -eu
 
-# slopmachine release assets ship from the ffsstack monorepo starting with
-# the first slopmachine release (uinaf/slopshipper#50).
+# slopmachine release assets ship from the ffsstack monorepo on
+# slopmachine/vX.Y.Z tags.
 repository_url=${SLOPMACHINE_INSTALL_REPOSITORY_URL:-https://github.com/uinaf/ffsstack}
 while [ "${repository_url%/}" != "$repository_url" ]; do
   repository_url=${repository_url%/}

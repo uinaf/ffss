@@ -40,7 +40,10 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 
 To pin a release or choose an install directory, pass `--version "$TAG"` or
 `--dest /chosen/bin` after `sh -s --`. The installer verifies the archive
-against the release checksum before atomically replacing the binary. See
+against the release checksum before atomically replacing the binary.
+Installer-managed binaries upgrade in place with `slopmachine selfupdate`
+(`--check` probes without touching the binary); brew-managed installs
+upgrade through `brew upgrade` instead. See
 [Release verification](docs/RELEASES.md#linux-installer-trust-boundary) for
 independent Cosign and GitHub attestation checks.
 

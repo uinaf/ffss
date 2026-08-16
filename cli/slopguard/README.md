@@ -25,10 +25,13 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 ~/.local/bin/slopguard --version
 ```
 
-Pass `--version v0.4.0` or `--dest /chosen/bin` after `sh -s --` to pin a
+Pass `--version "$TAG"` or `--dest /chosen/bin` after `sh -s --` to pin a
 release or override `${HOME}/.local/bin`. The installer downloads the archive
 and `checksums.txt` from the same GitHub Release, verifies the exact SHA-256,
-and atomically replaces the destination binary. See
+and atomically replaces the destination binary. Installer-managed binaries
+upgrade in place with `slopguard selfupdate` (`--check` probes without
+touching the binary); brew-managed installs upgrade through `brew upgrade`
+instead. See
 [Release verification](docs/RELEASES.md#linux-installer-trust-boundary) for the
 HTTPS trust boundary and independent Cosign and GitHub attestation checks.
 
@@ -38,6 +41,9 @@ Consumers that prefer Go tooling can instead install with Go 1.26 or newer:
 go install github.com/uinaf/ffsstack/cli/slopguard/cmd/slopguard@latest
 slopguard --version
 ```
+
+Go-built binaries track `main`, report `dev (unknown)`, and are refused by
+`selfupdate`; signed, versioned builds come from the tap or the installer.
 
 Runtime dependencies are Git 2.41 or newer, the `trufflehog` executable, and
 the selected review harness available on `PATH`. Multiple supported harnesses

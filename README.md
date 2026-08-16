@@ -29,13 +29,14 @@ slopscouter (QA, planned), slopbench (evals), slopwake.
 
 ## Status
 
-Under construction ([migration epic](https://github.com/uinaf/slopshipper/issues/50)).
-Histories of the member repos were imported intact; releases, installers, and
-the agent-plugin marketplace still ship from the legacy repos until the
-corresponding migration milestones land. The root workflow is the only live
-CI — it runs each member's own gate (`mise run verify` inside
-`cli/slopshipper/` and `cli/slopguard/`); member release workflows return
-with the release-migration milestone.
+Live. Both CLIs release from this repo on per-member tags
+(`slopmachine/vX.Y.Z`, `slopguard/vX.Y.Z`): signed and notarized macOS
+builds, Cosign-signed checksums, GitHub build attestations, Homebrew casks
+in [`uinaf/homebrew-tap`](https://github.com/uinaf/homebrew-tap), Linux
+installers, and in-place `selfupdate`. CI runs each member's own gate
+(`mise run verify` inside `cli/slopmachine/` and `cli/slopguard/`) plus a
+skills lint. The factory's next frontier is
+[M3 dispatch + M4 learn](https://github.com/uinaf/ffsstack/issues/27).
 
 ## License
 
