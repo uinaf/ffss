@@ -108,6 +108,11 @@ case "$url" in
         kill -TERM "$PPID"
         exit 143
         ;;
+      draft-tag)
+        case "$url" in
+          *"slopmachine%2Fv9.9.9"*) exit 22 ;;
+        esac
+        ;;
     esac
     cp "$FIXTURE_DIR/$asset" "$output"
     ;;
@@ -123,6 +128,12 @@ if [ "${FAKE_GIT_MODE:-}" = absent ]; then
 fi
 if [ "$1" = ls-remote ]; then
   if [ "${FAKE_CURL_MODE:-}" = malformed-latest ]; then
+    exit 0
+  fi
+  if [ "${FAKE_CURL_MODE:-}" = draft-tag ]; then
+    # v9.9.9 is a tag whose release is unpublished; its assets 404.
+    printf '0000000000000000000000000000000000000000\trefs/tags/slopmachine/v%s\n' \
+      1.2.3 9.9.9
     exit 0
   fi
   printf '%s\n' "0000000000000000000000000000000000000000	refs/tags/slopmachine/v1.2.3"
@@ -294,6 +305,17 @@ FAKE_GIT_MODE=absent run_installer >/dev/null
 test "$("$case_home/.local/bin/slopmachine" --version)" = \
   'slopmachine v1.2.3 (fixture-amd64)'
 assert_no_residue
+
+# Case: the newest tag has no published release (a crash between tag push
+# and publish); the probe rejects it and the API resolves the newest
+# published release instead.
+new_case
+FAKE_CURL_MODE=draft-tag run_installer >/dev/null
+test "$("$case_home/.local/bin/slopmachine" --version)" = \
+  'slopmachine v1.2.3 (fixture-amd64)'
+grep -Fx \
+  'https://fixture.invalid/releases/download/slopmachine%2Fv9.9.9/checksums.txt' \
+  "$case_log" >/dev/null
 assert_no_residue
 
 new_case

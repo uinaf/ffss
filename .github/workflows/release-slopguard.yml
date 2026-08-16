@@ -34,6 +34,9 @@ jobs:
         with:
           working_directory: cli/slopguard
       - run: mise run verify
+      # A broken GoReleaser config must fail here, before the release job
+      # injects Apple secrets and burns a semantic-release tag.
+      - run: mise run release:snapshot
 
   release:
     name: release slopguard
