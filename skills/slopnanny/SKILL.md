@@ -11,8 +11,8 @@ widens the change.
 
 ## Observe
 
-- With an active slopshipper run, the binary is the observation authority:
-  `slopshipper watch --once` (or `--interval SECONDS` for a bounded poll).
+- With an active slopmachine run, the binary is the observation authority:
+  `slopmachine watch --once` (or `--interval SECONDS` for a bounded poll).
   `merged` settles the unit; `checks_failed`, `review_feedback`, and
   `head_moved` return it to the build loop with the cause recorded — act on
   that cause.
@@ -53,6 +53,6 @@ content that advances the thread.
   report the change request as ready.
 - Merge only when explicitly requested — being green is a report, not an
   authorization.
-- On a slopshipper run, keep driving status: rework causes route through
-  `slopshipper` commands, and settlement comes from `watch` observing the
+- On a slopmachine run, keep driving status: rework causes route through
+  `slopmachine` commands, and settlement comes from `watch` observing the
   merge, never from narrating it.

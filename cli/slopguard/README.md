@@ -2,8 +2,8 @@
 
 # slopguard
 
-`slopguard` (formerly `autoreview`) is a Go CLI and agent skill for one
-structured, independent code review through Codex CLI, Claude Code, Cursor Agent, or Grok Build. It freezes
+`slopguard` is a Go CLI and agent skill for one structured, independent
+code review through Codex CLI, Claude Code, Cursor Agent, or Grok Build. It freezes
 an explicit Git target, scans the complete bundle for secrets, validates the
 provider result locally, and emits a stable terminal or JSON report.
 
@@ -24,11 +24,6 @@ curl --proto '=https' --tlsv1.2 -fsSL \
   https://raw.githubusercontent.com/uinaf/ffsstack/main/cli/slopguard/install.sh | sh
 ~/.local/bin/slopguard --version
 ```
-
-Until the first slopguard release ships from this repository
-(uinaf/slopshipper#50), install the identically-featured legacy binary via
-`https://raw.githubusercontent.com/uinaf/autoreview/main/install.sh` (it
-installs as `autoreview`).
 
 Pass `--version v0.4.0` or `--dest /chosen/bin` after `sh -s --` to pin a
 release or override `${HOME}/.local/bin`. The installer downloads the archive
@@ -102,7 +97,7 @@ not a generic schema for CLI request parameters.
 
 ## Agent skill
 
-The bundled [agent skill](skills/slopguard/SKILL.md) delegates one independent
+The family [agent skill](../../skills/slopguard/SKILL.md) delegates one independent
 review to the installed CLI. It does not contain a second runtime.
 
 ## Documentation

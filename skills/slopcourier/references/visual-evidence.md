@@ -12,11 +12,20 @@ dispatched to (never upload through the other forge's API just because its
 CLI is installed). Never commit proof assets to any product repository
 branch (no `.github/pr-assets` or similar).
 
-## 1. attach (when installed, any forge)
+## 1. attach — the uinaf uploader (when installed, any forge)
 
-If `command -v attach` succeeds or `gh extension list` shows `gh attach`,
-that tool owns attachment end to end: discover its interface from
-`--help`, upload the asset, and embed the reference it returns.
+This rung means the [uinaf attach](https://github.com/uinaf/attach) CLI
+specifically, not any binary that happens to be named `attach`. Verify the
+identity before trusting it: `attach help` must show the `attach put
+<file> [--repo <owner/name>] [--pr <n>]` command shape (or `gh extension
+list` shows `gh attach` from `uinaf/gh-attach`). Anything else on PATH
+under that name is not this rung — fall through.
+
+When it is the real tool, it owns attachment end to end: `attach put` the
+asset (or `gh attach put` when only the extension is installed — the
+extension does not put an `attach` binary on PATH), scope with
+`--repo`/`--pr`, and embed the returned reference (`--markdown` or
+`--url`).
 
 ## 2. GitLab deliveries (`glab`)
 
@@ -32,9 +41,7 @@ visibility.
 
 ## 3. github.com deliveries (`gh` + user-attachments endpoint)
 
-This rung is github.com only — the endpoint is `uploads.github.com`, and a
-GitHub Enterprise token must never be sent there (Enterprise deliveries
-fall through to rung 4). Images and video upload to the same CDN the web
+Images and video upload to the same CDN the web
 drag-drop uses; the asset inherits repository visibility and needs no
 browser:
 
@@ -45,7 +52,7 @@ curl -s "https://uploads.github.com/user-attachments/assets?name=${name}&content
   -X POST \
   -H @- \
   --data-binary @<file> <<EOF
-Authorization: Bearer $(gh auth token --hostname github.com)
+Authorization: Bearer $(GH_HOST=github.com gh auth token)
 Accept: application/json
 EOF
 ```
@@ -62,6 +69,17 @@ playback first:
 ```bash
 ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4
 ```
+
+## Embedding
+
+Structure the evidence; never paste bare images that take over the page:
+
+- Constrain size with an HTML img tag — mobile screenshots especially
+  (`<img src="…" width="300">`), or they occupy the whole page.
+- Put comparisons side by side in a table (before/after, light/dark,
+  breakpoints), one labeled column each.
+- Collapse anything long or secondary in `<details><summary>…</summary>`.
+- One primary aid inline; everything else collapsed or linked.
 
 ## 4. Non-media artifacts or endpoint failure
 
