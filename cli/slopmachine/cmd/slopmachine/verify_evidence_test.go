@@ -691,3 +691,26 @@ func TestFreshInstallInitDryRunStatesRecordedEvidence(t *testing.T) {
 		t.Fatalf("fresh-install projection must state recorded evidence: %s", out)
 	}
 }
+
+func TestResolveLocalArtifactURLForms(t *testing.T) {
+	artifact := filepath.Join(t.TempDir(), "review result.json")
+	mustWrite(t, artifact, `{"status":"clean"}`)
+	// Percent-encoded file URLs decode to the real path.
+	encoded := "file://" + strings.ReplaceAll(artifact, " ", "%20")
+	if err := resolveLocalArtifact(encoded); err != nil {
+		t.Fatalf("encoded file URL must resolve: %v", err)
+	}
+	if err := resolveLocalArtifact("file://" + artifact); err != nil {
+		t.Fatalf("plain file URL must resolve: %v", err)
+	}
+	// A host-relative file URL is a repo-relative path in disguise.
+	if err := resolveLocalArtifact("file://README.md"); err == nil {
+		t.Fatal("relative file URL must be refused")
+	}
+	if err := resolveLocalArtifact("file://evil.example/tmp/x.json"); err == nil {
+		t.Fatal("non-local host must be refused")
+	}
+	if err := resolveLocalArtifact("README.md"); err == nil {
+		t.Fatal("relative path must be refused")
+	}
+}

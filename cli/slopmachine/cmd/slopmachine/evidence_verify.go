@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -194,8 +195,18 @@ func resolveReviewVerification(ctx context.Context, ev *machine.ReviewEvidence, 
 func resolveLocalArtifact(ref string) error {
 	var path string
 	switch {
-	case strings.HasPrefix(ref, "file://"):
-		path = strings.TrimPrefix(ref, "file://")
+	case strings.HasPrefix(ref, "file:"):
+		parsed, err := url.Parse(ref)
+		if err != nil {
+			return fmt.Errorf("artifact_ref %q is not a valid file URL: %v", ref, err)
+		}
+		if parsed.Host != "" && parsed.Host != "localhost" {
+			return fmt.Errorf("artifact_ref %q names a non-local host", ref)
+		}
+		path = parsed.Path
+		if !strings.HasPrefix(path, "/") {
+			return fmt.Errorf("artifact_ref %q is not an absolute file URL", ref)
+		}
 	case strings.HasPrefix(ref, "/"):
 		path = ref
 	default:
