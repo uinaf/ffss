@@ -22,11 +22,21 @@ node evals.ts run <scenario-dir> --agent MODEL --judge MODEL --harness claude|co
 node evals.ts sweep [--all]
 
 # Reduce results/*.json into a committed scorecards/<UTC-date>.json
-node evals.ts summarize
+node evals.ts summarize [--allow-mixed]
 ```
 
 `results/` and `scratch/` are disposable and gitignored; `scorecards/` is
 committed.
+
+## Provenance
+
+Each run writes a `results/<name>.meta.json` sidecar recording the
+`skills_tree_sha` (repo HEAD at run time). `summarize` reads per-result
+provenance and refuses to mix revisions unless `--allow-mixed` (the scorecard's
+top-level `skills_tree_sha` then becomes `mixed`; per-entry shas remain).
+Results predating the sidecar mechanism are labeled `unattested-799dab4`: they
+all ran against 799dab4's skills tree, but that is operator attestation, not
+machine-recorded.
 
 ## Auth
 

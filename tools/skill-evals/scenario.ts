@@ -65,6 +65,14 @@ export function loadScenario(scenarioDir: string): Scenario {
   return { skill, scenario, name: `${skill}--${scenario}`, skillDir: path.resolve(scenarioDir, "../.."), prompt, files, criteria };
 }
 
+// Canonical run/result name for a scenario + harness. Single source of truth:
+// generateRun names its scratch dir and evals.ts names result files with this.
+export function runNameFor(scenarioDir: string, harness: Harness): string {
+  const m = path.resolve(scenarioDir).match(/skills\/([^/]+)\/evals\/([^/]+)$/);
+  if (!m) throw new Error(`not a scenario dir (want .../skills/<skill>/evals/<scenario>): ${scenarioDir}`);
+  return harness === "codex" ? `${m[1]}--${m[2]}--codex` : `${m[1]}--${m[2]}`;
+}
+
 // Reserved top-level workdir entries: fixtures may not write agent config roots.
 const RESERVED = new Set([".claude", ".agents"]);
 
@@ -218,7 +226,7 @@ export function buildConfig(s: Scenario, workdir: string, manifestPath: string, 
 // Full pipeline: load + materialize + write promptfooconfig.json under baseDir/scratch.
 export function generateRun(scenarioDir: string, opts: RunOptions, baseDir: string): { name: string; configPath: string } {
   const s = loadScenario(scenarioDir);
-  const name = opts.harness === "codex" ? `${s.name}--codex` : s.name;
+  const name = runNameFor(scenarioDir, opts.harness);
   const runDir = path.join(baseDir, "scratch", name);
   const { workdir, manifestPath } = materialize(s, runDir, opts.harness);
   const config = buildConfig(s, workdir, manifestPath, opts, path.join(baseDir, "transform.ts"));
