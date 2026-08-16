@@ -13,7 +13,7 @@ agent behaves. Ships slop; checks receipts.
 
 ## Skills
 
-Install all eight as a plugin (skills only, ~570K payload). Codex and Cursor
+Install all nine as a plugin (skills only, ~570K payload). Codex and Cursor
 read the same marketplace:
 
 ```text
@@ -46,6 +46,7 @@ grow install flows.
 | [`slopspec`](skills/slopspec/) | Turn agreed work into durable tracker plans |
 | [`slopscriber`](skills/slopscriber/) | Audit and rewrite repo docs and agent guidance |
 | [`slopprep`](skills/slopprep/) | Make a repository agent-ready |
+| [`wat`](skills/wat/) | Whip rambling replies back into terse labeled deltas |
 
 Reference bindings elsewhere in the family: slopzapper (forge review bot),
 slopscouter (QA, planned), slopbench (evals), slopwake.
