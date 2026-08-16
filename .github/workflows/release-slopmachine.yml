@@ -112,8 +112,15 @@ jobs:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -euo pipefail
-          draft=$(gh release view "$TAG" --repo uinaf/ffsstack --json isDraft --jq .isDraft)
-          echo "published=$([ "$draft" = "false" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          # semantic-release pushes the tag before creating the release; a
+          # crash between the two leaves a tag with no release. Recover by
+          # recreating the draft instead of failing every rerun.
+          if draft=$(gh release view "$TAG" --repo uinaf/ffsstack --json isDraft --jq .isDraft 2>/dev/null); then
+            echo "published=$([ "$draft" = "false" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          else
+            gh release create "$TAG" --repo uinaf/ffsstack --draft --verify-tag --title "$TAG" --notes "Recovered draft; see the tagged commit history."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build, sign, and notarize
         if: steps.tag.outputs.present == 'true' && steps.release-state.outputs.published != 'true'

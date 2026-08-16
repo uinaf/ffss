@@ -34,7 +34,11 @@ done
 
 # Release-download URLs URL-encode the slash in the member-prefixed tag.
 base="https://github.com/uinaf/ffsstack/releases/download/${member}%2F${VERSION}"
-description=$(sed -n 's/^description: *"\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' .goreleaser.yaml | head -1)
+case "$member" in
+  slopmachine) description="Deterministic and structured approach to slop cannoning" ;;
+  slopguard) description="Structured independent code review as a CLI and agent skill" ;;
+  *) description="$member" ;;
+esac
 
 tap_dir=$(mktemp -d)
 trap 'rm -rf "$tap_dir"' EXIT
@@ -74,7 +78,7 @@ cask "${member}" do
 ${depends_stanza}  binary "${member}"
 
   homepage "https://github.com/uinaf/ffsstack"
-  desc "${description:-$member}"
+  desc "${description}"
 end
 CASK
 
