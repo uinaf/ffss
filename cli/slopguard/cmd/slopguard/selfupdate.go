@@ -46,7 +46,7 @@ func runSelfupdate(ctx context.Context, arguments []string, stdout, stderr io.Wr
 	}
 	if err != nil {
 		report(stderr, "slopguard selfupdate: %v\n", err)
-		if errors.Is(err, selfupdate.ErrNotRelease) || errors.Is(err, selfupdate.ErrBrewManaged) {
+		if errors.Is(err, selfupdate.ErrNotRelease) || errors.Is(err, selfupdate.ErrBrewManaged) || errors.Is(err, selfupdate.ErrInvalidVersion) {
 			return 2
 		}
 		return 3

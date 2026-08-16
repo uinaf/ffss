@@ -48,7 +48,7 @@ func cmdSelfupdate(args []string, opts runOptions) int {
 // selfupdateErrorExit maps refusals (wrong install kind) to invalid-input
 // and everything else (resolution, download, verification) to unmet guard.
 func selfupdateErrorExit(err error) int {
-	if errors.Is(err, selfupdate.ErrNotRelease) || errors.Is(err, selfupdate.ErrBrewManaged) {
+	if errors.Is(err, selfupdate.ErrNotRelease) || errors.Is(err, selfupdate.ErrBrewManaged) || errors.Is(err, selfupdate.ErrInvalidVersion) {
 		return 2
 	}
 	return 3
@@ -58,7 +58,7 @@ func selfupdateErrorExit(err error) int {
 // input (exit 2 maps there already), everything else is an unmet guard —
 // the update's preconditions (resolvable release, intact archive) failed.
 func selfupdateError(err error) error {
-	if errors.Is(err, selfupdate.ErrNotRelease) || errors.Is(err, selfupdate.ErrBrewManaged) {
+	if errors.Is(err, selfupdate.ErrNotRelease) || errors.Is(err, selfupdate.ErrBrewManaged) || errors.Is(err, selfupdate.ErrInvalidVersion) {
 		return err
 	}
 	return fmt.Errorf("%w: %v", machine.ErrUnmetGuard, err)

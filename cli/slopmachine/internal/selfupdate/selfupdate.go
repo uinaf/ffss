@@ -64,6 +64,10 @@ var ErrNotRelease = errors.New("not a release build; install a published release
 // ErrBrewManaged marks a Homebrew-managed install.
 var ErrBrewManaged = errors.New("this binary is managed by Homebrew; run: brew upgrade --cask")
 
+// ErrInvalidVersion marks a malformed pinned release: caller input, not a
+// failed update precondition.
+var ErrInvalidVersion = errors.New("invalid release version")
+
 var releaseTag = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
 
 // Check resolves the target version without touching the binary.
@@ -128,7 +132,15 @@ func withDefaults(opts Options) (Options, error) {
 		// Bounded end to end: a stalled server must fail the update, not
 		// hang automation. Archives are a few megabytes; ten minutes is
 		// generous for the slowest links.
-		opts.Client = &http.Client{Timeout: 10 * time.Minute}
+		opts.Client = &http.Client{
+			Timeout: 10 * time.Minute,
+			// The transport rail survives redirects: an HTTPS endpoint must
+			// not bounce the release list, checksums, or archive onto
+			// cleartext HTTP.
+			CheckRedirect: func(request *http.Request, via []*http.Request) error {
+				return requireHTTPS(request.URL.String())
+			},
+		}
 	}
 	if opts.OS == "" {
 		opts.OS = runtime.GOOS
@@ -153,7 +165,7 @@ func withDefaults(opts Options) (Options, error) {
 		return opts, fmt.Errorf("%w %s", ErrBrewManaged, opts.Member)
 	}
 	if opts.RequestVersion != "" && !releaseTag.MatchString(opts.RequestVersion) {
-		return opts, fmt.Errorf("invalid release version: %s", opts.RequestVersion)
+		return opts, fmt.Errorf("%w: %s (want vX.Y.Z)", ErrInvalidVersion, opts.RequestVersion)
 	}
 	for _, base := range []string{opts.APIBase, opts.DownloadBase} {
 		if err := requireHTTPS(base); err != nil {

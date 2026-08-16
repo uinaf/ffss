@@ -243,3 +243,28 @@ func TestNonLoopbackHTTPRefused(t *testing.T) {
 		t.Fatalf("plain-HTTP endpoint must be refused: %v", err)
 	}
 }
+
+func TestRedirectToPlainHTTPRefused(t *testing.T) {
+	opts := options(t, "v1.0.0", false)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/releases-api") {
+			http.Redirect(w, r, "http://mirror.example/releases", http.StatusFound)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(server.Close)
+	opts.APIBase = server.URL + "/releases-api"
+	opts.DownloadBase = server.URL
+	if _, err := Run(t.Context(), opts); err == nil || !strings.Contains(err.Error(), "must use HTTPS") {
+		t.Fatalf("redirect onto cleartext must be refused: %v", err)
+	}
+}
+
+func TestInvalidPinIsCallerInput(t *testing.T) {
+	opts := options(t, "v1.0.0", true)
+	opts.RequestVersion = "nightly"
+	if _, err := Run(t.Context(), opts); !errors.Is(err, ErrInvalidVersion) {
+		t.Fatalf("malformed pin must carry the invalid-version sentinel: %v", err)
+	}
+}
