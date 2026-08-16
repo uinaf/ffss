@@ -32,9 +32,10 @@ The vocabulary is "change request"; the forge decides the tool:
 2. Dispatch on its host: `github.com` → `gh`; a GitLab host → `glab`;
    anything else → stop and report the unsupported forge. Never guess at
    a forge API.
-3. Verify authentication for that host (`gh auth status` or
-   `glab auth status --hostname <host>`). Report a missing dependency;
-   do not install tooling or switch identities.
+3. Verify authentication for that host (`GH_HOST=github.com gh auth
+   status` or `glab auth status --hostname <host>`); a login on some
+   other configured host proves nothing. Report a missing dependency; do
+   not install tooling or switch identities.
 
 ## Deliver
 
