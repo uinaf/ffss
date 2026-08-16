@@ -45,7 +45,10 @@ trap 'rm -rf "$tap_dir"' EXIT
 git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/uinaf/homebrew-tap.git" "$tap_dir"
 
 # Rerunning an old workflow must never downgrade the tap.
-existing=$(sed -n 's/^  version "\(.*\)"$/\1/p' "$tap_dir/Casks/${member}.rb" 2>/dev/null | head -1)
+existing=
+if [ -f "$tap_dir/Casks/${member}.rb" ]; then
+  existing=$(sed -n 's/^  version "\(.*\)"$/\1/p' "$tap_dir/Casks/${member}.rb" | head -1)
+fi
 if [ -n "$existing" ]; then
   newest=$(printf '%s\n%s\n' "$existing" "${VERSION#v}" | sort -V | tail -1)
   if [ "$newest" = "$existing" ] && [ "$existing" != "${VERSION#v}" ]; then
