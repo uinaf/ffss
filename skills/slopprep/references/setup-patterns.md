@@ -55,10 +55,11 @@ direct child PID.
   lifecycle complete until the resource is released or ownership is accepted.
 
 Kill what the attempt started, by recorded ID or owned process group — never
-by process name. Avoid broad cleanup such as `killall`, `simctl shutdown all`,
-deleting every container, or stopping shared databases unless the command's
-declared scope owns the entire target set. Cleanup releases resources and
-never eats the evidence: captured artifacts and logs survive teardown.
+by process name, so `killall`-style cleanup is always out. Broad resource
+cleanup such as `simctl shutdown all`, deleting every container, or stopping
+shared databases is allowed only when the command's declared scope owns the
+entire target set. Cleanup releases resources and never eats the evidence:
+captured artifacts and logs survive teardown.
 
 Own tool versions once. Preserve the repository's runtime and package-manager
 declarations, lockfile, catalogs, or tool manager. Make CI consume those owners
