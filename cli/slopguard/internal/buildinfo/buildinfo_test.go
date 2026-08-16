@@ -61,3 +61,13 @@ func TestResolveRejectsLocalPseudoVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestVCSModifiedRefusesDirtyRelease(t *testing.T) {
+	dirty := &debug.BuildInfo{Settings: []debug.BuildSetting{{Key: "vcs.modified", Value: "true"}}}
+	if !vcsModified(dirty) {
+		t.Fatal("a dirty checkout must be detected")
+	}
+	if vcsModified(&debug.BuildInfo{}) {
+		t.Fatal("absent vcs metadata is not dirty")
+	}
+}

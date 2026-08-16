@@ -240,7 +240,7 @@ func flags(names ...string) []flagSchema {
 		case "remove":
 			description = "Unregister a custom reviewer identity; idempotent."
 		case "check":
-			typeName, description = "boolean", "Report the target release without touching the binary; exits 5 when an update is available."
+			typeName, description = "boolean", "Report the target release without touching the binary; exits 8 when an update is available."
 		case "release":
 			description = "Pin the target release (vX.Y.Z); default is the newest published release."
 		case "once":

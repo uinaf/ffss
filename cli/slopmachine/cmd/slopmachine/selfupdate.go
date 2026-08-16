@@ -22,7 +22,10 @@ func cmdSelfupdate(args []string, opts runOptions) int {
 	if code != 0 {
 		return code
 	}
+	// --dry-run projects the decision without touching the binary — the
+	// same contract as --check.
 	_, check := fs["check"]
+	check = check || opts.dryRun
 	options := selfupdate.Options{
 		Member:         "slopmachine",
 		CurrentVersion: buildinfo.Release(),
@@ -64,9 +67,10 @@ func selfupdateError(err error) error {
 	return fmt.Errorf("%w: %v", machine.ErrUnmetGuard, err)
 }
 
-// writeSelfupdateResult renders one pass; --check exits 5 when an update is
-// available so automation can branch without parsing output (4 belongs to
-// revision_conflict in this CLI's taxonomy).
+// writeSelfupdateResult renders one pass; --check (and --dry-run, which
+// projects the same decision) exits 8 when an update is available so
+// automation can branch without parsing output. 4 and 5 already belong to
+// revision_conflict and not_found in this CLI's taxonomy.
 func writeSelfupdateResult(result selfupdate.Result, check bool, opts runOptions) int {
 	available := result.To != result.From
 	if opts.json {
@@ -91,7 +95,7 @@ func writeSelfupdateResult(result selfupdate.Result, check bool, opts runOptions
 		}
 	}
 	if check && available {
-		return 5
+		return 8
 	}
 	return 0
 }

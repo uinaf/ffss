@@ -54,8 +54,8 @@ func TestWriteSelfupdateResultExitCodes(t *testing.T) {
 		if got := writeSelfupdateResult(upToDate, true, opts); got != 0 {
 			t.Fatalf("check up-to-date must exit 0, got %d", got)
 		}
-		if got := writeSelfupdateResult(available, true, opts); got != 5 {
-			t.Fatalf("check with update available must exit 5, got %d", got)
+		if got := writeSelfupdateResult(available, true, opts); got != 8 {
+			t.Fatalf("check with update available must exit 8, got %d", got)
 		}
 		if got := writeSelfupdateResult(updated, false, opts); got != 0 {
 			t.Fatalf("performed update must exit 0, got %d", got)
@@ -73,5 +73,15 @@ func TestCmdSelfupdateInProcessPaths(t *testing.T) {
 	}
 	if got := cmdSelfupdate(nil, runOptions{json: true}); got != 2 {
 		t.Fatalf("in-process update on a dev build must exit 2, got %d", got)
+	}
+}
+
+func TestSelfupdateDryRunProjectsLikeCheck(t *testing.T) {
+	h := newCLIHarness(t)
+	// A dev build refuses either way; the projection must not be rejected
+	// as a non-mutating dry run.
+	out, code := h.run("--dry-run", "selfupdate", "--json")
+	if code != 2 || !strings.Contains(out, "not a release build") {
+		t.Fatalf("dry-run selfupdate must project the check, not reject the flag: code=%d %s", code, out)
 	}
 }

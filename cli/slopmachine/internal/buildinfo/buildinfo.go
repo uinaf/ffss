@@ -31,7 +31,21 @@ func Release() string {
 	if !releaseTagPattern.MatchString(v) {
 		return ""
 	}
+	if ok && vcsModified(build) {
+		return ""
+	}
 	return v
+}
+
+// vcsModified reports a build stamped from a dirty checkout; a release
+// version string on modified sources is not a release.
+func vcsModified(build *debug.BuildInfo) bool {
+	for _, setting := range build.Settings {
+		if setting.Key == "vcs.modified" {
+			return setting.Value == "true"
+		}
+	}
+	return false
 }
 
 var releaseTagPattern = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)

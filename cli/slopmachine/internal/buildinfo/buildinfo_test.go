@@ -70,3 +70,24 @@ func TestResolveWithoutBuildInfoAndEmptySettings(t *testing.T) {
 		t.Fatalf("empty settings: %s %s", v, c)
 	}
 }
+
+func TestVCSModifiedRefusesDirtyRelease(t *testing.T) {
+	dirty := &debug.BuildInfo{Settings: []debug.BuildSetting{{Key: "vcs.modified", Value: "true"}}}
+	if !vcsModified(dirty) {
+		t.Fatal("a dirty checkout must be detected")
+	}
+	clean := &debug.BuildInfo{Settings: []debug.BuildSetting{{Key: "vcs.modified", Value: "false"}}}
+	if vcsModified(clean) {
+		t.Fatal("a clean checkout is not dirty")
+	}
+	if vcsModified(&debug.BuildInfo{}) {
+		t.Fatal("absent vcs metadata (release builds with -trimpath) is not dirty")
+	}
+}
+
+func TestReleaseOnDevBinaryIsEmpty(t *testing.T) {
+	// The test binary is never a release build.
+	if got := Release(); got != "" {
+		t.Fatalf("test binary must not classify as a release: %q", got)
+	}
+}
