@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { parseArgs, reduceResults } from "./evals.ts";
+import { parseArgs, parseMaxTurns, reduceResults } from "./evals.ts";
 import { runNameFor } from "./scenario.ts";
 
 test("parseArgs: positionals, value flags, booleans", () => {
@@ -95,4 +95,11 @@ test("reduceResults: empty directory", () => {
   assert.deepEqual(r.entries, []);
   assert.deepEqual(r.skipped, []);
   fs.rmSync(dir, { recursive: true, force: true });
+});
+test("parseMaxTurns validates values", () => {
+  assert.equal(parseMaxTurns("80"), 80);
+  assert.throws(() => parseMaxTurns("abc"));
+  assert.throws(() => parseMaxTurns("-3"));
+  assert.throws(() => parseMaxTurns("Infinity"));
+  assert.throws(() => parseMaxTurns("2.5"));
 });

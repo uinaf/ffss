@@ -13,7 +13,7 @@ import { generateRun, runNameFor, type Harness, type RunOptions } from "./scenar
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-function parseMaxTurns(raw: string): number {
+export function parseMaxTurns(raw: string): number {
   const n = Number(raw);
   if (!Number.isInteger(n) || n <= 0) throw new Error(`--max-turns must be a positive integer, got ${JSON.stringify(raw)}`);
   return n;

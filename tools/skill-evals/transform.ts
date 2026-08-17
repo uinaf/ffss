@@ -30,7 +30,7 @@ function capped(rel: string, text: string): string {
 export default function transform(output: string, context: TransformContext): string {
   const workdir = context.vars.workdir;
   const manifest: Record<string, string> = JSON.parse(fs.readFileSync(context.vars.manifest, "utf8"));
-  const sections: string[] = [];
+  const sections: { rel: string; text: string }[] = [];
   const visited = new Set<string>();
   const walk = (dir: string): void => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -45,25 +45,29 @@ export default function transform(output: string, context: TransformContext): st
           body = fs.readFileSync(p);
         } catch (err) {
           const detail = err instanceof Error ? err.message : String(err);
-          sections.push(`=== UNREADABLE FILE: ${rel} === (${detail})`);
+          sections.push({ rel, text: `=== UNREADABLE FILE: ${rel} === (${detail})` });
           continue;
         }
         const hash = createHash("sha256").update(body).digest("hex");
         if (manifest[rel] !== hash) {
-          sections.push(capped(rel, body.toString("utf8")));
+          sections.push({ rel, text: capped(rel, body.toString("utf8")) });
         }
       } else {
         // Symlinks, FIFOs, sockets: name them for the judge, never read them.
-        sections.push(`=== NON-REGULAR FILE: ${path.relative(workdir, p)} ===`);
+        const nrel = path.relative(workdir, p);
+        sections.push({ rel: nrel, text: `=== NON-REGULAR FILE: ${nrel} ===` });
       }
     }
   };
   walk(workdir);
   for (const rel of Object.keys(manifest)) {
-    if (!visited.has(rel)) sections.push(`=== DELETED FILE: ${rel} === (input file removed by the agent)`);
+    if (!visited.has(rel)) sections.push({ rel, text: `=== DELETED FILE: ${rel} === (input file removed by the agent)` });
   }
   if (sections.length === 0) return output;
-  let appended = sections.join("\n\n");
+  // Deterministic path order: the total cap must not drop files by readdir
+  // whim; later-sorting files are still the ones cut, but reproducibly so.
+  sections.sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));
+  let appended = sections.map((s) => s.text).join("\n\n");
   if (appended.length > TOTAL_CAP) {
     appended = `${safeSlice(appended, TOTAL_CAP)}\n\n=== TRUNCATED: output files exceeded ${TOTAL_CAP} chars total ===`;
   }
