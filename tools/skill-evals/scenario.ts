@@ -34,6 +34,7 @@ export interface RunOptions {
   harness: Harness;
   agentModel?: string; // undefined on codex = let the Codex CLI pick its default
   judgeModel: string;
+  maxTurns?: number; // claude agent leg only; default 50
 }
 
 export function loadScenario(scenarioDir: string): Scenario {
@@ -57,12 +58,20 @@ export function loadScenario(scenarioDir: string): Scenario {
   // Extract embedded input files; replace each block with a pointer to the file on disk.
   const files: Scenario["files"] = [];
   const fileBlock = /^=+ FILE: (.+?) =+\n([\s\S]*?)\n=+ END FILE =+$/gm;
-  const prompt = taskMd.replace(fileBlock, (_, name: string, content: string) => {
+  let prompt = taskMd.replace(fileBlock, (_, name: string, content: string) => {
     files.push({ name: name.trim(), content: content + "\n" });
     return `(Input file \`${name.trim()}\` is available in your working directory.)`;
   });
 
-  return { skill, scenario, name: `${skill}--${scenario}`, skillDir: path.resolve(scenarioDir, "../.."), prompt, files, criteria };
+  // Hidden skills only ever run from an explicit user invocation, so the eval
+  // task carries one; materialize() strips the flag from the installed copy.
+  const skillDir = path.resolve(scenarioDir, "../..");
+  const shippedSkillMd = fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf8");
+  if (/^disable-model-invocation:/m.test(shippedSkillMd)) {
+    prompt = `Use the ${skill} skill for this task.\n\n${prompt}`;
+  }
+
+  return { skill, scenario, name: `${skill}--${scenario}`, skillDir, prompt, files, criteria };
 }
 
 // Canonical run/result name for a scenario + harness. Single source of truth:
@@ -108,6 +117,17 @@ export function materialize(s: Scenario, runDir: string, harness: Harness): { wo
       recursive: true,
       filter: (src) => path.basename(src) !== "evals",
     });
+  }
+
+  // Hidden skills (disable-model-invocation) are explicit-invoke-only in
+  // production, which the SDK cannot simulate — so the eval copy drops the
+  // flag and the caller prepends an explicit invocation to the task. The
+  // shipped skill is untouched; the eval measures behavior-when-invoked.
+  for (const root of roots) {
+    const skillMd = path.join(workdir, root, "skills", s.skill, "SKILL.md");
+    const text = fs.readFileSync(skillMd, "utf8");
+    const stripped = text.replace(/^disable-model-invocation:.*\n/m, "");
+    if (stripped !== text) fs.writeFileSync(skillMd, stripped);
   }
 
   // Manifest of pre-existing files so transform.ts can find what the agent
@@ -156,7 +176,7 @@ function agentProvider(opts: RunOptions, workdir: string, skill: string): object
       skills: [skill],
       permission_mode: "acceptEdits",
       append_allowed_tools: ["Read", "Write", "Edit", "Glob", "Grep"],
-      max_turns: 50,
+      max_turns: opts.maxTurns ?? 50,
     },
   };
 }

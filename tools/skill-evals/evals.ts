@@ -24,7 +24,7 @@ function fail(msg: string): never {
 export function parseArgs(argv: string[]): { positional: string[]; flags: Map<string, string | true> } {
   const positional: string[] = [];
   const flags = new Map<string, string | true>();
-  const takesValue = new Set(["--agent", "--judge", "--harness"]);
+  const takesValue = new Set(["--agent", "--judge", "--harness", "--max-turns"]);
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (!a.startsWith("--")) {
@@ -51,6 +51,7 @@ function runOptions(flags: Map<string, string | true>): RunOptions {
     // claude defaults in scenario.ts; codex undefined = current Codex CLI default
     agentModel: agent,
     judgeModel: (flags.get("--judge") as string | undefined) ?? "claude-opus-5",
+    maxTurns: flags.has("--max-turns") ? Number(flags.get("--max-turns")) : undefined,
   };
 }
 
@@ -80,7 +81,7 @@ function runScenario(scenarioDir: string, opts: RunOptions): RunOutcome {
   const sha = gitHead();
   const r = spawnSync(
     "npx",
-    ["promptfoo", "eval", "--no-cache", "--no-progress-bar", "-c", configPath, "-o", resultPath],
+    ["promptfoo", "eval", "--no-cache", "--no-progress-bar", "-j", process.env.EVALS_CONCURRENCY ?? "4", "-c", configPath, "-o", resultPath],
     // Failing assertions exit 0 (graded FAIL is read from the result file);
     // any nonzero rc is therefore a real error.
     { cwd: here, stdio: "inherit", env: { ...process.env, PROMPTFOO_FAILED_TEST_EXIT_CODE: "0" } },

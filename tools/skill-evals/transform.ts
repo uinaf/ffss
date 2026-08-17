@@ -8,6 +8,17 @@ interface TransformContext {
   vars: { workdir: string; manifest: string; [key: string]: string };
 }
 
+// Rubric judges choke on very large graded outputs (observed: a 117KB
+// transcript+deliverable dump returned "No output" for every rubric call).
+// Cap each file and the total; truncation is explicit so the judge knows.
+const PER_FILE_CAP = 4_000;
+const TOTAL_CAP = 24_000;
+
+function capped(rel: string, text: string): string {
+  if (text.length <= PER_FILE_CAP) return `=== OUTPUT FILE: ${rel} ===\n${text}\n=== END OUTPUT FILE ===`;
+  return `=== OUTPUT FILE: ${rel} (truncated: showing ${PER_FILE_CAP} of ${text.length} chars) ===\n${text.slice(0, PER_FILE_CAP)}\n=== END OUTPUT FILE ===`;
+}
+
 export default function transform(output: string, context: TransformContext): string {
   const workdir = context.vars.workdir;
   const manifest: Record<string, string> = JSON.parse(fs.readFileSync(context.vars.manifest, "utf8"));
@@ -31,7 +42,7 @@ export default function transform(output: string, context: TransformContext): st
         }
         const hash = createHash("sha256").update(body).digest("hex");
         if (manifest[rel] !== hash) {
-          sections.push(`=== OUTPUT FILE: ${rel} ===\n${body.toString("utf8")}\n=== END OUTPUT FILE ===`);
+          sections.push(capped(rel, body.toString("utf8")));
         }
       } else {
         // Symlinks, FIFOs, sockets: name them for the judge, never read them.
@@ -44,5 +55,9 @@ export default function transform(output: string, context: TransformContext): st
     if (!visited.has(rel)) sections.push(`=== DELETED FILE: ${rel} === (input file removed by the agent)`);
   }
   if (sections.length === 0) return output;
-  return `${output}\n\n${sections.join("\n\n")}`;
+  let appended = sections.join("\n\n");
+  if (appended.length > TOTAL_CAP) {
+    appended = `${appended.slice(0, TOTAL_CAP)}\n\n=== TRUNCATED: output files exceeded ${TOTAL_CAP} chars total ===`;
+  }
+  return `${output}\n\n${appended}`;
 }
