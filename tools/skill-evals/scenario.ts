@@ -34,6 +34,7 @@ export interface RunOptions {
   harness: Harness;
   agentModel?: string; // undefined on codex = let the Codex CLI pick its default
   judgeModel: string;
+  maxTurns?: number; // claude agent leg only; default 50
 }
 
 export function loadScenario(scenarioDir: string): Scenario {
@@ -57,12 +58,19 @@ export function loadScenario(scenarioDir: string): Scenario {
   // Extract embedded input files; replace each block with a pointer to the file on disk.
   const files: Scenario["files"] = [];
   const fileBlock = /^=+ FILE: (.+?) =+\n([\s\S]*?)\n=+ END FILE =+$/gm;
-  const prompt = taskMd.replace(fileBlock, (_, name: string, content: string) => {
+  let prompt = taskMd.replace(fileBlock, (_, name: string, content: string) => {
     files.push({ name: name.trim(), content: content + "\n" });
     return `(Input file \`${name.trim()}\` is available in your working directory.)`;
   });
 
-  return { skill, scenario, name: `${skill}--${scenario}`, skillDir: path.resolve(scenarioDir, "../.."), prompt, files, criteria };
+  // Hidden skills only ever run from an explicit user invocation, so the eval
+  // task carries one; materialize() strips the flag from the installed copy.
+  const skillDir = path.resolve(scenarioDir, "../..");
+  if (isHiddenSkill(fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf8"))) {
+    prompt = `Use the ${skill} skill for this task.\n\n${prompt}`;
+  }
+
+  return { skill, scenario, name: `${skill}--${scenario}`, skillDir, prompt, files, criteria };
 }
 
 // Canonical run/result name for a scenario + harness. Single source of truth:
@@ -71,6 +79,29 @@ export function runNameFor(scenarioDir: string, harness: Harness): string {
   const m = path.resolve(scenarioDir).match(/skills\/([^/]+)\/evals\/([^/]+)$/);
   if (!m) throw new Error(`not a scenario dir (want .../skills/<skill>/evals/<scenario>): ${scenarioDir}`);
   return harness === "codex" ? `${m[1]}--${m[2]}--codex` : `${m[1]}--${m[2]}`;
+}
+
+// Frontmatter helpers: the disable-model-invocation contract lives only in the
+// YAML block; body text mentioning the key (docs, examples) must not count.
+function frontmatterRange(text: string): [number, number] | null {
+  const lines = text.split("\n");
+  if (lines[0] !== "---") return null;
+  const close = lines.indexOf("---", 1);
+  return close === -1 ? null : [1, close];
+}
+
+export function isHiddenSkill(skillMd: string): boolean {
+  const range = frontmatterRange(skillMd);
+  if (!range) return false;
+  return skillMd.split("\n").slice(range[0], range[1]).some((l) => /^disable-model-invocation:/.test(l));
+}
+
+export function stripHiddenFlag(skillMd: string): string {
+  const range = frontmatterRange(skillMd);
+  if (!range) return skillMd;
+  const lines = skillMd.split("\n");
+  const kept = lines.filter((l, i) => !(i >= range[0] && i < range[1] && /^disable-model-invocation:/.test(l)));
+  return kept.join("\n");
 }
 
 // Reserved top-level workdir entries: fixtures may not write agent config roots.
@@ -108,6 +139,17 @@ export function materialize(s: Scenario, runDir: string, harness: Harness): { wo
       recursive: true,
       filter: (src) => path.basename(src) !== "evals",
     });
+  }
+
+  // Hidden skills (disable-model-invocation) are explicit-invoke-only in
+  // production, which the SDK cannot simulate — so the eval copy drops the
+  // flag and the caller prepends an explicit invocation to the task. The
+  // shipped skill is untouched; the eval measures behavior-when-invoked.
+  for (const root of roots) {
+    const skillMd = path.join(workdir, root, "skills", s.skill, "SKILL.md");
+    const text = fs.readFileSync(skillMd, "utf8");
+    const stripped = stripHiddenFlag(text);
+    if (stripped !== text) fs.writeFileSync(skillMd, stripped);
   }
 
   // Manifest of pre-existing files so transform.ts can find what the agent
@@ -156,7 +198,7 @@ function agentProvider(opts: RunOptions, workdir: string, skill: string): object
       skills: [skill],
       permission_mode: "acceptEdits",
       append_allowed_tools: ["Read", "Write", "Edit", "Glob", "Grep"],
-      max_turns: 50,
+      max_turns: opts.maxTurns ?? 50,
     },
   };
 }
