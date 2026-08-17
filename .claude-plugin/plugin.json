@@ -1,0 +1,11 @@
+{
+  "name": "ffsstack",
+  "displayName": "ffsstack",
+  "description": "The flipflopslopstack skill set: drive slopmachine governed runs, slopguard reviews, delivery, babysitting, planning, docs, repo prep, and de-slopping.",
+  "author": {
+    "name": "uinaf",
+    "url": "https://github.com/uinaf/ffsstack"
+  },
+  "homepage": "https://github.com/uinaf/ffsstack",
+  "license": "MIT"
+}
