@@ -54,12 +54,15 @@ The vocabulary is "change request"; the forge decides the tool:
    - BAD: `perf(server): negotiate permessage-deflate on the websocket`
    - GOOD: `perf(server): cut websocket frame size by 70%+ with gzipping`
 
-   Use the repository's template verbatim. If none exists, write plain
-   sentences: open with the problem as the requester stated it, then the
-   solution. Name a risk only when there is a real one. Mention proof
-   only when CI cannot show it (a manual run, before/after numbers);
-   never restate the checks CI already runs. No implementation
-   inventories, no headings for their own sake.
+   Use the repository's template verbatim, including shared org defaults
+   (on GitHub, an `<owner>/.github` repository). Fill it problem-first:
+   the problem as the requester stated it, then the solution in plain
+   sentences, a risk only when there is a real one, and proof only when
+   CI cannot show it (a screenshot, before/after numbers); delete an
+   empty proof section rather than restating the checks CI runs. With no
+   template anywhere, write the same flow as plain sentences without
+   headings. No implementation inventories, no headings beyond the
+   template's own.
    - BAD: "## Summary Refactors the websocket layer. ## Changed server.ts,
      compression.ts, 12 tests. ## Risks None. ## Verification Tests
      pass. ## Complexity Medium." (a heading scaffold restating the diff)

@@ -1,4 +1,4 @@
-![slopmachine — deterministic and structured approach to slop cannoning.](https://uinaf.dev/og/banner/slopshipper.png)
+![slopmachine — deterministic and structured approach to slop cannoning.](https://uinaf.dev/og/banner/slopmachine.png)
 
 # slopmachine
 
@@ -157,7 +157,7 @@ one open run, the CLI selects it automatically.
 A repository can declare its profile: role bindings (review, qa, venue,
 memory) plus policy (forge kind, trust tier, canonical verify command,
 default delivery mode, recorded readiness verdict). Declaration over
-detection — the binary never probes for tools.
+detection: the binary never probes for tools.
 
 ```bash
 slopmachine reviewers --add slopzapper
@@ -183,14 +183,14 @@ forge is unreachable the command exits 7 rather than trusting the claim;
 
 ## Telemetry
 
-Every transition can carry recorded telemetry — wall-clock duration,
-estimated tokens and cost, and the route actually used (venue, harness,
-role→model map) — via `--telemetry PATH|-` or a `telemetry` object in raw
+Every transition can carry recorded telemetry (wall-clock duration,
+estimated tokens and cost, and the route actually used: venue, harness,
+role→model map) via `--telemetry PATH|-` or a `telemetry` object in raw
 `--input` payloads. `verify --cmd` measures its own duration. Absent
 telemetry is always valid; wrong shapes fail closed. `status --json`
 exposes per-run totals (`total_duration_ms`, `total_tokens`,
 `total_cost_cents`, `telemetry_events`) and `serve` shows them per run.
-This is recorded input for the routing ledger — the machine never enforces
+This is recorded input for the routing ledger; the machine never enforces
 spend and never handles model keys.
 
 ## Browser view
@@ -215,9 +215,9 @@ Independent review remains a companion step. Reviewer identities are
 registered, not hardcoded: `slopguard` and `bugbot` are built in,
 and `slopmachine reviewers --add NAME` registers others (a hosted bot such as
 slopzapper, a CI reviewer, a QA provider). The intake's `required_reviewers`
-selects among them; run the matching installed tool — such as the
+selects among them; run the matching installed tool, such as the
 [`slopguard`](https://github.com/uinaf/ffsstack/tree/main/cli/slopguard) CLI or Cursor's
-`/review-bugbot` — when the intake requires it.
+`/review-bugbot`, when the intake requires it.
 
 ## Documentation
 

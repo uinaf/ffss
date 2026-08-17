@@ -1,4 +1,4 @@
-![slopguard — structured independent code review, as a CLI and an agent skill.](https://uinaf.dev/og/banner/autoreview.png)
+![slopguard — structured independent code review, as a CLI and an agent skill.](https://uinaf.dev/og/banner/slopguard.png)
 
 # slopguard
 
