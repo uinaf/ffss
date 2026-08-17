@@ -33,7 +33,8 @@ for checksum in "$darwin_amd64" "$darwin_arm64" "$linux_amd64" "$linux_arm64"; d
 done
 
 # Release-download URLs URL-encode the slash in the member-prefixed tag.
-base="https://github.com/uinaf/ffsstack/releases/download/${member}%2F${VERSION}"
+# Ruby #{version} interpolation keeps `brew audit` treating the URL as versioned.
+base='https://github.com/uinaf/ffsstack/releases/download/'"${member}"'%2Fv#{version}'
 case "$member" in
   slopmachine) description="Deterministic and structured approach to slop cannoning" ;;
   slopguard) description="Structured independent code review as a CLI and agent skill" ;;
@@ -55,12 +56,12 @@ cask "${member}" do
   on_macos do
     on_intel do
       sha256 "${darwin_amd64}"
-      url "${base}/${member}_${VERSION}_darwin_amd64.tar.gz",
+      url "${base}/${member}_v#{version}_darwin_amd64.tar.gz",
         verified: "github.com/uinaf/ffsstack/"
     end
     on_arm do
       sha256 "${darwin_arm64}"
-      url "${base}/${member}_${VERSION}_darwin_arm64.tar.gz",
+      url "${base}/${member}_v#{version}_darwin_arm64.tar.gz",
         verified: "github.com/uinaf/ffsstack/"
     end
   end
@@ -68,17 +69,25 @@ cask "${member}" do
   on_linux do
     on_intel do
       sha256 "${linux_amd64}"
-      url "${base}/${member}_${VERSION}_linux_amd64.tar.gz",
+      url "${base}/${member}_v#{version}_linux_amd64.tar.gz",
         verified: "github.com/uinaf/ffsstack/"
     end
     on_arm do
       sha256 "${linux_arm64}"
-      url "${base}/${member}_${VERSION}_linux_arm64.tar.gz",
+      url "${base}/${member}_v#{version}_linux_arm64.tar.gz",
         verified: "github.com/uinaf/ffsstack/"
     end
   end
 
-${depends_stanza}  binary "${member}"
+  livecheck do
+    url :homepage
+    regex(%r{${member}/v?(\d+(?:\.\d+)+)}i)
+    strategy :github_releases
+  end
+
+${depends_stanza}  name "${member}"
+
+  binary "${member}"
 
   homepage "https://github.com/uinaf/ffsstack"
   desc "${description}"
