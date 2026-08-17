@@ -112,5 +112,5 @@ compatible CLI requirement.
 The skill ships through this repo's agent-plugin marketplace
 (`.claude-plugin/marketplace.json`): merging skill changes to `main` is the
 publication, and installed plugins are SHA-versioned by the marketplace
-commit. The root CI skills-lint job (`node tools/skill-evals/lint-skills.ts`)
-gates the package shape.
+commit. The root CI skills-lint job (`skillcheck lint`, via
+`tools/skill-evals`) gates the package shape.

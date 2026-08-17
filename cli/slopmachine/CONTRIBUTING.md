@@ -75,12 +75,12 @@ the workflow on the tagged HEAD instead.
 
 The skill ships through this repo's agent-plugin marketplace
 (`.claude-plugin/marketplace.json`); merging to `main` is the publication.
-The root CI skills-lint job is the gate; run it locally from the repository
-root (node 24 or newer — the script is TypeScript run via native type
-stripping):
+The root CI skills-lint job is the gate; it runs
+[uinaf/skillcheck](https://github.com/uinaf/skillcheck) (node 24 or newer).
+Run it locally:
 
 ```bash
-node tools/skill-evals/lint-skills.ts
+cd tools/skill-evals && npm ci && npm run lint
 ```
 
 A scheduled `govulncheck` scan covers changes in the vulnerability database
