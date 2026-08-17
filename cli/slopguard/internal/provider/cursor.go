@@ -204,26 +204,6 @@ func (cursor *Cursor) preflight(ctx context.Context, executable, workspace strin
 	if missing := missingCursorOptionValues(help, requiredValues); len(missing) != 0 {
 		return "", newFailure(protocol.FailureCapability, "Cursor is missing required option values: "+strings.Join(missing, ", "), environment, nil)
 	}
-	if environmentValue(environment, "CURSOR_API_KEY") == "" {
-		statusHelp, err := run("status", "--help")
-		if err != nil {
-			return "", probeFailure("Cursor status --help", err, statusHelp, environment, protocol.FailureCapability)
-		}
-		statusHelpText := string(statusHelp.Stdout) + string(statusHelp.Stderr)
-		if missing := missingCapabilities(statusHelpText, []string{"--format"}); len(missing) != 0 {
-			return "", newFailure(protocol.FailureCapability, "Cursor status is missing required flags: "+strings.Join(missing, ", "), environment, nil)
-		}
-		if !optionSupports(statusHelpText, "--format", "json") {
-			return "", newFailure(protocol.FailureCapability, "Cursor status is missing required option value: --format=json", environment, nil)
-		}
-		authResult, err := run("status", "--format", "json")
-		if err != nil {
-			return "", probeFailure("Cursor authentication", err, authResult, environment, protocol.FailureAuth)
-		}
-		if err := decodeCursorAuth(authResult.Stdout); err != nil {
-			return "", newFailure(protocol.FailureAuth, "Cursor returned an invalid authentication status; authenticate the provider CLI and retry", environment, nil)
-		}
-	}
 	return string(match[1]), nil
 }
 
@@ -251,27 +231,6 @@ func writeCursorPermissions(environment []string) error {
 	permissions := []byte(`{"version":1,"permissions":{"allow":[],"deny":["Shell(*)","Read(**)","Read(/**)","Write(**)","Write(/**)","Mcp(*)"]}}` + "\n")
 	if err := os.WriteFile(filepath.Join(configDirectory, "cli-config.json"), permissions, 0o600); err != nil {
 		return fmt.Errorf("write strict Cursor permissions: %w", err)
-	}
-	return nil
-}
-
-func decodeCursorAuth(output []byte) error {
-	output = bytes.TrimSpace(output)
-	if len(output) == 0 {
-		return fmt.Errorf("status output is empty")
-	}
-	if err := protocol.RejectDuplicateKeys(output); err != nil {
-		return err
-	}
-	var status struct {
-		Status          string `json:"status"`
-		IsAuthenticated *bool  `json:"isAuthenticated"`
-	}
-	if err := json.Unmarshal(output, &status); err != nil {
-		return err
-	}
-	if status.Status != "authenticated" || status.IsAuthenticated == nil || !*status.IsAuthenticated {
-		return fmt.Errorf("not authenticated")
 	}
 	return nil
 }

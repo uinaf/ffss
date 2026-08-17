@@ -11,7 +11,7 @@ or claim consensus.
 | --- | --- | --- | --- |
 | `codex` | `gpt-5.6-sol` | `CODEX_API_KEY` or `OPENAI_API_KEY` | Native mode preserves Codex provider and session authentication |
 | `claude` | `claude-opus-5` | `ANTHROPIC_API_KEY` | Effort supports `low`, `medium`, `high`, `xhigh`, or `max` |
-| `cursor` | `cursor-grok-4.6-high-fast` | `CURSOR_API_KEY` | Explicit CLI selection implies web when unset; effort is encoded in the model ID |
+| `cursor` | `cursor-grok-4.6-high-fast` | `CURSOR_API_KEY` | Native mode preserves helper/session auth; explicit CLI selection implies web when unset |
 | `grok` | `grok-4.6` | `XAI_API_KEY` | Native mode uses `grok login`; tools, memory, plans, and subagents stay disabled |
 
 For Cursor, pass a requested compatible model with `--model` and never add
