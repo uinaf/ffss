@@ -15,8 +15,8 @@ agent behaves. Ships slop; checks receipts.
 
 ## Skills
 
-Install all nine as one Agent Plugins package. Claude Code, Codex, and Cursor
-read the same marketplace and the portable root manifest:
+Install all nine as one Agent Plugins package. Claude Code, Codex, Cursor,
+and Grok read the same marketplace and the portable root manifest:
 
 ```text
 # Claude Code
@@ -29,6 +29,18 @@ codex plugin add ffsstack@ffsstack
 
 # Cursor CLI (then /plugins in interactive mode to install)
 cursor-agent plugin marketplace add https://github.com/uinaf/ffsstack
+
+# Grok CLI
+grok plugin install uinaf/ffsstack --trust
+```
+
+OpenCode has no compatible plugin format; its plugin API carries hooks and
+tools, not skills. Expose the plugin's skills to its native discovery
+instead, for example from the Claude Code checkout:
+
+```text
+mkdir -p ~/.config/opencode/skills
+ln -sfn ~/.claude/plugins/marketplaces/ffsstack/skills/* ~/.config/opencode/skills/
 ```
 
 The plugin is SHA-versioned; updates follow this repo's `main`. Skills marked
