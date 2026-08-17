@@ -1,0 +1,14 @@
+{
+  "name": "@acme/widget-cli",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "tsx scripts/setup.ts",
+    "dev": "tsx src/cli.ts --watch",
+    "verify": "tsc --noEmit && node --test"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^7.0.0"
+  }
+}

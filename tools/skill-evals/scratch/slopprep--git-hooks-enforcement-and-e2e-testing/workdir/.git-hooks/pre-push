@@ -1,0 +1,11 @@
+#!/bin/sh
+# Git pre-push adapter.
+#
+# This file translates one Git event into one call to the repository's canonical
+# gate. It owns no assertions, no parsing, no retries, and no policy: if the
+# gate should check something else, change `verify` in package.json, not this.
+# Git runs hooks from the top level of the working tree.
+#
+# stdin carries the pushed ref lines, which the gate does not consume; closing
+# it keeps the test runner non-interactive.
+exec npm run --silent verify < /dev/null

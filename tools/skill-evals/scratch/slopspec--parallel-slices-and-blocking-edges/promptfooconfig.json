@@ -1,0 +1,94 @@
+{
+  "description": "slopspec/parallel-slices-and-blocking-edges",
+  "prompts": [
+    "{{task}}"
+  ],
+  "providers": [
+    {
+      "id": "anthropic:claude-agent-sdk",
+      "config": {
+        "model": "claude-opus-5",
+        "apiKeyRequired": false,
+        "working_dir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopspec--parallel-slices-and-blocking-edges/workdir",
+        "setting_sources": [
+          "project"
+        ],
+        "skills": [
+          "slopspec"
+        ],
+        "permission_mode": "acceptEdits",
+        "append_allowed_tools": [
+          "Read",
+          "Write",
+          "Edit",
+          "Glob",
+          "Grep"
+        ],
+        "max_turns": 50
+      }
+    }
+  ],
+  "defaultTest": {
+    "options": {
+      "provider": "anthropic:messages:claude-sonnet-5",
+      "transform": "file:///Users/altay/projects/uinaf/ffsstack/tools/skill-evals/transform.ts"
+    }
+  },
+  "tests": [
+    {
+      "description": "Tests parent-child planning, vertical slices, exact blocking edges, and frontier reporting for parallel execution.",
+      "vars": {
+        "task": "Use the slopspec skill for this task.\n\n# Plan Parallel Invitation Work in Jira\n\n## Problem/Feature Description\n\nThe repository tracks work in Jira project `TEAM`. The user approved a parent epic and three independently reviewable end-to-end slices:\n\n1. Create and send an invitation from the admin UI through the API.\n2. Accept an invitation and join the team; this requires invitation creation.\n3. Revoke a pending invitation from the admin UI; this requires invitation creation but not acceptance.\n\nThe user says: \"Publish the epic and tickets with the real dependency graph so agents can work in parallel.\"\n\nProduce `planning-result.md` describing the Jira artifacts, parent relationships, blocking links, and current dependency frontier. Do not implement the feature.\n\n## Input Files\n\n(Input file `AGENTS.md` is available in your working directory.)\n",
+        "workdir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopspec--parallel-slices-and-blocking-edges/workdir",
+        "manifest": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopspec--parallel-slices-and-blocking-edges/manifest.json"
+      },
+      "assert": [
+        {
+          "type": "assert-set",
+          "threshold": 0.7,
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "Jira epic and three children: The result creates one TEAM epic and exactly three child tasks matching the approved slices",
+              "weight": 18
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Vertical slices preserved: Each child delivers an end-to-end invitation behavior rather than splitting UI, API, storage, and tests into layers",
+              "weight": 18
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Acceptance blocked by creation: The acceptance task is blocked by the invitation-creation task",
+              "weight": 14
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Revocation blocked only by creation: The revocation task is blocked by creation and is not blocked by acceptance",
+              "weight": 16
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Native relationships: The result uses Jira parent and blocks relationships rather than only presenting an ordered prose list",
+              "weight": 12
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Frontier correct: The current frontier contains creation only and explains that acceptance and revocation can proceed in parallel after creation",
+              "weight": 14
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No implementation: The response does not implement invitation behavior",
+              "weight": 8
+            }
+          ]
+        },
+        {
+          "type": "skill-used",
+          "value": "slopspec"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "description": "slopscriber/tracker-planning-boundary",
+  "prompts": [
+    "{{task}}"
+  ],
+  "providers": [
+    {
+      "id": "anthropic:claude-agent-sdk",
+      "config": {
+        "model": "claude-opus-5",
+        "apiKeyRequired": false,
+        "working_dir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopscriber--tracker-planning-boundary/workdir",
+        "setting_sources": [
+          "project"
+        ],
+        "skills": [
+          "slopscriber"
+        ],
+        "permission_mode": "acceptEdits",
+        "append_allowed_tools": [
+          "Read",
+          "Write",
+          "Edit",
+          "Glob",
+          "Grep"
+        ],
+        "max_turns": 50
+      }
+    }
+  ],
+  "defaultTest": {
+    "options": {
+      "provider": "anthropic:messages:claude-sonnet-5",
+      "transform": "file:///Users/altay/projects/uinaf/ffsstack/tools/skill-evals/transform.ts"
+    }
+  },
+  "tests": [
+    {
+      "description": "Tests whether docs cleanup fixes repository documentation while keeping tactical plan publication in the declared tracker as a distinct operation instead of creating a checked-in second backlog.",
+      "vars": {
+        "task": "# Clean Documentation Without Creating a Second Backlog\n\n## Problem/Feature Description\n\nThe repository tracks engineering work in Linear. Its README contains a stale setup command, and an agreed multi-session rollout plan is still present only in the conversation. The user asks: \"Clean up the README and make sure the rollout plan is saved somewhere durable.\"\n\nPerform only the documentation work in scope. Produce:\n\n- an updated `README.md` using the current setup command\n- `doc-report.md` describing the documentation change, verification, and the distinct next action needed to persist the tactical plan\n\nDo not create a plan file, tracker ticket, epic, or source-code change.\n\n## Input Files\n\n(Input file `AGENTS.md` is available in your working directory.)\n\n(Input file `README.md` is available in your working directory.)\n\n(Input file `package.json` is available in your working directory.)\n\n(Input file `AGREED_ROLLOUT.txt` is available in your working directory.)\n",
+        "workdir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopscriber--tracker-planning-boundary/workdir",
+        "manifest": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopscriber--tracker-planning-boundary/manifest.json"
+      },
+      "assert": [
+        {
+          "type": "assert-set",
+          "threshold": 0.7,
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "Current setup command: README.md replaces scripts/bootstrap.sh with the verified npm run setup command",
+              "weight": 22
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No local plan: The output does not create docs/plans, plans, a handoff document, or another checked-in tactical plan",
+              "weight": 22
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No tracker mutation: The docs workflow does not claim to create or update a Linear issue or project",
+              "weight": 14
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Linear destination preserved: doc-report.md identifies Linear team APP as the repository-owned destination for the rollout plan",
+              "weight": 16
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Distinct next action: doc-report.md says persisting the agreed rollout as tracker work is a separate next action rather than a documentation gap",
+              "weight": 14
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Docs verification reported: doc-report.md states that the setup command was verified against package.json",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No source implementation: The output does not change source code or begin the rollout",
+              "weight": 4
+            }
+          ]
+        },
+        {
+          "type": "skill-used",
+          "value": "slopscriber"
+        }
+      ]
+    }
+  ]
+}

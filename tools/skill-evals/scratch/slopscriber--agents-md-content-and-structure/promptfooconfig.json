@@ -1,0 +1,109 @@
+{
+  "description": "slopscriber/agents-md-content-and-structure",
+  "prompts": [
+    "{{task}}"
+  ],
+  "providers": [
+    {
+      "id": "anthropic:claude-agent-sdk",
+      "config": {
+        "model": "claude-opus-5",
+        "apiKeyRequired": false,
+        "working_dir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopscriber--agents-md-content-and-structure/workdir",
+        "setting_sources": [
+          "project"
+        ],
+        "skills": [
+          "slopscriber"
+        ],
+        "permission_mode": "acceptEdits",
+        "append_allowed_tools": [
+          "Read",
+          "Write",
+          "Edit",
+          "Glob",
+          "Grep"
+        ],
+        "max_turns": 50
+      }
+    }
+  ],
+  "defaultTest": {
+    "options": {
+      "provider": "anthropic:messages:claude-sonnet-5",
+      "transform": "file:///Users/altay/projects/uinaf/ffsstack/tools/skill-evals/transform.ts"
+    }
+  },
+  "tests": [
+    {
+      "description": "Tests whether the agent produces a compact repository operating contract: clear product purpose and non-negotiables, exact lifecycle commands, concrete repo-specific decisions and hazards, task-shaped pointers, and no directory dump, generated inventory, or copied reference manual.",
+      "vars": {
+        "task": "# Onboard a New AI Agent to the Payments Service\n\n## Problem/Feature Description\n\nThe payments team at Meridian Corp has recently started using AI coding agents (Claude Code, OpenAI Codex) to help maintain their backend services. The agents keep going off-track: one recently overwrote a migration file because it couldn't find the correct setup steps; another spent 20 minutes exploring directory structure before writing a single line of code.\n\nThe team has identified that their `AGENTS.md` file is either missing or poorly written — it either dumps too much information (full architecture tours, every lint rule, directory tree dumps) or too little (no boot command, no test command). They need a well-structured `AGENTS.md` that gives agents exactly what they need to get oriented quickly without overwhelming them.\n\nThe codebase is a Node.js/TypeScript payments service. Currently the repo has a rough `AGENTS.md` that needs to be completely rewritten based on what agents actually need.\n\n## Output Specification\n\nProduce a replacement `AGENTS.md` file for this payments service repository. The file should orient an AI agent to the project efficiently. Each pointer to deeper documentation must say what task or question should cause an agent to follow it.\n\nAlso produce a short `doc-report.md` explaining what you changed and why — noting any content you removed, what you kept, and the reasoning.\n\n## Input Files\n\nThe following files are provided as inputs. Extract them before beginning.\n\n=============== FILE: inputs/AGENTS.md ===============\n# Payments Service — Agent Guide\n\n## Directory Structure\n\n```\npayments-service/\n├── src/\n│   ├── api/              # Express route handlers\n│   │   ├── charges.ts\n│   │   ├── refunds.ts\n│   │   └── webhooks.ts\n│   ├── db/\n│   │   ├── migrations/   # Knex migration files (never edit manually)\n│   │   └── models/       # Sequelize ORM models\n│   ├── services/\n│   │   ├── stripe.ts     # Stripe API wrapper\n│   │   └── email.ts      # SendGrid email notifications\n│   ├── utils/\n│   │   ├── logger.ts\n│   │   ├── errors.ts\n│   │   └── validation.ts\n│   └── index.ts          # App entry point\n├── tests/\n│   ├── unit/\n│   └── integration/\n├── docs/\n│   ├── architecture.md\n│   ├── api.md\n│   └── deployment.md\n├── scripts/\n│   ├── bootstrap.sh      # Sets up dev environment (DEPRECATED, use setup.sh)\n│   ├── setup.sh          # NEW: replaces bootstrap.sh\n│   └── seed.sh           # Seed test database\n├── package.json\n└── .env.example\n```\n\n## Architecture Overview\n\nThe payments service is a REST API built on Express.js and TypeScript. It handles charge creation, refund processing, and webhook events from Stripe. Data is persisted in PostgreSQL using both Knex (for migrations) and Sequelize (for models — yes, we know this is inconsistent, it's a known tech debt item from Q2 2023 when we merged two teams).\n\nThe service uses a layered architecture: routes → controllers → services → data layer. External integrations (Stripe, SendGrid) are wrapped in service classes under `src/services/`. All Stripe webhooks go through `src/api/webhooks.ts`, which verifies the Stripe signature before processing.\n\nStripe webhook signature verification key is stored in `STRIPE_WEBHOOK_SECRET`. Never log this value.\n\n## Getting Started\n\nPrerequisites: Node.js 24.x LTS, PostgreSQL 15+, Docker (optional)\n\n1. Install dependencies: `npm install`\n2. Copy environment file: `cp .env.example .env`\n3. Fill in the required values in `.env`\n4. Run the setup script: `scripts/setup.sh`\n5. Start the dev server: `npm run dev`\n\nTo run tests:\n- Unit tests: `npm test`\n- Integration tests: `npm run test:integration` (requires a running database)\n- All tests with coverage: `npm run test:coverage`\n\n## Coding Conventions\n\n- **TypeScript strict mode** is enabled — no `any` types without a comment explaining why\n- All new database queries must go through the ORM models, not raw SQL (except migrations)\n- Use the custom logger (`src/utils/logger.ts`) for all logging — never use `console.log`\n- Error handling: always use the custom `AppError` class from `src/utils/errors.ts`\n- **Never commit** `.env` files or any secrets\n- Branch naming: `feature/`, `fix/`, `chore/` prefixes required\n- All PRs need at least one approval\n- Commit messages should follow Conventional Commits format\n- **IMPORTANT**: Never run `git push --force` on `main`\n\n## API Documentation\n\nThe API follows REST conventions. All endpoints return JSON.\n\nAuthentication: Bearer token in the `Authorization` header. Token format: `JWT <token>`\n\nBase URL: `/api/v1`\n\n### Charges\n\n`POST /api/v1/charges` — Create a new charge\nRequest body:\n```json\n{\n  \"amount\": 1000,\n  \"currency\": \"usd\",\n  \"customerId\": \"cust_123\",\n  \"paymentMethodId\": \"pm_456\",\n  \"description\": \"Order #789\"\n}\n```\nResponse: 201 with charge object\n\n`GET /api/v1/charges/:id` — Retrieve a charge\nResponse: 200 with charge object\n\n`POST /api/v1/charges/:id/capture` — Capture an authorized charge\nResponse: 200 with updated charge\n\n### Refunds\n\n`POST /api/v1/refunds` — Create a refund\nRequest body: `{ \"chargeId\": \"ch_123\", \"amount\": 500 }`\nResponse: 201 with refund object\n\n### Webhooks\n\n`POST /api/v1/webhooks/stripe` — Stripe webhook endpoint\nHeaders: `stripe-signature` required\n\n## Database\n\nWe use PostgreSQL 15. Connection string goes in `DATABASE_URL`.\n\nMigration commands:\n- Create: `npx knex migrate:make <name>`\n- Run: `npx knex migrate:latest`\n- Rollback: `npx knex migrate:rollback`\n\nSeeding: `npm run seed` (runs `scripts/seed.sh`)\n\n## Deployment\n\nDeployed on AWS ECS via GitHub Actions. CI pipeline defined in `.github/workflows/`.\n\nDeployment steps:\n1. Merge to `main` triggers CI\n2. CI runs tests and builds Docker image\n3. Image pushed to ECR\n4. ECS task definition updated and service redeployed\n\nFor manual deployments: see `docs/deployment.md`\n\n## Troubleshooting\n\nCommon issues:\n- \"Cannot connect to database\": Check DATABASE_URL and that PostgreSQL is running\n- \"Stripe signature verification failed\": Check STRIPE_WEBHOOK_SECRET matches your Stripe dashboard\n- \"Module not found\" errors after `git pull`: Run `npm install`\n\n## Links\n\n- Architecture: `docs/architecture.md`\n- API Reference: `docs/api.md`\n- Deployment Guide: `docs/deployment.md`\n\n## Auto-Generated Section (DO NOT EDIT)\nThis section was automatically generated by our doc-gen tool on 2024-01-15.\n\n| File | Lines | Last Modified |\n|------|-------|---------------|\n| src/api/charges.ts | 234 | 2024-03-01 |\n| src/api/refunds.ts | 156 | 2024-02-14 |\n| src/api/webhooks.ts | 89 | 2024-01-30 |\n| src/services/stripe.ts | 312 | 2024-03-05 |\n| src/db/migrations/ | 18 files | 2024-03-01 |\n",
+        "workdir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopscriber--agents-md-content-and-structure/workdir",
+        "manifest": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopscriber--agents-md-content-and-structure/manifest.json"
+      },
+      "assert": [
+        {
+          "type": "assert-set",
+          "threshold": 0.7,
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "Compact product contract: AGENTS.md is at most 120 lines and briefly explains what the payments service does, its critical Stripe and database responsibilities, and the outcomes a change must preserve",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Boot command present: AGENTS.md contains the exact command to start the development server (e.g. `npm run dev` or equivalent)",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Test command present: AGENTS.md contains the command(s) to run tests (e.g. `npm test`)",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Links to deep docs: AGENTS.md contains links or pointers to at least two deeper docs files and describes the task or question each target answers rather than presenting a bare filename list",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No directory listing: AGENTS.md does NOT contain a full directory tree or file listing (no ASCII tree with multiple nested levels)",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No auto-generated content: AGENTS.md does NOT contain the auto-generated file stats table or any section marked as auto-generated",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No full API docs: AGENTS.md does NOT include full API endpoint documentation (request/response bodies, full route listings) — at most a pointer to docs/api.md",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Deprecated script removed: AGENTS.md does NOT reference the deprecated `scripts/bootstrap.sh` — only `scripts/setup.sh` if referenced at all",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Concrete conventions and hazards: AGENTS.md preserves actionable repository-specific rules such as generated-only migrations, redacted Stripe secrets, the custom logger or AppError boundary, or strict TypeScript, and does not replace them with vague advice like write clean code",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Doc report produced: A doc-report.md file exists that lists what was removed from the old AGENTS.md and the reasoning",
+              "weight": 10
+            }
+          ]
+        },
+        {
+          "type": "skill-used",
+          "value": "slopscriber"
+        }
+      ]
+    }
+  ]
+}

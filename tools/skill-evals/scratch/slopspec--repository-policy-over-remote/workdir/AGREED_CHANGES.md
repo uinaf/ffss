@@ -1,0 +1,2 @@
+- Reject negative retry counts at configuration parsing.
+- Document zero retries as disabling retry behavior.

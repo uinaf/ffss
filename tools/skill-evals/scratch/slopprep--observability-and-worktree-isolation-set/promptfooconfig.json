@@ -1,0 +1,144 @@
+{
+  "description": "slopprep/observability-and-worktree-isolation-set",
+  "prompts": [
+    "{{task}}"
+  ],
+  "providers": [
+    {
+      "id": "anthropic:claude-agent-sdk",
+      "config": {
+        "model": "claude-opus-5",
+        "apiKeyRequired": false,
+        "working_dir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopprep--observability-and-worktree-isolation-set/workdir",
+        "setting_sources": [
+          "project"
+        ],
+        "skills": [
+          "slopprep"
+        ],
+        "permission_mode": "acceptEdits",
+        "append_allowed_tools": [
+          "Read",
+          "Write",
+          "Edit",
+          "Glob",
+          "Grep"
+        ],
+        "max_turns": 50
+      }
+    }
+  ],
+  "defaultTest": {
+    "options": {
+      "provider": "anthropic:messages:claude-sonnet-5",
+      "transform": "file:///Users/altay/projects/uinaf/ffsstack/tools/skill-evals/transform.ts"
+    }
+  },
+  "tests": [
+    {
+      "description": "Tests whether the agent adds machine-readable health and request signals, implements collision-free worktree lifecycle in a structured Python tool with bounded readiness and cleanup, and handles the explicitly required ignored local config without prescribing one allocation algorithm.",
+      "vars": {
+        "task": "Use the slopprep skill for this task.\n\n# Enabling Parallel Agent Work on a Python Flask API\n\n## Problem/Feature Description\n\nAn engineering team runs three agents concurrently on the same Flask API repository, each working on different features in separate git worktrees. The setup is breaking down: agents are crashing each other's instances because they all start the server on port 5000, and when something goes wrong the agents have no machine-readable output they can query — they can only read console logs sprinkled with print statements that are difficult to parse programmatically. New worktrees also miss the repo's gitignored `.env.local`, which agents need for local-only development configuration.\n\nYou have been asked to fix both problems so agents can run reliably in parallel.\nKeep lifecycle, resource allocation, readiness, and state handling in a testable\nPython tool rather than distributing that logic across shell scripts.\n\n## Output Specification\n\nProduce the following files:\n\n1. `app.py` — Updated Flask application with improved observability: a way for agents to check whether the service is alive via HTTP, and machine-readable output for each request.\n\n2. `tools/dev_service.py` — Python CLI with `start` and `stop` commands. `start`\n   must allocate or acquire an isolated port, launch the Flask service, persist\n   the owned process state, confirm bounded readiness, and exit non-zero after\n   cleanup on failure. `stop` must clean up only the service owned by the current\n   worktree.\n\n3. `.gitignore` — Ignore local environment files and runtime artifacts.\n\n4. `.worktreeinclude` — Narrowly include the gitignored local config file that managed Codex or Claude worktrees need.\n\n5. `observability-notes.md` — Explain the health query, the resource-allocation\n   owner, the persisted lifecycle state, managed-worktree config copying, and\n   the teardown command.\n\nDo not add shell wrappers for the Python CLI or reimplement JSON parsing,\nreadiness polling, PID ownership, or retry policy in shell.\n\n## Input Files\n\nThe following files represent the current state of the Flask API. Extract them before beginning.\n\n=============== FILE: app.py ===============\nfrom flask import Flask, request, jsonify\nimport datetime\n\napp = Flask(__name__)\n\ntasks = []\n\n@app.route('/tasks', methods=['GET'])\ndef get_tasks():\n    print(f\"GET /tasks called at {datetime.datetime.now()}\")\n    return jsonify(tasks)\n\n@app.route('/tasks', methods=['POST'])\ndef create_task():\n    data = request.get_json()\n    task = {'id': len(tasks) + 1, **data}\n    tasks.append(task)\n    print(f\"Created task: {task}\")\n    return jsonify(task), 201\n\n@app.route('/tasks/<int:task_id>', methods=['DELETE'])\ndef delete_task(task_id):\n    global tasks\n    tasks = [t for t in tasks if t['id'] != task_id]\n    print(f\"Deleted task {task_id}\")\n    return '', 204\n\nif __name__ == '__main__':\n    app.run(port=5000)\n\n=============== FILE: requirements.txt ===============\nflask>=3.0.0\n\n=============== FILE: README.md ===============\n# Task Manager API\n\nStart with: python app.py\n",
+        "workdir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopprep--observability-and-worktree-isolation-set/workdir",
+        "manifest": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopprep--observability-and-worktree-isolation-set/manifest.json"
+      },
+      "assert": [
+        {
+          "type": "assert-set",
+          "threshold": 0.7,
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "Health endpoint exists: app.py defines a GET /health route",
+              "weight": 6
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Health response has status field: The /health endpoint returns a JSON object containing a 'status' key (e.g., {\"status\": \"ok\", ...})",
+              "weight": 6
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Health response is operationally useful: The health response includes enough stable machine-readable context to distinguish ready from unavailable; version, uptime, dependency readiness, or an equivalent useful signal is accepted",
+              "weight": 5
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Structured JSON request logging: app.py emits a structured JSON log line for each request (not plain print statements) — containing at minimum method, path, and status fields",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Concurrent port allocation is collision-free: tools/dev_service.py obtains or computes an isolated port per worktree or task using a runner assignment, deterministic allocation, ephemeral-port protocol, or equivalent collision-resistant mechanism",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No hardcoded port 5000: tools/dev_service.py does not use port 5000 or another fixed application port as the worktree allocation",
+              "weight": 5
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Python lifecycle starts the app: tools/dev_service.py starts the Flask application through a Python subprocess API and retains enough state to manage it",
+              "weight": 6
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Bounded readiness wait: tools/dev_service.py waits for the health endpoint until a finite wall-clock deadline before declaring success",
+              "weight": 7
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Non-zero exit on boot failure: tools/dev_service.py exits non-zero and cleans up its child if the app fails to start within the readiness deadline",
+              "weight": 7
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Structured lifecycle state: tools/dev_service.py persists structured state containing at least the owned PID and allocated port, and validates that state before stopping a process",
+              "weight": 5
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Stop command cleans up owned service: tools/dev_service.py stop terminates only the service identified by the current worktree's validated lifecycle state and removes stale runtime state",
+              "weight": 6
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Port collision rationale documented: observability-notes.md explains how the chosen resource-allocation contract prevents collisions between concurrent worktrees and who owns that allocation",
+              "weight": 5
+            },
+            {
+              "type": "llm-rubric",
+              "value": ".worktreeinclude exists: The solution creates a .worktreeinclude file at the repository root",
+              "weight": 5
+            },
+            {
+              "type": "llm-rubric",
+              "value": ".worktreeinclude is narrow: .worktreeinclude includes .env.local or the required local config path, and does not use broad patterns such as *, .env*, secrets/, node_modules/, or build/cache directories",
+              "weight": 5
+            },
+            {
+              "type": "llm-rubric",
+              "value": ".gitignore matches worktree include: .gitignore ignores the same local config file that .worktreeinclude includes, so the file is eligible for managed Codex or Claude worktree copying",
+              "weight": 4
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Worktree include rationale documented: observability-notes.md explains that managed Codex or Claude worktrees copy only matching gitignored files from .worktreeinclude, and that manual worktrees/hooks need their own copy path",
+              "weight": 4
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Dev environment observability: observability-notes.md or app.py adds observability to the development/local environment (not just describing it as a production concern)",
+              "weight": 8
+            }
+          ]
+        },
+        {
+          "type": "skill-used",
+          "value": "slopprep"
+        }
+      ]
+    }
+  ]
+}

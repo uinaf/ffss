@@ -1,0 +1,37 @@
+{
+  "_comment": "This file represents the actual current state of the repository after refactoring.",
+  "scripts": {
+    "exists": ["setup.sh", "seed.sh", "migrate.sh"],
+    "removed": ["bootstrap.sh", "test-pdf.sh"]
+  },
+  "config": {
+    "exists": ["config/settings.yaml", "config/settings.yaml.example"],
+    "removed": ["config/app.yaml", "config/app.yaml.example"]
+  },
+  "src": {
+    "exists": [
+      "src/utils/logger.ts",
+      "src/lib/calculator.ts",
+      "src/api/webhooks.ts",
+      "src/api/invoices.ts",
+      "src/api/payments.ts"
+    ],
+    "removed": []
+  },
+  "docs": {
+    "exists": [
+      "docs/architecture.md",
+      "docs/api-v3.md",
+      "docs/ops/deploy.md",
+      "docs/ops/runbook.md"
+    ],
+    "removed": ["docs/api-v2.md"]
+  },
+  "api_endpoints": {
+    "exists": ["/api/v3/health", "/api/v3/invoices", "/api/v3/payments", "/api/v3/webhooks/stripe"],
+    "removed": ["/api/v2/health", "/api/v2/webhooks/stripe"]
+  },
+  "features": {
+    "removed": ["PDF export — feature was cut from v3 scope"]
+  }
+}

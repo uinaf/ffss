@@ -1,0 +1,4 @@
+- GitHub CLI: authenticated
+- Jira connector: unavailable
+- Jira API credentials: unavailable
+- Signed-in Jira browser: unavailable
