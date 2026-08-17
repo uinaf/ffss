@@ -79,6 +79,12 @@ cask "${member}" do
     end
   end
 
+  livecheck do
+    url :homepage
+    regex(%r{${member}/v?(\d+(?:\.\d+)+)}i)
+    strategy :github_releases
+  end
+
 ${depends_stanza}  name "${member}"
 
   binary "${member}"
