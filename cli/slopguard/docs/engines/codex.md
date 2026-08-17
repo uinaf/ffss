@@ -14,10 +14,11 @@ invocation:
   `--output-last-message`, `--json`, and `--cd`;
 - strict `exec`: `--ignore-user-config`, `--ignore-rules`, and `--sandbox`.
 
-It checks `--version`, both help surfaces, and `login status` in native mode
-when neither `CODEX_API_KEY` nor `OPENAI_API_KEY` is present. Capability,
-authentication, timeout, cancellation, provider-process, and protocol failures
-remain distinct.
+It checks `--version` and both help surfaces before invocation. Native mode
+lets the actual `codex exec` process resolve authentication from the preserved
+Codex configuration, including custom model-provider credential helpers.
+Provider authentication, capability, timeout, cancellation, process, and
+protocol failures remain distinct.
 
 ## Isolation and web access
 
@@ -25,7 +26,7 @@ Web access is off unless trusted configuration enables it.
 
 | Mode | Authentication and configuration | Isolation controls |
 | --- | --- | --- |
-| `native` (default) | Existing environment, authentication, and user configuration | Review runs in an empty temporary workspace |
+| `native` (default) | Existing environment, user configuration, and configured provider or session authentication | Review runs in an empty temporary workspace |
 | `strict` | Empty home, XDG, and Codex directories; requires `CODEX_API_KEY` or `OPENAI_API_KEY` | Read-only sandbox, ignored user config and rules, disabled hooks, plugins, skills, and multi-agent behavior |
 
 ## Output contract

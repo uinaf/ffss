@@ -105,7 +105,7 @@ func strictCredentialFailure(effective config.Effective, provider protocol.Provi
 	}
 	return newFailure(
 		protocol.FailureAuth,
-		fmt.Sprintf("%s strict isolation requires %s; set a supported API key or use --isolation native for session-backed login", label, strings.Join(names, " or ")),
+		fmt.Sprintf("%s strict isolation requires %s; set a supported API key or use --isolation native for provider or session authentication", label, strings.Join(names, " or ")),
 		environment,
 		nil,
 	)
@@ -119,7 +119,7 @@ func strictCredentialRecovery(effective config.Effective, provider protocol.Prov
 	if len(names) == 0 {
 		return "use --isolation native or update the provider adapter credential contract"
 	}
-	return fmt.Sprintf("verify %s or use --isolation native for session-backed login", strings.Join(names, " or "))
+	return fmt.Sprintf("verify %s or use --isolation native for provider or session authentication", strings.Join(names, " or "))
 }
 
 func providerCredentialNames(name protocol.ProviderName) (string, []string) {
