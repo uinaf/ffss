@@ -14,9 +14,17 @@ interface TransformContext {
 const PER_FILE_CAP = 4_000;
 const TOTAL_CAP = 24_000;
 
+// String.slice can split a surrogate pair; back off one unit when it would.
+function safeSlice(text: string, end: number): string {
+  let cut = text.slice(0, end);
+  const last = cut.charCodeAt(cut.length - 1);
+  if (last >= 0xd800 && last <= 0xdbff) cut = cut.slice(0, -1);
+  return cut;
+}
+
 function capped(rel: string, text: string): string {
   if (text.length <= PER_FILE_CAP) return `=== OUTPUT FILE: ${rel} ===\n${text}\n=== END OUTPUT FILE ===`;
-  return `=== OUTPUT FILE: ${rel} (truncated: showing ${PER_FILE_CAP} of ${text.length} chars) ===\n${text.slice(0, PER_FILE_CAP)}\n=== END OUTPUT FILE ===`;
+  return `=== OUTPUT FILE: ${rel} (truncated: showing ${PER_FILE_CAP} of ${text.length} chars) ===\n${safeSlice(text, PER_FILE_CAP)}\n=== END OUTPUT FILE ===`;
 }
 
 export default function transform(output: string, context: TransformContext): string {
@@ -57,7 +65,7 @@ export default function transform(output: string, context: TransformContext): st
   if (sections.length === 0) return output;
   let appended = sections.join("\n\n");
   if (appended.length > TOTAL_CAP) {
-    appended = `${appended.slice(0, TOTAL_CAP)}\n\n=== TRUNCATED: output files exceeded ${TOTAL_CAP} chars total ===`;
+    appended = `${safeSlice(appended, TOTAL_CAP)}\n\n=== TRUNCATED: output files exceeded ${TOTAL_CAP} chars total ===`;
   }
   return `${output}\n\n${appended}`;
 }

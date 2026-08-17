@@ -12,6 +12,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { generateRun, runNameFor, type Harness, type RunOptions } from "./scenario.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+
+function parseMaxTurns(raw: string): number {
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) throw new Error(`--max-turns must be a positive integer, got ${JSON.stringify(raw)}`);
+  return n;
+}
 const repoRoot = path.resolve(here, "../..");
 const resultsDir = path.join(here, "results");
 
@@ -51,7 +57,7 @@ function runOptions(flags: Map<string, string | true>): RunOptions {
     // claude defaults in scenario.ts; codex undefined = current Codex CLI default
     agentModel: agent,
     judgeModel: (flags.get("--judge") as string | undefined) ?? "claude-opus-5",
-    maxTurns: flags.has("--max-turns") ? Number(flags.get("--max-turns")) : undefined,
+    maxTurns: flags.has("--max-turns") ? parseMaxTurns(flags.get("--max-turns") as string) : undefined,
   };
 }
 

@@ -66,8 +66,7 @@ export function loadScenario(scenarioDir: string): Scenario {
   // Hidden skills only ever run from an explicit user invocation, so the eval
   // task carries one; materialize() strips the flag from the installed copy.
   const skillDir = path.resolve(scenarioDir, "../..");
-  const shippedSkillMd = fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf8");
-  if (/^disable-model-invocation:/m.test(shippedSkillMd)) {
+  if (isHiddenSkill(fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf8"))) {
     prompt = `Use the ${skill} skill for this task.\n\n${prompt}`;
   }
 
@@ -80,6 +79,29 @@ export function runNameFor(scenarioDir: string, harness: Harness): string {
   const m = path.resolve(scenarioDir).match(/skills\/([^/]+)\/evals\/([^/]+)$/);
   if (!m) throw new Error(`not a scenario dir (want .../skills/<skill>/evals/<scenario>): ${scenarioDir}`);
   return harness === "codex" ? `${m[1]}--${m[2]}--codex` : `${m[1]}--${m[2]}`;
+}
+
+// Frontmatter helpers: the disable-model-invocation contract lives only in the
+// YAML block; body text mentioning the key (docs, examples) must not count.
+function frontmatterRange(text: string): [number, number] | null {
+  const lines = text.split("\n");
+  if (lines[0] !== "---") return null;
+  const close = lines.indexOf("---", 1);
+  return close === -1 ? null : [1, close];
+}
+
+export function isHiddenSkill(skillMd: string): boolean {
+  const range = frontmatterRange(skillMd);
+  if (!range) return false;
+  return skillMd.split("\n").slice(range[0], range[1]).some((l) => /^disable-model-invocation:/.test(l));
+}
+
+export function stripHiddenFlag(skillMd: string): string {
+  const range = frontmatterRange(skillMd);
+  if (!range) return skillMd;
+  const lines = skillMd.split("\n");
+  const kept = lines.filter((l, i) => !(i >= range[0] && i < range[1] && /^disable-model-invocation:/.test(l)));
+  return kept.join("\n");
 }
 
 // Reserved top-level workdir entries: fixtures may not write agent config roots.
@@ -126,7 +148,7 @@ export function materialize(s: Scenario, runDir: string, harness: Harness): { wo
   for (const root of roots) {
     const skillMd = path.join(workdir, root, "skills", s.skill, "SKILL.md");
     const text = fs.readFileSync(skillMd, "utf8");
-    const stripped = text.replace(/^disable-model-invocation:.*\n/m, "");
+    const stripped = stripHiddenFlag(text);
     if (stripped !== text) fs.writeFileSync(skillMd, stripped);
   }
 
