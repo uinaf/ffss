@@ -1,5 +1,5 @@
 interface:
-  display_name: "Slopcourier"
+  display_name: "slopcourier"
   short_description: "Deliver finished work as a change request"
   default_prompt: |
     Use $slopcourier to deliver the completed, verified change as one change

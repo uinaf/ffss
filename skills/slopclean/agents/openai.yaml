@@ -1,5 +1,5 @@
 interface:
-  display_name: "Slopclean"
+  display_name: "slopclean"
   short_description: "Strip AI tells from writing or a diff"
   default_prompt: |
     Use $slopclean to clean the artifact: pick prose or code mode, detect

@@ -1,5 +1,5 @@
 interface:
-  display_name: "Slopnanny"
+  display_name: "slopnanny"
   short_description: "Babysit a change request to a settled outcome"
   default_prompt: |
     Use $slopnanny to babysit the open change request: observe checks and
