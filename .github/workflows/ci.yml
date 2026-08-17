@@ -31,7 +31,7 @@ jobs:
             skills:
               - 'skills/**'
               - 'cli/*/skills/**'
-              - 'tools/skill-evals/lint-skills.ts'
+              - 'tools/skill-evals/**'
 
   slopmachine:
     name: slopmachine verify
@@ -93,5 +93,10 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: "24"
+          cache: npm
+          cache-dependency-path: tools/skill-evals/package-lock.json
+      - run: npm ci
+        working-directory: tools/skill-evals
       - name: Lint every skill package
-        run: node tools/skill-evals/lint-skills.ts
+        run: npm run lint
+        working-directory: tools/skill-evals
