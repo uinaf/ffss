@@ -7,10 +7,12 @@ fallback. Cursor model IDs encode effort, so a separate non-default
 
 ## Runtime contract
 
-The adapter requires the non-interactive JSON, Ask mode, workspace, trust,
-model, and authentication-status CLI surfaces. Strict mode also requires and
-forces Cursor sandboxing. The reviewed source is never mounted in the provider
-workspace; the frozen prompt is delivered on standard input.
+The adapter requires the non-interactive JSON, Ask mode, workspace, trust, and
+model CLI surfaces. Native mode lets the actual Cursor review process resolve
+authentication from the preserved environment and user configuration,
+including API-key wrappers. Strict mode also requires and forces Cursor
+sandboxing. The reviewed source is never mounted in the provider workspace; the
+frozen prompt is delivered on standard input.
 
 ## Isolation and web access
 
@@ -22,7 +24,7 @@ capability preflight rather than claiming an unenforceable isolation guarantee.
 
 | Mode | Authentication and configuration | Isolation controls |
 | --- | --- | --- |
-| `native` (default) | Existing environment, login, and user configuration | Ask mode in an empty workspace; user sandbox configuration is preserved |
+| `native` (default) | Existing environment, user configuration, and configured provider or session authentication | Ask mode in an empty workspace; user sandbox configuration is preserved |
 | `strict` | Empty home and Cursor state; requires `CURSOR_API_KEY` | Ask mode, forced sandbox, and generated deny rules for shell, file, and MCP access |
 
 ## Output contract

@@ -21,7 +21,8 @@ func TestCursorReviewStrictUsesAPIKeyWithoutStatusAndDenyConfig(t *testing.T) {
 	t.Parallel()
 
 	const bundle = "frozen review bundle"
-	fake := newFakeCursor(t, fakeCursorOptions{authError: "not authenticated"})
+	helpWithoutStatus := strings.TrimSuffix(cursorHelp("text | json | stream-json", "plan, ask", "enabled, disabled"), "\nstatus")
+	fake := newFakeCursor(t, fakeCursorOptions{help: helpWithoutStatus, authError: "not authenticated"})
 	reviewer := NewCursor(CursorOptions{
 		Repository: t.TempDir(), Executable: fake.path,
 		Environment: []string{
@@ -89,7 +90,8 @@ func TestCursorReviewStrictUsesAPIKeyWithoutStatusAndDenyConfig(t *testing.T) {
 func TestCursorReviewNativePreservesConfigurationAndOmitsForcedSandbox(t *testing.T) {
 	t.Parallel()
 
-	fake := newFakeCursor(t, fakeCursorOptions{})
+	helpWithoutStatus := strings.TrimSuffix(cursorHelp("text | json | stream-json", "plan, ask", "enabled, disabled"), "\nstatus")
+	fake := newFakeCursor(t, fakeCursorOptions{help: helpWithoutStatus, authError: "not authenticated"})
 	reviewer := NewCursor(CursorOptions{
 		Repository: t.TempDir(), Executable: fake.path,
 		Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home", "CURSOR_CONFIG_DIR=/native/cursor"},
@@ -190,13 +192,20 @@ func TestCursorReviewRejectsMissingCapabilityValues(t *testing.T) {
 	}
 }
 
-func TestCursorReviewReportsAuthenticationFailure(t *testing.T) {
+func TestCursorReviewNativeReportsProviderAuthenticationFailure(t *testing.T) {
 	t.Parallel()
 
-	fake := newFakeCursor(t, fakeCursorOptions{loggedOut: true})
+	fake := newFakeCursor(t, fakeCursorOptions{reviewError: "not authenticated"})
 	reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home"}})
 	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationNative, true, 5*time.Second)})
-	_ = assertProviderError(t, err, protocol.FailureAuth)
+	failure := assertProviderError(t, err, protocol.FailureAuth)
+	if !strings.Contains(failure.Message, "authenticate the provider CLI") {
+		t.Fatalf("failure = %q", failure.Message)
+	}
+	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
+		t.Fatalf("attempt = %+v", failure.Attempt)
+	}
+	assertExecutionMetadata(t, failure, protocol.ProviderCursor, "2026.07.23-e383d2b", protocol.IsolationNative, true)
 }
 
 func TestCursorReviewStrictExplainsCredentialRequirement(t *testing.T) {
