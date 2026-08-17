@@ -38,7 +38,7 @@ Unknown keys, loose YAML booleans, multiple documents, retry counts outside
 zero or one, and invalid types fail closed. There are no profiles or local
 override files. `max_bytes` defaults to 1 MiB and cannot exceed 128 MiB.
 
-Native isolation is the default and preserves configured provider
+Native isolation is the default and preserves configured provider or session
 authentication in an empty bundle-only workspace. Any source may select
 `strict`; an untrusted higher-precedence source cannot weaken an already
 selected strict value. Strict mode requires the provider's supported API-key

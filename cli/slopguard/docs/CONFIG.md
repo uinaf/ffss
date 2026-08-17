@@ -72,7 +72,7 @@ system variables, proxy and certificate settings, and supported provider API
 keys. `native` preserves the normal provider environment, user configuration,
 and configured authentication.
 Strict authentication requires the provider's supported API-key environment
-variable; existing provider authentication belongs to native mode. Grok
+variable; provider or session authentication belongs to native mode. Grok
 strict mode uses `XAI_API_KEY`; native mode uses the normal `grok login`
 session. Explicit CLI
 Cursor selection still grants otherwise-unset web access in strict mode; pass
