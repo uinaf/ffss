@@ -1,3 +1,5 @@
+![ffsstack — the flipflopslopstack.](https://uinaf.dev/og/banner/ffsstack.png)
+
 # ffsstack
 
 **ffsstack** — the flipflopslopstack. A state machine that doesn't believe
