@@ -1,7 +1,7 @@
 # skill-evals
 
 The lint/eval harness lives in [uinaf/skillcheck](https://github.com/uinaf/skillcheck),
-pinned here as a git devDependency (`github:uinaf/skillcheck#v0.1.3`). This
+pinned here as an npm devDependency (`@uinaf/skillcheck`). This
 directory is only the npm surface that installs and invokes it.
 
 What stays in this repo:

@@ -1,0 +1,119 @@
+{
+  "description": "slopprep/git-hooks-enforcement-and-e2e-testing",
+  "prompts": [
+    "{{task}}"
+  ],
+  "providers": [
+    {
+      "id": "anthropic:claude-agent-sdk",
+      "config": {
+        "model": "claude-opus-5",
+        "apiKeyRequired": false,
+        "working_dir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopprep--git-hooks-enforcement-and-e2e-testing/workdir",
+        "setting_sources": [
+          "project"
+        ],
+        "skills": [
+          "slopprep"
+        ],
+        "permission_mode": "acceptEdits",
+        "append_allowed_tools": [
+          "Read",
+          "Write",
+          "Edit",
+          "Glob",
+          "Grep"
+        ],
+        "max_turns": 50
+      }
+    }
+  ],
+  "defaultTest": {
+    "options": {
+      "provider": "anthropic:messages:claude-sonnet-5",
+      "transform": "file:///Users/altay/projects/uinaf/ffsstack/tools/skill-evals/transform.ts"
+    }
+  },
+  "tests": [
+    {
+      "description": "Tests whether the agent builds one structured TypeScript verification surface, keeps the Git hook a thin adapter, adds honest real-process CLI coverage, and integrates repository-owned dead-code detection without inventing shell validation.",
+      "vars": {
+        "task": "Use the slopprep skill for this task.\n\n# Hardening a TypeScript CLI Tool for Agent Collaboration\n\n## Problem/Feature Description\n\nA small team uses a TypeScript CLI that converts CSV files to JSON. Agents keep\npushing broken builds because the existing test mocks the implementation and\nnever runs the built CLI. The team wants one repository-owned verification\nentrypoint, a pre-push hook that delegates to it, honest end-to-end coverage,\nand dead-code detection.\n\nUse the project's existing package scripts and Jest surface instead of building\na second validation framework in shell. The Git hook may be a tiny executable\nadapter, but it must not duplicate the command graph or implement assertions,\nparsing, retries, or policy.\n\n## Output Specification\n\nProduce the following files:\n\n1. `package.json` — Keep the existing commands and add repository-owned,\n   version-pinned dead-code detection plus one canonical verification command.\n2. `.git-hooks/pre-push` — An executable thin adapter that delegates to the\n   canonical verification command.\n3. `e2e/cli.test.ts` — A Jest integration test that invokes the actual built CLI\n   as a child process against real files and compares structured output with the\n   expected fixture. Do not import or mock `parseCsv`.\n4. `e2e/fixtures/sample.csv` — Sample CSV input used by the end-to-end test.\n5. `e2e/fixtures/expected.json` — Expected JSON output for the sample.\n6. Any focused Jest or TypeScript configuration required to run the test.\n7. `setup-notes.md` — Briefly explain hook activation, the canonical gate, the\n   dead-code owner, and what the real-process test proves.\n\nDo not create a shell test, a second command graph, or a wrapper whose only job\nis to replay package scripts.\n\n## Input Files\n\nThe following files represent the current state of the project. Extract them before beginning.\n\n=============== FILE: package.json ===============\n{\n  \"name\": \"csv-to-json-cli\",\n  \"version\": \"2.1.0\",\n  \"description\": \"Convert CSV files to JSON\",\n  \"bin\": {\n    \"csv2json\": \"./dist/cli.js\"\n  },\n  \"scripts\": {\n    \"build\": \"tsc\",\n    \"lint\": \"eslint src/\",\n    \"test\": \"jest\"\n  },\n  \"dependencies\": {},\n  \"devDependencies\": {\n    \"typescript\": \"^5.0.0\",\n    \"eslint\": \"^8.0.0\",\n    \"@typescript-eslint/parser\": \"^6.0.0\",\n    \"jest\": \"^29.0.0\",\n    \"ts-jest\": \"^29.0.0\"\n  }\n}\n\n=============== FILE: src/cli.ts ===============\n#!/usr/bin/env node\nimport { readFileSync, writeFileSync } from 'fs';\nimport { parseCsv } from './parser';\n\nconst [,, inputFile, outputFile] = process.argv;\n\nif (!inputFile) {\n  console.error('Usage: csv2json <input.csv> [output.json]');\n  process.exit(1);\n}\n\nconst csv = readFileSync(inputFile, 'utf-8');\nconst result = parseCsv(csv);\n\nif (outputFile) {\n  writeFileSync(outputFile, JSON.stringify(result, null, 2));\n} else {\n  console.log(JSON.stringify(result, null, 2));\n}\n\n=============== FILE: src/parser.ts ===============\nexport function parseCsv(csv: string): Record<string, string>[] {\n  const lines = csv.trim().split('\\n');\n  const headers = lines[0].split(',').map(h => h.trim());\n  return lines.slice(1).map(line => {\n    const values = line.split(',').map(v => v.trim());\n    return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? '']));\n  });\n}\n\nexport function legacyParseCsv(csv: string): string[][] {\n  // Old implementation kept for reference but no longer used\n  return csv.split('\\n').map(line => line.split(','));\n}\n\n=============== FILE: src/parser.test.ts ===============\nimport { parseCsv } from './parser';\n\njest.mock('./parser', () => ({\n  parseCsv: jest.fn(),\n  legacyParseCsv: jest.fn()\n}));\n\ntest('parseCsv is a function', () => {\n  expect(typeof parseCsv).toBe('function');\n});\n\n=============== FILE: tsconfig.json ===============\n{\n  \"compilerOptions\": {\n    \"target\": \"ES2020\",\n    \"module\": \"commonjs\",\n    \"outDir\": \"./dist\",\n    \"strict\": true\n  },\n  \"include\": [\"src/**/*\"]\n}\n",
+        "workdir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopprep--git-hooks-enforcement-and-e2e-testing/workdir",
+        "manifest": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopprep--git-hooks-enforcement-and-e2e-testing/manifest.json"
+      },
+      "assert": [
+        {
+          "type": "assert-set",
+          "threshold": 0.7,
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "Canonical package verification command: package.json defines one canonical verification command that composes the relevant lint, build, dead-code, and test surfaces without requiring a separate shell script",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Pre-push delegates to canonical gate: .git-hooks/pre-push is executable and delegates to the canonical package verification command rather than replaying its individual steps",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Hook stays a thin adapter: .git-hooks/pre-push contains no output parsing, domain assertions, retry loop, duplicated command graph, or validation policy beyond invoking the repository-owned gate",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Hook activation command: setup-notes.md includes `git config core.hooksPath .git-hooks` or an equivalent activation command",
+              "weight": 6
+            },
+            {
+              "type": "llm-rubric",
+              "value": "End-to-end test invokes real CLI: e2e/cli.test.ts uses a child-process API to invoke the actual built CLI on the real sample.csv file, without importing or mocking parseCsv",
+              "weight": 12
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Structured golden assertion: e2e/cli.test.ts parses or reads the CLI JSON result and compares it with expected.json through Jest assertions rather than shell diff or text matching",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Fixture files present: e2e/fixtures/sample.csv and e2e/fixtures/expected.json exist and contain consistent data",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Dead-code detection is repository-owned: A suitable TypeScript dead-code tool is version-pinned in package.json and exposed through a package script that can detect unused exports such as legacyParseCsv",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Mock-only coverage is not overstated: setup-notes.md does not claim the existing mocked Jest test replaces real CLI proof",
+              "weight": 6
+            },
+            {
+              "type": "llm-rubric",
+              "value": "legacyParseCsv is identified: setup-notes.md identifies legacyParseCsv as an example the dead-code surface should report",
+              "weight": 5
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Process failure reaches Jest: The end-to-end test checks child-process status or uses an API that throws on non-zero exit, so a broken CLI fails the test",
+              "weight": 7
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No ad-hoc shell validation: The solution does not add e2e shell tests, shell-based JSON parsing or assertions, or another shell wrapper around the package task graph",
+              "weight": 8
+            }
+          ]
+        },
+        {
+          "type": "skill-used",
+          "value": "slopprep"
+        }
+      ]
+    }
+  ]
+}

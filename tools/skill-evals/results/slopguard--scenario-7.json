@@ -1,0 +1,1121 @@
+{
+  "evalId": "eval-b1I-2026-08-16T20:49:47",
+  "results": {
+    "version": 3,
+    "timestamp": "2026-08-16T20:49:47.378Z",
+    "prompts": [
+      {
+        "id": "ec1aefd522ceea4dbc16cd07da0dccd9fce23abef66cb24e561eb6956c67f536",
+        "raw": "{{task}}",
+        "label": "{{task}}",
+        "provider": "anthropic:claude-agent-sdk",
+        "metrics": {
+          "score": 1,
+          "testPassCount": 1,
+          "testFailCount": 0,
+          "testErrorCount": 0,
+          "assertPassCount": 12,
+          "assertFailCount": 0,
+          "totalLatencyMs": 45625,
+          "tokenUsage": {
+            "prompt": 10,
+            "completion": 2964,
+            "cached": 0,
+            "total": 2974,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 18799,
+              "prompt": 17571,
+              "completion": 1228,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          },
+          "namedScores": {},
+          "namedScoresCount": {},
+          "namedScoreWeights": {},
+          "cost": 0.240267
+        }
+      }
+    ],
+    "results": [
+      {
+        "cost": 0.240267,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 18799,
+            "prompt": 17571,
+            "completion": 1228,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": true,
+              "score": 1,
+              "reason": "Aggregate score 1.00 ≥ 0.7 threshold",
+              "namedScores": {},
+              "tokensUsed": {
+                "total": 18799,
+                "prompt": 17571,
+                "completion": 1228,
+                "cached": 0,
+                "numRequests": 0
+              },
+              "componentResults": [
+                {
+                  "assertion": {
+                    "type": "llm-rubric",
+                    "value": "Run A accepted: classification.md treats Run A as a valid review result rather than a protocol failure",
+                    "weight": 10
+                  },
+                  "pass": true,
+                  "score": 1,
+                  "reason": "The output explicitly classifies Run A as a 'valid review' with disposition 'trustworthy review result' and 'Not a defect: no issue to file', treating it as a valid review result rather than a protocol failure.",
+                  "tokensUsed": {
+                    "total": 1848,
+                    "prompt": 1757,
+                    "completion": 91,
+                    "cached": 0,
+                    "numRequests": 0,
+                    "completionDetails": {
+                      "reasoning": 0,
+                      "cacheReadInputTokens": 0,
+                      "cacheCreationInputTokens": 0
+                    }
+                  },
+                  "metadata": {
+                    "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nRun A accepted: classification.md treats Run A as a valid review result rather than a protocol failure\\n</Rubric>\"}]"
+                  }
+                },
+                {
+                  "assertion": {
+                    "type": "llm-rubric",
+                    "value": "Recovery metadata recognized: The document identifies cursor_trailing_object as the recorded allowed local recovery strategy",
+                    "weight": 10
+                  },
+                  "pass": true,
+                  "score": 1,
+                  "reason": "The output explicitly identifies 'cursor_trailing_object' as the recovery strategy applied in Run A, describing it as the documented/allowed local recovery path and an expected success record (not a warning), e.g., 'Recovery: protocol_recovery.applied=true with strategy cursor_trailing_object is the expected success record'.",
+                  "tokensUsed": {
+                    "total": 1897,
+                    "prompt": 1766,
+                    "completion": 131,
+                    "cached": 0,
+                    "numRequests": 0,
+                    "completionDetails": {
+                      "reasoning": 0,
+                      "cacheReadInputTokens": 0,
+                      "cacheCreationInputTokens": 0
+                    }
+                  },
+                  "metadata": {
+                    "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nRecovery metadata recognized: The document identifies cursor_trailing_object as the recorded allowed local recovery strategy\\n</Rubric>\"}]"
+                  }
+                },
+                {
+                  "assertion": {
+                    "type": "llm-rubric",
+                    "value": "Single trailing object condition: The explanation notes that one canonical object must consume the remaining suffix",
+                    "weight": 10
+                  },
+                  "pass": true,
+                  "score": 1,
+                  "reason": "The output explicitly states the trailing object condition: 'the trailing object consumes the entire remaining output, so there is no suffix prose and no ambiguity about which object is canonical' in the Run A section, and also describes the recovery path as requiring 'plain prose followed by exactly one canonical trailing object' at the top.",
+                  "tokensUsed": {
+                    "total": 1882,
+                    "prompt": 1757,
+                    "completion": 125,
+                    "cached": 0,
+                    "numRequests": 0,
+                    "completionDetails": {
+                      "reasoning": 0,
+                      "cacheReadInputTokens": 0,
+                      "cacheCreationInputTokens": 0
+                    }
+                  },
+                  "metadata": {
+                    "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nSingle trailing object condition: The explanation notes that one canonical object must consume the remaining suffix\\n</Rubric>\"}]"
+                  }
+                },
+                {
+                  "assertion": {
+                    "type": "llm-rubric",
+                    "value": "Run B rejected: classification.md keeps Run B as exit 2 protocol failure",
+                    "weight": 10
+                  },
+                  "pass": true,
+                  "score": 1,
+                  "reason": "The output classifies Run B as an operational blocker with exit code 2 and failure class 'protocol' throughout, explicitly stating it is not clean, not findings, and must not be reported as either.",
+                  "tokensUsed": {
+                    "total": 1838,
+                    "prompt": 1754,
+                    "completion": 84,
+                    "cached": 0,
+                    "numRequests": 0,
+                    "completionDetails": {
+                      "reasoning": 0,
+                      "cacheReadInputTokens": 0,
+                      "cacheCreationInputTokens": 0
+                    }
+                  },
+                  "metadata": {
+                    "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nRun B rejected: classification.md keeps Run B as exit 2 protocol failure\\n</Rubric>\"}]"
+                  }
+                },
+                {
+                  "assertion": {
+                    "type": "llm-rubric",
+                    "value": "Fences rejected: The explanation identifies fenced output as unsupported for recovery",
+                    "weight": 10
+                  },
+                  "pass": true,
+                  "score": 1,
+                  "reason": "The output explicitly states that fences fail closed and lists 'Fence' as one of the independent fail-closed triggers for Run B, and the classification table lists 'fenced object + second object + suffix prose' with 'Recovery: none possible'. The general recovery rules section also states 'fences... fail closed.' This clearly identifies fenced output as unsupported for recovery.",
+                  "tokensUsed": {
+                    "total": 1896,
+                    "prompt": 1753,
+                    "completion": 143,
+                    "cached": 0,
+                    "numRequests": 0,
+                    "completionDetails": {
+                      "reasoning": 0,
+                      "cacheReadInputTokens": 0,
+                      "cacheCreationInputTokens": 0
+                    }
+                  },
+                  "metadata": {
+                    "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nFences rejected: The explanation identifies fenced output as unsupported for recovery\\n</Rubric>\"}]"
+                  }
+                },
+                {
+                  "assertion": {
+                    "type": "llm-rubric",
+                    "value": "Multiple objects rejected: The explanation identifies the second JSON object as ambiguous or invalid",
+                    "weight": 10
+                  },
+                  "pass": true,
+                  "score": 1,
+                  "reason": "The output explicitly identifies the second JSON object in Run B as one of the fail-closed triggers, describing the shape as 'fenced object + second object + suffix prose' and stating that Cursor's parser fails closed on 'multiple objects' among other conditions. It also notes 'the fence, the second JSON object, and the suffix prose' are three independent fail-closed triggers, confirming the second object is treated as invalid/disqualifying.",
+                  "tokensUsed": {
+                    "total": 1924,
+                    "prompt": 1759,
+                    "completion": 165,
+                    "cached": 0,
+                    "numRequests": 0,
+                    "completionDetails": {
+                      "reasoning": 0,
+                      "cacheReadInputTokens": 0,
+                      "cacheCreationInputTokens": 0
+                    }
+                  },
+                  "metadata": {
+                    "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nMultiple objects rejected: The explanation identifies the second JSON object as ambiguous or invalid\\n</Rubric>\"}]"
+                  }
+                },
+                {
+                  "assertion": {
+                    "type": "llm-rubric",
+                    "value": "Suffix prose rejected: The explanation identifies trailing prose after the object as invalid",
+                    "weight": 10
+                  },
+                  "pass": true,
+                  "score": 1,
+                  "reason": "The output explicitly states that suffix prose fails closed/is invalid, listing it among the fail-closed triggers ('fences, ambiguous braces, JSON-value prefixes, multiple objects, and suffix prose fail closed') and specifically calls out 'suffix prose' as one of three independent fail-closed triggers in Run B's shape.",
+                  "tokensUsed": {
+                    "total": 1891,
+                    "prompt": 1755,
+                    "completion": 136,
+                    "cached": 0,
+                    "numRequests": 0,
+                    "completionDetails": {
+                      "reasoning": 0,
+                      "cacheReadInputTokens": 0,
+                      "cacheCreationInputTokens": 0
+                    }
+                  },
+                  "metadata": {
+                    "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nSuffix prose rejected: The explanation identifies trailing prose after the object as invalid\\n</Rubric>\"}]"
+                  }
+                },
+                {
+                  "assertion": {
+                    "type": "llm-rubric",
+                    "value": "No manual extraction: The plan does not manually parse or copy one object out of Run B",
+                    "weight": 10
+                  },
+                  "pass": true,
+                  "score": 1,
+                  "reason": "The output treats Run B as an unrecoverable operational blocker (exit 2, protocol failure) and explicitly states there is no partial review to salvage from the fenced object, with no attempt to manually parse or extract an object from Run B's output.",
+                  "tokensUsed": {
+                    "total": 1852,
+                    "prompt": 1752,
+                    "completion": 100,
+                    "cached": 0,
+                    "numRequests": 0,
+                    "completionDetails": {
+                      "reasoning": 0,
+                      "cacheReadInputTokens": 0,
+                      "cacheCreationInputTokens": 0
+                    }
+                  },
+                  "metadata": {
+                    "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nNo manual extraction: The plan does not manually parse or copy one object out of Run B\\n</Rubric>\"}]"
+                  }
+                },
+                {
+                  "assertion": {
+                    "type": "llm-rubric",
+                    "value": "No clean reinterpretation: The plan does not convert Run B into a clean or findings result",
+                    "weight": 10
+                  },
+                  "pass": true,
+                  "score": 1,
+                  "reason": "Run B is consistently classified as an operational blocker with failure class 'protocol', exit code 2, explicitly stating it is 'not clean, not findings, and must not be reported as either.' The output never reinterprets Run B as a clean pass or as containing findings to validate.",
+                  "tokensUsed": {
+                    "total": 1864,
+                    "prompt": 1754,
+                    "completion": 110,
+                    "cached": 0,
+                    "numRequests": 0,
+                    "completionDetails": {
+                      "reasoning": 0,
+                      "cacheReadInputTokens": 0,
+                      "cacheCreationInputTokens": 0
+                    }
+                  },
+                  "metadata": {
+                    "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nNo clean reinterpretation: The plan does not convert Run B into a clean or findings result\\n</Rubric>\"}]"
+                  }
+                },
+                {
+                  "assertion": {
+                    "type": "llm-rubric",
+                    "value": "Failure blocker reported: The next action reports the protocol blocker or reruns only after an actual source/tool condition changes",
+                    "weight": 10
+                  },
+                  "pass": true,
+                  "score": 1,
+                  "reason": "The output's Next action section explicitly reports Run B as an operational/protocol blocker (failure class 'protocol', exhausted retry) and specifies that any rerun requires a new freeze/target with the same provider and contract, rather than an unconditional or same-condition rerun. This satisfies the rubric's requirement to report the blocker or only rerun after an actual condition change.",
+                  "tokensUsed": {
+                    "total": 1907,
+                    "prompt": 1764,
+                    "completion": 143,
+                    "cached": 0,
+                    "numRequests": 0,
+                    "completionDetails": {
+                      "reasoning": 0,
+                      "cacheReadInputTokens": 0,
+                      "cacheCreationInputTokens": 0
+                    }
+                  },
+                  "metadata": {
+                    "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nFailure blocker reported: The next action reports the protocol blocker or reruns only after an actual source/tool condition changes\\n</Rubric>\"}]"
+                  }
+                }
+              ],
+              "metadata": {
+                "assertionSet": {
+                  "type": "assert-set",
+                  "assertionCount": 10,
+                  "threshold": 0.7
+                }
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "Run A accepted: classification.md treats Run A as a valid review result rather than a protocol failure",
+                "weight": 10
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The output explicitly classifies Run A as a 'valid review' with disposition 'trustworthy review result' and 'Not a defect: no issue to file', treating it as a valid review result rather than a protocol failure.",
+              "tokensUsed": {
+                "total": 1848,
+                "prompt": 1757,
+                "completion": 91,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "cacheReadInputTokens": 0,
+                  "cacheCreationInputTokens": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nRun A accepted: classification.md treats Run A as a valid review result rather than a protocol failure\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "Recovery metadata recognized: The document identifies cursor_trailing_object as the recorded allowed local recovery strategy",
+                "weight": 10
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The output explicitly identifies 'cursor_trailing_object' as the recovery strategy applied in Run A, describing it as the documented/allowed local recovery path and an expected success record (not a warning), e.g., 'Recovery: protocol_recovery.applied=true with strategy cursor_trailing_object is the expected success record'.",
+              "tokensUsed": {
+                "total": 1897,
+                "prompt": 1766,
+                "completion": 131,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "cacheReadInputTokens": 0,
+                  "cacheCreationInputTokens": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nRecovery metadata recognized: The document identifies cursor_trailing_object as the recorded allowed local recovery strategy\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "Single trailing object condition: The explanation notes that one canonical object must consume the remaining suffix",
+                "weight": 10
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The output explicitly states the trailing object condition: 'the trailing object consumes the entire remaining output, so there is no suffix prose and no ambiguity about which object is canonical' in the Run A section, and also describes the recovery path as requiring 'plain prose followed by exactly one canonical trailing object' at the top.",
+              "tokensUsed": {
+                "total": 1882,
+                "prompt": 1757,
+                "completion": 125,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "cacheReadInputTokens": 0,
+                  "cacheCreationInputTokens": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nSingle trailing object condition: The explanation notes that one canonical object must consume the remaining suffix\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "Run B rejected: classification.md keeps Run B as exit 2 protocol failure",
+                "weight": 10
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The output classifies Run B as an operational blocker with exit code 2 and failure class 'protocol' throughout, explicitly stating it is not clean, not findings, and must not be reported as either.",
+              "tokensUsed": {
+                "total": 1838,
+                "prompt": 1754,
+                "completion": 84,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "cacheReadInputTokens": 0,
+                  "cacheCreationInputTokens": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nRun B rejected: classification.md keeps Run B as exit 2 protocol failure\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "Fences rejected: The explanation identifies fenced output as unsupported for recovery",
+                "weight": 10
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The output explicitly states that fences fail closed and lists 'Fence' as one of the independent fail-closed triggers for Run B, and the classification table lists 'fenced object + second object + suffix prose' with 'Recovery: none possible'. The general recovery rules section also states 'fences... fail closed.' This clearly identifies fenced output as unsupported for recovery.",
+              "tokensUsed": {
+                "total": 1896,
+                "prompt": 1753,
+                "completion": 143,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "cacheReadInputTokens": 0,
+                  "cacheCreationInputTokens": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nFences rejected: The explanation identifies fenced output as unsupported for recovery\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "Multiple objects rejected: The explanation identifies the second JSON object as ambiguous or invalid",
+                "weight": 10
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The output explicitly identifies the second JSON object in Run B as one of the fail-closed triggers, describing the shape as 'fenced object + second object + suffix prose' and stating that Cursor's parser fails closed on 'multiple objects' among other conditions. It also notes 'the fence, the second JSON object, and the suffix prose' are three independent fail-closed triggers, confirming the second object is treated as invalid/disqualifying.",
+              "tokensUsed": {
+                "total": 1924,
+                "prompt": 1759,
+                "completion": 165,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "cacheReadInputTokens": 0,
+                  "cacheCreationInputTokens": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nMultiple objects rejected: The explanation identifies the second JSON object as ambiguous or invalid\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "Suffix prose rejected: The explanation identifies trailing prose after the object as invalid",
+                "weight": 10
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The output explicitly states that suffix prose fails closed/is invalid, listing it among the fail-closed triggers ('fences, ambiguous braces, JSON-value prefixes, multiple objects, and suffix prose fail closed') and specifically calls out 'suffix prose' as one of three independent fail-closed triggers in Run B's shape.",
+              "tokensUsed": {
+                "total": 1891,
+                "prompt": 1755,
+                "completion": 136,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "cacheReadInputTokens": 0,
+                  "cacheCreationInputTokens": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nSuffix prose rejected: The explanation identifies trailing prose after the object as invalid\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "No manual extraction: The plan does not manually parse or copy one object out of Run B",
+                "weight": 10
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The output treats Run B as an unrecoverable operational blocker (exit 2, protocol failure) and explicitly states there is no partial review to salvage from the fenced object, with no attempt to manually parse or extract an object from Run B's output.",
+              "tokensUsed": {
+                "total": 1852,
+                "prompt": 1752,
+                "completion": 100,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "cacheReadInputTokens": 0,
+                  "cacheCreationInputTokens": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nNo manual extraction: The plan does not manually parse or copy one object out of Run B\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "No clean reinterpretation: The plan does not convert Run B into a clean or findings result",
+                "weight": 10
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "Run B is consistently classified as an operational blocker with failure class 'protocol', exit code 2, explicitly stating it is 'not clean, not findings, and must not be reported as either.' The output never reinterprets Run B as a clean pass or as containing findings to validate.",
+              "tokensUsed": {
+                "total": 1864,
+                "prompt": 1754,
+                "completion": 110,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "cacheReadInputTokens": 0,
+                  "cacheCreationInputTokens": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nNo clean reinterpretation: The plan does not convert Run B into a clean or findings result\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "Failure blocker reported: The next action reports the protocol blocker or reruns only after an actual source/tool condition changes",
+                "weight": 10
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The output's Next action section explicitly reports Run B as an operational/protocol blocker (failure class 'protocol', exhausted retry) and specifies that any rerun requires a new freeze/target with the same provider and contract, rather than an unconditional or same-condition rerun. This satisfies the rubric's requirement to report the blocker or only rerun after an actual condition change.",
+              "tokensUsed": {
+                "total": 1907,
+                "prompt": 1764,
+                "completion": 143,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "cacheReadInputTokens": 0,
+                  "cacheCreationInputTokens": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\\n\\n=== OUTPUT FILE: classification.md ===\\n# Cursor protocol classification\\n\\nBoth runs are Cursor, whose parser first requires one canonical review object.\\nIts only recovery accepts plain prose followed by exactly one canonical\\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\\nobjects, and suffix prose fail closed.\\n\\n| Run | Output shape | Recovery | Disposition |\\n| --- | --- | --- | --- |\\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\\n\\n## Run A — valid review\\n\\n- **Shape:** matches the single documented recovery path exactly; the trailing\\n  object consumes the entire remaining output, so there is no suffix prose and\\n  no ambiguity about which object is canonical.\\n- **Recovery:** `protocol_recovery.applied=true` with strategy\\n  `cursor_trailing_object` is the expected success record, not a warning.\\n  Provider, model, harness version, isolation mode, effective web-access state,\\n  and the applied recovery are preserved in the canonical report.\\n- **Disposition:** trustworthy review result. Treat the report as authoritative\\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\\n  against the contract, exact code, and same-scope siblings. Recovery does not\\n  downgrade confidence in any finding and is not grounds for a rerun.\\n- **Not a defect:** no issue to file.\\n\\n## Run B — operational blocker\\n\\n- **Shape:** three independent fail-closed triggers — the fence, the second\\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\\n- **Retry:** the CLI already spent its single configured protocol retry against\\n  the same frozen bundle and same provider. Protocol is the only retried class,\\n  and the budget is now exhausted for this run.\\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\\n  review result exists. It is not clean, not findings, and must not be reported\\n  as either. There is no partial review to salvage from the fenced object.\\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\\n\\n## Next action\\n\\n1. Report Run B to the user as an operational blocker, naming failure class\\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\\n   if the two runs cover different targets.\\n2. If a rerun is authorized, freeze a new target and rerun with the same\\n   provider (`cursor`), same target semantics, and same task contract. Never\\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\\n   a claimed consensus.\\n3. Close out Run A on its own exit code: validate and dispose of each finding\\n   at exit 1, or accept clean at exit 0.\\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\\n   version, OS/architecture, provider, isolation mode, and failure class only,\\n   with no bundle, prompt, source, diff, private path, or raw provider output.\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nFailure blocker reported: The next action reports the protocol blocker or reruns only after an actual source/tool condition changes\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "pass": true,
+              "score": 1,
+              "reason": "Observed required skill(s): slopguard. Actual skills: slopguard (tool)",
+              "assertion": {
+                "type": "skill-used",
+                "value": "slopguard"
+              }
+            }
+          ]
+        },
+        "id": "b0236f5b-d17b-4b22-8cf3-297f9a531d1a",
+        "latencyMs": 45625,
+        "namedScores": {},
+        "prompt": {
+          "raw": "# Classify two Cursor review outputs\n\nAn operator supplies two sanitized Cursor results:\n\n- Run A contains a short prose sentence followed by one canonical review object\n  that consumes the entire remaining output. Its report records\n  `protocol_recovery.applied=true` and strategy `cursor_trailing_object`.\n- Run B contains a fenced review object followed by another JSON object and\n  suffix prose. It exits 2 with failure class `protocol` after the configured\n  retry.\n\nWrite `classification.md` with the disposition of each run and the next action.",
+          "label": "{{task}}",
+          "config": {
+            "provider": "anthropic:messages:claude-sonnet-5",
+            "transform": "file:///Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/transform.ts"
+          }
+        },
+        "promptId": "ec1aefd522ceea4dbc16cd07da0dccd9fce23abef66cb24e561eb6956c67f536",
+        "promptIdx": 0,
+        "provider": {
+          "id": "anthropic:claude-agent-sdk",
+          "label": ""
+        },
+        "response": {
+          "output": "**Written:** `classification.md` in the workdir.\n\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\n\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\n\n=== OUTPUT FILE: classification.md ===\n# Cursor protocol classification\n\nBoth runs are Cursor, whose parser first requires one canonical review object.\nIts only recovery accepts plain prose followed by exactly one canonical\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\nobjects, and suffix prose fail closed.\n\n| Run | Output shape | Recovery | Disposition |\n| --- | --- | --- | --- |\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\n\n## Run A — valid review\n\n- **Shape:** matches the single documented recovery path exactly; the trailing\n  object consumes the entire remaining output, so there is no suffix prose and\n  no ambiguity about which object is canonical.\n- **Recovery:** `protocol_recovery.applied=true` with strategy\n  `cursor_trailing_object` is the expected success record, not a warning.\n  Provider, model, harness version, isolation mode, effective web-access state,\n  and the applied recovery are preserved in the canonical report.\n- **Disposition:** trustworthy review result. Treat the report as authoritative\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\n  against the contract, exact code, and same-scope siblings. Recovery does not\n  downgrade confidence in any finding and is not grounds for a rerun.\n- **Not a defect:** no issue to file.\n\n## Run B — operational blocker\n\n- **Shape:** three independent fail-closed triggers — the fence, the second\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\n- **Retry:** the CLI already spent its single configured protocol retry against\n  the same frozen bundle and same provider. Protocol is the only retried class,\n  and the budget is now exhausted for this run.\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\n  review result exists. It is not clean, not findings, and must not be reported\n  as either. There is no partial review to salvage from the fenced object.\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\n\n## Next action\n\n1. Report Run B to the user as an operational blocker, naming failure class\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\n   if the two runs cover different targets.\n2. If a rerun is authorized, freeze a new target and rerun with the same\n   provider (`cursor`), same target semantics, and same task contract. Never\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\n   a claimed consensus.\n3. Close out Run A on its own exit code: validate and dispose of each finding\n   at exit 1, or accept clean at exit 0.\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\n   version, OS/architecture, provider, isolation mode, and failure class only,\n   with no bundle, prompt, source, diff, private path, or raw provider output.\n\n=== END OUTPUT FILE ===",
+          "tokenUsage": {
+            "prompt": 10,
+            "completion": 2964,
+            "total": 2974
+          },
+          "cost": 0.240267,
+          "raw": "{\"is_error\":false,\"duration_api_ms\":45962,\"num_turns\":7,\"stop_reason\":\"end_turn\",\"session_id\":\"c646ad59-4814-488c-b38d-8caeb5b9931e\",\"total_cost_usd\":0.240267,\"usage\":{\"input_tokens\":10,\"cache_creation_input_tokens\":15620,\"cache_read_input_tokens\":135554,\"output_tokens\":2964,\"output_tokens_details\":{\"thinking_tokens\":863},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":15620},\"inference_geo\":\"global\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":328,\"cache_read_input_tokens\":31647,\"cache_creation_input_tokens\":1671,\"cache_creation\":{\"ephemeral_5m_input_tokens\":1671,\"ephemeral_1h_input_tokens\":0},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":640,\"outputTokens\":15,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.000715,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\"},\"claude-opus-5\":{\"inputTokens\":10,\"outputTokens\":2964,\"cacheReadInputTokens\":135554,\"cacheCreationInputTokens\":15620,\"webSearchRequests\":0,\"costUSD\":0.239552,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"canonicalModel\":\"claude-opus-5\",\"provider\":\"firstParty\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"**Written:** `classification.md` in the workdir.\\n\\n- **Run A:** valid review. Prose prefix + one trailing canonical object is Cursor's only documented recovery path; `cursor_trailing_object` with `applied=true` is a success record, not a warning. Close out on its exit code — findings validated at 1, clean at 0.\\n- **Run B:** operational blocker. Fence, second object, and suffix prose each fail closed independently; the one configured protocol retry is spent. Exit 2 `protocol` is neither clean nor findings.\\n- **Neither is a CLI defect:** both are specified behavior, so no `uinaf/ffsstack` issue.\\n- **Next action:** report Run B as blocked; any rerun uses a new freeze with Cursor, same target semantics and contract — no engine fallback, no merging the runs.\\n\\n**Unverified:** no `slopguard` invocation or report artifacts in this session — classification is from the described output shapes against `references/results.md:33-41`.\",\"ttft_ms\":2454,\"ttft_stream_ms\":1332,\"time_to_request_ms\":134,\"type\":\"result\",\"duration_ms\":44916,\"uuid\":\"1d60d51c-f902-4135-8554-bb58b1c5ba54\"}",
+          "sessionId": "c646ad59-4814-488c-b38d-8caeb5b9931e",
+          "metadata": {
+            "skillCalls": [
+              {
+                "name": "slopguard",
+                "input": {
+                  "skill": "slopguard"
+                },
+                "is_error": false,
+                "source": "tool"
+              }
+            ],
+            "toolCalls": [
+              {
+                "id": "toolu_017sMXhrLKarDTBmpXM6GsDe",
+                "name": "Skill",
+                "input": {
+                  "skill": "slopguard"
+                },
+                "output": "Launching skill: slopguard",
+                "is_error": false,
+                "parentToolUseId": null
+              },
+              {
+                "id": "toolu_019ER1H5SSGp7fhWH2og4hzq",
+                "name": "Read",
+                "input": {
+                  "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir/.claude/skills/slopguard/references/results.md"
+                },
+                "output": "1\t# Results and failures\n2\t\n3\tTerminal and JSON output represent the same locally validated report. Review\n4\tresults go to stdout; progress and diagnostics go to stderr. When `review\n5\t--output json` is selected unambiguously, representable argument, flag, and\n6\tconfiguration failures also use the canonical failure report instead of prose.\n7\tHelp remains a separate human-readable surface.\n8\t\n9\t| Exit | Status | Meaning |\n10\t| ---: | --- | --- |\n11\t| 0 | `clean` | Valid review with no findings |\n12\t| 1 | `findings` | Valid review with one or more findings |\n13\t| 2 | `failure` | No trustworthy review result |\n14\t\n15\tEvery valid finding is reported regardless of confidence. Findings include\n16\tpriority `P0` through `P3`, confidence, category, and a repository-relative\n17\tlocation. The local validator rejects paths or line ranges outside the frozen\n18\ttarget.\n19\t\n20\tFailure classes are `config`, `target`, `secret_scan`, `capability`,\n21\t`authentication`, `timeout`, `cancelled`, `provider`, `protocol`,\n22\t`source_changed`, and `internal`. Do not reinterpret an operational failure as\n23\ta clean review.\n24\t\n25\tSlopguard performs at most one configured retry, only for a malformed protocol\n26\tresponse, using the same frozen bundle and provider. Authentication,\n27\tcapability, timeout, cancellation, and provider failures are not retried.\n28\tWhen the malformed response can be classified safely, the retry receives a\n29\trule-specific correction without provider output or repository content. Every\n30\tfinding location must fit within one individual reviewed line range; a concern\n31\tthat spans discontiguous hunks must be narrowed or split.\n32\t\n33\tCursor first requires one canonical review object. Its only recovery accepts\n34\tplain prose followed by exactly one canonical trailing object. Fences,\n35\tambiguous braces, JSON-value prefixes, multiple objects, and suffix prose fail\n36\tclosed. Successful local recovery is recorded as `cursor_trailing_object`.\n37\t\n38\tAfter provider execution metadata is resolved, operational failures preserve\n39\tthe provider, model, harness version, isolation mode, and effective web-access\n40\tstate plus any applicable protocol recovery in the canonical report. Earlier\n41\tfailures keep nullable metadata unset.\n42\t\n43\tAfter any provider return, slopguard recollects the target. A changed snapshot\n44\tproduces `source_changed`; discard the findings and rerun from a new freeze.\n45\t",
+                "is_error": false,
+                "parentToolUseId": null
+              },
+              {
+                "id": "toolu_01MJUFF7waBXjxxiSjtfYSWf",
+                "name": "Read",
+                "input": {
+                  "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir/.claude/skills/slopguard/references/providers.md"
+                },
+                "output": "1\t# Provider selection\n2\t\n3\tSelect one provider for the entire review. Honor the user's provider, model, and\n4\treasoning-effort choices first, then trusted repository or account\n5\tconfiguration. Pass explicit user model and effort choices as CLI flags. If no\n6\tsource chooses a provider, select one installed harness that satisfies the task\n7\tand explain the choice. Do not run multiple providers, fall back after failure,\n8\tor claim consensus.\n9\t\n10\t| Engine | Default model | Strict authentication | Important constraint |\n11\t| --- | --- | --- | --- |\n12\t| `codex` | `gpt-5.6-sol` | `CODEX_API_KEY` or `OPENAI_API_KEY` | Native mode uses normal session-backed login |\n13\t| `claude` | `claude-opus-5` | `ANTHROPIC_API_KEY` | Effort supports `low`, `medium`, `high`, `xhigh`, or `max` |\n14\t| `cursor` | `cursor-grok-4.6-high-fast` | `CURSOR_API_KEY` | Explicit CLI selection implies web when unset; effort is encoded in the model ID |\n15\t| `grok` | `grok-4.6` | `XAI_API_KEY` | Native mode uses `grok login`; tools, memory, plans, and subagents stay disabled |\n16\t\n17\tFor Cursor, pass a requested compatible model with `--model` and never add\n18\t`--reasoning-effort`. If the user requests Cursor plus a separate effort value\n19\twithout a compatible model ID, report the unsupported combination instead of\n20\tguessing a model.\n21\t\n22\tAll adapters capability-probe the installed executable and use one explicit\n23\tmodel with no model fallback. A capability or authentication failure is an\n24\toperational result, not permission to switch engines.\n25\t\n26\tStrict mode runs with empty provider state and a constrained environment.\n27\tNative mode preserves the provider's normal environment and login but still\n28\truns the review in an empty temporary workspace with only the frozen bundle.\n29\tNative is the default; select strict explicitly when the stronger provider-state\n30\tboundary and a supported API key are required.\n31\t\n32\tWeb access defaults off. Codex enables its search surface only when authorized;\n33\tClaude exposes only WebSearch; Grok exposes only WebSearch and WebFetch. Cursor\n34\thas no documented per-run web disable, so explicit CLI selection makes an\n35\totherwise-unset value true; configured engine selection does not. Explicit\n36\tfalse still fails capability preflight.\n37\t",
+                "is_error": false,
+                "parentToolUseId": null
+              },
+              {
+                "id": "toolu_018vQ2KJ5GM8SEYSqkkSVXUv",
+                "name": "Bash",
+                "input": {
+                  "command": "ls -la /Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir",
+                  "description": "List workdir contents"
+                },
+                "output": "total 0\ndrwxr-xr-x@ 3 altay  staff   96 Aug 16 23:49 .\ndrwxr-xr-x@ 5 altay  staff  160 Aug 16 23:49 ..\ndrwxr-xr-x@ 3 altay  staff   96 Aug 16 23:49 .claude",
+                "is_error": false,
+                "parentToolUseId": null
+              },
+              {
+                "id": "toolu_01UxbXJPVYnqE1QRDyzeprMJ",
+                "name": "Write",
+                "input": {
+                  "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir/classification.md",
+                  "content": "# Cursor protocol classification\n\nBoth runs are Cursor, whose parser first requires one canonical review object.\nIts only recovery accepts plain prose followed by exactly one canonical\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\nobjects, and suffix prose fail closed.\n\n| Run | Output shape | Recovery | Disposition |\n| --- | --- | --- | --- |\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\n\n## Run A — valid review\n\n- **Shape:** matches the single documented recovery path exactly; the trailing\n  object consumes the entire remaining output, so there is no suffix prose and\n  no ambiguity about which object is canonical.\n- **Recovery:** `protocol_recovery.applied=true` with strategy\n  `cursor_trailing_object` is the expected success record, not a warning.\n  Provider, model, harness version, isolation mode, effective web-access state,\n  and the applied recovery are preserved in the canonical report.\n- **Disposition:** trustworthy review result. Treat the report as authoritative\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\n  against the contract, exact code, and same-scope siblings. Recovery does not\n  downgrade confidence in any finding and is not grounds for a rerun.\n- **Not a defect:** no issue to file.\n\n## Run B — operational blocker\n\n- **Shape:** three independent fail-closed triggers — the fence, the second\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\n- **Retry:** the CLI already spent its single configured protocol retry against\n  the same frozen bundle and same provider. Protocol is the only retried class,\n  and the budget is now exhausted for this run.\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\n  review result exists. It is not clean, not findings, and must not be reported\n  as either. There is no partial review to salvage from the fenced object.\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\n\n## Next action\n\n1. Report Run B to the user as an operational blocker, naming failure class\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\n   if the two runs cover different targets.\n2. If a rerun is authorized, freeze a new target and rerun with the same\n   provider (`cursor`), same target semantics, and same task contract. Never\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\n   a claimed consensus.\n3. Close out Run A on its own exit code: validate and dispose of each finding\n   at exit 1, or accept clean at exit 0.\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\n   version, OS/architecture, provider, isolation mode, and failure class only,\n   with no bundle, prompt, source, diff, private path, or raw provider output.\n"
+                },
+                "output": "File created successfully at: /Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir/classification.md (file state is current in your context — no need to Read it back)",
+                "is_error": false,
+                "parentToolUseId": null
+              }
+            ],
+            "numTurns": 7,
+            "durationMs": 44916,
+            "durationApiMs": 45962,
+            "modelUsage": {
+              "claude-haiku-4-5-20251001": {
+                "inputTokens": 640,
+                "outputTokens": 15,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0,
+                "webSearchRequests": 0,
+                "costUSD": 0.000715,
+                "contextWindow": 200000,
+                "maxOutputTokens": 32000,
+                "canonicalModel": "claude-haiku-4-5",
+                "provider": "firstParty"
+              },
+              "claude-opus-5": {
+                "inputTokens": 10,
+                "outputTokens": 2964,
+                "cacheReadInputTokens": 135554,
+                "cacheCreationInputTokens": 15620,
+                "webSearchRequests": 0,
+                "costUSD": 0.239552,
+                "contextWindow": 1000000,
+                "maxOutputTokens": 64000,
+                "canonicalModel": "claude-opus-5",
+                "provider": "firstParty"
+              }
+            },
+            "permissionDenials": [],
+            "terminalReason": "completed"
+          }
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "description": "Tests whether the one allowed Cursor trailing-object recovery is accepted while fenced, multiple, and suffix output remains a protocol failure without manual extraction or clean reinterpretation.",
+          "vars": {
+            "task": "# Classify two Cursor review outputs\n\nAn operator supplies two sanitized Cursor results:\n\n- Run A contains a short prose sentence followed by one canonical review object\n  that consumes the entire remaining output. Its report records\n  `protocol_recovery.applied=true` and strategy `cursor_trailing_object`.\n- Run B contains a fenced review object followed by another JSON object and\n  suffix prose. It exits 2 with failure class `protocol` after the configured\n  retry.\n\nWrite `classification.md` with the disposition of each run and the next action.\n",
+            "workdir": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir",
+            "manifest": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/manifest.json",
+            "sessionId": "c646ad59-4814-488c-b38d-8caeb5b9931e"
+          },
+          "assert": [
+            {
+              "type": "assert-set",
+              "threshold": 0.7,
+              "assert": [
+                {
+                  "type": "llm-rubric",
+                  "value": "Run A accepted: classification.md treats Run A as a valid review result rather than a protocol failure",
+                  "weight": 10
+                },
+                {
+                  "type": "llm-rubric",
+                  "value": "Recovery metadata recognized: The document identifies cursor_trailing_object as the recorded allowed local recovery strategy",
+                  "weight": 10
+                },
+                {
+                  "type": "llm-rubric",
+                  "value": "Single trailing object condition: The explanation notes that one canonical object must consume the remaining suffix",
+                  "weight": 10
+                },
+                {
+                  "type": "llm-rubric",
+                  "value": "Run B rejected: classification.md keeps Run B as exit 2 protocol failure",
+                  "weight": 10
+                },
+                {
+                  "type": "llm-rubric",
+                  "value": "Fences rejected: The explanation identifies fenced output as unsupported for recovery",
+                  "weight": 10
+                },
+                {
+                  "type": "llm-rubric",
+                  "value": "Multiple objects rejected: The explanation identifies the second JSON object as ambiguous or invalid",
+                  "weight": 10
+                },
+                {
+                  "type": "llm-rubric",
+                  "value": "Suffix prose rejected: The explanation identifies trailing prose after the object as invalid",
+                  "weight": 10
+                },
+                {
+                  "type": "llm-rubric",
+                  "value": "No manual extraction: The plan does not manually parse or copy one object out of Run B",
+                  "weight": 10
+                },
+                {
+                  "type": "llm-rubric",
+                  "value": "No clean reinterpretation: The plan does not convert Run B into a clean or findings result",
+                  "weight": 10
+                },
+                {
+                  "type": "llm-rubric",
+                  "value": "Failure blocker reported: The next action reports the protocol blocker or reruns only after an actual source/tool condition changes",
+                  "weight": 10
+                }
+              ]
+            },
+            {
+              "type": "skill-used",
+              "value": "slopguard"
+            }
+          ],
+          "options": {
+            "provider": "anthropic:messages:claude-sonnet-5",
+            "transform": "file:///Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/transform.ts"
+          },
+          "metadata": {}
+        },
+        "testIdx": 0,
+        "tokenUsage": {
+          "prompt": 10,
+          "completion": 2964,
+          "cached": 0,
+          "total": 2974,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 18799,
+            "prompt": 17571,
+            "completion": 1228,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {
+          "task": "# Classify two Cursor review outputs\n\nAn operator supplies two sanitized Cursor results:\n\n- Run A contains a short prose sentence followed by one canonical review object\n  that consumes the entire remaining output. Its report records\n  `protocol_recovery.applied=true` and strategy `cursor_trailing_object`.\n- Run B contains a fenced review object followed by another JSON object and\n  suffix prose. It exits 2 with failure class `protocol` after the configured\n  retry.\n\nWrite `classification.md` with the disposition of each run and the next action.\n",
+          "workdir": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir",
+          "manifest": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/manifest.json",
+          "sessionId": "c646ad59-4814-488c-b38d-8caeb5b9931e"
+        },
+        "metadata": {
+          "skillCalls": [
+            {
+              "name": "slopguard",
+              "input": {
+                "skill": "slopguard"
+              },
+              "is_error": false,
+              "source": "tool"
+            }
+          ],
+          "toolCalls": [
+            {
+              "id": "toolu_017sMXhrLKarDTBmpXM6GsDe",
+              "name": "Skill",
+              "input": {
+                "skill": "slopguard"
+              },
+              "output": "Launching skill: slopguard",
+              "is_error": false,
+              "parentToolUseId": null
+            },
+            {
+              "id": "toolu_019ER1H5SSGp7fhWH2og4hzq",
+              "name": "Read",
+              "input": {
+                "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir/.claude/skills/slopguard/references/results.md"
+              },
+              "output": "1\t# Results and failures\n2\t\n3\tTerminal and JSON output represent the same locally validated report. Review\n4\tresults go to stdout; progress and diagnostics go to stderr. When `review\n5\t--output json` is selected unambiguously, representable argument, flag, and\n6\tconfiguration failures also use the canonical failure report instead of prose.\n7\tHelp remains a separate human-readable surface.\n8\t\n9\t| Exit | Status | Meaning |\n10\t| ---: | --- | --- |\n11\t| 0 | `clean` | Valid review with no findings |\n12\t| 1 | `findings` | Valid review with one or more findings |\n13\t| 2 | `failure` | No trustworthy review result |\n14\t\n15\tEvery valid finding is reported regardless of confidence. Findings include\n16\tpriority `P0` through `P3`, confidence, category, and a repository-relative\n17\tlocation. The local validator rejects paths or line ranges outside the frozen\n18\ttarget.\n19\t\n20\tFailure classes are `config`, `target`, `secret_scan`, `capability`,\n21\t`authentication`, `timeout`, `cancelled`, `provider`, `protocol`,\n22\t`source_changed`, and `internal`. Do not reinterpret an operational failure as\n23\ta clean review.\n24\t\n25\tSlopguard performs at most one configured retry, only for a malformed protocol\n26\tresponse, using the same frozen bundle and provider. Authentication,\n27\tcapability, timeout, cancellation, and provider failures are not retried.\n28\tWhen the malformed response can be classified safely, the retry receives a\n29\trule-specific correction without provider output or repository content. Every\n30\tfinding location must fit within one individual reviewed line range; a concern\n31\tthat spans discontiguous hunks must be narrowed or split.\n32\t\n33\tCursor first requires one canonical review object. Its only recovery accepts\n34\tplain prose followed by exactly one canonical trailing object. Fences,\n35\tambiguous braces, JSON-value prefixes, multiple objects, and suffix prose fail\n36\tclosed. Successful local recovery is recorded as `cursor_trailing_object`.\n37\t\n38\tAfter provider execution metadata is resolved, operational failures preserve\n39\tthe provider, model, harness version, isolation mode, and effective web-access\n40\tstate plus any applicable protocol recovery in the canonical report. Earlier\n41\tfailures keep nullable metadata unset.\n42\t\n43\tAfter any provider return, slopguard recollects the target. A changed snapshot\n44\tproduces `source_changed`; discard the findings and rerun from a new freeze.\n45\t",
+              "is_error": false,
+              "parentToolUseId": null
+            },
+            {
+              "id": "toolu_01MJUFF7waBXjxxiSjtfYSWf",
+              "name": "Read",
+              "input": {
+                "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir/.claude/skills/slopguard/references/providers.md"
+              },
+              "output": "1\t# Provider selection\n2\t\n3\tSelect one provider for the entire review. Honor the user's provider, model, and\n4\treasoning-effort choices first, then trusted repository or account\n5\tconfiguration. Pass explicit user model and effort choices as CLI flags. If no\n6\tsource chooses a provider, select one installed harness that satisfies the task\n7\tand explain the choice. Do not run multiple providers, fall back after failure,\n8\tor claim consensus.\n9\t\n10\t| Engine | Default model | Strict authentication | Important constraint |\n11\t| --- | --- | --- | --- |\n12\t| `codex` | `gpt-5.6-sol` | `CODEX_API_KEY` or `OPENAI_API_KEY` | Native mode uses normal session-backed login |\n13\t| `claude` | `claude-opus-5` | `ANTHROPIC_API_KEY` | Effort supports `low`, `medium`, `high`, `xhigh`, or `max` |\n14\t| `cursor` | `cursor-grok-4.6-high-fast` | `CURSOR_API_KEY` | Explicit CLI selection implies web when unset; effort is encoded in the model ID |\n15\t| `grok` | `grok-4.6` | `XAI_API_KEY` | Native mode uses `grok login`; tools, memory, plans, and subagents stay disabled |\n16\t\n17\tFor Cursor, pass a requested compatible model with `--model` and never add\n18\t`--reasoning-effort`. If the user requests Cursor plus a separate effort value\n19\twithout a compatible model ID, report the unsupported combination instead of\n20\tguessing a model.\n21\t\n22\tAll adapters capability-probe the installed executable and use one explicit\n23\tmodel with no model fallback. A capability or authentication failure is an\n24\toperational result, not permission to switch engines.\n25\t\n26\tStrict mode runs with empty provider state and a constrained environment.\n27\tNative mode preserves the provider's normal environment and login but still\n28\truns the review in an empty temporary workspace with only the frozen bundle.\n29\tNative is the default; select strict explicitly when the stronger provider-state\n30\tboundary and a supported API key are required.\n31\t\n32\tWeb access defaults off. Codex enables its search surface only when authorized;\n33\tClaude exposes only WebSearch; Grok exposes only WebSearch and WebFetch. Cursor\n34\thas no documented per-run web disable, so explicit CLI selection makes an\n35\totherwise-unset value true; configured engine selection does not. Explicit\n36\tfalse still fails capability preflight.\n37\t",
+              "is_error": false,
+              "parentToolUseId": null
+            },
+            {
+              "id": "toolu_018vQ2KJ5GM8SEYSqkkSVXUv",
+              "name": "Bash",
+              "input": {
+                "command": "ls -la /Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir",
+                "description": "List workdir contents"
+              },
+              "output": "total 0\ndrwxr-xr-x@ 3 altay  staff   96 Aug 16 23:49 .\ndrwxr-xr-x@ 5 altay  staff  160 Aug 16 23:49 ..\ndrwxr-xr-x@ 3 altay  staff   96 Aug 16 23:49 .claude",
+              "is_error": false,
+              "parentToolUseId": null
+            },
+            {
+              "id": "toolu_01UxbXJPVYnqE1QRDyzeprMJ",
+              "name": "Write",
+              "input": {
+                "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir/classification.md",
+                "content": "# Cursor protocol classification\n\nBoth runs are Cursor, whose parser first requires one canonical review object.\nIts only recovery accepts plain prose followed by exactly one canonical\ntrailing object; fences, ambiguous braces, JSON-value prefixes, multiple\nobjects, and suffix prose fail closed.\n\n| Run | Output shape | Recovery | Disposition |\n| --- | --- | --- | --- |\n| A | prose prefix + one trailing canonical object | `cursor_trailing_object`, applied | Valid review — usable |\n| B | fenced object + second object + suffix prose | none possible | `protocol` failure, exit 2 — operational blocker |\n\n## Run A — valid review\n\n- **Shape:** matches the single documented recovery path exactly; the trailing\n  object consumes the entire remaining output, so there is no suffix prose and\n  no ambiguity about which object is canonical.\n- **Recovery:** `protocol_recovery.applied=true` with strategy\n  `cursor_trailing_object` is the expected success record, not a warning.\n  Provider, model, harness version, isolation mode, effective web-access state,\n  and the applied recovery are preserved in the canonical report.\n- **Disposition:** trustworthy review result. Treat the report as authoritative\n  and let its exit code drive closeout — 0 is clean, 1 is findings to validate\n  against the contract, exact code, and same-scope siblings. Recovery does not\n  downgrade confidence in any finding and is not grounds for a rerun.\n- **Not a defect:** no issue to file.\n\n## Run B — operational blocker\n\n- **Shape:** three independent fail-closed triggers — the fence, the second\n  JSON object, and the suffix prose. Any one of them alone is disqualifying.\n- **Retry:** the CLI already spent its single configured protocol retry against\n  the same frozen bundle and same provider. Protocol is the only retried class,\n  and the budget is now exhausted for this run.\n- **Disposition:** exit 2 with failure class `protocol` means no trustworthy\n  review result exists. It is not clean, not findings, and must not be reported\n  as either. There is no partial review to salvage from the fenced object.\n- **Not a defect:** the CLI behaved exactly as specified — fail closed, retry\n  once, then surface the failure class. Do not open a `uinaf/ffsstack` issue.\n\n## Next action\n\n1. Report Run B to the user as an operational blocker, naming failure class\n   `protocol` and the exhausted retry. Do not substitute Run A's result for it\n   if the two runs cover different targets.\n2. If a rerun is authorized, freeze a new target and rerun with the same\n   provider (`cursor`), same target semantics, and same task contract. Never\n   fall back to `codex`, `claude`, or `grok`, and never merge the two runs into\n   a claimed consensus.\n3. Close out Run A on its own exit code: validate and dispose of each finding\n   at exit 1, or accept clean at exit 0.\n4. If Run B keeps failing closed on reruns with the same shape, that is when it\n   becomes a reproducible defect worth a sanitized issue — sanitized steps, CLI\n   version, OS/architecture, provider, isolation mode, and failure class only,\n   with no bundle, prompt, source, diff, private path, or raw provider output.\n"
+              },
+              "output": "File created successfully at: /Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir/classification.md (file state is current in your context — no need to Read it back)",
+              "is_error": false,
+              "parentToolUseId": null
+            }
+          ],
+          "numTurns": 7,
+          "durationMs": 44916,
+          "durationApiMs": 45962,
+          "modelUsage": {
+            "claude-haiku-4-5-20251001": {
+              "inputTokens": 640,
+              "outputTokens": 15,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.000715,
+              "contextWindow": 200000,
+              "maxOutputTokens": 32000,
+              "canonicalModel": "claude-haiku-4-5",
+              "provider": "firstParty"
+            },
+            "claude-opus-5": {
+              "inputTokens": 10,
+              "outputTokens": 2964,
+              "cacheReadInputTokens": 135554,
+              "cacheCreationInputTokens": 15620,
+              "webSearchRequests": 0,
+              "costUSD": 0.239552,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 64000,
+              "canonicalModel": "claude-opus-5",
+              "provider": "firstParty"
+            }
+          },
+          "permissionDenials": [],
+          "terminalReason": "completed",
+          "_promptfooFileMetadata": {},
+          "sessionId": "c646ad59-4814-488c-b38d-8caeb5b9931e"
+        },
+        "failureReason": 0
+      }
+    ],
+    "stats": {
+      "successes": 1,
+      "failures": 0,
+      "errors": 0,
+      "tokenUsage": {
+        "prompt": 10,
+        "completion": 2964,
+        "cached": 0,
+        "total": 2974,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 18799,
+          "prompt": 17571,
+          "completion": 1228,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      },
+      "durationMs": 57216,
+      "evaluationDurationMs": 57216
+    }
+  },
+  "config": {
+    "tags": {},
+    "description": "slopguard/scenario-7",
+    "prompts": [
+      "{{task}}"
+    ],
+    "providers": [
+      {
+        "id": "anthropic:claude-agent-sdk",
+        "config": {
+          "model": "claude-opus-5",
+          "apiKeyRequired": false,
+          "working_dir": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir",
+          "setting_sources": [
+            "project"
+          ],
+          "skills": [
+            "slopguard"
+          ],
+          "permission_mode": "acceptEdits",
+          "append_allowed_tools": [
+            "Read",
+            "Write",
+            "Edit",
+            "Glob",
+            "Grep"
+          ],
+          "max_turns": 50
+        }
+      }
+    ],
+    "tests": [
+      {
+        "description": "Tests whether the one allowed Cursor trailing-object recovery is accepted while fenced, multiple, and suffix output remains a protocol failure without manual extraction or clean reinterpretation.",
+        "vars": {
+          "task": "# Classify two Cursor review outputs\n\nAn operator supplies two sanitized Cursor results:\n\n- Run A contains a short prose sentence followed by one canonical review object\n  that consumes the entire remaining output. Its report records\n  `protocol_recovery.applied=true` and strategy `cursor_trailing_object`.\n- Run B contains a fenced review object followed by another JSON object and\n  suffix prose. It exits 2 with failure class `protocol` after the configured\n  retry.\n\nWrite `classification.md` with the disposition of each run and the next action.\n",
+          "workdir": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/workdir",
+          "manifest": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopguard--scenario-7/manifest.json"
+        },
+        "assert": [
+          {
+            "type": "assert-set",
+            "threshold": 0.7,
+            "assert": [
+              {
+                "type": "llm-rubric",
+                "value": "Run A accepted: classification.md treats Run A as a valid review result rather than a protocol failure",
+                "weight": 10
+              },
+              {
+                "type": "llm-rubric",
+                "value": "Recovery metadata recognized: The document identifies cursor_trailing_object as the recorded allowed local recovery strategy",
+                "weight": 10
+              },
+              {
+                "type": "llm-rubric",
+                "value": "Single trailing object condition: The explanation notes that one canonical object must consume the remaining suffix",
+                "weight": 10
+              },
+              {
+                "type": "llm-rubric",
+                "value": "Run B rejected: classification.md keeps Run B as exit 2 protocol failure",
+                "weight": 10
+              },
+              {
+                "type": "llm-rubric",
+                "value": "Fences rejected: The explanation identifies fenced output as unsupported for recovery",
+                "weight": 10
+              },
+              {
+                "type": "llm-rubric",
+                "value": "Multiple objects rejected: The explanation identifies the second JSON object as ambiguous or invalid",
+                "weight": 10
+              },
+              {
+                "type": "llm-rubric",
+                "value": "Suffix prose rejected: The explanation identifies trailing prose after the object as invalid",
+                "weight": 10
+              },
+              {
+                "type": "llm-rubric",
+                "value": "No manual extraction: The plan does not manually parse or copy one object out of Run B",
+                "weight": 10
+              },
+              {
+                "type": "llm-rubric",
+                "value": "No clean reinterpretation: The plan does not convert Run B into a clean or findings result",
+                "weight": 10
+              },
+              {
+                "type": "llm-rubric",
+                "value": "Failure blocker reported: The next action reports the protocol blocker or reruns only after an actual source/tool condition changes",
+                "weight": 10
+              }
+            ]
+          },
+          {
+            "type": "skill-used",
+            "value": "slopguard"
+          }
+        ]
+      }
+    ],
+    "env": {},
+    "defaultTest": {
+      "options": {
+        "provider": "anthropic:messages:claude-sonnet-5",
+        "transform": "file:///Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/transform.ts"
+      },
+      "vars": {},
+      "assert": [],
+      "metadata": {}
+    },
+    "outputPath": [
+      "../../results/slopguard--scenario-7.json"
+    ],
+    "extensions": [],
+    "metadata": {},
+    "evaluateOptions": {}
+  },
+  "shareableUrl": null,
+  "metadata": {
+    "promptfooVersion": "0.122.0",
+    "nodeVersion": "v26.7.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "exportedAt": "2026-08-16T20:50:44.657Z",
+    "evaluationCreatedAt": "2026-08-16T20:49:47.378Z"
+  },
+  "vars": [
+    "task",
+    "workdir",
+    "manifest"
+  ],
+  "runtimeOptions": {
+    "eventSource": "cli",
+    "showProgressBar": false,
+    "repeat": 1,
+    "maxConcurrency": 4,
+    "cache": false
+  }
+}

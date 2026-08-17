@@ -1,0 +1,8 @@
+node_modules/
+
+# Attempt evidence is uploaded by the runner, never committed.
+artifacts/
+
+# No secret file is part of this repository's contract; the runner injects identity.
+.env
+.env.*

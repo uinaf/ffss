@@ -1,0 +1,34 @@
+{
+  "schema": "agent-qa-scenarios/1",
+  "title": "Playback regression sweep",
+  "notes": "Copy this to artifacts/<task>/<attempt>/scenarios.json and edit. Evidence paths are relative to that directory.",
+  "scenarios": [
+    {
+      "id": "playback-resumes-after-network-loss",
+      "description": "Resume position survives a dropped connection.",
+      "result": "failed",
+      "producer": "playwright@1.55 chromium 129",
+      "started_at": "2026-08-17T09:00:00Z",
+      "finished_at": "2026-08-17T09:02:11Z",
+      "evidence": [
+        { "path": "evidence/playback-resume.webm", "captured_at": "2026-08-17T09:01:40Z" },
+        { "path": "evidence/playback-resume.png", "captured_at": "2026-08-17T09:01:52Z" },
+        "evidence/browser-console.log"
+      ]
+    },
+    {
+      "id": "library-sort-by-added",
+      "description": "Sorting the library by date added keeps focus order.",
+      "result": "passed",
+      "producer": "playwright@1.55 chromium 129",
+      "evidence": ["evidence/library-sort.png", "evidence/library-sort-trace.json"]
+    },
+    {
+      "id": "offline-download",
+      "description": "Not reachable on this build; the download service is unavailable.",
+      "result": "skipped",
+      "producer": "manual",
+      "evidence": []
+    }
+  ]
+}

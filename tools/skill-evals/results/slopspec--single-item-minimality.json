@@ -1,0 +1,1238 @@
+{
+  "evalId": "eval-RKI-2026-08-16T16:22:47",
+  "results": {
+    "version": 3,
+    "timestamp": "2026-08-16T16:22:47.243Z",
+    "prompts": [
+      {
+        "id": "ec1aefd522ceea4dbc16cd07da0dccd9fce23abef66cb24e561eb6956c67f536",
+        "raw": "{{task}}",
+        "label": "{{task}}",
+        "provider": "anthropic:claude-agent-sdk",
+        "metrics": {
+          "score": 0.9564356435643564,
+          "testPassCount": 1,
+          "testFailCount": 0,
+          "testErrorCount": 0,
+          "assertPassCount": 8,
+          "assertFailCount": 0,
+          "totalLatencyMs": 55742,
+          "tokenUsage": {
+            "prompt": 12,
+            "completion": 3734,
+            "cached": 0,
+            "total": 3746,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 3754,
+              "prompt": 16,
+              "completion": 3738,
+              "cached": 0,
+              "numRequests": 0,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          },
+          "namedScores": {},
+          "namedScoresCount": {},
+          "namedScoreWeights": {},
+          "cost": 0.3488185
+        }
+      }
+    ],
+    "results": [
+      {
+        "cost": 0.3488185,
+        "gradingResult": {
+          "pass": true,
+          "score": 0.9564356435643564,
+          "reason": "Aggregate score 0.96 ≥ 0.7 threshold",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 3754,
+            "prompt": 16,
+            "completion": 3738,
+            "cached": 0,
+            "numRequests": 0
+          },
+          "componentResults": [
+            {
+              "pass": true,
+              "score": 1,
+              "reason": "Observed required skill(s): slopspec. Actual skills: slopspec (tool)",
+              "assertion": {
+                "type": "skill-used",
+                "value": "slopspec",
+                "weight": 1
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "One issue: planning-result.md creates exactly one GitHub issue and no parent, epic, or child issue set",
+                "weight": 24
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "planning-result.md contains a single issue draft (\"Rename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\") with one title and one body. It explicitly states \"Shape: one issue... No epic, no child tickets, no checked-in plan file\" and the handoff records \"children: none\". No parent, epic, or child issue set appears anywhere.",
+              "tokensUsed": {
+                "total": 386,
+                "prompt": 2,
+                "completion": 384,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "acceptedPrediction": 0,
+                  "rejectedPrediction": 0
+                }
+              },
+              "metadata": {
+                "skillCalls": [],
+                "toolCalls": [
+                  {
+                    "id": "toolu_01RozHUBVf46DmQ3NZ6tyS3c",
+                    "name": "StructuredOutput",
+                    "input": {
+                      "reason": "planning-result.md contains a single issue draft (\"Rename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\") with one title and one body. It explicitly states \"Shape: one issue... No epic, no child tickets, no checked-in plan file\" and the handoff records \"children: none\". No parent, epic, or child issue set appears anywhere.",
+                      "pass": true,
+                      "score": 1
+                    },
+                    "output": "Structured output provided successfully",
+                    "is_error": false,
+                    "parentToolUseId": null
+                  }
+                ],
+                "numTurns": 2,
+                "durationMs": 6746,
+                "durationApiMs": 7681,
+                "modelUsage": {
+                  "claude-haiku-4-5-20251001": {
+                    "inputTokens": 1986,
+                    "outputTokens": 14,
+                    "cacheReadInputTokens": 0,
+                    "cacheCreationInputTokens": 0,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.002056,
+                    "contextWindow": 200000,
+                    "maxOutputTokens": 32000,
+                    "canonicalModel": "claude-haiku-4-5",
+                    "provider": "firstParty"
+                  },
+                  "claude-opus-5": {
+                    "inputTokens": 2,
+                    "outputTokens": 384,
+                    "cacheReadInputTokens": 16166,
+                    "cacheCreationInputTokens": 14350,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.16119299999999998,
+                    "contextWindow": 1000000,
+                    "maxOutputTokens": 64000,
+                    "canonicalModel": "claude-opus-5",
+                    "provider": "firstParty"
+                  }
+                },
+                "permissionDenials": [],
+                "terminalReason": "completed",
+                "structuredOutput": {
+                  "reason": "planning-result.md contains a single issue draft (\"Rename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\") with one title and one body. It explicitly states \"Shape: one issue... No epic, no child tickets, no checked-in plan file\" and the handoff records \"children: none\". No parent, epic, or child issue set appears anywhere.",
+                  "pass": true,
+                  "score": 1
+                },
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `planning-result.md` — one issue draft, not published.\\n\\n- **Destination:** GitHub Issues in this repo (`AGENTS.md:3`), unambiguous and user-authorized.\\n- **Shape:** single issue. Rename + one-release alias + docs + compat test land and verify as one change; child tickets could not land green independently.\\n- **Label:** `ready` — acceptance criteria and verification are both present, the condition `AGENTS.md:3` requires.\\n- **Body:** Outcome, Context, Decisions, 5 acceptance criteria, 4 non-goals, Verification, Risks/stop conditions. No `Delivery shape` section since there are no children.\\n- **Gap:** no source tree in this workdir, so no file paths are cited — the risk section directs the implementer to grep both key names instead.\\n\\n=== OUTPUT FILE: planning-result.md ===\\n# Planning result\\n\\n**Destination:** GitHub Issues in this repository (`AGENTS.md:3` — \\\"Engineering backlog: GitHub Issues in this repository\\\").\\n\\n**Shape:** one issue. The rename, the one-release alias, the reference update, and the compatibility test are one cohesive change that lands and verifies together; splitting them would produce tickets that cannot land green independently. No epic, no child tickets, no checked-in plan file.\\n\\n**Labels:** `ready` — acceptance criteria and verification are both complete, which is the condition `AGENTS.md:3` sets for that label.\\n\\n**Not published.** Draft only, per the request to produce this file rather than write to the tracker.\\n\\n---\\n\\n## Issue title\\n\\n```text\\nRename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\\n```\\n\\n## Issue body\\n\\n```markdown\\n## Outcome\\n\\nOperators configure the cache lifetime as `CACHE_MAX_AGE_SECONDS`. Existing\\ndeployments that still set `CACHE_TTL_SECONDS` keep working for one release and\\nget the deprecation warning instead of a silent behavior change.\\n\\n## Context\\n\\n`CACHE_TTL_SECONDS` is the current key. The name is being changed to\\n`CACHE_MAX_AGE_SECONDS`. Config consumers already have a deprecation warning\\npath, so this needs no new warning mechanism.\\n\\n## Decisions and constraints\\n\\n- New canonical key: `CACHE_MAX_AGE_SECONDS`.\\n- `CACHE_TTL_SECONDS` remains accepted for exactly one release, then is removed\\n  in a follow-up.\\n- The old key emits the existing deprecation warning; do not add a new warning\\n  mechanism or logging channel.\\n- Same units and semantics (seconds); this is a rename, not a behavior change.\\n\\n## Acceptance criteria\\n\\n- [ ] `CACHE_MAX_AGE_SECONDS` sets the cache lifetime.\\n- [ ] `CACHE_TTL_SECONDS` still sets the same value and emits the existing\\n      deprecation warning naming `CACHE_MAX_AGE_SECONDS` as the replacement.\\n- [ ] When both are set, `CACHE_MAX_AGE_SECONDS` wins and the deprecation\\n      warning is still emitted.\\n- [ ] Setting neither leaves the current default unchanged.\\n- [ ] The configuration reference documents `CACHE_MAX_AGE_SECONDS` and marks\\n      `CACHE_TTL_SECONDS` as deprecated with its removal release.\\n\\n## Non-goals\\n\\n- Removing `CACHE_TTL_SECONDS` — that is the follow-up after this release.\\n- Renaming any other configuration key.\\n- Changing the cache lifetime default, units, or eviction behavior.\\n- Changing how deprecation warnings are emitted or formatted.\\n\\n## Verification\\n\\n- Compatibility test covering both names: new key alone, old key alone (warning\\n  asserted), both set (new key wins, warning asserted).\\n- Repository lint, type, and test gates pass.\\n- Configuration reference renders with the new key and the deprecation note.\\n\\n## Risks and stop conditions\\n\\n- Risk: the key is read in more places than the config loader (deploy manifests,\\n  charts, examples, CI env). Grep for both names and update every occurrence.\\n- Stop if the old key's value is consumed with different units or semantics\\n  anywhere — that makes this more than a rename and needs a decision before\\n  proceeding.\\n- Stop if no existing deprecation warning path exists; do not invent one.\\n```\\n\\n---\\n\\n## Handoff\\n\\n```text\\ncanonical: <issue-not-yet-created>\\nchildren: none\\nfrontier: canonical issue (no blockers)\\ngaps: file paths for the config loader, configuration reference, and test suite\\n      not verified — this workdir contains no source tree\\nnext: publish the issue above with label `ready`\\n```\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nOne issue: planning-result.md creates exactly one GitHub issue and no parent, epic, or child issue set\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "Outcome captured: The issue describes the configuration rename and one-release compatibility behavior",
+                "weight": 14
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The drafted issue explicitly captures both elements: the rename from `CACHE_TTL_SECONDS` to `CACHE_MAX_AGE_SECONDS` (title, Outcome, Context, Decisions) and the one-release compatibility behavior — old key still accepted for exactly one release, emits the existing deprecation warning, new key wins when both are set, with removal deferred to a follow-up (Non-goals) and covered by acceptance criteria and a compatibility test.",
+              "tokensUsed": {
+                "total": 485,
+                "prompt": 2,
+                "completion": 483,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "acceptedPrediction": 0,
+                  "rejectedPrediction": 0
+                }
+              },
+              "metadata": {
+                "skillCalls": [],
+                "toolCalls": [
+                  {
+                    "id": "toolu_01PHorwgevPFagcAdgdsgsLv",
+                    "name": "StructuredOutput",
+                    "input": {
+                      "reason": "The drafted issue explicitly captures both elements: the rename from `CACHE_TTL_SECONDS` to `CACHE_MAX_AGE_SECONDS` (title, Outcome, Context, Decisions) and the one-release compatibility behavior — old key still accepted for exactly one release, emits the existing deprecation warning, new key wins when both are set, with removal deferred to a follow-up (Non-goals) and covered by acceptance criteria and a compatibility test.",
+                      "pass": true,
+                      "score": 1
+                    },
+                    "output": "Structured output provided successfully",
+                    "is_error": false,
+                    "parentToolUseId": null
+                  }
+                ],
+                "numTurns": 2,
+                "durationMs": 6224,
+                "durationApiMs": 7331,
+                "modelUsage": {
+                  "claude-haiku-4-5-20251001": {
+                    "inputTokens": 1979,
+                    "outputTokens": 15,
+                    "cacheReadInputTokens": 0,
+                    "cacheCreationInputTokens": 0,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.002054,
+                    "contextWindow": 200000,
+                    "maxOutputTokens": 32000,
+                    "canonicalModel": "claude-haiku-4-5",
+                    "provider": "firstParty"
+                  },
+                  "claude-opus-5": {
+                    "inputTokens": 2,
+                    "outputTokens": 483,
+                    "cacheReadInputTokens": 16166,
+                    "cacheCreationInputTokens": 14343,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.163598,
+                    "contextWindow": 1000000,
+                    "maxOutputTokens": 64000,
+                    "canonicalModel": "claude-opus-5",
+                    "provider": "firstParty"
+                  }
+                },
+                "permissionDenials": [],
+                "terminalReason": "completed",
+                "structuredOutput": {
+                  "reason": "The drafted issue explicitly captures both elements: the rename from `CACHE_TTL_SECONDS` to `CACHE_MAX_AGE_SECONDS` (title, Outcome, Context, Decisions) and the one-release compatibility behavior — old key still accepted for exactly one release, emits the existing deprecation warning, new key wins when both are set, with removal deferred to a follow-up (Non-goals) and covered by acceptance criteria and a compatibility test.",
+                  "pass": true,
+                  "score": 1
+                },
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `planning-result.md` — one issue draft, not published.\\n\\n- **Destination:** GitHub Issues in this repo (`AGENTS.md:3`), unambiguous and user-authorized.\\n- **Shape:** single issue. Rename + one-release alias + docs + compat test land and verify as one change; child tickets could not land green independently.\\n- **Label:** `ready` — acceptance criteria and verification are both present, the condition `AGENTS.md:3` requires.\\n- **Body:** Outcome, Context, Decisions, 5 acceptance criteria, 4 non-goals, Verification, Risks/stop conditions. No `Delivery shape` section since there are no children.\\n- **Gap:** no source tree in this workdir, so no file paths are cited — the risk section directs the implementer to grep both key names instead.\\n\\n=== OUTPUT FILE: planning-result.md ===\\n# Planning result\\n\\n**Destination:** GitHub Issues in this repository (`AGENTS.md:3` — \\\"Engineering backlog: GitHub Issues in this repository\\\").\\n\\n**Shape:** one issue. The rename, the one-release alias, the reference update, and the compatibility test are one cohesive change that lands and verifies together; splitting them would produce tickets that cannot land green independently. No epic, no child tickets, no checked-in plan file.\\n\\n**Labels:** `ready` — acceptance criteria and verification are both complete, which is the condition `AGENTS.md:3` sets for that label.\\n\\n**Not published.** Draft only, per the request to produce this file rather than write to the tracker.\\n\\n---\\n\\n## Issue title\\n\\n```text\\nRename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\\n```\\n\\n## Issue body\\n\\n```markdown\\n## Outcome\\n\\nOperators configure the cache lifetime as `CACHE_MAX_AGE_SECONDS`. Existing\\ndeployments that still set `CACHE_TTL_SECONDS` keep working for one release and\\nget the deprecation warning instead of a silent behavior change.\\n\\n## Context\\n\\n`CACHE_TTL_SECONDS` is the current key. The name is being changed to\\n`CACHE_MAX_AGE_SECONDS`. Config consumers already have a deprecation warning\\npath, so this needs no new warning mechanism.\\n\\n## Decisions and constraints\\n\\n- New canonical key: `CACHE_MAX_AGE_SECONDS`.\\n- `CACHE_TTL_SECONDS` remains accepted for exactly one release, then is removed\\n  in a follow-up.\\n- The old key emits the existing deprecation warning; do not add a new warning\\n  mechanism or logging channel.\\n- Same units and semantics (seconds); this is a rename, not a behavior change.\\n\\n## Acceptance criteria\\n\\n- [ ] `CACHE_MAX_AGE_SECONDS` sets the cache lifetime.\\n- [ ] `CACHE_TTL_SECONDS` still sets the same value and emits the existing\\n      deprecation warning naming `CACHE_MAX_AGE_SECONDS` as the replacement.\\n- [ ] When both are set, `CACHE_MAX_AGE_SECONDS` wins and the deprecation\\n      warning is still emitted.\\n- [ ] Setting neither leaves the current default unchanged.\\n- [ ] The configuration reference documents `CACHE_MAX_AGE_SECONDS` and marks\\n      `CACHE_TTL_SECONDS` as deprecated with its removal release.\\n\\n## Non-goals\\n\\n- Removing `CACHE_TTL_SECONDS` — that is the follow-up after this release.\\n- Renaming any other configuration key.\\n- Changing the cache lifetime default, units, or eviction behavior.\\n- Changing how deprecation warnings are emitted or formatted.\\n\\n## Verification\\n\\n- Compatibility test covering both names: new key alone, old key alone (warning\\n  asserted), both set (new key wins, warning asserted).\\n- Repository lint, type, and test gates pass.\\n- Configuration reference renders with the new key and the deprecation note.\\n\\n## Risks and stop conditions\\n\\n- Risk: the key is read in more places than the config loader (deploy manifests,\\n  charts, examples, CI env). Grep for both names and update every occurrence.\\n- Stop if the old key's value is consumed with different units or semantics\\n  anywhere — that makes this more than a rename and needs a decision before\\n  proceeding.\\n- Stop if no existing deprecation warning path exists; do not invent one.\\n```\\n\\n---\\n\\n## Handoff\\n\\n```text\\ncanonical: <issue-not-yet-created>\\nchildren: none\\nfrontier: canonical issue (no blockers)\\ngaps: file paths for the config loader, configuration reference, and test suite\\n      not verified — this workdir contains no source tree\\nnext: publish the issue above with label `ready`\\n```\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nOutcome captured: The issue describes the configuration rename and one-release compatibility behavior\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "Acceptance criteria complete: Acceptance criteria cover the new key, old-key compatibility, deprecation warning, documentation update, and compatibility test",
+                "weight": 22
+              },
+              "pass": true,
+              "score": 0.8,
+              "reason": "The draft covers all five required areas. Acceptance criteria explicitly cover the new key (AC1: `CACHE_MAX_AGE_SECONDS` sets the cache lifetime), old-key compatibility (AC2: old key still sets the same value; AC3: precedence when both are set; AC4: default unchanged when neither is set), the deprecation warning (AC2/AC3: existing warning naming the replacement), and the documentation update (AC5: configuration reference documents the new key and marks the old one deprecated with removal release). The compatibility test is specified — covering new key alone, old key alone with warning asserted, and both set — but it sits under the Verification section rather than in the acceptance-criteria checklist. That is a reasonable placement for a test artifact and the coverage is concrete and complete, so the requirement is substantively met, with a minor deduction for it not being listed as an acceptance criterion itself.",
+              "tokensUsed": {
+                "total": 1129,
+                "prompt": 2,
+                "completion": 1127,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "acceptedPrediction": 0,
+                  "rejectedPrediction": 0
+                }
+              },
+              "metadata": {
+                "skillCalls": [],
+                "toolCalls": [
+                  {
+                    "id": "toolu_01DKWHU96HkfAUSdFa3QBhrk",
+                    "name": "StructuredOutput",
+                    "input": {
+                      "pass": true,
+                      "reason": "The draft covers all five required areas. Acceptance criteria explicitly cover the new key (AC1: `CACHE_MAX_AGE_SECONDS` sets the cache lifetime), old-key compatibility (AC2: old key still sets the same value; AC3: precedence when both are set; AC4: default unchanged when neither is set), the deprecation warning (AC2/AC3: existing warning naming the replacement), and the documentation update (AC5: configuration reference documents the new key and marks the old one deprecated with removal release). The compatibility test is specified — covering new key alone, old key alone with warning asserted, and both set — but it sits under the Verification section rather than in the acceptance-criteria checklist. That is a reasonable placement for a test artifact and the coverage is concrete and complete, so the requirement is substantively met, with a minor deduction for it not being listed as an acceptance criterion itself.",
+                      "score": 0.8
+                    },
+                    "output": "Structured output provided successfully",
+                    "is_error": false,
+                    "parentToolUseId": null
+                  }
+                ],
+                "numTurns": 2,
+                "durationMs": 15056,
+                "durationApiMs": 16129,
+                "modelUsage": {
+                  "claude-haiku-4-5-20251001": {
+                    "inputTokens": 1992,
+                    "outputTokens": 29,
+                    "cacheReadInputTokens": 0,
+                    "cacheCreationInputTokens": 0,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.002137,
+                    "contextWindow": 200000,
+                    "maxOutputTokens": 32000,
+                    "canonicalModel": "claude-haiku-4-5",
+                    "provider": "firstParty"
+                  },
+                  "claude-opus-5": {
+                    "inputTokens": 2,
+                    "outputTokens": 1127,
+                    "cacheReadInputTokens": 16166,
+                    "cacheCreationInputTokens": 14363,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.179898,
+                    "contextWindow": 1000000,
+                    "maxOutputTokens": 64000,
+                    "canonicalModel": "claude-opus-5",
+                    "provider": "firstParty"
+                  }
+                },
+                "permissionDenials": [],
+                "terminalReason": "completed",
+                "structuredOutput": {
+                  "pass": true,
+                  "reason": "The draft covers all five required areas. Acceptance criteria explicitly cover the new key (AC1: `CACHE_MAX_AGE_SECONDS` sets the cache lifetime), old-key compatibility (AC2: old key still sets the same value; AC3: precedence when both are set; AC4: default unchanged when neither is set), the deprecation warning (AC2/AC3: existing warning naming the replacement), and the documentation update (AC5: configuration reference documents the new key and marks the old one deprecated with removal release). The compatibility test is specified — covering new key alone, old key alone with warning asserted, and both set — but it sits under the Verification section rather than in the acceptance-criteria checklist. That is a reasonable placement for a test artifact and the coverage is concrete and complete, so the requirement is substantively met, with a minor deduction for it not being listed as an acceptance criterion itself.",
+                  "score": 0.8
+                },
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `planning-result.md` — one issue draft, not published.\\n\\n- **Destination:** GitHub Issues in this repo (`AGENTS.md:3`), unambiguous and user-authorized.\\n- **Shape:** single issue. Rename + one-release alias + docs + compat test land and verify as one change; child tickets could not land green independently.\\n- **Label:** `ready` — acceptance criteria and verification are both present, the condition `AGENTS.md:3` requires.\\n- **Body:** Outcome, Context, Decisions, 5 acceptance criteria, 4 non-goals, Verification, Risks/stop conditions. No `Delivery shape` section since there are no children.\\n- **Gap:** no source tree in this workdir, so no file paths are cited — the risk section directs the implementer to grep both key names instead.\\n\\n=== OUTPUT FILE: planning-result.md ===\\n# Planning result\\n\\n**Destination:** GitHub Issues in this repository (`AGENTS.md:3` — \\\"Engineering backlog: GitHub Issues in this repository\\\").\\n\\n**Shape:** one issue. The rename, the one-release alias, the reference update, and the compatibility test are one cohesive change that lands and verifies together; splitting them would produce tickets that cannot land green independently. No epic, no child tickets, no checked-in plan file.\\n\\n**Labels:** `ready` — acceptance criteria and verification are both complete, which is the condition `AGENTS.md:3` sets for that label.\\n\\n**Not published.** Draft only, per the request to produce this file rather than write to the tracker.\\n\\n---\\n\\n## Issue title\\n\\n```text\\nRename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\\n```\\n\\n## Issue body\\n\\n```markdown\\n## Outcome\\n\\nOperators configure the cache lifetime as `CACHE_MAX_AGE_SECONDS`. Existing\\ndeployments that still set `CACHE_TTL_SECONDS` keep working for one release and\\nget the deprecation warning instead of a silent behavior change.\\n\\n## Context\\n\\n`CACHE_TTL_SECONDS` is the current key. The name is being changed to\\n`CACHE_MAX_AGE_SECONDS`. Config consumers already have a deprecation warning\\npath, so this needs no new warning mechanism.\\n\\n## Decisions and constraints\\n\\n- New canonical key: `CACHE_MAX_AGE_SECONDS`.\\n- `CACHE_TTL_SECONDS` remains accepted for exactly one release, then is removed\\n  in a follow-up.\\n- The old key emits the existing deprecation warning; do not add a new warning\\n  mechanism or logging channel.\\n- Same units and semantics (seconds); this is a rename, not a behavior change.\\n\\n## Acceptance criteria\\n\\n- [ ] `CACHE_MAX_AGE_SECONDS` sets the cache lifetime.\\n- [ ] `CACHE_TTL_SECONDS` still sets the same value and emits the existing\\n      deprecation warning naming `CACHE_MAX_AGE_SECONDS` as the replacement.\\n- [ ] When both are set, `CACHE_MAX_AGE_SECONDS` wins and the deprecation\\n      warning is still emitted.\\n- [ ] Setting neither leaves the current default unchanged.\\n- [ ] The configuration reference documents `CACHE_MAX_AGE_SECONDS` and marks\\n      `CACHE_TTL_SECONDS` as deprecated with its removal release.\\n\\n## Non-goals\\n\\n- Removing `CACHE_TTL_SECONDS` — that is the follow-up after this release.\\n- Renaming any other configuration key.\\n- Changing the cache lifetime default, units, or eviction behavior.\\n- Changing how deprecation warnings are emitted or formatted.\\n\\n## Verification\\n\\n- Compatibility test covering both names: new key alone, old key alone (warning\\n  asserted), both set (new key wins, warning asserted).\\n- Repository lint, type, and test gates pass.\\n- Configuration reference renders with the new key and the deprecation note.\\n\\n## Risks and stop conditions\\n\\n- Risk: the key is read in more places than the config loader (deploy manifests,\\n  charts, examples, CI env). Grep for both names and update every occurrence.\\n- Stop if the old key's value is consumed with different units or semantics\\n  anywhere — that makes this more than a rename and needs a decision before\\n  proceeding.\\n- Stop if no existing deprecation warning path exists; do not invent one.\\n```\\n\\n---\\n\\n## Handoff\\n\\n```text\\ncanonical: <issue-not-yet-created>\\nchildren: none\\nfrontier: canonical issue (no blockers)\\ngaps: file paths for the config loader, configuration reference, and test suite\\n      not verified — this workdir contains no source tree\\nnext: publish the issue above with label `ready`\\n```\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nAcceptance criteria complete: Acceptance criteria cover the new key, old-key compatibility, deprecation warning, documentation update, and compatibility test\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "Verification captured: The issue includes verification expectations rather than only an implementation checklist",
+                "weight": 14
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The drafted issue body contains an explicit \"## Verification\" section listing a compatibility test covering all three cases (new key alone, old key alone with warning asserted, both set with new key winning), repository lint/type/test gates passing, and the configuration reference rendering with the new key and deprecation note. Acceptance criteria are stated separately and are observable behaviors, and the report bullets also call out that verification is present. This goes beyond a bare implementation checklist.",
+              "tokensUsed": {
+                "total": 330,
+                "prompt": 2,
+                "completion": 328,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "acceptedPrediction": 0,
+                  "rejectedPrediction": 0
+                }
+              },
+              "metadata": {
+                "skillCalls": [],
+                "toolCalls": [
+                  {
+                    "id": "toolu_01UYpTpfgAeV81ZU61eXW7Rr",
+                    "name": "StructuredOutput",
+                    "input": {
+                      "reason": "The drafted issue body contains an explicit \"## Verification\" section listing a compatibility test covering all three cases (new key alone, old key alone with warning asserted, both set with new key winning), repository lint/type/test gates passing, and the configuration reference rendering with the new key and deprecation note. Acceptance criteria are stated separately and are observable behaviors, and the report bullets also call out that verification is present. This goes beyond a bare implementation checklist.",
+                      "pass": true,
+                      "score": 1
+                    },
+                    "output": "Structured output provided successfully",
+                    "is_error": false,
+                    "parentToolUseId": null
+                  }
+                ],
+                "numTurns": 2,
+                "durationMs": 5574,
+                "durationApiMs": 6797,
+                "modelUsage": {
+                  "claude-haiku-4-5-20251001": {
+                    "inputTokens": 1979,
+                    "outputTokens": 15,
+                    "cacheReadInputTokens": 0,
+                    "cacheCreationInputTokens": 0,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.002054,
+                    "contextWindow": 200000,
+                    "maxOutputTokens": 32000,
+                    "canonicalModel": "claude-haiku-4-5",
+                    "provider": "firstParty"
+                  },
+                  "claude-opus-5": {
+                    "inputTokens": 2,
+                    "outputTokens": 328,
+                    "cacheReadInputTokens": 16166,
+                    "cacheCreationInputTokens": 14341,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.15970299999999998,
+                    "contextWindow": 1000000,
+                    "maxOutputTokens": 64000,
+                    "canonicalModel": "claude-opus-5",
+                    "provider": "firstParty"
+                  }
+                },
+                "permissionDenials": [],
+                "terminalReason": "completed",
+                "structuredOutput": {
+                  "reason": "The drafted issue body contains an explicit \"## Verification\" section listing a compatibility test covering all three cases (new key alone, old key alone with warning asserted, both set with new key winning), repository lint/type/test gates passing, and the configuration reference rendering with the new key and deprecation note. Acceptance criteria are stated separately and are observable behaviors, and the report bullets also call out that verification is present. This goes beyond a bare implementation checklist.",
+                  "pass": true,
+                  "score": 1
+                },
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `planning-result.md` — one issue draft, not published.\\n\\n- **Destination:** GitHub Issues in this repo (`AGENTS.md:3`), unambiguous and user-authorized.\\n- **Shape:** single issue. Rename + one-release alias + docs + compat test land and verify as one change; child tickets could not land green independently.\\n- **Label:** `ready` — acceptance criteria and verification are both present, the condition `AGENTS.md:3` requires.\\n- **Body:** Outcome, Context, Decisions, 5 acceptance criteria, 4 non-goals, Verification, Risks/stop conditions. No `Delivery shape` section since there are no children.\\n- **Gap:** no source tree in this workdir, so no file paths are cited — the risk section directs the implementer to grep both key names instead.\\n\\n=== OUTPUT FILE: planning-result.md ===\\n# Planning result\\n\\n**Destination:** GitHub Issues in this repository (`AGENTS.md:3` — \\\"Engineering backlog: GitHub Issues in this repository\\\").\\n\\n**Shape:** one issue. The rename, the one-release alias, the reference update, and the compatibility test are one cohesive change that lands and verifies together; splitting them would produce tickets that cannot land green independently. No epic, no child tickets, no checked-in plan file.\\n\\n**Labels:** `ready` — acceptance criteria and verification are both complete, which is the condition `AGENTS.md:3` sets for that label.\\n\\n**Not published.** Draft only, per the request to produce this file rather than write to the tracker.\\n\\n---\\n\\n## Issue title\\n\\n```text\\nRename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\\n```\\n\\n## Issue body\\n\\n```markdown\\n## Outcome\\n\\nOperators configure the cache lifetime as `CACHE_MAX_AGE_SECONDS`. Existing\\ndeployments that still set `CACHE_TTL_SECONDS` keep working for one release and\\nget the deprecation warning instead of a silent behavior change.\\n\\n## Context\\n\\n`CACHE_TTL_SECONDS` is the current key. The name is being changed to\\n`CACHE_MAX_AGE_SECONDS`. Config consumers already have a deprecation warning\\npath, so this needs no new warning mechanism.\\n\\n## Decisions and constraints\\n\\n- New canonical key: `CACHE_MAX_AGE_SECONDS`.\\n- `CACHE_TTL_SECONDS` remains accepted for exactly one release, then is removed\\n  in a follow-up.\\n- The old key emits the existing deprecation warning; do not add a new warning\\n  mechanism or logging channel.\\n- Same units and semantics (seconds); this is a rename, not a behavior change.\\n\\n## Acceptance criteria\\n\\n- [ ] `CACHE_MAX_AGE_SECONDS` sets the cache lifetime.\\n- [ ] `CACHE_TTL_SECONDS` still sets the same value and emits the existing\\n      deprecation warning naming `CACHE_MAX_AGE_SECONDS` as the replacement.\\n- [ ] When both are set, `CACHE_MAX_AGE_SECONDS` wins and the deprecation\\n      warning is still emitted.\\n- [ ] Setting neither leaves the current default unchanged.\\n- [ ] The configuration reference documents `CACHE_MAX_AGE_SECONDS` and marks\\n      `CACHE_TTL_SECONDS` as deprecated with its removal release.\\n\\n## Non-goals\\n\\n- Removing `CACHE_TTL_SECONDS` — that is the follow-up after this release.\\n- Renaming any other configuration key.\\n- Changing the cache lifetime default, units, or eviction behavior.\\n- Changing how deprecation warnings are emitted or formatted.\\n\\n## Verification\\n\\n- Compatibility test covering both names: new key alone, old key alone (warning\\n  asserted), both set (new key wins, warning asserted).\\n- Repository lint, type, and test gates pass.\\n- Configuration reference renders with the new key and the deprecation note.\\n\\n## Risks and stop conditions\\n\\n- Risk: the key is read in more places than the config loader (deploy manifests,\\n  charts, examples, CI env). Grep for both names and update every occurrence.\\n- Stop if the old key's value is consumed with different units or semantics\\n  anywhere — that makes this more than a rename and needs a decision before\\n  proceeding.\\n- Stop if no existing deprecation warning path exists; do not invent one.\\n```\\n\\n---\\n\\n## Handoff\\n\\n```text\\ncanonical: <issue-not-yet-created>\\nchildren: none\\nfrontier: canonical issue (no blockers)\\ngaps: file paths for the config loader, configuration reference, and test suite\\n      not verified — this workdir contains no source tree\\nnext: publish the issue above with label `ready`\\n```\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nVerification captured: The issue includes verification expectations rather than only an implementation checklist\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "Repository metadata respected: The result applies or proposes the existing ready label only after the plan has complete acceptance and verification content",
+                "weight": 12
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The draft proposes the repo's existing `ready` label and explicitly ties it to the AGENTS.md:3 condition that acceptance criteria and verification both be complete. The issue body does contain both: 5 checkbox acceptance criteria (new key, old key + deprecation warning, precedence when both set, unchanged default, docs) and a Verification section (compatibility test cases, repo lint/type/test gates, docs render). The label is proposed rather than applied since the issue is unpublished, which satisfies \"applies or proposes\".",
+              "tokensUsed": {
+                "total": 637,
+                "prompt": 4,
+                "completion": 633,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "acceptedPrediction": 0,
+                  "rejectedPrediction": 0
+                }
+              },
+              "metadata": {
+                "skillCalls": [],
+                "toolCalls": [
+                  {
+                    "id": "toolu_01PPiVBwgGa4wkC6dr7EjZS1",
+                    "name": "StructuredOutput",
+                    "input": {
+                      "parameters": "{\"reason\": \"The draft proposes the repo's existing `ready` label and explicitly conditions it on AGENTS.md:3 ('acceptance criteria and verification are both complete'). The issue body actually contains both: 5 checkbox acceptance criteria covering new key, old key with deprecation warning, precedence, default, and docs; plus a Verification section with the compatibility test cases, repo gates, and docs render. The label is proposed, not applied (draft only, not published), which matches 'applies or proposes'.\", \"pass\": true, \"score\": 1.0}"
+                    },
+                    "output": "Output does not match required schema: root: must have required property 'reason', root: must have required property 'pass', root: must have required property 'score', root: must NOT have additional properties",
+                    "is_error": true,
+                    "parentToolUseId": null
+                  },
+                  {
+                    "id": "toolu_017ca4it1hyAMWYYug3RZr1g",
+                    "name": "StructuredOutput",
+                    "input": {
+                      "reason": "The draft proposes the repo's existing `ready` label and explicitly ties it to the AGENTS.md:3 condition that acceptance criteria and verification both be complete. The issue body does contain both: 5 checkbox acceptance criteria (new key, old key + deprecation warning, precedence when both set, unchanged default, docs) and a Verification section (compatibility test cases, repo lint/type/test gates, docs render). The label is proposed rather than applied since the issue is unpublished, which satisfies \"applies or proposes\".",
+                      "pass": true,
+                      "score": 1
+                    },
+                    "output": "Structured output provided successfully",
+                    "is_error": false,
+                    "parentToolUseId": null
+                  }
+                ],
+                "numTurns": 3,
+                "durationMs": 9774,
+                "durationApiMs": 10951,
+                "modelUsage": {
+                  "claude-haiku-4-5-20251001": {
+                    "inputTokens": 1987,
+                    "outputTokens": 16,
+                    "cacheReadInputTokens": 0,
+                    "cacheCreationInputTokens": 0,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.0020670000000000003,
+                    "contextWindow": 200000,
+                    "maxOutputTokens": 32000,
+                    "canonicalModel": "claude-haiku-4-5",
+                    "provider": "firstParty"
+                  },
+                  "claude-opus-5": {
+                    "inputTokens": 4,
+                    "outputTokens": 633,
+                    "cacheReadInputTokens": 46683,
+                    "cacheCreationInputTokens": 14781,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.1869965,
+                    "contextWindow": 1000000,
+                    "maxOutputTokens": 64000,
+                    "canonicalModel": "claude-opus-5",
+                    "provider": "firstParty"
+                  }
+                },
+                "permissionDenials": [],
+                "terminalReason": "completed",
+                "structuredOutput": {
+                  "reason": "The draft proposes the repo's existing `ready` label and explicitly ties it to the AGENTS.md:3 condition that acceptance criteria and verification both be complete. The issue body does contain both: 5 checkbox acceptance criteria (new key, old key + deprecation warning, precedence when both set, unchanged default, docs) and a Verification section (compatibility test cases, repo lint/type/test gates, docs render). The label is proposed rather than applied since the issue is unpublished, which satisfies \"applies or proposes\".",
+                  "pass": true,
+                  "score": 1
+                },
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `planning-result.md` — one issue draft, not published.\\n\\n- **Destination:** GitHub Issues in this repo (`AGENTS.md:3`), unambiguous and user-authorized.\\n- **Shape:** single issue. Rename + one-release alias + docs + compat test land and verify as one change; child tickets could not land green independently.\\n- **Label:** `ready` — acceptance criteria and verification are both present, the condition `AGENTS.md:3` requires.\\n- **Body:** Outcome, Context, Decisions, 5 acceptance criteria, 4 non-goals, Verification, Risks/stop conditions. No `Delivery shape` section since there are no children.\\n- **Gap:** no source tree in this workdir, so no file paths are cited — the risk section directs the implementer to grep both key names instead.\\n\\n=== OUTPUT FILE: planning-result.md ===\\n# Planning result\\n\\n**Destination:** GitHub Issues in this repository (`AGENTS.md:3` — \\\"Engineering backlog: GitHub Issues in this repository\\\").\\n\\n**Shape:** one issue. The rename, the one-release alias, the reference update, and the compatibility test are one cohesive change that lands and verifies together; splitting them would produce tickets that cannot land green independently. No epic, no child tickets, no checked-in plan file.\\n\\n**Labels:** `ready` — acceptance criteria and verification are both complete, which is the condition `AGENTS.md:3` sets for that label.\\n\\n**Not published.** Draft only, per the request to produce this file rather than write to the tracker.\\n\\n---\\n\\n## Issue title\\n\\n```text\\nRename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\\n```\\n\\n## Issue body\\n\\n```markdown\\n## Outcome\\n\\nOperators configure the cache lifetime as `CACHE_MAX_AGE_SECONDS`. Existing\\ndeployments that still set `CACHE_TTL_SECONDS` keep working for one release and\\nget the deprecation warning instead of a silent behavior change.\\n\\n## Context\\n\\n`CACHE_TTL_SECONDS` is the current key. The name is being changed to\\n`CACHE_MAX_AGE_SECONDS`. Config consumers already have a deprecation warning\\npath, so this needs no new warning mechanism.\\n\\n## Decisions and constraints\\n\\n- New canonical key: `CACHE_MAX_AGE_SECONDS`.\\n- `CACHE_TTL_SECONDS` remains accepted for exactly one release, then is removed\\n  in a follow-up.\\n- The old key emits the existing deprecation warning; do not add a new warning\\n  mechanism or logging channel.\\n- Same units and semantics (seconds); this is a rename, not a behavior change.\\n\\n## Acceptance criteria\\n\\n- [ ] `CACHE_MAX_AGE_SECONDS` sets the cache lifetime.\\n- [ ] `CACHE_TTL_SECONDS` still sets the same value and emits the existing\\n      deprecation warning naming `CACHE_MAX_AGE_SECONDS` as the replacement.\\n- [ ] When both are set, `CACHE_MAX_AGE_SECONDS` wins and the deprecation\\n      warning is still emitted.\\n- [ ] Setting neither leaves the current default unchanged.\\n- [ ] The configuration reference documents `CACHE_MAX_AGE_SECONDS` and marks\\n      `CACHE_TTL_SECONDS` as deprecated with its removal release.\\n\\n## Non-goals\\n\\n- Removing `CACHE_TTL_SECONDS` — that is the follow-up after this release.\\n- Renaming any other configuration key.\\n- Changing the cache lifetime default, units, or eviction behavior.\\n- Changing how deprecation warnings are emitted or formatted.\\n\\n## Verification\\n\\n- Compatibility test covering both names: new key alone, old key alone (warning\\n  asserted), both set (new key wins, warning asserted).\\n- Repository lint, type, and test gates pass.\\n- Configuration reference renders with the new key and the deprecation note.\\n\\n## Risks and stop conditions\\n\\n- Risk: the key is read in more places than the config loader (deploy manifests,\\n  charts, examples, CI env). Grep for both names and update every occurrence.\\n- Stop if the old key's value is consumed with different units or semantics\\n  anywhere — that makes this more than a rename and needs a decision before\\n  proceeding.\\n- Stop if no existing deprecation warning path exists; do not invent one.\\n```\\n\\n---\\n\\n## Handoff\\n\\n```text\\ncanonical: <issue-not-yet-created>\\nchildren: none\\nfrontier: canonical issue (no blockers)\\ngaps: file paths for the config loader, configuration reference, and test suite\\n      not verified — this workdir contains no source tree\\nnext: publish the issue above with label `ready`\\n```\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nRepository metadata respected: The result applies or proposes the existing ready label only after the plan has complete acceptance and verification content\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "No layer tickets: The result does not split code, docs, and tests into separate tickets",
+                "weight": 8
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The output produces exactly one issue covering the rename, the one-release alias, the doc reference update, and the compatibility test together, and explicitly states \"children: none\" and that splitting would create tickets that cannot land green independently. Code, docs, and tests are folded into a single ticket's acceptance criteria and verification sections rather than separate layer tickets.",
+              "tokensUsed": {
+                "total": 275,
+                "prompt": 2,
+                "completion": 273,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "acceptedPrediction": 0,
+                  "rejectedPrediction": 0
+                }
+              },
+              "metadata": {
+                "skillCalls": [],
+                "toolCalls": [
+                  {
+                    "id": "toolu_01HSNt3Ck8hjaSTEU6axd8KH",
+                    "name": "StructuredOutput",
+                    "input": {
+                      "reason": "The output produces exactly one issue covering the rename, the one-release alias, the doc reference update, and the compatibility test together, and explicitly states \"children: none\" and that splitting would create tickets that cannot land green independently. Code, docs, and tests are folded into a single ticket's acceptance criteria and verification sections rather than separate layer tickets.",
+                      "pass": true,
+                      "score": 1
+                    },
+                    "output": "Structured output provided successfully",
+                    "is_error": false,
+                    "parentToolUseId": null
+                  }
+                ],
+                "numTurns": 2,
+                "durationMs": 4555,
+                "durationApiMs": 5953,
+                "modelUsage": {
+                  "claude-haiku-4-5-20251001": {
+                    "inputTokens": 1981,
+                    "outputTokens": 15,
+                    "cacheReadInputTokens": 0,
+                    "cacheCreationInputTokens": 0,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.002056,
+                    "contextWindow": 200000,
+                    "maxOutputTokens": 32000,
+                    "canonicalModel": "claude-haiku-4-5",
+                    "provider": "firstParty"
+                  },
+                  "claude-opus-5": {
+                    "inputTokens": 2,
+                    "outputTokens": 273,
+                    "cacheReadInputTokens": 16166,
+                    "cacheCreationInputTokens": 14341,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.15832799999999997,
+                    "contextWindow": 1000000,
+                    "maxOutputTokens": 64000,
+                    "canonicalModel": "claude-opus-5",
+                    "provider": "firstParty"
+                  }
+                },
+                "permissionDenials": [],
+                "terminalReason": "completed",
+                "structuredOutput": {
+                  "reason": "The output produces exactly one issue covering the rename, the one-release alias, the doc reference update, and the compatibility test together, and explicitly states \"children: none\" and that splitting would create tickets that cannot land green independently. Code, docs, and tests are folded into a single ticket's acceptance criteria and verification sections rather than separate layer tickets.",
+                  "pass": true,
+                  "score": 1
+                },
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `planning-result.md` — one issue draft, not published.\\n\\n- **Destination:** GitHub Issues in this repo (`AGENTS.md:3`), unambiguous and user-authorized.\\n- **Shape:** single issue. Rename + one-release alias + docs + compat test land and verify as one change; child tickets could not land green independently.\\n- **Label:** `ready` — acceptance criteria and verification are both present, the condition `AGENTS.md:3` requires.\\n- **Body:** Outcome, Context, Decisions, 5 acceptance criteria, 4 non-goals, Verification, Risks/stop conditions. No `Delivery shape` section since there are no children.\\n- **Gap:** no source tree in this workdir, so no file paths are cited — the risk section directs the implementer to grep both key names instead.\\n\\n=== OUTPUT FILE: planning-result.md ===\\n# Planning result\\n\\n**Destination:** GitHub Issues in this repository (`AGENTS.md:3` — \\\"Engineering backlog: GitHub Issues in this repository\\\").\\n\\n**Shape:** one issue. The rename, the one-release alias, the reference update, and the compatibility test are one cohesive change that lands and verifies together; splitting them would produce tickets that cannot land green independently. No epic, no child tickets, no checked-in plan file.\\n\\n**Labels:** `ready` — acceptance criteria and verification are both complete, which is the condition `AGENTS.md:3` sets for that label.\\n\\n**Not published.** Draft only, per the request to produce this file rather than write to the tracker.\\n\\n---\\n\\n## Issue title\\n\\n```text\\nRename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\\n```\\n\\n## Issue body\\n\\n```markdown\\n## Outcome\\n\\nOperators configure the cache lifetime as `CACHE_MAX_AGE_SECONDS`. Existing\\ndeployments that still set `CACHE_TTL_SECONDS` keep working for one release and\\nget the deprecation warning instead of a silent behavior change.\\n\\n## Context\\n\\n`CACHE_TTL_SECONDS` is the current key. The name is being changed to\\n`CACHE_MAX_AGE_SECONDS`. Config consumers already have a deprecation warning\\npath, so this needs no new warning mechanism.\\n\\n## Decisions and constraints\\n\\n- New canonical key: `CACHE_MAX_AGE_SECONDS`.\\n- `CACHE_TTL_SECONDS` remains accepted for exactly one release, then is removed\\n  in a follow-up.\\n- The old key emits the existing deprecation warning; do not add a new warning\\n  mechanism or logging channel.\\n- Same units and semantics (seconds); this is a rename, not a behavior change.\\n\\n## Acceptance criteria\\n\\n- [ ] `CACHE_MAX_AGE_SECONDS` sets the cache lifetime.\\n- [ ] `CACHE_TTL_SECONDS` still sets the same value and emits the existing\\n      deprecation warning naming `CACHE_MAX_AGE_SECONDS` as the replacement.\\n- [ ] When both are set, `CACHE_MAX_AGE_SECONDS` wins and the deprecation\\n      warning is still emitted.\\n- [ ] Setting neither leaves the current default unchanged.\\n- [ ] The configuration reference documents `CACHE_MAX_AGE_SECONDS` and marks\\n      `CACHE_TTL_SECONDS` as deprecated with its removal release.\\n\\n## Non-goals\\n\\n- Removing `CACHE_TTL_SECONDS` — that is the follow-up after this release.\\n- Renaming any other configuration key.\\n- Changing the cache lifetime default, units, or eviction behavior.\\n- Changing how deprecation warnings are emitted or formatted.\\n\\n## Verification\\n\\n- Compatibility test covering both names: new key alone, old key alone (warning\\n  asserted), both set (new key wins, warning asserted).\\n- Repository lint, type, and test gates pass.\\n- Configuration reference renders with the new key and the deprecation note.\\n\\n## Risks and stop conditions\\n\\n- Risk: the key is read in more places than the config loader (deploy manifests,\\n  charts, examples, CI env). Grep for both names and update every occurrence.\\n- Stop if the old key's value is consumed with different units or semantics\\n  anywhere — that makes this more than a rename and needs a decision before\\n  proceeding.\\n- Stop if no existing deprecation warning path exists; do not invent one.\\n```\\n\\n---\\n\\n## Handoff\\n\\n```text\\ncanonical: <issue-not-yet-created>\\nchildren: none\\nfrontier: canonical issue (no blockers)\\ngaps: file paths for the config loader, configuration reference, and test suite\\n      not verified — this workdir contains no source tree\\nnext: publish the issue above with label `ready`\\n```\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nNo layer tickets: The result does not split code, docs, and tests into separate tickets\\n</Rubric>\"}]"
+              }
+            },
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "No implementation: The response does not modify code or claim completion",
+                "weight": 6
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "The output is a planning artifact only. It drafts a GitHub issue for the CACHE_TTL_SECONDS → CACHE_MAX_AGE_SECONDS rename and writes it to planning-result.md; the only file produced is the plan document itself, not source code. No config loader, docs, or tests are edited. Acceptance criteria are written as unchecked boxes, and the draft explicitly states \"Not published\", \"canonical: <issue-not-yet-created>\", and \"next: publish the issue above\" — so it claims no implementation and no completion. It even flags a gap (no source tree in the workdir, so no file paths verified) rather than asserting work was done.",
+              "tokensUsed": {
+                "total": 512,
+                "prompt": 2,
+                "completion": 510,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0,
+                  "acceptedPrediction": 0,
+                  "rejectedPrediction": 0
+                }
+              },
+              "metadata": {
+                "skillCalls": [],
+                "toolCalls": [
+                  {
+                    "id": "toolu_01Pw4ntD9BGXuGZncC7FiLg8",
+                    "name": "StructuredOutput",
+                    "input": {
+                      "reason": "The output is a planning artifact only. It drafts a GitHub issue for the CACHE_TTL_SECONDS → CACHE_MAX_AGE_SECONDS rename and writes it to planning-result.md; the only file produced is the plan document itself, not source code. No config loader, docs, or tests are edited. Acceptance criteria are written as unchecked boxes, and the draft explicitly states \"Not published\", \"canonical: <issue-not-yet-created>\", and \"next: publish the issue above\" — so it claims no implementation and no completion. It even flags a gap (no source tree in the workdir, so no file paths verified) rather than asserting work was done.",
+                      "pass": true,
+                      "score": 1
+                    },
+                    "output": "Structured output provided successfully",
+                    "is_error": false,
+                    "parentToolUseId": null
+                  }
+                ],
+                "numTurns": 2,
+                "durationMs": 8582,
+                "durationApiMs": 9736,
+                "modelUsage": {
+                  "claude-haiku-4-5-20251001": {
+                    "inputTokens": 1975,
+                    "outputTokens": 16,
+                    "cacheReadInputTokens": 0,
+                    "cacheCreationInputTokens": 0,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.0020550000000000004,
+                    "contextWindow": 200000,
+                    "maxOutputTokens": 32000,
+                    "canonicalModel": "claude-haiku-4-5",
+                    "provider": "firstParty"
+                  },
+                  "claude-opus-5": {
+                    "inputTokens": 2,
+                    "outputTokens": 510,
+                    "cacheReadInputTokens": 16166,
+                    "cacheCreationInputTokens": 14330,
+                    "webSearchRequests": 0,
+                    "costUSD": 0.164143,
+                    "contextWindow": 1000000,
+                    "maxOutputTokens": 64000,
+                    "canonicalModel": "claude-opus-5",
+                    "provider": "firstParty"
+                  }
+                },
+                "permissionDenials": [],
+                "terminalReason": "completed",
+                "structuredOutput": {
+                  "reason": "The output is a planning artifact only. It drafts a GitHub issue for the CACHE_TTL_SECONDS → CACHE_MAX_AGE_SECONDS rename and writes it to planning-result.md; the only file produced is the plan document itself, not source code. No config loader, docs, or tests are edited. Acceptance criteria are written as unchecked boxes, and the draft explicitly states \"Not published\", \"canonical: <issue-not-yet-created>\", and \"next: publish the issue above\" — so it claims no implementation and no completion. It even flags a gap (no source tree in the workdir, so no file paths verified) rather than asserting work was done.",
+                  "pass": true,
+                  "score": 1
+                },
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\n**Written:** `planning-result.md` — one issue draft, not published.\\n\\n- **Destination:** GitHub Issues in this repo (`AGENTS.md:3`), unambiguous and user-authorized.\\n- **Shape:** single issue. Rename + one-release alias + docs + compat test land and verify as one change; child tickets could not land green independently.\\n- **Label:** `ready` — acceptance criteria and verification are both present, the condition `AGENTS.md:3` requires.\\n- **Body:** Outcome, Context, Decisions, 5 acceptance criteria, 4 non-goals, Verification, Risks/stop conditions. No `Delivery shape` section since there are no children.\\n- **Gap:** no source tree in this workdir, so no file paths are cited — the risk section directs the implementer to grep both key names instead.\\n\\n=== OUTPUT FILE: planning-result.md ===\\n# Planning result\\n\\n**Destination:** GitHub Issues in this repository (`AGENTS.md:3` — \\\"Engineering backlog: GitHub Issues in this repository\\\").\\n\\n**Shape:** one issue. The rename, the one-release alias, the reference update, and the compatibility test are one cohesive change that lands and verifies together; splitting them would produce tickets that cannot land green independently. No epic, no child tickets, no checked-in plan file.\\n\\n**Labels:** `ready` — acceptance criteria and verification are both complete, which is the condition `AGENTS.md:3` sets for that label.\\n\\n**Not published.** Draft only, per the request to produce this file rather than write to the tracker.\\n\\n---\\n\\n## Issue title\\n\\n```text\\nRename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\\n```\\n\\n## Issue body\\n\\n```markdown\\n## Outcome\\n\\nOperators configure the cache lifetime as `CACHE_MAX_AGE_SECONDS`. Existing\\ndeployments that still set `CACHE_TTL_SECONDS` keep working for one release and\\nget the deprecation warning instead of a silent behavior change.\\n\\n## Context\\n\\n`CACHE_TTL_SECONDS` is the current key. The name is being changed to\\n`CACHE_MAX_AGE_SECONDS`. Config consumers already have a deprecation warning\\npath, so this needs no new warning mechanism.\\n\\n## Decisions and constraints\\n\\n- New canonical key: `CACHE_MAX_AGE_SECONDS`.\\n- `CACHE_TTL_SECONDS` remains accepted for exactly one release, then is removed\\n  in a follow-up.\\n- The old key emits the existing deprecation warning; do not add a new warning\\n  mechanism or logging channel.\\n- Same units and semantics (seconds); this is a rename, not a behavior change.\\n\\n## Acceptance criteria\\n\\n- [ ] `CACHE_MAX_AGE_SECONDS` sets the cache lifetime.\\n- [ ] `CACHE_TTL_SECONDS` still sets the same value and emits the existing\\n      deprecation warning naming `CACHE_MAX_AGE_SECONDS` as the replacement.\\n- [ ] When both are set, `CACHE_MAX_AGE_SECONDS` wins and the deprecation\\n      warning is still emitted.\\n- [ ] Setting neither leaves the current default unchanged.\\n- [ ] The configuration reference documents `CACHE_MAX_AGE_SECONDS` and marks\\n      `CACHE_TTL_SECONDS` as deprecated with its removal release.\\n\\n## Non-goals\\n\\n- Removing `CACHE_TTL_SECONDS` — that is the follow-up after this release.\\n- Renaming any other configuration key.\\n- Changing the cache lifetime default, units, or eviction behavior.\\n- Changing how deprecation warnings are emitted or formatted.\\n\\n## Verification\\n\\n- Compatibility test covering both names: new key alone, old key alone (warning\\n  asserted), both set (new key wins, warning asserted).\\n- Repository lint, type, and test gates pass.\\n- Configuration reference renders with the new key and the deprecation note.\\n\\n## Risks and stop conditions\\n\\n- Risk: the key is read in more places than the config loader (deploy manifests,\\n  charts, examples, CI env). Grep for both names and update every occurrence.\\n- Stop if the old key's value is consumed with different units or semantics\\n  anywhere — that makes this more than a rename and needs a decision before\\n  proceeding.\\n- Stop if no existing deprecation warning path exists; do not invent one.\\n```\\n\\n---\\n\\n## Handoff\\n\\n```text\\ncanonical: <issue-not-yet-created>\\nchildren: none\\nfrontier: canonical issue (no blockers)\\ngaps: file paths for the config loader, configuration reference, and test suite\\n      not verified — this workdir contains no source tree\\nnext: publish the issue above with label `ready`\\n```\\n\\n=== END OUTPUT FILE ===\\n</Output>\\n<Rubric>\\nNo implementation: The response does not modify code or claim completion\\n</Rubric>\"}]"
+              }
+            }
+          ]
+        },
+        "id": "847a7609-9e37-404f-8243-a4d73c0b62e9",
+        "latencyMs": 55742,
+        "namedScores": {},
+        "prompt": {
+          "raw": "# Keep a Small Plan in One GitHub Issue\n\n## Problem/Feature Description\n\nThe repository explicitly tracks engineering work in GitHub Issues. The user says: \"Save this agreed change as an issue.\" The change renames one configuration key, supports the old key for one release with a warning, updates the configuration reference, and adds a compatibility test. The work fits one agent context and lands as one reviewable change.\n\nProduce `planning-result.md` with the issue title and body shape that should be published. Do not implement the change.\n\n## Input Files\n\n(Input file `AGENTS.md` is available in your working directory.)\n\n(Input file `AGREED_CHANGE.md` is available in your working directory.)",
+          "label": "{{task}}",
+          "config": {
+            "provider": {
+              "id": "anthropic:claude-agent-sdk",
+              "config": {
+                "model": "claude-opus-5",
+                "apiKeyRequired": false,
+                "max_turns": 3,
+                "output_format": {
+                  "type": "json_schema",
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "reason",
+                      "pass",
+                      "score"
+                    ],
+                    "properties": {
+                      "reason": {
+                        "type": "string"
+                      },
+                      "pass": {
+                        "type": "boolean"
+                      },
+                      "score": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "transform": "file:///Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/transform.mjs"
+          }
+        },
+        "promptId": "ec1aefd522ceea4dbc16cd07da0dccd9fce23abef66cb24e561eb6956c67f536",
+        "promptIdx": 0,
+        "provider": {
+          "id": "anthropic:claude-agent-sdk",
+          "label": ""
+        },
+        "response": {
+          "output": "**Written:** `planning-result.md` — one issue draft, not published.\n\n- **Destination:** GitHub Issues in this repo (`AGENTS.md:3`), unambiguous and user-authorized.\n- **Shape:** single issue. Rename + one-release alias + docs + compat test land and verify as one change; child tickets could not land green independently.\n- **Label:** `ready` — acceptance criteria and verification are both present, the condition `AGENTS.md:3` requires.\n- **Body:** Outcome, Context, Decisions, 5 acceptance criteria, 4 non-goals, Verification, Risks/stop conditions. No `Delivery shape` section since there are no children.\n- **Gap:** no source tree in this workdir, so no file paths are cited — the risk section directs the implementer to grep both key names instead.\n\n=== OUTPUT FILE: planning-result.md ===\n# Planning result\n\n**Destination:** GitHub Issues in this repository (`AGENTS.md:3` — \"Engineering backlog: GitHub Issues in this repository\").\n\n**Shape:** one issue. The rename, the one-release alias, the reference update, and the compatibility test are one cohesive change that lands and verifies together; splitting them would produce tickets that cannot land green independently. No epic, no child tickets, no checked-in plan file.\n\n**Labels:** `ready` — acceptance criteria and verification are both complete, which is the condition `AGENTS.md:3` sets for that label.\n\n**Not published.** Draft only, per the request to produce this file rather than write to the tracker.\n\n---\n\n## Issue title\n\n```text\nRename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\n```\n\n## Issue body\n\n```markdown\n## Outcome\n\nOperators configure the cache lifetime as `CACHE_MAX_AGE_SECONDS`. Existing\ndeployments that still set `CACHE_TTL_SECONDS` keep working for one release and\nget the deprecation warning instead of a silent behavior change.\n\n## Context\n\n`CACHE_TTL_SECONDS` is the current key. The name is being changed to\n`CACHE_MAX_AGE_SECONDS`. Config consumers already have a deprecation warning\npath, so this needs no new warning mechanism.\n\n## Decisions and constraints\n\n- New canonical key: `CACHE_MAX_AGE_SECONDS`.\n- `CACHE_TTL_SECONDS` remains accepted for exactly one release, then is removed\n  in a follow-up.\n- The old key emits the existing deprecation warning; do not add a new warning\n  mechanism or logging channel.\n- Same units and semantics (seconds); this is a rename, not a behavior change.\n\n## Acceptance criteria\n\n- [ ] `CACHE_MAX_AGE_SECONDS` sets the cache lifetime.\n- [ ] `CACHE_TTL_SECONDS` still sets the same value and emits the existing\n      deprecation warning naming `CACHE_MAX_AGE_SECONDS` as the replacement.\n- [ ] When both are set, `CACHE_MAX_AGE_SECONDS` wins and the deprecation\n      warning is still emitted.\n- [ ] Setting neither leaves the current default unchanged.\n- [ ] The configuration reference documents `CACHE_MAX_AGE_SECONDS` and marks\n      `CACHE_TTL_SECONDS` as deprecated with its removal release.\n\n## Non-goals\n\n- Removing `CACHE_TTL_SECONDS` — that is the follow-up after this release.\n- Renaming any other configuration key.\n- Changing the cache lifetime default, units, or eviction behavior.\n- Changing how deprecation warnings are emitted or formatted.\n\n## Verification\n\n- Compatibility test covering both names: new key alone, old key alone (warning\n  asserted), both set (new key wins, warning asserted).\n- Repository lint, type, and test gates pass.\n- Configuration reference renders with the new key and the deprecation note.\n\n## Risks and stop conditions\n\n- Risk: the key is read in more places than the config loader (deploy manifests,\n  charts, examples, CI env). Grep for both names and update every occurrence.\n- Stop if the old key's value is consumed with different units or semantics\n  anywhere — that makes this more than a rename and needs a decision before\n  proceeding.\n- Stop if no existing deprecation warning path exists; do not invent one.\n```\n\n---\n\n## Handoff\n\n```text\ncanonical: <issue-not-yet-created>\nchildren: none\nfrontier: canonical issue (no blockers)\ngaps: file paths for the config loader, configuration reference, and test suite\n      not verified — this workdir contains no source tree\nnext: publish the issue above with label `ready`\n```\n\n=== END OUTPUT FILE ===",
+          "tokenUsage": {
+            "prompt": 12,
+            "completion": 3734,
+            "total": 3746
+          },
+          "cost": 0.3488185,
+          "raw": "{\"is_error\":false,\"duration_api_ms\":56406,\"num_turns\":9,\"stop_reason\":\"end_turn\",\"session_id\":\"ad82365a-c1f4-428e-ac3f-ddba667e5639\",\"total_cost_usd\":0.3488185,\"usage\":{\"input_tokens\":12,\"cache_creation_input_tokens\":17247,\"cache_read_input_tokens\":164381,\"output_tokens\":3734,\"output_tokens_details\":{\"thinking_tokens\":1073},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":17247,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":274,\"cache_read_input_tokens\":32329,\"cache_creation_input_tokens\":2491,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":2491},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-haiku-4-5-20251001\":{\"inputTokens\":668,\"outputTokens\":16,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.000748,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"canonicalModel\":\"claude-haiku-4-5\",\"provider\":\"firstParty\"},\"claude-opus-5\":{\"inputTokens\":12,\"outputTokens\":3734,\"cacheReadInputTokens\":164381,\"cacheCreationInputTokens\":17247,\"webSearchRequests\":0,\"costUSD\":0.34807049999999995,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"canonicalModel\":\"claude-opus-5\",\"provider\":\"firstParty\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"**Written:** `planning-result.md` — one issue draft, not published.\\n\\n- **Destination:** GitHub Issues in this repo (`AGENTS.md:3`), unambiguous and user-authorized.\\n- **Shape:** single issue. Rename + one-release alias + docs + compat test land and verify as one change; child tickets could not land green independently.\\n- **Label:** `ready` — acceptance criteria and verification are both present, the condition `AGENTS.md:3` requires.\\n- **Body:** Outcome, Context, Decisions, 5 acceptance criteria, 4 non-goals, Verification, Risks/stop conditions. No `Delivery shape` section since there are no children.\\n- **Gap:** no source tree in this workdir, so no file paths are cited — the risk section directs the implementer to grep both key names instead.\",\"ttft_ms\":1987,\"ttft_stream_ms\":1234,\"time_to_request_ms\":10,\"type\":\"result\",\"duration_ms\":54706,\"uuid\":\"6aacfbda-542f-4775-ad9f-1e0678bad966\"}",
+          "sessionId": "ad82365a-c1f4-428e-ac3f-ddba667e5639",
+          "metadata": {
+            "skillCalls": [
+              {
+                "name": "slopspec",
+                "input": {
+                  "skill": "slopspec",
+                  "args": "Save the agreed change in AGREED_CHANGE.md as a GitHub issue plan; produce planning-result.md"
+                },
+                "is_error": false,
+                "source": "tool"
+              }
+            ],
+            "toolCalls": [
+              {
+                "id": "toolu_01LFC7nUMGnVZktXQZ3CcxC2",
+                "name": "Read",
+                "input": {
+                  "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir/AGENTS.md"
+                },
+                "output": "1\t# Agent guide\n2\t\n3\tEngineering backlog: GitHub Issues in this repository. Apply the `ready` label only when acceptance criteria and verification are complete.\n4\t",
+                "is_error": false,
+                "parentToolUseId": null
+              },
+              {
+                "id": "toolu_01X9aMma6ckVCgDtgnv31eG3",
+                "name": "Read",
+                "input": {
+                  "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir/AGREED_CHANGE.md"
+                },
+                "output": "1\tRename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS. Continue accepting the old name for one release and emit the existing deprecation warning. Update the configuration reference and add a compatibility test for both names.\n2\t",
+                "is_error": false,
+                "parentToolUseId": null
+              },
+              {
+                "id": "toolu_01EnF1HEkBv1XUPSittqiFdo",
+                "name": "Skill",
+                "input": {
+                  "skill": "slopspec",
+                  "args": "Save the agreed change in AGREED_CHANGE.md as a GitHub issue plan; produce planning-result.md"
+                },
+                "output": "Launching skill: slopspec",
+                "is_error": false,
+                "parentToolUseId": null
+              },
+              {
+                "id": "toolu_01KKmbqgAv4NShh1Aix6MdwZ",
+                "name": "Read",
+                "input": {
+                  "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir/.claude/skills/slopspec/references/artifact-shapes.md"
+                },
+                "output": "1\t# Artifact Shapes\n2\t\n3\tUse the least hierarchy that keeps the work resumable.\n4\t\n5\t## Shape Selection\n6\t\n7\t| Work shape | Durable artifact |\n8\t|---|---|\n9\t| One agent, one fresh context, one independently verifiable outcome | One issue or work item |\n10\t| Several independently landable slices or more than one session | Parent issue or epic with child tickets |\n11\t| Several teams, products, or planning horizons | Existing project or initiative convention, containing parent work |\n12\t| Tracker unavailable | Paste-ready draft for the intended tracker, not a different durable home |\n13\t\n14\tDo not create an epic merely to hold one issue. Do not split a cohesive change into tickets that cannot land or verify independently.\n15\t\n16\t## Canonical Parent\n17\t\n18\t```markdown\n19\t## Outcome\n20\tWhat changes for the user or operator when this work is complete.\n21\t\n22\t## Context\n23\tCurrent behavior and the evidence that makes the work necessary.\n24\t\n25\t## Decisions and constraints\n26\t- Settled choice or invariant\n27\t\n28\t## Acceptance criteria\n29\t- [ ] Observable result\n30\t\n31\t## Non-goals\n32\t- Explicit exclusion\n33\t\n34\t## Delivery shape\n35\t- Child work items and what each delivers\n36\t\n37\t## Verification\n38\t- Required automated and real-surface proof\n39\t\n40\t## Risks and stop conditions\n41\t- Risk, mitigation, and when an implementer must stop instead of improvising\n42\t```\n43\t\n44\t## Child Ticket\n45\t\n46\t```markdown\n47\t## Parent\n48\tCanonical parent URL or key.\n49\t\n50\t## What this delivers\n51\tOne narrow end-to-end behavior that can be demonstrated or verified independently.\n52\t\n53\t## Acceptance criteria\n54\t- [ ] Observable result\n55\t\n56\t## Verification\n57\t- Expected test, check, or real-surface evidence\n58\t\n59\t## Blocked by\n60\t- Native relationship or explicit issue link; `None` when immediately actionable\n61\t\n62\t## Boundaries\n63\t- In scope and explicit non-goals for this slice\n64\t```\n65\t\n66\t## Slicing Rules\n67\t\n68\t- Prefer tracer-bullet slices through the necessary layers over separate database, API, UI, and test tickets.\n69\t- Size each ticket for one fresh agent context, including verification and cleanup.\n70\t- A completed ticket should leave the repository in a valid, reviewable state.\n71\t- Create only genuine dependency edges. Shared topic, preferred order, or the same parent does not imply blocking.\n72\t- Put foundational compatibility work first only when later slices genuinely cannot begin without it.\n73\t- For wide mechanical changes that cannot land green as vertical slices, use expand, migrate in reviewable batches, then contract.\n74\t- Keep volatile implementation detail out unless it is necessary to preserve a settled decision. Verify every included path and stamp the relevant revision when drift matters.\n75\t\n76\t## Resume Contract\n77\t\n78\tThe canonical artifact must let a fresh agent answer:\n79\t\n80\t- What outcome is required?\n81\t- Which decisions are already settled?\n82\t- What is in and out of scope?\n83\t- What has completed, what is blocked, and what is ready now?\n84\t- What evidence proves each item complete?\n85\t- Where should newly discovered decisions or scope changes be recorded?\n86\t\n87\tUpdate the canonical tracker artifacts as the plan changes. Comments may record progress, but settled requirements and current status belong in the artifact fields or body rather than being buried in a conversation log.\n88\t",
+                "is_error": false,
+                "parentToolUseId": null
+              },
+              {
+                "id": "toolu_01NLyXXvtRDZwMjaiKCcBNMb",
+                "name": "Read",
+                "input": {
+                  "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir/.claude/skills/slopspec/references/tracker-selection.md"
+                },
+                "output": "1\t# Tracker Selection\n2\t\n3\tChoose the repository's actual work system, not the easiest available tool.\n4\t\n5\t## Evidence Precedence\n6\t\n7\t| Evidence | Meaning |\n8\t|---|---|\n9\t| User names a tracker, project, team, epic, or issue | Authoritative for this request |\n10\t| Current work began from a tracker URL or key | Prefer updating or attaching to that work |\n11\t| `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, or repo docs declare work tracking | Repository default; overrides remote-host inference |\n12\t| Repeated issue keys or links in branches, commits, and pull requests | Strong established-workflow signal |\n13\t| Issue templates, labels, or tracker-specific config | Strong provider and artifact-shape signal |\n14\t| Git remote host | Recommendation signal, not proof of the tracker |\n15\t| Installed CLI or connector | Access signal only; it does not choose the destination |\n16\t\n17\tWhen strong evidence conflicts, report the conflict and ask one question with a recommended answer. Do not create artifacts in both places.\n18\t\n19\t## Common Signals\n20\t\n21\t### GitHub\n22\t\n23\t- GitHub remote plus active repository issues\n24\t- `.github/ISSUE_TEMPLATE/` or issue-form configuration\n25\t- `owner/repo#123` references and GitHub issue URLs\n26\t- `gh` or an authenticated GitHub connector as the write path\n27\t\n28\t### GitLab\n29\t\n30\t- GitLab or self-hosted GitLab remote\n31\t- `.gitlab/issue_templates/`\n32\t- project or group issue references and GitLab issue URLs\n33\t- `glab` or an authenticated GitLab API/connector as the write path\n34\t\n35\t### Jira\n36\t\n37\t- Repository instructions naming the Jira site and space/project\n38\t- repeated keys such as `ABC-123` in branches, commits, pull requests, or docs\n39\t- an existing epic or work item named by the user\n40\t- an authenticated Jira connector or API as the write path\n41\t\n42\t### Linear\n43\t\n44\t- Repository instructions naming the workspace and team\n45\t- repeated team keys such as `ENG-123` with Linear URLs or integration evidence\n46\t- an existing project or parent issue named by the user\n47\t- an authenticated Linear connector or API as the write path\n48\t\n49\t### Local or another tracker\n50\t\n51\tUse a local directory, Notion database, Asana project, or another system only when the user or repository establishes it as the work tracker. Preserve its native vocabulary and hierarchy instead of translating everything into GitHub terms.\n52\t\n53\t## When to Ask\n54\t\n55\tAsk where to save the plan when:\n56\t\n57\t- the user requested planning but did not authorize publication\n58\t- no repository preference is discoverable\n59\t- multiple plausible trackers conflict\n60\t- the provider is known but the project, team, or parent is ambiguous\n61\t- the plan would expose sensitive information to a public or broadly visible tracker\n62\t\n63\tLead with one recommendation:\n64\t\n65\t> Save this as a parent issue in `<destination>` with `<N>` child tickets? Recommended because `<repo evidence>`.\n66\t\n67\tDo not ask when the user already named the destination or requested publication into an unambiguous repository-owned tracker.\n68\t\n69\t## Access and Failure\n70\t\n71\tBefore writing, verify the target, authenticated identity or profile when relevant, repository or project visibility, and permission to create or update the intended artifact type. Do not install integrations, change authentication, create tracker projects, invent labels, or broaden visibility merely to publish a plan.\n72\t\n73\tWhen native hierarchy or dependency operations are unavailable, retain the chosen tracker and use explicit parent and blocker links in item bodies. When no write path is available, produce a paste-ready draft and name the exact missing capability.\n74\t",
+                "is_error": false,
+                "parentToolUseId": null
+              },
+              {
+                "id": "toolu_01Bkf45VZri7uXTsBmyD7nqW",
+                "name": "Bash",
+                "input": {
+                  "command": "ls -a && echo \"--- git ---\" && git remote -v 2>&1 | head -5",
+                  "description": "List workdir contents and git remotes"
+                },
+                "output": ".\n..\n.claude\nAGENTS.md\nAGREED_CHANGE.md\n--- git ---\norigin\thttps://github.com/uinaf/ffsstack.git (fetch)\norigin\thttps://github.com/uinaf/ffsstack.git (push)",
+                "is_error": false,
+                "parentToolUseId": null
+              },
+              {
+                "id": "toolu_015NCEjNpzJ4m8LGathup7KX",
+                "name": "Write",
+                "input": {
+                  "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir/planning-result.md",
+                  "content": "# Planning result\n\n**Destination:** GitHub Issues in this repository (`AGENTS.md:3` — \"Engineering backlog: GitHub Issues in this repository\").\n\n**Shape:** one issue. The rename, the one-release alias, the reference update, and the compatibility test are one cohesive change that lands and verifies together; splitting them would produce tickets that cannot land green independently. No epic, no child tickets, no checked-in plan file.\n\n**Labels:** `ready` — acceptance criteria and verification are both complete, which is the condition `AGENTS.md:3` sets for that label.\n\n**Not published.** Draft only, per the request to produce this file rather than write to the tracker.\n\n---\n\n## Issue title\n\n```text\nRename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\n```\n\n## Issue body\n\n```markdown\n## Outcome\n\nOperators configure the cache lifetime as `CACHE_MAX_AGE_SECONDS`. Existing\ndeployments that still set `CACHE_TTL_SECONDS` keep working for one release and\nget the deprecation warning instead of a silent behavior change.\n\n## Context\n\n`CACHE_TTL_SECONDS` is the current key. The name is being changed to\n`CACHE_MAX_AGE_SECONDS`. Config consumers already have a deprecation warning\npath, so this needs no new warning mechanism.\n\n## Decisions and constraints\n\n- New canonical key: `CACHE_MAX_AGE_SECONDS`.\n- `CACHE_TTL_SECONDS` remains accepted for exactly one release, then is removed\n  in a follow-up.\n- The old key emits the existing deprecation warning; do not add a new warning\n  mechanism or logging channel.\n- Same units and semantics (seconds); this is a rename, not a behavior change.\n\n## Acceptance criteria\n\n- [ ] `CACHE_MAX_AGE_SECONDS` sets the cache lifetime.\n- [ ] `CACHE_TTL_SECONDS` still sets the same value and emits the existing\n      deprecation warning naming `CACHE_MAX_AGE_SECONDS` as the replacement.\n- [ ] When both are set, `CACHE_MAX_AGE_SECONDS` wins and the deprecation\n      warning is still emitted.\n- [ ] Setting neither leaves the current default unchanged.\n- [ ] The configuration reference documents `CACHE_MAX_AGE_SECONDS` and marks\n      `CACHE_TTL_SECONDS` as deprecated with its removal release.\n\n## Non-goals\n\n- Removing `CACHE_TTL_SECONDS` — that is the follow-up after this release.\n- Renaming any other configuration key.\n- Changing the cache lifetime default, units, or eviction behavior.\n- Changing how deprecation warnings are emitted or formatted.\n\n## Verification\n\n- Compatibility test covering both names: new key alone, old key alone (warning\n  asserted), both set (new key wins, warning asserted).\n- Repository lint, type, and test gates pass.\n- Configuration reference renders with the new key and the deprecation note.\n\n## Risks and stop conditions\n\n- Risk: the key is read in more places than the config loader (deploy manifests,\n  charts, examples, CI env). Grep for both names and update every occurrence.\n- Stop if the old key's value is consumed with different units or semantics\n  anywhere — that makes this more than a rename and needs a decision before\n  proceeding.\n- Stop if no existing deprecation warning path exists; do not invent one.\n```\n\n---\n\n## Handoff\n\n```text\ncanonical: <issue-not-yet-created>\nchildren: none\nfrontier: canonical issue (no blockers)\ngaps: file paths for the config loader, configuration reference, and test suite\n      not verified — this workdir contains no source tree\nnext: publish the issue above with label `ready`\n```\n"
+                },
+                "output": "File created successfully at: /Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir/planning-result.md (file state is current in your context — no need to Read it back)",
+                "is_error": false,
+                "parentToolUseId": null
+              }
+            ],
+            "numTurns": 9,
+            "durationMs": 54706,
+            "durationApiMs": 56406,
+            "modelUsage": {
+              "claude-haiku-4-5-20251001": {
+                "inputTokens": 668,
+                "outputTokens": 16,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0,
+                "webSearchRequests": 0,
+                "costUSD": 0.000748,
+                "contextWindow": 200000,
+                "maxOutputTokens": 32000,
+                "canonicalModel": "claude-haiku-4-5",
+                "provider": "firstParty"
+              },
+              "claude-opus-5": {
+                "inputTokens": 12,
+                "outputTokens": 3734,
+                "cacheReadInputTokens": 164381,
+                "cacheCreationInputTokens": 17247,
+                "webSearchRequests": 0,
+                "costUSD": 0.34807049999999995,
+                "contextWindow": 1000000,
+                "maxOutputTokens": 64000,
+                "canonicalModel": "claude-opus-5",
+                "provider": "firstParty"
+              }
+            },
+            "permissionDenials": [],
+            "terminalReason": "completed"
+          }
+        },
+        "score": 0.9564356435643564,
+        "success": true,
+        "testCase": {
+          "description": "Tests whether planning keeps a cohesive one-context change in one tracker item rather than manufacturing an epic or horizontal child tickets.",
+          "vars": {
+            "task": "# Keep a Small Plan in One GitHub Issue\n\n## Problem/Feature Description\n\nThe repository explicitly tracks engineering work in GitHub Issues. The user says: \"Save this agreed change as an issue.\" The change renames one configuration key, supports the old key for one release with a warning, updates the configuration reference, and adds a compatibility test. The work fits one agent context and lands as one reviewable change.\n\nProduce `planning-result.md` with the issue title and body shape that should be published. Do not implement the change.\n\n## Input Files\n\n(Input file `AGENTS.md` is available in your working directory.)\n\n(Input file `AGREED_CHANGE.md` is available in your working directory.)\n",
+            "workdir": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir",
+            "manifest": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/manifest.json",
+            "sessionId": "ad82365a-c1f4-428e-ac3f-ddba667e5639"
+          },
+          "threshold": 0.7,
+          "assert": [
+            {
+              "type": "skill-used",
+              "value": "slopspec",
+              "weight": 1
+            },
+            {
+              "type": "llm-rubric",
+              "value": "One issue: planning-result.md creates exactly one GitHub issue and no parent, epic, or child issue set",
+              "weight": 24
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Outcome captured: The issue describes the configuration rename and one-release compatibility behavior",
+              "weight": 14
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Acceptance criteria complete: Acceptance criteria cover the new key, old-key compatibility, deprecation warning, documentation update, and compatibility test",
+              "weight": 22
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Verification captured: The issue includes verification expectations rather than only an implementation checklist",
+              "weight": 14
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Repository metadata respected: The result applies or proposes the existing ready label only after the plan has complete acceptance and verification content",
+              "weight": 12
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No layer tickets: The result does not split code, docs, and tests into separate tickets",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No implementation: The response does not modify code or claim completion",
+              "weight": 6
+            }
+          ],
+          "options": {
+            "provider": {
+              "id": "anthropic:claude-agent-sdk",
+              "config": {
+                "model": "claude-opus-5",
+                "apiKeyRequired": false,
+                "max_turns": 3,
+                "output_format": {
+                  "type": "json_schema",
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "reason",
+                      "pass",
+                      "score"
+                    ],
+                    "properties": {
+                      "reason": {
+                        "type": "string"
+                      },
+                      "pass": {
+                        "type": "boolean"
+                      },
+                      "score": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "transform": "file:///Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/transform.mjs"
+          },
+          "metadata": {}
+        },
+        "testIdx": 0,
+        "tokenUsage": {
+          "prompt": 12,
+          "completion": 3734,
+          "cached": 0,
+          "total": 3746,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 3754,
+            "prompt": 16,
+            "completion": 3738,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {
+          "task": "# Keep a Small Plan in One GitHub Issue\n\n## Problem/Feature Description\n\nThe repository explicitly tracks engineering work in GitHub Issues. The user says: \"Save this agreed change as an issue.\" The change renames one configuration key, supports the old key for one release with a warning, updates the configuration reference, and adds a compatibility test. The work fits one agent context and lands as one reviewable change.\n\nProduce `planning-result.md` with the issue title and body shape that should be published. Do not implement the change.\n\n## Input Files\n\n(Input file `AGENTS.md` is available in your working directory.)\n\n(Input file `AGREED_CHANGE.md` is available in your working directory.)\n",
+          "workdir": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir",
+          "manifest": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/manifest.json",
+          "sessionId": "ad82365a-c1f4-428e-ac3f-ddba667e5639"
+        },
+        "metadata": {
+          "skillCalls": [
+            {
+              "name": "slopspec",
+              "input": {
+                "skill": "slopspec",
+                "args": "Save the agreed change in AGREED_CHANGE.md as a GitHub issue plan; produce planning-result.md"
+              },
+              "is_error": false,
+              "source": "tool"
+            }
+          ],
+          "toolCalls": [
+            {
+              "id": "toolu_01LFC7nUMGnVZktXQZ3CcxC2",
+              "name": "Read",
+              "input": {
+                "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir/AGENTS.md"
+              },
+              "output": "1\t# Agent guide\n2\t\n3\tEngineering backlog: GitHub Issues in this repository. Apply the `ready` label only when acceptance criteria and verification are complete.\n4\t",
+              "is_error": false,
+              "parentToolUseId": null
+            },
+            {
+              "id": "toolu_01X9aMma6ckVCgDtgnv31eG3",
+              "name": "Read",
+              "input": {
+                "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir/AGREED_CHANGE.md"
+              },
+              "output": "1\tRename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS. Continue accepting the old name for one release and emit the existing deprecation warning. Update the configuration reference and add a compatibility test for both names.\n2\t",
+              "is_error": false,
+              "parentToolUseId": null
+            },
+            {
+              "id": "toolu_01EnF1HEkBv1XUPSittqiFdo",
+              "name": "Skill",
+              "input": {
+                "skill": "slopspec",
+                "args": "Save the agreed change in AGREED_CHANGE.md as a GitHub issue plan; produce planning-result.md"
+              },
+              "output": "Launching skill: slopspec",
+              "is_error": false,
+              "parentToolUseId": null
+            },
+            {
+              "id": "toolu_01KKmbqgAv4NShh1Aix6MdwZ",
+              "name": "Read",
+              "input": {
+                "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir/.claude/skills/slopspec/references/artifact-shapes.md"
+              },
+              "output": "1\t# Artifact Shapes\n2\t\n3\tUse the least hierarchy that keeps the work resumable.\n4\t\n5\t## Shape Selection\n6\t\n7\t| Work shape | Durable artifact |\n8\t|---|---|\n9\t| One agent, one fresh context, one independently verifiable outcome | One issue or work item |\n10\t| Several independently landable slices or more than one session | Parent issue or epic with child tickets |\n11\t| Several teams, products, or planning horizons | Existing project or initiative convention, containing parent work |\n12\t| Tracker unavailable | Paste-ready draft for the intended tracker, not a different durable home |\n13\t\n14\tDo not create an epic merely to hold one issue. Do not split a cohesive change into tickets that cannot land or verify independently.\n15\t\n16\t## Canonical Parent\n17\t\n18\t```markdown\n19\t## Outcome\n20\tWhat changes for the user or operator when this work is complete.\n21\t\n22\t## Context\n23\tCurrent behavior and the evidence that makes the work necessary.\n24\t\n25\t## Decisions and constraints\n26\t- Settled choice or invariant\n27\t\n28\t## Acceptance criteria\n29\t- [ ] Observable result\n30\t\n31\t## Non-goals\n32\t- Explicit exclusion\n33\t\n34\t## Delivery shape\n35\t- Child work items and what each delivers\n36\t\n37\t## Verification\n38\t- Required automated and real-surface proof\n39\t\n40\t## Risks and stop conditions\n41\t- Risk, mitigation, and when an implementer must stop instead of improvising\n42\t```\n43\t\n44\t## Child Ticket\n45\t\n46\t```markdown\n47\t## Parent\n48\tCanonical parent URL or key.\n49\t\n50\t## What this delivers\n51\tOne narrow end-to-end behavior that can be demonstrated or verified independently.\n52\t\n53\t## Acceptance criteria\n54\t- [ ] Observable result\n55\t\n56\t## Verification\n57\t- Expected test, check, or real-surface evidence\n58\t\n59\t## Blocked by\n60\t- Native relationship or explicit issue link; `None` when immediately actionable\n61\t\n62\t## Boundaries\n63\t- In scope and explicit non-goals for this slice\n64\t```\n65\t\n66\t## Slicing Rules\n67\t\n68\t- Prefer tracer-bullet slices through the necessary layers over separate database, API, UI, and test tickets.\n69\t- Size each ticket for one fresh agent context, including verification and cleanup.\n70\t- A completed ticket should leave the repository in a valid, reviewable state.\n71\t- Create only genuine dependency edges. Shared topic, preferred order, or the same parent does not imply blocking.\n72\t- Put foundational compatibility work first only when later slices genuinely cannot begin without it.\n73\t- For wide mechanical changes that cannot land green as vertical slices, use expand, migrate in reviewable batches, then contract.\n74\t- Keep volatile implementation detail out unless it is necessary to preserve a settled decision. Verify every included path and stamp the relevant revision when drift matters.\n75\t\n76\t## Resume Contract\n77\t\n78\tThe canonical artifact must let a fresh agent answer:\n79\t\n80\t- What outcome is required?\n81\t- Which decisions are already settled?\n82\t- What is in and out of scope?\n83\t- What has completed, what is blocked, and what is ready now?\n84\t- What evidence proves each item complete?\n85\t- Where should newly discovered decisions or scope changes be recorded?\n86\t\n87\tUpdate the canonical tracker artifacts as the plan changes. Comments may record progress, but settled requirements and current status belong in the artifact fields or body rather than being buried in a conversation log.\n88\t",
+              "is_error": false,
+              "parentToolUseId": null
+            },
+            {
+              "id": "toolu_01NLyXXvtRDZwMjaiKCcBNMb",
+              "name": "Read",
+              "input": {
+                "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir/.claude/skills/slopspec/references/tracker-selection.md"
+              },
+              "output": "1\t# Tracker Selection\n2\t\n3\tChoose the repository's actual work system, not the easiest available tool.\n4\t\n5\t## Evidence Precedence\n6\t\n7\t| Evidence | Meaning |\n8\t|---|---|\n9\t| User names a tracker, project, team, epic, or issue | Authoritative for this request |\n10\t| Current work began from a tracker URL or key | Prefer updating or attaching to that work |\n11\t| `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, or repo docs declare work tracking | Repository default; overrides remote-host inference |\n12\t| Repeated issue keys or links in branches, commits, and pull requests | Strong established-workflow signal |\n13\t| Issue templates, labels, or tracker-specific config | Strong provider and artifact-shape signal |\n14\t| Git remote host | Recommendation signal, not proof of the tracker |\n15\t| Installed CLI or connector | Access signal only; it does not choose the destination |\n16\t\n17\tWhen strong evidence conflicts, report the conflict and ask one question with a recommended answer. Do not create artifacts in both places.\n18\t\n19\t## Common Signals\n20\t\n21\t### GitHub\n22\t\n23\t- GitHub remote plus active repository issues\n24\t- `.github/ISSUE_TEMPLATE/` or issue-form configuration\n25\t- `owner/repo#123` references and GitHub issue URLs\n26\t- `gh` or an authenticated GitHub connector as the write path\n27\t\n28\t### GitLab\n29\t\n30\t- GitLab or self-hosted GitLab remote\n31\t- `.gitlab/issue_templates/`\n32\t- project or group issue references and GitLab issue URLs\n33\t- `glab` or an authenticated GitLab API/connector as the write path\n34\t\n35\t### Jira\n36\t\n37\t- Repository instructions naming the Jira site and space/project\n38\t- repeated keys such as `ABC-123` in branches, commits, pull requests, or docs\n39\t- an existing epic or work item named by the user\n40\t- an authenticated Jira connector or API as the write path\n41\t\n42\t### Linear\n43\t\n44\t- Repository instructions naming the workspace and team\n45\t- repeated team keys such as `ENG-123` with Linear URLs or integration evidence\n46\t- an existing project or parent issue named by the user\n47\t- an authenticated Linear connector or API as the write path\n48\t\n49\t### Local or another tracker\n50\t\n51\tUse a local directory, Notion database, Asana project, or another system only when the user or repository establishes it as the work tracker. Preserve its native vocabulary and hierarchy instead of translating everything into GitHub terms.\n52\t\n53\t## When to Ask\n54\t\n55\tAsk where to save the plan when:\n56\t\n57\t- the user requested planning but did not authorize publication\n58\t- no repository preference is discoverable\n59\t- multiple plausible trackers conflict\n60\t- the provider is known but the project, team, or parent is ambiguous\n61\t- the plan would expose sensitive information to a public or broadly visible tracker\n62\t\n63\tLead with one recommendation:\n64\t\n65\t> Save this as a parent issue in `<destination>` with `<N>` child tickets? Recommended because `<repo evidence>`.\n66\t\n67\tDo not ask when the user already named the destination or requested publication into an unambiguous repository-owned tracker.\n68\t\n69\t## Access and Failure\n70\t\n71\tBefore writing, verify the target, authenticated identity or profile when relevant, repository or project visibility, and permission to create or update the intended artifact type. Do not install integrations, change authentication, create tracker projects, invent labels, or broaden visibility merely to publish a plan.\n72\t\n73\tWhen native hierarchy or dependency operations are unavailable, retain the chosen tracker and use explicit parent and blocker links in item bodies. When no write path is available, produce a paste-ready draft and name the exact missing capability.\n74\t",
+              "is_error": false,
+              "parentToolUseId": null
+            },
+            {
+              "id": "toolu_01Bkf45VZri7uXTsBmyD7nqW",
+              "name": "Bash",
+              "input": {
+                "command": "ls -a && echo \"--- git ---\" && git remote -v 2>&1 | head -5",
+                "description": "List workdir contents and git remotes"
+              },
+              "output": ".\n..\n.claude\nAGENTS.md\nAGREED_CHANGE.md\n--- git ---\norigin\thttps://github.com/uinaf/ffsstack.git (fetch)\norigin\thttps://github.com/uinaf/ffsstack.git (push)",
+              "is_error": false,
+              "parentToolUseId": null
+            },
+            {
+              "id": "toolu_015NCEjNpzJ4m8LGathup7KX",
+              "name": "Write",
+              "input": {
+                "file_path": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir/planning-result.md",
+                "content": "# Planning result\n\n**Destination:** GitHub Issues in this repository (`AGENTS.md:3` — \"Engineering backlog: GitHub Issues in this repository\").\n\n**Shape:** one issue. The rename, the one-release alias, the reference update, and the compatibility test are one cohesive change that lands and verifies together; splitting them would produce tickets that cannot land green independently. No epic, no child tickets, no checked-in plan file.\n\n**Labels:** `ready` — acceptance criteria and verification are both complete, which is the condition `AGENTS.md:3` sets for that label.\n\n**Not published.** Draft only, per the request to produce this file rather than write to the tracker.\n\n---\n\n## Issue title\n\n```text\nRename CACHE_TTL_SECONDS to CACHE_MAX_AGE_SECONDS, accept the old name for one release\n```\n\n## Issue body\n\n```markdown\n## Outcome\n\nOperators configure the cache lifetime as `CACHE_MAX_AGE_SECONDS`. Existing\ndeployments that still set `CACHE_TTL_SECONDS` keep working for one release and\nget the deprecation warning instead of a silent behavior change.\n\n## Context\n\n`CACHE_TTL_SECONDS` is the current key. The name is being changed to\n`CACHE_MAX_AGE_SECONDS`. Config consumers already have a deprecation warning\npath, so this needs no new warning mechanism.\n\n## Decisions and constraints\n\n- New canonical key: `CACHE_MAX_AGE_SECONDS`.\n- `CACHE_TTL_SECONDS` remains accepted for exactly one release, then is removed\n  in a follow-up.\n- The old key emits the existing deprecation warning; do not add a new warning\n  mechanism or logging channel.\n- Same units and semantics (seconds); this is a rename, not a behavior change.\n\n## Acceptance criteria\n\n- [ ] `CACHE_MAX_AGE_SECONDS` sets the cache lifetime.\n- [ ] `CACHE_TTL_SECONDS` still sets the same value and emits the existing\n      deprecation warning naming `CACHE_MAX_AGE_SECONDS` as the replacement.\n- [ ] When both are set, `CACHE_MAX_AGE_SECONDS` wins and the deprecation\n      warning is still emitted.\n- [ ] Setting neither leaves the current default unchanged.\n- [ ] The configuration reference documents `CACHE_MAX_AGE_SECONDS` and marks\n      `CACHE_TTL_SECONDS` as deprecated with its removal release.\n\n## Non-goals\n\n- Removing `CACHE_TTL_SECONDS` — that is the follow-up after this release.\n- Renaming any other configuration key.\n- Changing the cache lifetime default, units, or eviction behavior.\n- Changing how deprecation warnings are emitted or formatted.\n\n## Verification\n\n- Compatibility test covering both names: new key alone, old key alone (warning\n  asserted), both set (new key wins, warning asserted).\n- Repository lint, type, and test gates pass.\n- Configuration reference renders with the new key and the deprecation note.\n\n## Risks and stop conditions\n\n- Risk: the key is read in more places than the config loader (deploy manifests,\n  charts, examples, CI env). Grep for both names and update every occurrence.\n- Stop if the old key's value is consumed with different units or semantics\n  anywhere — that makes this more than a rename and needs a decision before\n  proceeding.\n- Stop if no existing deprecation warning path exists; do not invent one.\n```\n\n---\n\n## Handoff\n\n```text\ncanonical: <issue-not-yet-created>\nchildren: none\nfrontier: canonical issue (no blockers)\ngaps: file paths for the config loader, configuration reference, and test suite\n      not verified — this workdir contains no source tree\nnext: publish the issue above with label `ready`\n```\n"
+              },
+              "output": "File created successfully at: /Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir/planning-result.md (file state is current in your context — no need to Read it back)",
+              "is_error": false,
+              "parentToolUseId": null
+            }
+          ],
+          "numTurns": 9,
+          "durationMs": 54706,
+          "durationApiMs": 56406,
+          "modelUsage": {
+            "claude-haiku-4-5-20251001": {
+              "inputTokens": 668,
+              "outputTokens": 16,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0,
+              "webSearchRequests": 0,
+              "costUSD": 0.000748,
+              "contextWindow": 200000,
+              "maxOutputTokens": 32000,
+              "canonicalModel": "claude-haiku-4-5",
+              "provider": "firstParty"
+            },
+            "claude-opus-5": {
+              "inputTokens": 12,
+              "outputTokens": 3734,
+              "cacheReadInputTokens": 164381,
+              "cacheCreationInputTokens": 17247,
+              "webSearchRequests": 0,
+              "costUSD": 0.34807049999999995,
+              "contextWindow": 1000000,
+              "maxOutputTokens": 64000,
+              "canonicalModel": "claude-opus-5",
+              "provider": "firstParty"
+            }
+          },
+          "permissionDenials": [],
+          "terminalReason": "completed",
+          "_promptfooFileMetadata": {},
+          "sessionId": "ad82365a-c1f4-428e-ac3f-ddba667e5639"
+        },
+        "failureReason": 0
+      }
+    ],
+    "stats": {
+      "successes": 1,
+      "failures": 0,
+      "errors": 0,
+      "tokenUsage": {
+        "prompt": 12,
+        "completion": 3734,
+        "cached": 0,
+        "total": 3746,
+        "numRequests": 1,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 3754,
+          "prompt": 16,
+          "completion": 3738,
+          "cached": 0,
+          "numRequests": 0,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      },
+      "durationMs": 84898,
+      "evaluationDurationMs": 84898
+    }
+  },
+  "config": {
+    "tags": {},
+    "description": "slopspec/single-item-minimality",
+    "prompts": [
+      "{{task}}"
+    ],
+    "providers": [
+      {
+        "id": "anthropic:claude-agent-sdk",
+        "config": {
+          "model": "claude-opus-5",
+          "apiKeyRequired": false,
+          "working_dir": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir",
+          "setting_sources": [
+            "project"
+          ],
+          "skills": [
+            "slopspec"
+          ],
+          "permission_mode": "acceptEdits",
+          "append_allowed_tools": [
+            "Read",
+            "Write",
+            "Edit",
+            "Glob",
+            "Grep"
+          ],
+          "max_turns": 50
+        }
+      }
+    ],
+    "tests": [
+      {
+        "description": "Tests whether planning keeps a cohesive one-context change in one tracker item rather than manufacturing an epic or horizontal child tickets.",
+        "vars": {
+          "task": "# Keep a Small Plan in One GitHub Issue\n\n## Problem/Feature Description\n\nThe repository explicitly tracks engineering work in GitHub Issues. The user says: \"Save this agreed change as an issue.\" The change renames one configuration key, supports the old key for one release with a warning, updates the configuration reference, and adds a compatibility test. The work fits one agent context and lands as one reviewable change.\n\nProduce `planning-result.md` with the issue title and body shape that should be published. Do not implement the change.\n\n## Input Files\n\n(Input file `AGENTS.md` is available in your working directory.)\n\n(Input file `AGREED_CHANGE.md` is available in your working directory.)\n",
+          "workdir": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/workdir",
+          "manifest": "/Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/scratch/slopspec--single-item-minimality/manifest.json"
+        },
+        "threshold": 0.7,
+        "assert": [
+          {
+            "type": "skill-used",
+            "value": "slopspec",
+            "weight": 1
+          },
+          {
+            "type": "llm-rubric",
+            "value": "One issue: planning-result.md creates exactly one GitHub issue and no parent, epic, or child issue set",
+            "weight": 24
+          },
+          {
+            "type": "llm-rubric",
+            "value": "Outcome captured: The issue describes the configuration rename and one-release compatibility behavior",
+            "weight": 14
+          },
+          {
+            "type": "llm-rubric",
+            "value": "Acceptance criteria complete: Acceptance criteria cover the new key, old-key compatibility, deprecation warning, documentation update, and compatibility test",
+            "weight": 22
+          },
+          {
+            "type": "llm-rubric",
+            "value": "Verification captured: The issue includes verification expectations rather than only an implementation checklist",
+            "weight": 14
+          },
+          {
+            "type": "llm-rubric",
+            "value": "Repository metadata respected: The result applies or proposes the existing ready label only after the plan has complete acceptance and verification content",
+            "weight": 12
+          },
+          {
+            "type": "llm-rubric",
+            "value": "No layer tickets: The result does not split code, docs, and tests into separate tickets",
+            "weight": 8
+          },
+          {
+            "type": "llm-rubric",
+            "value": "No implementation: The response does not modify code or claim completion",
+            "weight": 6
+          }
+        ]
+      }
+    ],
+    "env": {},
+    "defaultTest": {
+      "options": {
+        "provider": {
+          "id": "anthropic:claude-agent-sdk",
+          "config": {
+            "model": "claude-opus-5",
+            "apiKeyRequired": false,
+            "max_turns": 3,
+            "output_format": {
+              "type": "json_schema",
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "reason",
+                  "pass",
+                  "score"
+                ],
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  },
+                  "pass": {
+                    "type": "boolean"
+                  },
+                  "score": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "transform": "file:///Users/altay/projects/uinaf/ffsstack/.claude/worktrees/agent-a61a4b9538a5dbbd8/tools/skill-evals/transform.mjs"
+      },
+      "vars": {},
+      "assert": [],
+      "metadata": {}
+    },
+    "outputPath": [
+      "results/slopspec--single-item-minimality.json"
+    ],
+    "extensions": [],
+    "metadata": {},
+    "evaluateOptions": {}
+  },
+  "shareableUrl": null,
+  "metadata": {
+    "promptfooVersion": "0.122.0",
+    "nodeVersion": "v26.7.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "exportedAt": "2026-08-16T16:24:12.194Z",
+    "evaluationCreatedAt": "2026-08-16T16:22:47.243Z"
+  },
+  "vars": [
+    "task",
+    "workdir",
+    "manifest"
+  ],
+  "runtimeOptions": {
+    "eventSource": "cli",
+    "showProgressBar": false,
+    "repeat": 1,
+    "maxConcurrency": 4,
+    "cache": false
+  }
+}

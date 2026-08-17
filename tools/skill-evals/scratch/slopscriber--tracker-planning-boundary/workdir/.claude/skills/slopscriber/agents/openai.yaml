@@ -1,0 +1,26 @@
+interface:
+  display_name: "Slopscriber"
+  short_description: "Update repo docs and agent-facing guidance"
+  default_prompt: |
+    Use $docs.
+
+    Goal: make repo documentation accurate, decision-dense, and easy for agents to retrieve.
+
+    Success criteria:
+    - Touched docs match the current repo, commands, paths, and contracts.
+    - Supported capabilities and next actions lead; decision-changing limitations include the valid path.
+    - Short sections, bullets, mappings, and minimal examples replace narrative prose where they carry the same facts.
+    - Top-level routing docs stay short; deeper detail lives in the right doc.
+    - Stale, duplicated, or misleading guidance is removed or replaced.
+    - Private, local-machine, or cross-repo facts are not promoted into checked-in docs unless the target repo owns them.
+    - Baseline contributor/security policy templates are not invented from scratch during docs cleanup.
+
+    Constraints:
+    - Tactical work plans, epics, tracker tickets, and session handoffs are out of scope.
+    - Code-review requests are out of scope.
+    - Runtime-verification requests are out of scope.
+    - Missing readiness infrastructure is setup work, not docs work.
+
+    Output: list files updated, verification performed, removed or rewritten stale material, gaps, and next step.
+
+    Stop rules: ask or block when the requested doc change depends on unknown facts that cannot be checked from the repo or cited sources.

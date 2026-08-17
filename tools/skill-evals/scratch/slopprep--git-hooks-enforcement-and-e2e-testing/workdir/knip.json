@@ -1,0 +1,6 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["src/cli.ts", "src/**/*.test.ts", "e2e/**/*.test.ts"],
+  "project": ["src/**/*.ts", "e2e/**/*.ts"],
+  "include": ["files", "exports", "types", "duplicates"]
+}

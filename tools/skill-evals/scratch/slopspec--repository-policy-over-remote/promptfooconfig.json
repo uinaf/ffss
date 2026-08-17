@@ -1,0 +1,94 @@
+{
+  "description": "slopspec/repository-policy-over-remote",
+  "prompts": [
+    "{{task}}"
+  ],
+  "providers": [
+    {
+      "id": "anthropic:claude-agent-sdk",
+      "config": {
+        "model": "claude-opus-5",
+        "apiKeyRequired": false,
+        "working_dir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopspec--repository-policy-over-remote/workdir",
+        "setting_sources": [
+          "project"
+        ],
+        "skills": [
+          "slopspec"
+        ],
+        "permission_mode": "acceptEdits",
+        "append_allowed_tools": [
+          "Read",
+          "Write",
+          "Edit",
+          "Glob",
+          "Grep"
+        ],
+        "max_turns": 50
+      }
+    }
+  ],
+  "defaultTest": {
+    "options": {
+      "provider": "anthropic:messages:claude-sonnet-5",
+      "transform": "file:///Users/altay/projects/uinaf/ffsstack/tools/skill-evals/transform.ts"
+    }
+  },
+  "tests": [
+    {
+      "description": "Tests whether repository-owned Linear policy and the existing source issue override a GitHub remote, and whether planning updates the canonical artifact instead of creating a duplicate or local plan.",
+      "vars": {
+        "task": "Use the slopspec skill for this task.\n\n# Update Existing Linear Work Despite a GitHub Remote\n\n## Problem/Feature Description\n\nThe repository is hosted on GitHub, but its agent guidance says product work is tracked in Linear under team `SDK`. The current conversation began from Linear issue `SDK-41`, whose URL and existing body are provided below. The user has agreed on two additional acceptance criteria and says: \"save this plan so another agent can pick it up.\"\n\nPrepare `planning-result.md` describing the durable destination, whether to update or create artifacts, the content that should change, and the verified resume point. Do not implement the feature.\n\n## Input Files\n\n(Input file `.git/config` is available in your working directory.)\n\n(Input file `AGENTS.md` is available in your working directory.)\n\n(Input file `CURRENT_ISSUE.md` is available in your working directory.)\n\n(Input file `AGREED_CHANGES.md` is available in your working directory.)\n",
+        "workdir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopspec--repository-policy-over-remote/workdir",
+        "manifest": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopspec--repository-policy-over-remote/manifest.json"
+      },
+      "assert": [
+        {
+          "type": "assert-set",
+          "threshold": 0.7,
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "Linear selected: planning-result.md selects Linear team SDK as the durable destination and does not select GitHub Issues",
+              "weight": 18
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Existing issue updated: The plan updates SDK-41 rather than creating a new parent issue or epic",
+              "weight": 18
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Acceptance criteria preserved: The existing default-three-attempts criterion remains present alongside the two newly agreed criteria",
+              "weight": 18
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No unnecessary decomposition: The result does not create child tickets for this small cohesive change",
+              "weight": 12
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No local fallback: The result does not create docs/plans, plans, or another checked-in planning file",
+              "weight": 14
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Resume point returned: The result names SDK-41 and its URL as the canonical resume point",
+              "weight": 12
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No implementation: The response does not modify source code or claim the feature was implemented",
+              "weight": 8
+            }
+          ]
+        },
+        {
+          "type": "skill-used",
+          "value": "slopspec"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "description": "slopprep/repo-audit-and-boot-layer-setup",
+  "prompts": [
+    "{{task}}"
+  ],
+  "providers": [
+    {
+      "id": "anthropic:claude-agent-sdk",
+      "config": {
+        "model": "claude-opus-5",
+        "apiKeyRequired": false,
+        "working_dir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopprep--repo-audit-and-boot-layer-setup/workdir",
+        "setting_sources": [
+          "project"
+        ],
+        "skills": [
+          "slopprep"
+        ],
+        "permission_mode": "acceptEdits",
+        "append_allowed_tools": [
+          "Read",
+          "Write",
+          "Edit",
+          "Glob",
+          "Grep"
+        ],
+        "max_turns": 50
+      }
+    }
+  ],
+  "defaultTest": {
+    "options": {
+      "provider": "anthropic:messages:claude-sonnet-5",
+      "transform": "file:///Users/altay/projects/uinaf/ffsstack/tools/skill-evals/transform.ts"
+    }
+  },
+  "tests": [
+    {
+      "description": "Tests whether the agent audits the applicable readiness capabilities with evidence and gaps, separates repository and runner headlines from evidence strength, derives each headline from its lowest applicable owned capability, and produces a bounded Node.js lifecycle path that proves the app is ready without ad-hoc shell validation.",
+      "vars": {
+        "task": "Use the slopprep skill for this task.\n\n# Getting a Legacy Node.js API Ready for Autonomous Development\n\n## Problem/Feature Description\n\nYour team has inherited a Node.js REST API from a contractor. The codebase lives in a git repository but nobody on the team has run it locally — the original developer left only a vague README saying \"run npm start.\" There's no reliable way to know if the app is alive after starting it, no health endpoint, and CI has been broken for weeks. The engineering manager wants agents to start working on features autonomously, but right now no agent can tell whether its changes broke anything.\n\nYour job is to assess the current state of the repo and add the minimum\ninfrastructure needed for an agent to reliably start the app and verify it is\nalive. Keep lifecycle logic in the project's JavaScript runtime and expose it\nthrough the package manifest; do not invent a shell validation framework.\n\n## Output Specification\n\nProduce the following files:\n\n1. `audit-report.md` — A written assessment of the repository's current state from an autonomous-agent perspective. Treat a clean local Node.js environment with network access for package installation as the declared runner; no external credentials are required. Grade repository and runner readiness separately across legibility, executability, feedback, safety, durability, and scale. For each applicable capability, cite concrete evidence and describe the gap and owner. Include an E0-through-E4 evidence level and derive each headline grade from its lowest applicable capability.\n\n2. `app/scripts/init.mjs` — A Node.js lifecycle program that starts the\n   application as a child process, polls a real readiness signal with a bounded\n   deadline, and exits non-zero after cleaning up if startup fails.\n\n3. `app/package.json` — Preserve the existing scripts and add one package-owned\n   command for the lifecycle program.\n\n4. `improvements.md` — A short explanation of which readiness capabilities you addressed, which remain missing toward B and A, and what the recommended next steps are. Do not treat reaching C as completion.\n\n## Input Files\n\nThe following files represent the inherited repository. Extract them before beginning.\n\n=============== FILE: app/package.json ===============\n{\n  \"name\": \"legacy-inventory-api\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Inventory management REST API\",\n  \"main\": \"src/index.js\",\n  \"scripts\": {\n    \"start\": \"node src/index.js\",\n    \"test\": \"jest\"\n  },\n  \"dependencies\": {\n    \"express\": \"^4.18.2\"\n  },\n  \"devDependencies\": {\n    \"jest\": \"^29.0.0\"\n  }\n}\n\n=============== FILE: app/src/index.js ===============\nconst express = require('express');\nconst app = express();\nconst PORT = process.env.PORT || 3000;\n\napp.use(express.json());\n\nconst items = [];\n\napp.get('/items', (req, res) => {\n  res.json(items);\n});\n\napp.post('/items', (req, res) => {\n  const item = { id: Date.now(), ...req.body };\n  items.push(item);\n  res.status(201).json(item);\n});\n\napp.listen(PORT, () => {\n  console.log(`Server running on port ${PORT}`);\n});\n\n=============== FILE: app/test/items.test.js ===============\nconst { createItem, getItems } = require('../src/items');\n\njest.mock('../src/items');\n\ntest('createItem returns an object', () => {\n  createItem.mockReturnValue({ id: 1, name: 'test' });\n  const result = createItem({ name: 'test' });\n  expect(result).toEqual({ id: 1, name: 'test' });\n});\n\ntest('getItems returns array', () => {\n  getItems.mockReturnValue([]);\n  expect(getItems()).toEqual([]);\n});\n\n=============== FILE: app/README.md ===============\n# Inventory API\n\nRun `npm start` to start the server.\n",
+        "workdir": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopprep--repo-audit-and-boot-layer-setup/workdir",
+        "manifest": "/Users/altay/projects/uinaf/ffsstack/tools/skill-evals/scratch/slopprep--repo-audit-and-boot-layer-setup/manifest.json"
+      },
+      "assert": [
+        {
+          "type": "assert-set",
+          "threshold": 0.7,
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "Applicable readiness capabilities present: audit-report.md covers legibility, executability, feedback, safety, durability, and scale, marking genuinely inapplicable capabilities with a concrete reason",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Capability grades used: Each applicable capability in audit-report.md receives an F-through-A grade, while N/A is used only with a concrete task-scope reason",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Evidence cited per capability: Each capability in audit-report.md cites at least one specific file, exercised command, or observed runtime outcome as evidence",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Gap described per capability: Each capability below the requested target includes the missing outcome and identifies whether the repository or runner owns it",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Repository and runner grades use their lowest owned capability: audit-report.md reports separate repository and runner headline grades, each derived from its lowest applicable capability owned by that boundary rather than an average, and does not collapse them into one overall letter",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Repository, runner, and evidence are separated: audit-report.md reports repository grade, runner grade, and E0-through-E4 evidence level separately instead of collapsing environment availability and proof strength into one letter",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Background app start in Node lifecycle: app/scripts/init.mjs starts the application with a Node child-process API so it can observe the process and readiness signal",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Bounded readiness wait: app/scripts/init.mjs polls health or another real readiness signal until a finite wall-clock deadline before declaring success",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Non-zero exit on failure: app/scripts/init.mjs sets or returns a non-zero status if the app does not start successfully",
+              "weight": 10
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Package-owned lifecycle entrypoint: app/package.json exposes the lifecycle program as a package script, and no parallel shell wrapper duplicates it",
+              "weight": 8
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Doctor gap surfaced: audit-report.md or improvements.md identifies the absence of a read-only is-this-instance-worth-driving check (doctor) as a gap with an owner, or delivers one that never mutates state",
+              "weight": 7
+            },
+            {
+              "type": "llm-rubric",
+              "value": "Target progression is explicit: improvements.md or audit-report.md prioritizes cold start before real-surface feedback and repeated trials, identifies the remaining path toward B and A, and does not present reaching C as completion",
+              "weight": 7
+            },
+            {
+              "type": "llm-rubric",
+              "value": "No mock tests treated as real-surface proof: The report does not treat the mock-only Jest suite as passing testability or a substitute for real-process proof; it may still acknowledge isolated unit-level evidence",
+              "weight": 7
+            }
+          ]
+        },
+        {
+          "type": "skill-used",
+          "value": "slopprep"
+        }
+      ]
+    }
+  ]
+}
