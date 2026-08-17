@@ -21,7 +21,8 @@ func TestCursorReviewStrictUsesAPIKeyWithoutStatusAndDenyConfig(t *testing.T) {
 	t.Parallel()
 
 	const bundle = "frozen review bundle"
-	fake := newFakeCursor(t, fakeCursorOptions{authError: "not authenticated"})
+	helpWithoutStatus := strings.TrimSuffix(cursorHelp("text | json | stream-json", "plan, ask", "enabled, disabled"), "\nstatus")
+	fake := newFakeCursor(t, fakeCursorOptions{help: helpWithoutStatus, authError: "not authenticated"})
 	reviewer := NewCursor(CursorOptions{
 		Repository: t.TempDir(), Executable: fake.path,
 		Environment: []string{
@@ -89,7 +90,8 @@ func TestCursorReviewStrictUsesAPIKeyWithoutStatusAndDenyConfig(t *testing.T) {
 func TestCursorReviewNativePreservesConfigurationAndOmitsForcedSandbox(t *testing.T) {
 	t.Parallel()
 
-	fake := newFakeCursor(t, fakeCursorOptions{authError: "not authenticated"})
+	helpWithoutStatus := strings.TrimSuffix(cursorHelp("text | json | stream-json", "plan, ask", "enabled, disabled"), "\nstatus")
+	fake := newFakeCursor(t, fakeCursorOptions{help: helpWithoutStatus, authError: "not authenticated"})
 	reviewer := NewCursor(CursorOptions{
 		Repository: t.TempDir(), Executable: fake.path,
 		Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home", "CURSOR_CONFIG_DIR=/native/cursor"},

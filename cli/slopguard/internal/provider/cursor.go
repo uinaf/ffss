@@ -190,7 +190,7 @@ func (cursor *Cursor) preflight(ctx context.Context, executable, workspace strin
 		return "", probeFailure("Cursor --help", err, helpResult, environment, protocol.FailureCapability)
 	}
 	help := string(helpResult.Stdout) + string(helpResult.Stderr)
-	required := []string{"--print", "--output-format", "--mode", "--workspace", "--trust", "--model", "status"}
+	required := []string{"--print", "--output-format", "--mode", "--workspace", "--trust", "--model"}
 	if effective.Isolation.Value == protocol.IsolationStrict {
 		required = append(required, "--sandbox")
 	}
