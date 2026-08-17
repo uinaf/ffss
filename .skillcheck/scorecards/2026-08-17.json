@@ -1,5 +1,5 @@
 {
-  "ran_at": "2026-08-17T10:38:59.413Z",
+  "ran_at": "2026-08-17T12:52:48.115Z",
   "skills_tree_sha": "mixed",
   "scenarios": [
     {
@@ -210,73 +210,73 @@
       "skill": "slopscriber",
       "scenario": "agent-first-current-state-and-context-budget",
       "harness": "claude",
-      "skills_tree_sha": "unattested",
-      "score": 1,
+      "skills_tree_sha": "25682800418c4c37f30b062e42cb26282ba616b1",
+      "score": 0.996,
       "pass": true,
       "agent_model": "claude-opus-5",
-      "judge_model": "claude-opus-5",
-      "latency_ms": 127499,
-      "tokens": 15077
+      "judge_model": "claude-sonnet-5",
+      "latency_ms": 102985,
+      "tokens": 35287
     },
     {
       "skill": "slopscriber",
       "scenario": "agents-md-content-and-structure",
       "harness": "claude",
-      "skills_tree_sha": "5891c1ea2387cd9f5b34e3750ce9db488fe0c4ce",
+      "skills_tree_sha": "25682800418c4c37f30b062e42cb26282ba616b1",
       "score": 0.9475,
       "pass": true,
       "agent_model": "claude-opus-5",
       "judge_model": "claude-sonnet-5",
-      "latency_ms": 132944,
-      "tokens": 76679
+      "latency_ms": 150893,
+      "tokens": 68217
     },
     {
       "skill": "slopscriber",
       "scenario": "doc-drift-detection-and-staleness-verifi",
       "harness": "claude",
-      "skills_tree_sha": "5891c1ea2387cd9f5b34e3750ce9db488fe0c4ce",
+      "skills_tree_sha": "25682800418c4c37f30b062e42cb26282ba616b1",
       "score": 0.9984999999999999,
       "pass": true,
       "agent_model": "claude-opus-5",
       "judge_model": "claude-sonnet-5",
-      "latency_ms": 243245,
-      "tokens": 76173
+      "latency_ms": 195256,
+      "tokens": 62199
     },
     {
       "skill": "slopscriber",
       "scenario": "source-boundary-and-local-discovery",
       "harness": "claude",
-      "skills_tree_sha": "5891c1ea2387cd9f5b34e3750ce9db488fe0c4ce",
+      "skills_tree_sha": "25682800418c4c37f30b062e42cb26282ba616b1",
       "score": 0.9984999999999999,
       "pass": true,
       "agent_model": "claude-opus-5",
       "judge_model": "claude-sonnet-5",
-      "latency_ms": 84539,
-      "tokens": 32097
+      "latency_ms": 84048,
+      "tokens": 34415
     },
     {
       "skill": "slopscriber",
       "scenario": "top-level-doc-split-and-readme-structure",
       "harness": "claude",
-      "skills_tree_sha": "5891c1ea2387cd9f5b34e3750ce9db488fe0c4ce",
+      "skills_tree_sha": "25682800418c4c37f30b062e42cb26282ba616b1",
       "score": 1,
       "pass": true,
       "agent_model": "claude-opus-5",
       "judge_model": "claude-sonnet-5",
-      "latency_ms": 163895,
-      "tokens": 76944
+      "latency_ms": 242703,
+      "tokens": 81852
     },
     {
       "skill": "slopscriber",
       "scenario": "tracker-planning-boundary",
       "harness": "claude",
-      "skills_tree_sha": "5891c1ea2387cd9f5b34e3750ce9db488fe0c4ce",
-      "score": 0.989,
+      "skills_tree_sha": "25682800418c4c37f30b062e42cb26282ba616b1",
+      "score": 1,
       "pass": true,
       "agent_model": "claude-opus-5",
       "judge_model": "claude-sonnet-5",
-      "latency_ms": 50531,
-      "tokens": 15034
+      "latency_ms": 49293,
+      "tokens": 13884
     },
     {
       "skill": "slopspec",
