@@ -11,7 +11,7 @@ runner: B
 evidence: E4
 task classes: implementation B, scripted QA B, exploratory QA C
 profile: legibility B, executability B, feedback B, safety A, durability B, scale C
-first gap is scale: concurrent result reconciliation has not been exercised
+first gap: scale; concurrent result reconciliation has not been exercised
 ```
 
 - **Repository grade** covers the versioned checkout and the contracts it exposes.

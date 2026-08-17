@@ -66,4 +66,4 @@ skills lint. Next:
 
 ## License
 
-MIT; see [LICENSE](LICENSE). members carry their own copies.
+MIT; see [LICENSE](LICENSE); members carry their own copies.

@@ -22,7 +22,7 @@ instinct: cut what a machine reflexively adds, keep what carries meaning.
 
 Load [prose.md](references/prose.md). Headline moves: cut puffery and
 stock AI vocabulary, name sources or delete vague attributions, delete
-every em dash (banned, not rationed), kill crutch punctuation and
+every em dash (banned; banner alt text is the one exception), kill crutch punctuation and
 inline-header lists, split long sentences, tighten verbose UI copy,
 delete chatbot phrases and hedging stacks, and replace feeling-words
 with mechanisms and numbers.

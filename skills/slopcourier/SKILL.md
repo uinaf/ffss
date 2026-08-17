@@ -59,9 +59,9 @@ The vocabulary is "change request"; the forge decides the tool:
    solution, then exactly what ran to prove it. Name a risk only when
    there is a real one. No implementation inventories, no headings for
    their own sake, no fabricated verification.
-   - BAD: "## Summary\nRefactors the websocket layer.\n## Changed\n
-     server.ts, compression.ts, 12 tests.\n## Risks\nNone.\n
-     ## Verification\nTests pass.\n## Complexity\nMedium."
+   - BAD: "## Summary Refactors the websocket layer. ## Changed server.ts,
+     compression.ts, 12 tests. ## Risks None. ## Verification Tests
+     pass. ## Complexity Medium." (a heading scaffold restating the diff)
    - GOOD: "Dashboard clients on slow links were dropping updates because
      every frame shipped uncompressed. Negotiating permessage-deflate
      cuts frame size by 70%+ on the busiest feeds. Verified with the
