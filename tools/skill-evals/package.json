@@ -9,6 +9,6 @@
     "summarize": "skillcheck summarize --root ../.."
   },
   "devDependencies": {
-    "skillcheck": "github:uinaf/skillcheck#v0.1.1"
+    "skillcheck": "github:uinaf/skillcheck#v0.1.3"
   }
 }
