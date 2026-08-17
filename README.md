@@ -1,6 +1,6 @@
 ![ffsstack — the flipflopslopstack.](https://uinaf.dev/og/banner/ffsstack.png)
 
-# ffsstack
+# uinaf/ffsstack
 
 **ffsstack**, the flipflopslopstack. A state machine that doesn't believe
 the agent, a reviewer that doesn't like the agent, and some skills so the
