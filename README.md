@@ -31,7 +31,7 @@ codex plugin add ffsstack@ffsstack
 cursor-agent plugin marketplace add https://github.com/uinaf/ffsstack
 
 # Grok CLI
-grok plugin install uinaf/ffsstack
+grok plugin install uinaf/ffsstack --trust
 ```
 
 OpenCode has no compatible plugin format; its plugin API carries hooks and
@@ -40,7 +40,7 @@ instead, for example from the Claude Code checkout:
 
 ```text
 mkdir -p ~/.config/opencode/skills
-ln -s ~/.claude/plugins/marketplaces/ffsstack/skills/* ~/.config/opencode/skills/
+ln -sfn ~/.claude/plugins/marketplaces/ffsstack/skills/* ~/.config/opencode/skills/
 ```
 
 The plugin is SHA-versioned; updates follow this repo's `main`. Skills marked
