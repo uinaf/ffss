@@ -11,4 +11,4 @@ interface:
     changed, stop when green, and never merge without an explicit request.
 
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true

@@ -11,4 +11,4 @@ interface:
     slop instead of polishing them; one pass, not a sterilizing loop.
 
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true

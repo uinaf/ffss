@@ -24,3 +24,6 @@ interface:
     Output: list files updated, verification performed, removed or rewritten stale material, gaps, and next step.
 
     Stop rules: ask or block when the requested doc change depends on unknown facts that cannot be checked from the repo or cited sources.
+
+policy:
+  allow_implicit_invocation: true

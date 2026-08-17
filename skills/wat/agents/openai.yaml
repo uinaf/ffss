@@ -1,0 +1,12 @@
+interface:
+  display_name: "wat"
+  short_description: "Whip a rambling reply into terse labeled deltas"
+  default_prompt: |
+    Use $wat to rewrite the drafted reply as terse labeled deltas: outcome
+    first, counts and identifiers over adjectives, at most six lines, one
+    next action — and keep answering that way for the rest of the session.
+    Do not use it to clean committed artifacts, docs, or diffs, or to
+    shorten content the user asked to be exhaustive.
+
+policy:
+  allow_implicit_invocation: true

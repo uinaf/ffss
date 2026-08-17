@@ -13,4 +13,4 @@ interface:
     hand the URL back through its deliver evidence.
 
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true
