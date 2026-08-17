@@ -1,1 +1,0 @@
-The rollout has three independently scheduled stages and must be resumable by another agent.

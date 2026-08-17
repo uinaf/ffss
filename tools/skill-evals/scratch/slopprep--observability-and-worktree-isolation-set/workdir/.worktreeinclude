@@ -1,7 +1,0 @@
-# Gitignored files that managed Codex/Claude worktrees still need, listed one by
-# one on purpose. Keep this set minimal: no .env* globs, no secret directories,
-# no caches, dependencies, build output, or machine-global config.
-#
-# Manual `git worktree add` and custom hooks do not run this mechanism -- copy
-# .env.local yourself there.
-.env.local

@@ -1,5 +1,0 @@
-{
-  "scripts": {
-    "setup": "node scripts/setup.mjs"
-  }
-}
