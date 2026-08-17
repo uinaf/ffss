@@ -12,16 +12,16 @@ or import the canonical guide instead of maintaining parallel prose.
 
 The root guide should stay short and progressively disclose deeper contracts:
 
-1. **Orientation** — what this repository or workspace is for, who or what it
+1. **Orientation**: what this repository or workspace is for, who or what it
    serves, and where implementation belongs.
-2. **Routing** — task-shaped pointers that say when to read each deeper source.
-3. **Authority** — safe local actions, required approvals, destructive or
+2. **Routing**: task-shaped pointers that say when to read each deeper source.
+3. **Authority**: safe local actions, required approvals, destructive or
    external boundaries, and credential ownership.
-4. **Workflow** — the smallest bootstrap, boot, verify, and teardown path plus
+4. **Workflow**: the smallest bootstrap, boot, verify, and teardown path plus
    where task acceptance comes from.
-5. **Proof** — the canonical gate, task-relevant real surface, failure evidence,
+5. **Proof**: the canonical gate, task-relevant real surface, failure evidence,
    and what cannot be inferred from local checks.
-6. **Write-back** — where durable decisions, operational state, and handoffs
+6. **Write-back**: where durable decisions, operational state, and handoffs
    belong.
 
 Do not duplicate architecture tours, API references, generated trees, complete

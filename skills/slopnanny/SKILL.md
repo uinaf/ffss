@@ -14,12 +14,12 @@ widens the change.
 - With an active slopmachine run, the binary is the observation authority:
   `slopmachine watch --once` (or `--interval SECONDS` for a bounded poll).
   `merged` settles the unit; `checks_failed`, `review_feedback`, and
-  `head_moved` return it to the build loop with the cause recorded — act on
+  `head_moved` return it to the build loop with the cause recorded, and act on
   that cause.
 - Without a run, poll through the forge CLI the delivery dispatched to
   (`gh` / `glab`): checks state, review verdicts (a `CHANGES_REQUESTED`
   review may carry no inline thread), unresolved review threads, and
-  top-level comments — bots often report findings as ordinary comments.
+  top-level comments; bots often report findings as ordinary comments.
 - Act only on checks, reviews, and comments newer than the latest push;
   everything older was already answered by that push.
 
@@ -30,13 +30,13 @@ widens the change.
    sometimes wrong.
 2. Fix a real finding with the smallest change at the owning boundary, rerun
    the repository's own gates, push, and reply on the thread with the commit
-   hash. Never force-push without explicit approval — even when rework
+   hash. Never force-push without explicit approval, even when rework
    after `head_moved` tempts a rebase.
 3. Reject an incorrect or out-of-scope finding in a thread reply with
    concrete evidence (file, line, invariant); never fix-to-appease.
 4. Never let feedback expand the change beyond its original goal. Real
    shortcomings outside the goal become tracker items, not commits.
-5. Attach visual proof only when it is the clearest evidence — reuse the
+5. Attach visual proof only when it is the clearest evidence; reuse the
    slopcourier visual-evidence ladder; never commit proof assets.
 
 ## Reply voice
@@ -51,7 +51,7 @@ content that advances the thread.
 - Nothing changed → say nothing. No filler comments, no status noise.
 - Stop when required checks and reviewers are green on the latest commit:
   report the change request as ready.
-- Merge only when explicitly requested — being green is a report, not an
+- Merge only when explicitly requested; being green is a report, not an
   authorization.
 - On a slopmachine run, keep driving status: rework causes route through
   `slopmachine` commands, and settlement comes from `watch` observing the

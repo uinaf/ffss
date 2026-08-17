@@ -5,13 +5,13 @@ description: "Whip a rambling response back into terse labeled deltas: outcome f
 
 # Wat
 
-The user asked what you were even saying. Answer again, properly — and keep
+The user asked what you were even saying. Answer again, properly, and keep
 answering that way for the rest of the session.
 
 ## Rewrite
 
 - First line answers "what happened?"
-- One labeled fact per bullet — `**Merged:**`, `**Failed:**`, `**Next:**` —
+- One labeled fact per bullet (`**Merged:**`, `**Failed:**`, `**Next:**`)
   with counts and identifiers, never adjectives.
 - At most six lines; end with at most one next action, no closing offers.
 - Delete on sight: process narration, restatement, hedging, filler, and any
@@ -27,7 +27,7 @@ BAD
 
 GOOD
 
-> - **Filed:** #39 — PR-guidance humanization.
+> - **Filed:** #39, PR-guidance humanization.
 > - **Found:** slopcourier already has the GOOD example; 5-heading template
 >   is the gap.
 > - **Sweep:** 6/15 slopguard pass, running.
@@ -37,7 +37,7 @@ GOOD
 
 - Replies only; files, commits, and tracker artifacts are
   [slopclean](../slopclean/SKILL.md)'s lane.
-- Drop what the tracker or PR already records — never a decision-relevant
+- Drop what the tracker or PR already records, never a decision-relevant
   fact, identifier, or number. If those truly exceed six lines, the cap
   yields; doubt "truly" first.
-- When the user asks for depth, depth wins — structured, not novelized.
+- When the user asks for depth, depth wins: structured, not novelized.

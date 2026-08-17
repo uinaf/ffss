@@ -13,7 +13,7 @@ instinct: cut what a machine reflexively adds, keep what carries meaning.
 1. Pick the mode from the artifact: prose mode for writing, code mode for
    diffs and source. Load the matching reference.
 2. Scan for the patterns; rewrite in place. Preserve meaning and intended
-   tone — this is a cleaning pass, never a rewrite of substance.
+   tone; this is a cleaning pass, never a rewrite of substance.
 3. Add voice where the text is sterile: state opinions, vary rhythm, prefer
    the concrete mechanism or number over the vibe.
 4. Self-audit: "what still makes this obviously machine-made?" Fix it.
@@ -21,10 +21,11 @@ instinct: cut what a machine reflexively adds, keep what carries meaning.
 ## Prose mode
 
 Load [prose.md](references/prose.md). Headline moves: cut puffery and
-stock AI vocabulary, name sources or delete vague attributions, kill
-crutch punctuation and inline-header lists, delete chatbot phrases and
-hedging stacks, replace feeling-words with mechanisms and numbers, and let
-sentences vary in length.
+stock AI vocabulary, name sources or delete vague attributions, delete
+every em dash (banned; banner alt text is the one exception), kill crutch punctuation and
+inline-header lists, split long sentences, tighten verbose UI copy,
+delete chatbot phrases and hedging stacks, and replace feeling-words
+with mechanisms and numbers.
 
 ## Code mode
 
@@ -40,5 +41,5 @@ to say what the thing is.
   pattern hides a real defect, report it instead of polishing it.
 - Match the repository's or document's established conventions over any
   rule here.
-- One cleaning pass per request; do not loop until sterile — over-cleaned
+- One cleaning pass per request; do not loop until sterile; over-cleaned
   text is its own tell.

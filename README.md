@@ -2,7 +2,7 @@
 
 # ffsstack
 
-**ffsstack** — the flipflopslopstack. A state machine that doesn't believe
+**ffsstack**, the flipflopslopstack. A state machine that doesn't believe
 the agent, a reviewer that doesn't like the agent, and some skills so the
 agent behaves. Ships slop; checks receipts.
 
@@ -66,4 +66,4 @@ skills lint. Next:
 
 ## License
 
-MIT — see [LICENSE](LICENSE); members carry their own copies.
+MIT; see [LICENSE](LICENSE); members carry their own copies.
