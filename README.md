@@ -15,8 +15,8 @@ agent behaves. Ships slop; checks receipts.
 
 ## Skills
 
-Install all nine as a plugin (skills only, ~570K payload). Codex and Cursor
-read the same marketplace:
+Install all nine as one Agent Plugins package. Claude Code, Codex, and Cursor
+read the same marketplace and the portable root manifest:
 
 ```text
 # Claude Code
@@ -33,10 +33,10 @@ cursor-agent plugin marketplace add https://github.com/uinaf/ffsstack
 
 The plugin is SHA-versioned; updates follow this repo's `main`. Skills marked
 `disable-model-invocation` load only on explicit `/name` invocation in
-harnesses that support the flag. The repo root also carries a
-[`plugin.json`](plugin.json) manifest per the
-[agent plugins standard](https://agent-plugins.org/) for when its clients
-grow install flows.
+harnesses that support the flag. Codex mirrors that policy with
+`policy.allow_implicit_invocation: false` in each matching `agents/openai.yaml`.
+The repo root [`plugin.json`](plugin.json) is the shared manifest from the
+[Agent Plugins standard](https://agent-plugins.org/).
 
 | Skill | What it does |
 | --- | --- |

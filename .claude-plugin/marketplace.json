@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "ffsstack",
-      "source": "./skills",
+      "source": ".",
       "description": "All nine skills: slopmachine, slopguard, slopcourier, slopnanny, slopspec, slopscriber, slopprep, slopclean, wat.",
       "category": "workflow"
     }
