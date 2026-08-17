@@ -43,7 +43,7 @@ release (or a pinned `--release vX.Y.Z`), verifying the platform archive
 against the release's `checksums.txt`; `--check` reports without touching
 the binary and exits 8 when an update is available. It shares the Linux
 installer's trust boundary (checksum and archive over one HTTPS hosting
-boundary) — use the Cosign and attestation workflow below for independent
+boundary); use the Cosign and attestation workflow below for independent
 provenance. Homebrew-managed installs are refused: use
 `brew upgrade --cask slopguard`. Non-release builds refuse to self-update.
 

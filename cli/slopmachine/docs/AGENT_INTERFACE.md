@@ -9,7 +9,7 @@ event. Do not reproduce transition logic in a skill, prompt, or script.
 The protocol is harness-independent. Any agent that can run shell commands,
 pipe JSON through stdin, and read stdout completes a full run using
 `status --json --fields`, `schema`, and the executable commands `next_action`
-returns — no bundled skill, no harness features. `next_action` never names a
+returns: no bundled skill, no harness features. `next_action` never names a
 harness capability; placeholders in angle brackets are fields for the caller
 to fill. `scripts/test-conformance.sh` proves this bar with a skill-less
 shell driver and runs inside `mise run verify`.
@@ -117,8 +117,8 @@ units keep building while earlier ones wait (`AWAITING_SIGNALS`).
 means the final pass left at least one delivered unit unobserved (auth,
 rate limit, transient failure, or a missing change request); failures
 recovered by a later interval pass do not affect the exit status. Stdout
-still carries the watch document — observations already recorded plus an
-`error_kind` field — not the ok:false error envelope. Feedback identity
+still carries the watch document (observations already recorded plus an
+`error_kind` field), not the ok:false error envelope. Feedback identity
 has two accepted limits under the bounded thread sample: a thread
 reopened without a new comment is not re-detected (any new comment is),
 and with more than ten unresolved threads a sample shift may
