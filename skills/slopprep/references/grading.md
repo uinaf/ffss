@@ -11,7 +11,7 @@ runner: B
 evidence: E4
 task classes: implementation B, scripted QA B, exploratory QA C
 profile: legibility B, executability B, feedback B, safety A, durability B, scale C
-first gap: scale — concurrent result reconciliation has not been exercised
+first gap is scale: concurrent result reconciliation has not been exercised
 ```
 
 - **Repository grade** covers the versioned checkout and the contracts it exposes.
@@ -36,29 +36,29 @@ profile so the minimum does not hide progress elsewhere. Mark a capability
 
 ## Common Grade Ladder
 
-### F — Unavailable
+### F: Unavailable
 
 The capability does not exist or the agent cannot access it.
 
-### D — Human-dependent
+### D: Human-dependent
 
 A path exists, but it relies on undocumented state, interactive setup, copied
 secrets, dashboard operation, a developer's live session, or manual recovery.
 
-### C — Functional
+### C: Functional
 
 A documented, noninteractive path works once in the declared environment and
 surfaces useful failure context. The agent can make progress, but reliability,
 coverage, or recovery remains limited. C is a checkpoint, not completion.
 
-### B — Dependable
+### B: Dependable
 
 The path is reproducible, bounded, enforced, and exercised on representative
 real surfaces. The agent can complete the intended task class unattended in the
 declared environment and produce inspectable evidence. Unqualified readiness
 work targets at least B.
 
-### A — Operational
+### A: Operational
 
 The path remains dependable across long-running, concurrent, and failure-prone
 operation. It has durable state, scoped authority, recovery, empirical

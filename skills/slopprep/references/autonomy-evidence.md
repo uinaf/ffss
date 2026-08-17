@@ -5,28 +5,28 @@ scale to show how strongly a repository and runner grade has been exercised.
 
 ## Evidence Levels
 
-### E0 — Static
+### E0: Static
 
 Files and configuration were inspected, but no readiness command ran.
 
-### E1 — Exercised
+### E1: Exercised
 
 One bootstrap, smoke, verification, or teardown command ran successfully in a
 declared environment. This proves a path exists, not that it is dependable.
 
-### E2 — Real-surface
+### E2: Real-surface
 
 A success path and an actionable failure path exercised the real process,
 interface, or shipped artifact. Final state and artifacts were inspected.
 
-### E3 — Representative
+### E3: Representative
 
 A small suite of representative tasks ran multiple trials with outcome graders.
 Results include success rate, human interventions, duration, retries, resource
 or cost class, and failure taxonomy. Start with real recurring work and failures;
 expand the suite as changes become harder to distinguish.
 
-### E4 — Operational
+### E4: Operational
 
 Long-running or parallel work has survived real stalls, crashes, cancellations,
 credential denial, CI or review feedback, and recovery. Evidence is collected

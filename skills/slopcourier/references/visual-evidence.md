@@ -12,17 +12,17 @@ dispatched to (never upload through the other forge's API just because its
 CLI is installed). Never commit proof assets to any product repository
 branch (no `.github/pr-assets` or similar).
 
-## 1. attach — the uinaf uploader (when installed, any forge)
+## 1. attach: the uinaf uploader (when installed, any forge)
 
 This rung means the [uinaf attach](https://github.com/uinaf/attach) CLI
 specifically, not any binary that happens to be named `attach`. Verify the
 identity before trusting it: `attach help` must show the `attach put
 <file> [--repo <owner/name>] [--pr <n>]` command shape (or `gh extension
 list` shows `gh attach` from `uinaf/gh-attach`). Anything else on PATH
-under that name is not this rung — fall through.
+under that name is not this rung; fall through.
 
 When it is the real tool, it owns attachment end to end: `attach put` the
-asset (or `gh attach put` when only the extension is installed — the
+asset (or `gh attach put` when only the extension is installed; the
 extension does not put an `attach` binary on PATH), scope with
 `--repo`/`--pr`, and embed the returned reference (`--markdown` or
 `--url`).
@@ -62,7 +62,7 @@ local processes could read it. Embed the returned `.url` as markdown. Failure mo
 content type; 404 = bad repository id or no push permission.
 
 Video: same endpoint with `content_type` `video/mp4` or `video/webm`, and
-embed the returned URL on its own bare line — GitHub renders a player there,
+embed the returned URL on its own bare line; GitHub renders a player there,
 while `![]()` image syntax does not. Transcode Playwright's webm for broad
 playback first:
 
@@ -74,7 +74,7 @@ ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4
 
 Structure the evidence; never paste bare images that take over the page:
 
-- Constrain size with an HTML img tag — mobile screenshots especially
+- Constrain size with an HTML img tag; mobile screenshots especially
   (`<img src="…" width="300">`), or they occupy the whole page.
 - Put comparisons side by side in a table (before/after, light/dark,
   breakpoints), one labeled column each.

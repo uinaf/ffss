@@ -7,7 +7,7 @@ alone unless asked.
 
 - Narration of the next line ("// increment the counter"): delete.
 - Change-history narration ("// updated to use the new API", "// fix for
-  review feedback"): delete — git owns history.
+  review feedback"): delete; git owns history.
 - Reviewer-directed justifications ("// this is safe because the caller
   checks"): move the invariant into an assertion or a name; keep a comment
   only for constraints the code cannot express.
@@ -29,7 +29,7 @@ alone unless asked.
 - Error messages that apologize or narrate ("something went wrong while
   attempting"): state the operation, the input, and the failure.
 - Dead symmetry: branches or cases kept "for completeness" that are
-  unreachable — delete with the reasoning in the commit message.
+  unreachable; delete with the reasoning in the commit message.
 
 ## Docs in the diff
 
@@ -40,6 +40,6 @@ alone unless asked.
 ## Stop conditions
 
 - A pattern that hides a real defect (a defensive check masking an actual
-  reachable state) is a finding, not a cleanup — report it.
+  reachable state) is a finding, not a cleanup; report it.
 - Behavior, public API, and test semantics never change in a cleaning
   pass.

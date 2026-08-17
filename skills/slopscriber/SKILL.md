@@ -9,7 +9,7 @@ Keep the repo legible to agents and humans.
 
 ## Principles
 
-- Docs rot silently — every code change is a possible doc change
+- Docs rot silently; every code change is a possible doc change
 - Optimize for decision-relevant, repo-owned truth per token
 - Describe current state; keep history only in migration notes, changelogs, and decisions
 - Lead with supported capabilities and next actions
@@ -120,7 +120,7 @@ Keep the footer to 5 labeled lines or fewer. List changed files once.
 
 ## References
 
-- [references/agent-first.md](references/agent-first.md) — agent-first writing, positive state, progressive disclosure, AGENTS.md shape
-- [references/documentation.md](references/documentation.md) — README, contributing, security, and repository-doc shapes
-- [references/source-boundaries.md](references/source-boundaries.md) — durable ownership and private/local evidence boundaries
-- [references/specifications.md](references/specifications.md) — when to create specs or decisions, compact templates, acceptance coverage, and drift
+- [references/agent-first.md](references/agent-first.md): agent-first writing, positive state, progressive disclosure, AGENTS.md shape
+- [references/documentation.md](references/documentation.md): README, contributing, security, and repository-doc shapes
+- [references/source-boundaries.md](references/source-boundaries.md): durable ownership and private/local evidence boundaries
+- [references/specifications.md](references/specifications.md): when to create specs or decisions, compact templates, acceptance coverage, and drift

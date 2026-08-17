@@ -16,10 +16,10 @@ invents a second workflow runtime.
 2. Delivery is authorized: an explicit user request, or an active slopmachine
    run whose status allows `deliver`.
 3. The delivery is a change request. A slopmachine run with
-   `delivery_mode: direct-trunk` is out of this skill's lane — do not open
+   `delivery_mode: direct-trunk` is out of this skill's lane. Do not open
    a change request for it; the delivery is the trunk commit itself,
    recorded with `slopmachine deliver` and its `commit_sha`.
-4. The delivery contains only the intended change — both the worktree and,
+4. The delivery contains only the intended change: both the worktree and,
    when reusing a task branch, its commits ahead of the default branch
    (`git log <default>..HEAD`). Preserve unrelated work; never sweep it
    into the change request.
@@ -46,17 +46,27 @@ The vocabulary is "change request"; the forge decides the tool:
 3. Push with upstream tracking.
 4. Check whether a change request for this branch already exists; if it
    does, update it instead of filing a duplicate.
-5. Open the change request with the dispatched CLI, ready for review unless
-   a draft was requested. Title it the way this repository titles merged
-   work — read recent merged change requests and git history first — and
-   prefer the outcome over the mechanism ("cut frame size 70% with
-   gzipping", not "negotiate permessage-deflate"). Use the repository's
-   template verbatim; if none exists, cover Summary, Changed, Risks,
-   Verification, and Complexity in plain language. Open the description
-   with the problem as the requester stated it, then the solution — never
-   an implementation inventory. Never fabricate verification results —
-   report exactly what ran.
-6. Give a non-trivial change its single clearest review aid — a labeled
+5. Open the change request with the dispatched CLI, ready for review
+   unless a draft was explicitly requested; a real change request lets the
+   review bots run. Title it the way this repository titles merged work
+   (read recent merged change requests and git history first), and prefer
+   the outcome over the mechanism:
+   - BAD: `perf(server): negotiate permessage-deflate on the websocket`
+   - GOOD: `perf(server): cut websocket frame size by 70%+ with gzipping`
+
+   Use the repository's template verbatim. If none exists, write plain
+   sentences: open with the problem as the requester stated it, then the
+   solution, then exactly what ran to prove it. Name a risk only when
+   there is a real one. No implementation inventories, no headings for
+   their own sake, no fabricated verification.
+   - BAD: "## Summary\nRefactors the websocket layer.\n## Changed\n
+     server.ts, compression.ts, 12 tests.\n## Risks\nNone.\n
+     ## Verification\nTests pass.\n## Complexity\nMedium."
+   - GOOD: "Dashboard clients on slow links were dropping updates because
+     every frame shipped uncompressed. Negotiating permessage-deflate
+     cuts frame size by 70%+ on the busiest feeds. Verified with the
+     existing websocket suite plus a new compression round-trip test."
+6. Give a non-trivial change its single clearest review aid: a labeled
    screenshot or recording, a focused diagram, or sanitized contract
    input/output. Load [visual-evidence.md](references/visual-evidence.md)
    for the attachment ladder. Never commit proof assets to the repository.
@@ -67,10 +77,10 @@ The vocabulary is "change request"; the forge decides the tool:
 When an active slopmachine run asked for this delivery, hand the URL
 straight back through stdin evidence and let the binary judge it (a
 forge-bound repo verifies the change request and head before accepting).
-`delivery_mode` must match the run — read it from the status document
+`delivery_mode` must match the run; read it from the status document
 (`delivery_mode` field) instead of assuming one:
 
-Validate first, then apply, per the slopship protocol — the same payload
+Validate first, then apply, per the slopship protocol: the same payload
 with `--dry-run --json`, proceed only when the projection matches:
 
 ```bash
@@ -89,4 +99,5 @@ the evidence.
 - No merging, no auto-merge enablement, no branch deletion, no review of
   your own delivery.
 - Address review feedback only when asked; when a finding is fixed, reply
-  with the commit hash.
+  with the commit hash. Babysitting the open change request through
+  review and CI is slopnanny's lane; hand off when asked.

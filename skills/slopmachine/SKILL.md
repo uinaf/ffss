@@ -29,7 +29,7 @@ Do not invent a second runtime.
 slopmachine repo show --json
 ```
 
-If the repo is unregistered, register it before the first run — the profile
+If the repo is unregistered, register it before the first run; the profile
 is what arms forge-verified (`observed`) evidence and binds reviewers:
 
 ```bash
@@ -77,7 +77,7 @@ JSON
 
 The `--file` payload carries only the intake document; the run travels in
 `--run`, exactly as `next_action` prints it. (The raw `--input` shape embeds
-`run` inside the payload instead — do not mix the two.)
+`run` inside the payload instead; do not mix the two.)
 
 Inspect the dry-run projection. If it matches the agreed intake, repeat the
 same command without `--dry-run`. Do this for every mutation: validate first,
@@ -142,24 +142,24 @@ After each projection is accepted, repeat without `--dry-run`.
 When status shows `evidence_verification: observed`, the binary checks
 deliver and review evidence against the live forge before accepting it:
 give real change-request URLs and the actual delivered head. A rejection
-(exit 3) means the forge disagrees with the claim — fix the claim, never
+(exit 3) means the forge disagrees with the claim. Fix the claim, never
 retry with altered evidence. Exit 7 means the forge was unreachable; retry,
 or ask the human before recording a bypass with `--unverified --reason`.
 
 ## Talk to the human
 
 Collaborator voice: short prose + optional tables. Lead with what changed or
-what you need — never a wall of CLI JSON. Plain words over machine dumps.
+what you need, never a wall of CLI JSON. Plain words over machine dumps.
 
 ## Three human moments
 
-1. **Release** — confirm table (what/how/review), wait, then
+1. **Release**: confirm table (what/how/review), wait, then
    `slopmachine release --revision` using `intake_revision` from status JSON.
-2. **Required reviewers** — once at intake: pick from the registered
+2. **Required reviewers**: once at intake: pick from the registered
    identities (`slopmachine reviewers` lists them; `slopguard` and `bugbot`
    are built in). Store via intake `required_reviewers`. Do not auto-fire
    reviewers.
-3. **Decide** — `slopmachine ask --question …`, then
+3. **Decide**: `slopmachine ask --question …`, then
    `slopmachine decide --answer …`.
 
 ## Error recovery
@@ -180,7 +180,7 @@ next action means the run is done or needs human inspection.
 Delivery opens a change request; the unit is `delivered`, not settled, and
 later units already build while it waits. Prefer `slopmachine watch --once`:
 the binary observes every delivered unit's change request itself and records
-the signals — `merged` settles the unit; `checks_failed`, `review_feedback`,
+the signals: `merged` settles the unit; `checks_failed`, `review_feedback`,
 and `head_moved` pull it back through the build loop with the cause
 recorded. Passes are idempotent, so rerun freely; `--interval SECONDS`
 polls with bounded iterations. Two narrow feedback-identity limits: a
@@ -214,5 +214,5 @@ surface. Never simulate a reviewer.
 ## Done
 
 Stop when `RUN_DONE` (every unit settled), blocked pending human recovery,
-or waiting at release or decision. `AWAITING_SIGNALS` is not done — report
+or waiting at release or decision. `AWAITING_SIGNALS` is not done; report
 which change requests still wait. SQLite holds the canonical event log.

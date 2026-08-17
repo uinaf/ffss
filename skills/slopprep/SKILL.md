@@ -80,12 +80,12 @@ Work in this order: **Legibility → Runner contract → Cold start → Real-sur
 feedback → Enforcement → Isolation → Recovery and result submission → Repeated
 trials**.
 
-Reuse the repository's ordinary bootstrap, verify, and teardown commands — the
+Reuse the repository's ordinary bootstrap, verify, and teardown commands; the
 same surface humans and CI already use. Do not invent a parallel `agent-*`
 script layer. If entrypoints are missing, extend the existing build manifest,
 task graph, compiler/linter/test framework, or typed project CLI. A shell file
 is not required merely to give the command a name; conversely, when a plain
-repo-local script satisfies the contract, it is the finished output — do not
+repo-local script satisfies the contract, it is the finished output; do not
 scaffold a generator or framework around it.
 
 Bootstrap validates prerequisites; verify is the CI-reused gate; teardown covers
@@ -162,8 +162,8 @@ Name exact commands only for failures, reproduction, or when asked.
 
 ## References
 
-- [references/grading.md](references/grading.md) — repository and runner grades, capability matrix, ceilings, and blockers
-- [references/agent-guidance.md](references/agent-guidance.md) — model-neutral AGENTS.md orientation, routing, authority, lifecycle, and human-context checks
-- [references/verification-contract.md](references/verification-contract.md) — canonical gates, proof layers, real-surface evidence, and failure quality
-- [references/autonomy-evidence.md](references/autonomy-evidence.md) — evidence levels, representative trials, outcome graders, and reliability metrics
-- [references/setup-patterns.md](references/setup-patterns.md) — lifecycle, credentials, observability, isolation, unattended execution, and recovery patterns
+- [references/grading.md](references/grading.md): repository and runner grades, capability matrix, ceilings, and blockers
+- [references/agent-guidance.md](references/agent-guidance.md): model-neutral AGENTS.md orientation, routing, authority, lifecycle, and human-context checks
+- [references/verification-contract.md](references/verification-contract.md): canonical gates, proof layers, real-surface evidence, and failure quality
+- [references/autonomy-evidence.md](references/autonomy-evidence.md): evidence levels, representative trials, outcome graders, and reliability metrics
+- [references/setup-patterns.md](references/setup-patterns.md): lifecycle, credentials, observability, isolation, unattended execution, and recovery patterns

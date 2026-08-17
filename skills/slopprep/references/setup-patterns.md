@@ -23,7 +23,7 @@ scripts, Make/`just`, or checked-in scripts already used by CI.
 ### Doctor
 
 Give every driven target one read-only "is this instance worth driving?"
-check covering whichever contracts the target actually has — for example
+check covering whichever contracts the target actually has, for example
 process up, expected build or revision, port owned by the expected process,
 authentication valid. Drivers run it before driving and again after anything
 surprising. Doctor never mutates state, never repairs, and never
@@ -55,7 +55,7 @@ direct child PID.
   owned IDs and explicit teardown command as a handoff. Do not report the
   lifecycle complete until the resource is released or ownership is accepted.
 
-Kill what the attempt started, by recorded ID or owned process group — never
+Kill what the attempt started, by recorded ID or owned process group, never
 by process name, so `killall`-style cleanup is always out. Broad resource
 cleanup such as `simctl shutdown all`, deleting every container, or stopping
 shared databases is allowed only when the command's declared scope owns the
@@ -88,8 +88,8 @@ affected boundary, and recovery action when one exists.
 
 For TypeScript repositories that already lint with Oxlint, offer vendoring the
 [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) rules during
-readiness setup: copy and own the rule source in the repository — the
-installed Oxlint toolchain still runs it — and baseline the rules before
+readiness setup: copy and own the rule source in the repository (the
+installed Oxlint toolchain still runs it) and baseline the rules before
 making them blocking. Do not introduce Oxlint itself solely to carry them.
 
 Treat a new shell script as the last adapter, not the first implementation. It

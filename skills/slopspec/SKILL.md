@@ -111,5 +111,5 @@ next: start PROJ-124
 
 ## References
 
-- [tracker-selection.md](references/tracker-selection.md) — destination evidence, confirmation, access, and safety
-- [artifact-shapes.md](references/artifact-shapes.md) — single-item and parent/child shapes, slicing, and resume contract
+- [tracker-selection.md](references/tracker-selection.md): destination evidence, confirmation, access, and safety
+- [artifact-shapes.md](references/artifact-shapes.md): single-item and parent/child shapes, slicing, and resume contract
