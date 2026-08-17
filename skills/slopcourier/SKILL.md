@@ -56,16 +56,17 @@ The vocabulary is "change request"; the forge decides the tool:
 
    Use the repository's template verbatim. If none exists, write plain
    sentences: open with the problem as the requester stated it, then the
-   solution, then exactly what ran to prove it. Name a risk only when
-   there is a real one. No implementation inventories, no headings for
-   their own sake, no fabricated verification.
+   solution. Name a risk only when there is a real one. Mention proof
+   only when CI cannot show it (a manual run, before/after numbers);
+   never restate the checks CI already runs. No implementation
+   inventories, no headings for their own sake.
    - BAD: "## Summary Refactors the websocket layer. ## Changed server.ts,
      compression.ts, 12 tests. ## Risks None. ## Verification Tests
      pass. ## Complexity Medium." (a heading scaffold restating the diff)
    - GOOD: "Dashboard clients on slow links were dropping updates because
      every frame shipped uncompressed. Negotiating permessage-deflate
-     cuts frame size by 70%+ on the busiest feeds. Verified with the
-     existing websocket suite plus a new compression round-trip test."
+     cuts frame size by 70%+ on the busiest feeds, measured against the
+     staging firehose."
 6. Give a non-trivial change its single clearest review aid: a labeled
    screenshot or recording, a focused diagram, or sanitized contract
    input/output. Load [visual-evidence.md](references/visual-evidence.md)
