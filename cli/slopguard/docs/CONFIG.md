@@ -47,8 +47,9 @@ The corresponding environment variables are `SLOPGUARD_ENGINE`,
 
 ## Security controls
 
-Isolation defaults to `native`, which preserves normal provider login and user
-configuration. Any source may select stricter `strict` isolation. A
+Isolation defaults to `native`, which preserves the normal provider environment,
+user configuration, and configured provider or session authentication. Any
+source may select stricter `strict` isolation. A
 higher-precedence repository or environment source cannot weaken an already
 selected `strict` value back to `native`.
 
@@ -68,10 +69,12 @@ Both isolation modes run the provider from a new empty temporary workspace and
 pass only the already frozen review bundle. `strict` replaces home and provider
 state directories with empty temporary directories and preserves only required
 system variables, proxy and certificate settings, and supported provider API
-keys. `native` preserves the normal provider environment and user configuration.
+keys. `native` preserves the normal provider environment, user configuration,
+and configured authentication.
 Strict authentication requires the provider's supported API-key environment
-variable; session-backed login belongs to native mode. Grok strict mode uses
-`XAI_API_KEY`; native mode uses the normal `grok login` session. Explicit CLI
+variable; existing provider authentication belongs to native mode. Grok
+strict mode uses `XAI_API_KEY`; native mode uses the normal `grok login`
+session. Explicit CLI
 Cursor selection still grants otherwise-unset web access in strict mode; pass
 `--web-access=false` to reject that capability and fail preflight instead.
 

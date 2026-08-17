@@ -245,12 +245,6 @@ func (codex *Codex) preflight(ctx context.Context, executable string, runtime *c
 	if missing := missingCapabilities(string(execHelp.Stdout)+string(execHelp.Stderr), requiredExec); len(missing) != 0 {
 		return "", newFailure(protocol.FailureCapability, "Codex exec is missing required flags: "+strings.Join(missing, ", "), runtime.Environment(), nil)
 	}
-	if environmentValue(runtime.Environment(), "CODEX_API_KEY") == "" && environmentValue(runtime.Environment(), "OPENAI_API_KEY") == "" {
-		auth, err := run("login", "status")
-		if err != nil {
-			return "", probeFailureWithAuthRecovery("Codex authentication", err, auth, runtime.Environment(), protocol.FailureAuth, "run codex login or set CODEX_API_KEY or OPENAI_API_KEY, then retry")
-		}
-	}
 	return string(match[1]), nil
 }
 

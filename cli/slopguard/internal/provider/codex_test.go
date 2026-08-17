@@ -74,7 +74,7 @@ func TestCodexReviewStrictUsesFrozenStdinAndCanonicalResult(t *testing.T) {
 func TestCodexReviewNativePreservesConfigurationAndEnablesWeb(t *testing.T) {
 	t.Parallel()
 
-	fake := newFakeCodex(t, fakeCodexOptions{})
+	fake := newFakeCodex(t, fakeCodexOptions{authError: "not logged in"})
 	effective := codexConfig(protocol.IsolationNative, true, 5*time.Second)
 	reviewer := NewCodex(CodexOptions{
 		Repository: t.TempDir(),
@@ -119,10 +119,10 @@ func TestCodexReviewFailsCapabilityProbeBeforeInvocation(t *testing.T) {
 	}
 }
 
-func TestCodexReviewReportsAuthenticationFailure(t *testing.T) {
+func TestCodexReviewNativeReportsProviderAuthenticationFailure(t *testing.T) {
 	t.Parallel()
 
-	fake := newFakeCodex(t, fakeCodexOptions{authError: "not logged in"})
+	fake := newFakeCodex(t, fakeCodexOptions{reviewError: "not logged in"})
 	reviewer := NewCodex(CodexOptions{
 		Repository:  t.TempDir(),
 		Executable:  fake.path,
@@ -130,11 +130,13 @@ func TestCodexReviewReportsAuthenticationFailure(t *testing.T) {
 	})
 	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: codexConfig(protocol.IsolationNative, false, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureAuth)
-	for _, expected := range []string{"codex login", "CODEX_API_KEY", "OPENAI_API_KEY"} {
-		if !strings.Contains(failure.Message, expected) {
-			t.Fatalf("failure = %q", failure.Message)
-		}
+	if !strings.Contains(failure.Message, "authenticate the provider CLI") {
+		t.Fatalf("failure = %q", failure.Message)
 	}
+	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
+		t.Fatalf("attempt = %+v", failure.Attempt)
+	}
+	assertExecutionMetadata(t, failure, protocol.ProviderCodex, "0.146.0", protocol.IsolationNative, false)
 }
 
 func TestCodexReviewStrictExplainsCredentialRequirement(t *testing.T) {

@@ -9,7 +9,7 @@ or claim consensus.
 
 | Engine | Default model | Strict authentication | Important constraint |
 | --- | --- | --- | --- |
-| `codex` | `gpt-5.6-sol` | `CODEX_API_KEY` or `OPENAI_API_KEY` | Native mode uses normal session-backed login |
+| `codex` | `gpt-5.6-sol` | `CODEX_API_KEY` or `OPENAI_API_KEY` | Native mode preserves Codex provider and session authentication |
 | `claude` | `claude-opus-5` | `ANTHROPIC_API_KEY` | Effort supports `low`, `medium`, `high`, `xhigh`, or `max` |
 | `cursor` | `cursor-grok-4.6-high-fast` | `CURSOR_API_KEY` | Explicit CLI selection implies web when unset; effort is encoded in the model ID |
 | `grok` | `grok-4.6` | `XAI_API_KEY` | Native mode uses `grok login`; tools, memory, plans, and subagents stay disabled |
@@ -24,8 +24,9 @@ model with no model fallback. A capability or authentication failure is an
 operational result, not permission to switch engines.
 
 Strict mode runs with empty provider state and a constrained environment.
-Native mode preserves the provider's normal environment and login but still
-runs the review in an empty temporary workspace with only the frozen bundle.
+Native mode preserves the provider's normal environment, configuration, and
+authentication but still runs the review in an empty temporary workspace with
+only the frozen bundle.
 Native is the default; select strict explicitly when the stronger provider-state
 boundary and a supported API key are required.
 
