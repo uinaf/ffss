@@ -4,6 +4,13 @@
 the binary validates them, applies the state machine, and stores the resulting
 event. Do not reproduce transition logic in a skill, prompt, or script.
 
+The agent is not a trusted operator: the CLI validates strict JSON and
+resource IDs at its boundary, then applies state transitions through revision
+and guard checks. The dry-run guarantees, the `verify --cmd` shell rule, and
+the repository-local state rules in this contract are that boundary's
+enforcement points. Report suspected vulnerabilities through the repo's
+[security policy](../../../SECURITY.md), never a public issue.
+
 ## Harness conformance
 
 The protocol is harness-independent. Any agent that can run shell commands,
