@@ -60,7 +60,7 @@ One skill per lane; route by the artifact, not the verb:
 | [`slopguard`](skills/slopguard/) | One independent code review, through the slopguard CLI |
 | [`slopcourier`](skills/slopcourier/) | Opening the change request, with the visual-evidence ladder |
 | [`slopnanny`](skills/slopnanny/) | Walking an open change request to a settled outcome |
-| [`slopclean`](skills/slopclean/) | Prose voice: stripping AI tells from writing or a diff |
+| [`slopclean`](skills/slopclean/) | AI tells: stripping slop from writing, a diff, or a test suite |
 | [`slopspec`](skills/slopspec/) | Tracker artifacts: issues, epics, durable work plans |
 | [`slopscriber`](skills/slopscriber/) | Repo docs: README, AGENTS.md, docs/, specs; content, currency, house style |
 | [`slopprep`](skills/slopprep/) | Agent readiness: boot, gates, proof paths |
