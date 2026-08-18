@@ -57,7 +57,7 @@ bash scripts/test-install-path.sh
 '''
 
 [tasks."installer:check"]
-description = "Validate the Linux installer"
+description = "Validate the installer script"
 depends = ["installer:test"]
 run = '''
 set -e

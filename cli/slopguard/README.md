@@ -16,8 +16,8 @@ brew install --cask uinaf/tap/slopguard
 slopguard --version
 ```
 
-On Linux amd64 or arm64, install the latest released binary without Go,
-Homebrew, `jq`, or `sudo`:
+On Linux, or on a Mac without Homebrew tap access, install the latest
+released amd64 or arm64 binary without Go, `jq`, or `sudo`:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -fsSL \
@@ -33,7 +33,7 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 - Installer-managed binaries upgrade in place with `slopguard selfupdate`
   (`--check` probes without touching the binary); brew-managed installs
   upgrade through `brew upgrade` instead.
-- See [Release verification](docs/RELEASES.md#linux-installer-trust-boundary)
+- See [Release verification](docs/RELEASES.md#installer-trust-boundary)
   for the HTTPS trust boundary and independent Cosign and GitHub attestation
   checks.
 

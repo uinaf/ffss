@@ -15,7 +15,7 @@ destination_temporary=
 
 usage() {
   cat <<'EOF'
-Install slopmachine on Linux.
+Install slopmachine on Linux or macOS.
 
 Usage: install.sh [--version VERSION] [--dest DIRECTORY]
 
@@ -84,8 +84,11 @@ esac
 
 command -v uname >/dev/null 2>&1 || fail "required command not found: uname"
 operating_system=$(uname -s)
-[ "$operating_system" = Linux ] ||
-  fail "unsupported operating system: $operating_system"
+case "$operating_system" in
+  Linux) os=linux ;;
+  Darwin) os=darwin ;;
+  *) fail "unsupported operating system: $operating_system" ;;
+esac
 machine_architecture=$(uname -m)
 case "$machine_architecture" in
   x86_64|amd64) architecture=amd64 ;;
@@ -93,10 +96,27 @@ case "$machine_architecture" in
   *) fail "unsupported architecture: $machine_architecture" ;;
 esac
 
-for required_command in curl tar mktemp sha256sum mkdir cp chmod mv rm; do
+for required_command in curl tar mktemp mkdir cp chmod mv rm; do
   command -v "$required_command" >/dev/null 2>&1 ||
     fail "required command not found: $required_command"
 done
+
+# Linux ships sha256sum (coreutils); macOS ships shasum (Perl) instead.
+if command -v sha256sum >/dev/null 2>&1; then
+  checksum_tool=sha256sum
+elif command -v shasum >/dev/null 2>&1; then
+  checksum_tool=shasum
+else
+  fail "required command not found: sha256sum or shasum"
+fi
+
+calculate_sha256() {
+  if [ "$checksum_tool" = sha256sum ]; then
+    sha256sum "$1"
+  else
+    shasum -a 256 "$1"
+  fi
+}
 
 valid_release_tag() {
   case "$1" in
@@ -167,7 +187,7 @@ valid_release_tag "$release_tag" || fail "invalid release version: $release_tag"
 
 temporary_directory=$(mktemp -d "${TMPDIR:-/tmp}/slopmachine-install.XXXXXX") ||
   fail "could not create a temporary directory"
-archive=slopmachine_${release_tag}_linux_${architecture}.tar.gz
+archive=slopmachine_${release_tag}_${os}_${architecture}.tar.gz
 archive_path=$temporary_directory/$archive
 checksums_path=$temporary_directory/checksums.txt
 release_url=$repository_url/releases/download/slopmachine%2F$release_tag
@@ -193,7 +213,7 @@ case "$expected_checksum" in
   *[!0-9A-Fa-f]*) fail "malformed checksum for $archive" ;;
 esac
 
-actual_checksum_output=$(sha256sum "$archive_path") ||
+actual_checksum_output=$(calculate_sha256 "$archive_path") ||
   fail "could not calculate the archive checksum"
 actual_checksum=${actual_checksum_output%% *}
 [ "$actual_checksum" = "$expected_checksum" ] ||

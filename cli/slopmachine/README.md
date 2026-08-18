@@ -27,7 +27,7 @@ brew install --cask uinaf/tap/slopmachine
 slopmachine version
 ```
 
-### Linux
+### Linux and macOS without Homebrew
 
 Install the latest amd64 or arm64 release without Go, Homebrew, `jq`, or
 `sudo`:
@@ -45,7 +45,7 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 - Installer-managed binaries upgrade in place with `slopmachine selfupdate`
   (`--check` probes without touching the binary); brew-managed installs
   upgrade through `brew upgrade` instead.
-- See [Release verification](docs/RELEASES.md#linux-installer-trust-boundary)
+- See [Release verification](docs/RELEASES.md#installer-trust-boundary)
   for independent Cosign and GitHub attestation checks.
 
 The installer finishes with a non-fatal `PATH` check: it warns when `PATH`
