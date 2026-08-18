@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
-	contractschema "github.com/uinaf/ffsstack/cli/slopguard/schema"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 )
 
 func TestFakeProviderCLIsRejectInvalidReviewArguments(t *testing.T) {

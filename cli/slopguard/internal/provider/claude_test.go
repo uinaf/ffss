@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/config"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/reviewpolicy"
+	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/reviewpolicy"
 )
 
 func TestClaudeReviewStrictUsesFrozenStdinAndSafeMode(t *testing.T) {

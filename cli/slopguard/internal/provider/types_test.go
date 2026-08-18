@@ -4,8 +4,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/config"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
 func TestUnknownProviderFailsClosedWithoutMalformedStrictCredentialDiagnostic(t *testing.T) {

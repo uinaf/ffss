@@ -17,10 +17,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/repo"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/status"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/store"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/repo"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/status"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/store"
 )
 
 func TestRunShellCancellationReapsProcessGroup(t *testing.T) {
@@ -84,7 +84,7 @@ func newCLIHarness(t *testing.T) *cliHarness {
 	bin := filepath.Join(t.TempDir(), "slopmachine")
 	buildArgs := []string{"build", "-o", bin, "."}
 	if os.Getenv("SLOPMACHINE_COVERAGE_DIR") != "" {
-		buildArgs = []string{"build", "-cover", "-covermode=atomic", "-coverpkg=github.com/uinaf/ffsstack/cli/slopmachine/...", "-o", bin, "."}
+		buildArgs = []string{"build", "-cover", "-covermode=atomic", "-coverpkg=github.com/uinaf/ffss/cli/slopmachine/...", "-o", bin, "."}
 	}
 	build := exec.Command("go", buildArgs...)
 	build.Dir = "."

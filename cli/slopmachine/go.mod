@@ -1,4 +1,4 @@
-module github.com/uinaf/ffsstack/cli/slopmachine
+module github.com/uinaf/ffss/cli/slopmachine
 
 go 1.26.0
 

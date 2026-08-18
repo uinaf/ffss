@@ -3,7 +3,7 @@ package main
 import (
 	"io"
 
-	contractschema "github.com/uinaf/ffsstack/cli/slopguard/schema"
+	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 )
 
 func runSchema(arguments []string, stdout, stderr io.Writer) int {

@@ -8,8 +8,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/buildinfo"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/selfupdate"
+	"github.com/uinaf/ffss/cli/slopguard/internal/buildinfo"
+	"github.com/uinaf/ffss/cli/slopguard/internal/selfupdate"
 )
 
 // runSelfupdate replaces this binary with a published release. It shares

@@ -83,7 +83,7 @@ jobs:
           private-key: ${{ secrets.UINAF_RELEASE_APP_PRIVATE_KEY }}
           owner: uinaf
           repositories: |
-            ffsstack
+            ffss
             homebrew-tap
           permission-contents: write
 
@@ -160,10 +160,10 @@ jobs:
           # semantic-release pushes the tag before creating the release; a
           # crash between the two leaves a tag with no release. Recover by
           # recreating the draft instead of failing every rerun.
-          if draft=$(gh release view "$TAG" --repo uinaf/ffsstack --json isDraft --jq .isDraft 2>/dev/null); then
+          if draft=$(gh release view "$TAG" --repo uinaf/ffss --json isDraft --jq .isDraft 2>/dev/null); then
             echo "published=$([ "$draft" = "false" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           else
-            gh release create "$TAG" --repo uinaf/ffsstack --draft --verify-tag --title "$TAG" --notes "Recovered draft; see the tagged commit history."
+            gh release create "$TAG" --repo uinaf/ffss --draft --verify-tag --title "$TAG" --notes "Recovered draft; see the tagged commit history."
             echo "published=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -192,7 +192,7 @@ jobs:
           (cd dist && shasum -a 256 -c checksums.txt)
           cosign verify-blob \
             --bundle dist/checksums.txt.sigstore.json \
-            --certificate-identity "https://github.com/uinaf/ffsstack/.github/workflows/release-slopguard.yml@refs/heads/main" \
+            --certificate-identity "https://github.com/uinaf/ffss/.github/workflows/release-slopguard.yml@refs/heads/main" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             dist/checksums.txt
 
@@ -219,8 +219,8 @@ jobs:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -euo pipefail
-          gh release upload "$TAG" dist/*.tar.gz dist/checksums.txt dist/checksums.txt.sigstore.json --clobber --repo uinaf/ffsstack
-          gh release edit "$TAG" --draft=false --repo uinaf/ffsstack
+          gh release upload "$TAG" dist/*.tar.gz dist/checksums.txt dist/checksums.txt.sigstore.json --clobber --repo uinaf/ffss
+          gh release edit "$TAG" --draft=false --repo uinaf/ffss
 
       - name: Publish Homebrew cask
         if: steps.tag.outputs.present == 'true'

@@ -8,9 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/buildinfo"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/selfupdate"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/buildinfo"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/selfupdate"
 )
 
 // cmdSelfupdate replaces this binary with a published release. It shares

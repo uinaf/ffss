@@ -11,9 +11,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/forge"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/store"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/forge"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/store"
 )
 
 type outputDigester struct {

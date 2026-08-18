@@ -21,7 +21,7 @@ Homebrew, `jq`, or `sudo`:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -fsSL \
-  https://raw.githubusercontent.com/uinaf/ffsstack/main/cli/slopguard/install.sh | sh
+  https://raw.githubusercontent.com/uinaf/ffss/main/cli/slopguard/install.sh | sh
 ~/.local/bin/slopguard --version
 ```
 
@@ -38,7 +38,7 @@ HTTPS trust boundary and independent Cosign and GitHub attestation checks.
 Consumers that prefer Go tooling can instead install with Go 1.26 or newer:
 
 ```bash
-go install github.com/uinaf/ffsstack/cli/slopguard/cmd/slopguard@latest
+go install github.com/uinaf/ffss/cli/slopguard/cmd/slopguard@latest
 slopguard --version
 ```
 

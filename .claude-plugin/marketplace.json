@@ -1,5 +1,5 @@
 {
-  "name": "ffsstack",
+  "name": "ffss",
   "description": "The flipflopslopstack: skills that drive slopmachine governed runs, slopguard reviews, delivery, babysitting, planning, docs, repo prep, and de-slopping.",
   "owner": {
     "name": "uinaf",
@@ -7,7 +7,7 @@
   },
   "plugins": [
     {
-      "name": "ffsstack",
+      "name": "ffss",
       "source": ".",
       "description": "All nine skills: slopmachine, slopguard, slopcourier, slopnanny, slopspec, slopscriber, slopprep, slopclean, wat.",
       "category": "workflow"

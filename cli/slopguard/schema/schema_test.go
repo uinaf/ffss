@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
-	contractschema "github.com/uinaf/ffsstack/cli/slopguard/schema"
+	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 )
 
 func TestExternalReferencesResolveBesideSchema(t *testing.T) {

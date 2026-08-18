@@ -12,8 +12,8 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/uinaf/ffsstack/cli/slopmachine/internal/buildinfo.version={{ if .IsSnapshot }}v{{ .Version }}{{ else }}{{ .Tag }}{{ end }}
-      - -X github.com/uinaf/ffsstack/cli/slopmachine/internal/buildinfo.commit={{ .FullCommit }}
+      - -X github.com/uinaf/ffss/cli/slopmachine/internal/buildinfo.version={{ if .IsSnapshot }}v{{ .Version }}{{ else }}{{ .Tag }}{{ end }}
+      - -X github.com/uinaf/ffss/cli/slopmachine/internal/buildinfo.commit={{ .FullCommit }}
     goos:
       - darwin
       - linux

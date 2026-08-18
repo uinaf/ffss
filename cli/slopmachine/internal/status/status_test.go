@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
 )
 
 func TestJSONFieldsAndDryRunMetadata(t *testing.T) {

@@ -9,9 +9,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/forge"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/watch"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/forge"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/watch"
 )
 
 // evidenceOverride carries an explicit --unverified request from the caller.

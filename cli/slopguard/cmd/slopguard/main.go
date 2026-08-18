@@ -11,11 +11,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/buildinfo"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/config"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/provider"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/target"
+	"github.com/uinaf/ffss/cli/slopguard/internal/buildinfo"
+	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
+	"github.com/uinaf/ffss/cli/slopguard/internal/target"
 )
 
 type dependencies struct {

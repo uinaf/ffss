@@ -3,7 +3,7 @@ package serve
 import (
 	"testing"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/store"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/store"
 )
 
 func TestFormatTotals(t *testing.T) {

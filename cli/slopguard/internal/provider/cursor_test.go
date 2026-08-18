@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	contractschema "github.com/uinaf/ffsstack/cli/slopguard/schema"
+	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/config"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/reviewpolicy"
+	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/reviewpolicy"
 )
 
 func TestCursorReviewStrictUsesAPIKeyWithoutStatusAndDenyConfig(t *testing.T) {

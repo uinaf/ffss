@@ -3,7 +3,7 @@
   "type": "weighted_checklist",
   "checklist": [
     {"name": "Security impact recognized", "description": "reporting-plan.md identifies malformed provider output accepted as clean as a suspected vulnerability", "max_score": 10},
-    {"name": "Private route selected", "description": "The plan uses private vulnerability reporting from the uinaf/ffsstack Security tab", "max_score": 10},
+    {"name": "Private route selected", "description": "The plan uses private vulnerability reporting from the uinaf/ffss Security tab", "max_score": 10},
     {"name": "No public issue creation", "description": "The plan does not run gh issue create for this vulnerability", "max_score": 10},
     {"name": "Existing issue search sanitized", "description": "Any gh issue list search uses only a generic sanitized title summary and searches open and closed issues", "max_score": 10},
     {"name": "Version and platform safe", "description": "The plan allows slopguard 0.1.1 and macOS arm64 in the report", "max_score": 10},

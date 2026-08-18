@@ -3,7 +3,7 @@
 Status: agreed direction, 2026-08-14. This document describes the target
 state. [AGENT_INTERFACE.md](AGENT_INTERFACE.md) and the installed binary
 describe what exists; when they disagree with this document, they win until
-the tracker ([epic #27](https://github.com/uinaf/ffsstack/issues/27) and
+the tracker ([epic #27](https://github.com/uinaf/ffss/issues/27) and
 its children) says otherwise.
 
 ## North star
@@ -187,7 +187,7 @@ maintainer's own profile doubles as the reference integration:
 | Role | Binding |
 | --- | --- |
 | Spine | slopmachine |
-| Review | [slopzapper](https://slopzapper.uinaf.dev), [slopguard](https://github.com/uinaf/ffsstack/tree/main/cli/slopguard) |
+| Review | [slopzapper](https://slopzapper.uinaf.dev), [slopguard](https://github.com/uinaf/ffss/tree/main/cli/slopguard) |
 | QA | unbound today; slopscouter is the planned binding |
 | Remote execution | [crabbox](https://github.com/openclaw/crabbox) |
 | Readiness audits | slopprep skill |
@@ -214,7 +214,7 @@ not change.
 
 ## Sequence
 
-Detail lives in [epic #27](https://github.com/uinaf/ffsstack/issues/27);
+Detail lives in [epic #27](https://github.com/uinaf/ffss/issues/27);
 this is the shape.
 
 - **M0: credibility.** Fix first-run initialization and install-path

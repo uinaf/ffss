@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
 )
 
 type initInput struct {

@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/repo"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/store"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/repo"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/store"
 )
 
 var (
