@@ -14,6 +14,8 @@ Keep the repo legible to agents and humans.
 - Describe current state; keep history only in migration notes, changelogs, and decisions
 - Lead with supported capabilities and next actions
 - Prefer short, task-shaped sections and structured facts over narrative prose
+- Enforce the [house style](references/style.md) on every artifact touched; it
+  is a gate, not a suggestion
 - Keep routing docs short and point to deeper docs instead of duplicating them
 - Use repo-relative links for in-repo docs
 - Keep repo docs, agent guidance, and work tracking linked but distinct
@@ -40,7 +42,7 @@ Check the files agents and humans actually rely on:
 - `docs/`
 - durable specs, runbooks, and decision docs
 
-Flag stale commands, dead paths, duplicate guidance, routing failures, narrative history, exhaustive negative inventories, and repo-internal details leaking into reader-facing docs.
+Flag stale commands, dead paths, duplicate guidance, routing failures, narrative history, exhaustive negative inventories, and repo-internal details leaking into reader-facing docs. Flag every [house style](references/style.md) violation: paragraph-shaped guidance the reader must mine for facts, references trapped in code spans, adjective-carried claims, and unexplained jargon.
 
 Before editing:
 
@@ -91,6 +93,8 @@ templates in [references/specifications.md](references/specifications.md).
 - keep one canonical home for setup or install commands and replace copied command blocks with pointers
 - prefer reader-facing link text over raw paths unless the path is the point
 - apply the [agent-first cleanup filters](references/agent-first.md#select-information)
+- rewrite every remaining [house style](references/style.md) violation; do not
+  ship a paragraph a bullet list would beat
 
 ### 5. Validate reality
 
@@ -120,6 +124,7 @@ Keep the footer to 5 labeled lines or fewer. List changed files once.
 
 ## References
 
+- [references/style.md](references/style.md): the house writing shape — outcome first, bullets over paragraphs, links over code spans, examples as spec
 - [references/agent-first.md](references/agent-first.md): agent-first writing, positive state, progressive disclosure, AGENTS.md shape
 - [references/documentation.md](references/documentation.md): README, contributing, security, and repository-doc shapes
 - [references/source-boundaries.md](references/source-boundaries.md): durable ownership and private/local evidence boundaries

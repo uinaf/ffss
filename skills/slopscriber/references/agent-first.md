@@ -147,13 +147,16 @@ Move closer to the code:
 - per-directory `AGENTS.md` or `AGENTS.override.md` files
 - Cursor path-scoped files under `.cursor/rules/*.mdc`, with explicit globs such as `*.test.ts`
 
-Codex loads global guidance, then project guidance from the root toward the
-working directory. Guidance closer to the working directory appears later and
-overrides broader rules. Within one directory, Codex loads
-`AGENTS.override.md` when present; otherwise it loads `AGENTS.md`. It loads at
-most one guidance file per directory. Verify these mechanics against the
-current [Codex `AGENTS.md` guide](https://developers.openai.com/codex/guides/agents-md)
-when changing hierarchy or filenames.
+- Codex loads global guidance, then project guidance from the root toward the
+  working directory.
+- Guidance closer to the working directory appears later and overrides broader
+  rules.
+- Within one directory, Codex loads `AGENTS.override.md` when present;
+  otherwise it loads `AGENTS.md`. It loads at most one guidance file per
+  directory.
+- Verify these mechanics against the current
+  [Codex `AGENTS.md` guide](https://developers.openai.com/codex/guides/agents-md)
+  when changing hierarchy or filenames.
 
 Avoid generated repository tours and generic rule dumps. Repository-context
 evaluations found that irrelevant or excessive guidance can increase cost

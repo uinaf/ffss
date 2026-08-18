@@ -85,12 +85,12 @@ families:
 - state a recurring failure only when it changes the desired behavior
 - preserve room for model judgment inside mechanically enforced boundaries
 
-Do not stack model-specific prompt fragments in the shared guide. Keep model
-selection, reasoning effort, verbosity, tool policy, and harness-specific
-invocation controls in their owning configuration. When a named-model guide is
-required, verify its current first-party prompting documentation and model or
-system card; record only a measured, stable difference that cannot live in the
-harness.
+- Do not stack model-specific prompt fragments in the shared guide.
+- Keep model selection, reasoning effort, verbosity, tool policy, and
+  harness-specific invocation controls in their owning configuration.
+- When a named-model guide is required, verify its current first-party
+  prompting documentation and model or system card; record only a measured,
+  stable difference that cannot live in the harness.
 
 ## Audit Procedure
 

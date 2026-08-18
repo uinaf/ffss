@@ -30,9 +30,10 @@ first gap: scale; concurrent result reconciliation has not been exercised
 Read [autonomy-evidence.md](autonomy-evidence.md) only when designing E3/E4
 trials, graders, or reliability reporting.
 
-Use the lowest applicable capability as each headline grade. Show the full
-profile so the minimum does not hide progress elsewhere. Mark a capability
-`N/A` only with a concrete reason tied to the intended task classes.
+- Use the lowest applicable capability as each headline grade.
+- Show the full profile so the minimum does not hide progress elsewhere.
+- Mark a capability `N/A` only with a concrete reason tied to the intended
+  task classes.
 
 ## Common Grade Ladder
 
@@ -148,10 +149,10 @@ Grade the owner of a failure, not whichever checkout the audit started in.
 | Network | declared destinations and useful denied-access behavior | network policy and egress enforcement |
 | Result submission | artifact/report schemas and branch, PR, CI, review, or acceptance contract | provider credentials, queueing, upload, retry, reconciliation |
 
-A pre-provisioned Infisical machine identity, OIDC workload identity, or scoped
-CI token is positive runner evidence. It is not manual repository setup merely
-because credentials are required. Human login or profile switching during each
-run is a runner autonomy gap.
+- A pre-provisioned Infisical machine identity, OpenID Connect (OIDC) workload
+  identity, or scoped CI token is positive runner evidence. It is not manual
+  repository setup merely because credentials are required.
+- Human login or profile switching during each run is a runner autonomy gap.
 
 Examples:
 

@@ -15,13 +15,15 @@ Each CLI release contains:
 - a keyless Cosign bundle for that manifest; and
 - GitHub build-provenance attestations for the archives, manifest, and bundle.
 
-The checksum signature protects every archive named by the manifest. GitHub
-attestations independently bind each uploaded artifact to the release workflow.
-The macOS binaries are signed with hardened runtime and a secure timestamp
-before Apple accepts their notarization submissions. Their Apple signing ID is
-`slopmachine`; managed execution controls can combine that ID with the expected
-Apple Team ID. Apple creates tickets for standalone binaries but does not
-support stapling tickets to them, so Gatekeeper retrieves the ticket online.
+- The checksum signature protects every archive named by the manifest.
+- GitHub attestations independently bind each uploaded artifact to the release
+  workflow.
+- The macOS binaries are signed with hardened runtime and a secure timestamp
+  before Apple accepts their notarization submissions.
+- Their Apple signing ID is `slopmachine`; managed execution controls can
+  combine that ID with the expected Apple Team ID.
+- Apple creates tickets for standalone binaries but does not support stapling
+  tickets to them, so Gatekeeper retrieves the ticket online.
 
 ## Linux installer trust boundary
 
@@ -38,14 +40,16 @@ the binary.
 
 ## Self-update
 
-`slopmachine selfupdate` replaces the installed binary with the newest published
-release (or a pinned `--release vX.Y.Z`), verifying the platform archive
-against the release's `checksums.txt`; `--check` reports without touching
-the binary and exits 8 when an update is available. It shares the Linux
-installer's trust boundary (checksum and archive over one HTTPS hosting
-boundary); use the Cosign and attestation workflow below for independent
-provenance. Homebrew-managed installs are refused: use
-`brew upgrade --cask slopmachine`. Non-release builds refuse to self-update.
+- `slopmachine selfupdate` replaces the installed binary with the newest
+  published release (or a pinned `--release vX.Y.Z`), verifying the platform
+  archive against the release's `checksums.txt`.
+- `--check` reports without touching the binary and exits 8 when an update is
+  available.
+- It shares the Linux installer's trust boundary (checksum and archive over one
+  HTTPS hosting boundary); use the Cosign and attestation workflow below for
+  independent provenance.
+- Homebrew-managed installs are refused: use `brew upgrade --cask slopmachine`.
+- Non-release builds refuse to self-update.
 
 ## Verify a release
 
@@ -76,24 +80,26 @@ macOS/Linux verification and snapshot packaging pass. It mints a short-lived
 `uinaf-releaser` installation token explicitly scoped to `slopmachine` and
 `homebrew-tap` with Contents write permission.
 
-The protected `release` Environment stores the Developer ID certificate,
-certificate password, and notary private key as secrets. It stores the Apple
-issuer, key, and Team IDs as environment variables. GitHub injects the three
-secrets only into the main-only publication step; pull requests cannot access
-them. The identifier variables also enter that step, and the Team ID is reused
-by post-publication signature verification. Before publication, the credential
-verifier checks the certificate trust, matching signing private key, and
-identifiers and rejects a certificate outside the Team ID pinned by
-`APPLE_TEAM_ID`.
+- The protected `release` Environment stores the Developer ID certificate,
+  certificate password, and notary private key as secrets.
+- It stores the Apple issuer, key, and Team IDs as environment variables.
+- GitHub injects the three secrets only into the main-only publication step;
+  pull requests cannot access them.
+- The identifier variables also enter that step, and the Team ID is reused by
+  post-publication signature verification.
+- Before publication, the credential verifier checks the certificate trust,
+  matching signing private key, and identifiers and rejects a certificate
+  outside the Team ID pinned by `APPLE_TEAM_ID`.
 
-Semantic Release owns version selection, release notes, the Git tag, and a
-mutable draft GitHub Release. GoReleaser adopts that draft, Developer ID signs
-both macOS binaries, waits for Apple to accept both notarization submissions,
-uploads all archives, the checksum manifest, and the Sigstore bundle, then
-updates the Homebrew cask. The workflow verifies those outputs and provenance
-before publishing the draft; publication makes the release assets and tag
-immutable. Exact-tag release discovery fails closed instead of skipping
-publication. No release commit is pushed to `main`.
+- Semantic Release owns version selection, release notes, the Git tag, and a
+  mutable draft GitHub Release.
+- GoReleaser adopts that draft, Developer ID signs both macOS binaries, waits
+  for Apple to accept both notarization submissions, uploads all archives, the
+  checksum manifest, and the Sigstore bundle, then updates the Homebrew cask.
+- The workflow verifies those outputs and provenance before publishing the
+  draft; publication makes the release assets and tag immutable.
+- Exact-tag release discovery fails closed instead of skipping publication.
+- No release commit is pushed to `main`.
 
 If publication fails after the tag is created, rerunning the failed workflow is
 safe: a release tag at `HEAD` resumes the mutable draft without choosing a new

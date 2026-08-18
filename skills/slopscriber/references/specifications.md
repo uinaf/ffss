@@ -38,9 +38,10 @@ What is wrong and for whom.
 - Explicit exclusion.
 ```
 
-Name files `docs/specs/<feature-slug>.md`. Keep them concise enough to review
-as one contract. Implementation may reveal ambiguities; record the decision,
-update the spec, and update acceptance coverage together.
+- Name files `docs/specs/<feature-slug>.md`.
+- Keep them concise enough to review as one contract.
+- Implementation may reveal ambiguities; record the decision, update the spec,
+  and update acceptance coverage together.
 
 ## Decision Shape
 
@@ -57,8 +58,9 @@ What was chosen.
 What this enables and prevents.
 ```
 
-Name files `docs/decisions/<NNNN>-<slug>.md`. Record reversals as new decisions
-that supersede the old one; do not rewrite history silently.
+- Name files `docs/decisions/<NNNN>-<slug>.md`.
+- Record reversals as new decisions that supersede the old one; do not rewrite
+  history silently.
 
 ## Acceptance Coverage
 

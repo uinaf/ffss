@@ -81,42 +81,47 @@ feedback → Enforcement → Isolation → Recovery and result submission → Re
 trials**.
 
 Reuse the repository's ordinary bootstrap, verify, and teardown commands; the
-same surface humans and CI already use. Do not invent a parallel `agent-*`
-script layer. If entrypoints are missing, extend the existing build manifest,
-task graph, compiler/linter/test framework, or typed project CLI. A shell file
-is not required merely to give the command a name; conversely, when a plain
-repo-local script satisfies the contract, it is the finished output; do not
-scaffold a generator or framework around it.
+same surface humans and CI already use.
 
-Bootstrap validates prerequisites; verify is the CI-reused gate; teardown covers
-success, failure, timeout, and cancellation. Give every driven target a doctor:
-one read-only "is this instance worth driving?" check (process up, right build,
-port owned, auth valid) run before driving and after anything surprising
-([references/setup-patterns.md](references/setup-patterns.md)). Name the
-declared commands and their proof boundary in `AGENTS.md`. Key automation
-artifacts by task and attempt.
+- Do not invent a parallel `agent-*` script layer.
+- If entrypoints are missing, extend the existing build manifest, task graph,
+  compiler/linter/test framework, or typed project CLI.
+- A shell file is not required merely to give the command a name; conversely,
+  when a plain repo-local script satisfies the contract, it is the finished
+  output. Do not scaffold a generator or framework around it.
+- Bootstrap validates prerequisites; verify is the CI-reused gate; teardown
+  covers success, failure, timeout, and cancellation.
+- Give every driven target a doctor: one read-only "is this instance worth
+  driving?" check (process up, right build, port owned, auth valid) run before
+  driving and after anything surprising
+  ([references/setup-patterns.md](references/setup-patterns.md)).
+- Name the declared commands and their proof boundary in `AGENTS.md`.
+- Key automation artifacts by task and attempt.
 
 Treat heavyweight runtime resources as owned lifecycle state: simulators,
 emulators, virtual machines, containers, browsers, services, databases, and
-similar runners. Snapshot pre-existing state, record exact resource IDs, and
-release only resources raised by the current task or attempt on every exit path.
-Treat a launcher and its descendants as one owned process tree when applicable.
-Preserve resources that were already running. Verify the final state after a
-successful run and an injected failure. If ordinary work succeeded but teardown
-or absence verification fails, return non-zero; otherwise preserve the primary
-failure or signal status while reporting the cleanup failure. A persistent
-`run` or development task must hand off its resource IDs and explicit teardown
-command instead of silently leaking them.
+similar runners.
+
+- Snapshot pre-existing state, record exact resource IDs, and release only
+  resources raised by the current task or attempt on every exit path.
+- Treat a launcher and its descendants as one owned process tree when
+  applicable. Preserve resources that were already running.
+- Verify the final state after a successful run and an injected failure.
+- If ordinary work succeeded but teardown or absence verification fails,
+  return non-zero; otherwise preserve the primary failure or signal status
+  while reporting the cleanup failure.
+- A persistent `run` or development task must hand off its resource IDs and
+  explicit teardown command instead of silently leaking them.
 
 | Enforce mechanically | Leave to agent judgment |
 | --- | --- |
 | workspace and branch setup, allowed targets, tool install, secret injection | task interpretation and implementation |
 | boot, test, teardown, artifact manifests, upload and push mechanics | exploratory QA, diagnosis, evidence selection, and recovery strategy |
 
-Keep `AGENTS.md` as the canonical shared guide; symlink `CLAUDE.md` →
-`AGENTS.md`. Keep shared guidance model-neutral. Put private human context in an
-owner-controlled layer when the workspace supports one, and keep model or
-harness tuning in its owning configuration.
+- Keep `AGENTS.md` as the canonical shared guide; symlink `CLAUDE.md` →
+  `AGENTS.md`. Keep shared guidance model-neutral.
+- Put private human context in an owner-controlled layer when the workspace
+  supports one; keep model or harness tuning in its owning configuration.
 
 ### 3. Prove outcomes, not recipes
 

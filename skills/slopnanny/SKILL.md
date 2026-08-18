@@ -41,10 +41,11 @@ widens the change.
 
 ## Reply voice
 
-Replies post under the authenticated account and are that identity
-speaking: first-person neutral voice, never third-person self-reference,
-structured markdown (short paragraphs, backticked identifiers), and only
-content that advances the thread.
+Replies post under the authenticated account and are that identity speaking:
+
+- first-person neutral voice, never third-person self-reference
+- structured markdown: short paragraphs, backticked identifiers
+- only content that advances the thread
 
 ## Quiet discipline
 

@@ -38,11 +38,12 @@ slopmachine repo register --forge github --trust low \
   --bind review=slopguard
 ```
 
-Map forge-resident reviewers (bots that review on the change request) with
-`--forge-reviewer identity=login` so their evidence is corroborated against
-the live change request. At low trust the machine only accepts
-machine-executed verification (`verify --cmd`), and local reviewers must
-leave a resolvable result artifact.
+- Map forge-resident reviewers (bots that review on the change request) with
+  `--forge-reviewer identity=login` so their evidence is corroborated against
+  the live change request.
+- At low trust the machine only accepts machine-executed verification
+  (`verify --cmd`), and local reviewers must leave a resolvable result
+  artifact.
 
 ## Bootstrap the run
 
@@ -50,15 +51,19 @@ leave a resolvable result artifact.
 slopmachine status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification
 ```
 
-If status reports `UNINITIALIZED`, obey its `slopmachine init` next action.
-If it reports multiple open runs, show their IDs and ask which one to resume.
-Do not replace a blocked run. If status shows `RUN_DONE` and the user requested
-new work, create a new run; otherwise report the completed run.
+- `UNINITIALIZED` → obey its `slopmachine init` next action.
+- Multiple open runs → show their IDs and ask which one to resume. Do not
+  replace a blocked run.
+- `RUN_DONE` plus a request for new work → create a new run; otherwise report
+  the completed run.
 
-Turn the agreed plan into intake immediately after init. Keep units concrete,
-bounded, and dependency-ordered; give each unit verifiable
-`acceptance_criteria` and declare the run's `risk_tier`; use stdin so the
-workflow does not leave evidence scratch files in the repository:
+Turn the agreed plan into intake immediately after init:
+
+- keep units concrete, bounded, and dependency-ordered
+- give each unit verifiable `acceptance_criteria` and declare the run's
+  `risk_tier`
+- use stdin so the workflow does not leave evidence scratch files in the
+  repository
 
 ```bash
 slopmachine intake --file - --run run-id-from-status --dry-run --json <<'JSON'
@@ -79,12 +84,13 @@ The `--file` payload carries only the intake document; the run travels in
 `--run`, exactly as `next_action` prints it. (The raw `--input` shape embeds
 `run` inside the payload instead; do not mix the two.)
 
-Inspect the dry-run projection. If it matches the agreed intake, repeat the
-same command without `--dry-run`. Do this for every mutation: validate first,
-then apply. A dry run never advances canonical state.
-`verify --cmd --dry-run` cannot predict an exit code; when it returns
-`outcome_undetermined: true`, validate the command and current state instead of
-expecting a post-verification transition.
+- Inspect the dry-run projection; when it matches the agreed intake, repeat
+  the same command without `--dry-run`.
+- Do this for every mutation: validate first, then apply. A dry run never
+  advances canonical state.
+- `verify --cmd --dry-run` cannot predict an exit code; on
+  `outcome_undetermined: true`, validate the command and current state instead
+  of expecting a post-verification transition.
 
 Show the human a compact intake summary: units, delivery mode, required
 reviewers, and exact `intake_revision`. Wait for explicit release approval,
@@ -140,11 +146,13 @@ request that is already merged or closed.
 After each projection is accepted, repeat without `--dry-run`.
 
 When status shows `evidence_verification: observed`, the binary checks
-deliver and review evidence against the live forge before accepting it:
-give real change-request URLs and the actual delivered head. A rejection
-(exit 3) means the forge disagrees with the claim. Fix the claim, never
-retry with altered evidence. Exit 7 means the forge was unreachable; retry,
-or ask the human before recording a bypass with `--unverified --reason`.
+deliver and review evidence against the live forge before accepting it.
+
+- Give real change-request URLs and the actual delivered head.
+- Exit 3: the forge disagrees with the claim. Fix the claim, never retry with
+  altered evidence.
+- Exit 7: the forge was unreachable. Retry, or ask the human before recording
+  a bypass with `--unverified --reason`.
 
 ## Talk to the human
 
@@ -164,33 +172,37 @@ what you need, never a wall of CLI JSON. Plain words over machine dumps.
 
 ## Error recovery
 
-Failed verification records `BLOCKED` and exits 6. Show the compact failure,
-re-read status, surface `blocker` verbatim, and ask how to recover. After the
-human confirms the recovery, record it with `slopmachine retry --reason "…"`;
-never retry silently. For a known external blocker before verification, use
-`slopmachine block --reason "…"` and follow the same recovery rule.
-
-With `--json`, failures return `error.kind`, `error.message`, and
-`error.exit_code`. Malformed input exits 2; illegal transitions or unmet guards
-exit 3. Fix the input or re-read status instead of bypassing the gate. Empty
-next action means the run is done or needs human inspection.
+- Failed verification records `BLOCKED` and exits 6: show the compact
+  failure, re-read status, surface `blocker` verbatim, and ask how to recover.
+- After the human confirms the recovery, record it with
+  `slopmachine retry --reason "…"`; never retry silently.
+- For a known external blocker before verification, use
+  `slopmachine block --reason "…"` and follow the same recovery rule.
+- With `--json`, failures return `error.kind`, `error.message`, and
+  `error.exit_code`. Malformed input exits 2; illegal transitions or unmet
+  guards exit 3. Fix the input or re-read status instead of bypassing the gate.
+- An empty next action means the run is done or needs human inspection.
 
 ## Post-delivery babysit
 
 Delivery opens a change request; the unit is `delivered`, not settled, and
-later units already build while it waits. Prefer `slopmachine watch --once`:
-the binary observes every delivered unit's change request itself and records
-the signals: `merged` settles the unit; `checks_failed`, `review_feedback`,
-and `head_moved` pull it back through the build loop with the cause
-recorded. Passes are idempotent, so rerun freely; `--interval SECONDS`
-polls with bounded iterations. Two narrow feedback-identity limits: a
-thread reopened without a new comment is not re-detected (any new
-comment is), and a change request with more than ten unresolved threads
-may conservatively re-trigger one extra rework when the sample shifts. For signals the binary cannot observe (no
-change request URL, foreign forge), record what the forge really shows via
-`slopmachine observe`, passing `--unit` when several units are delivered.
-`AWAITING_SIGNALS` means every remaining unit waits on external signals.
-Never invent a signal.
+later units already build while it waits.
+
+- Prefer `slopmachine watch --once`: the binary observes every delivered
+  unit's change request itself and records the signals. Passes are
+  idempotent, so rerun freely; `--interval SECONDS` polls with bounded
+  iterations.
+- `merged` settles the unit; `checks_failed`, `review_feedback`, and
+  `head_moved` pull it back through the build loop with the cause recorded.
+- Two narrow feedback-identity limits: a thread reopened without a new
+  comment is not re-detected (any new comment is), and a change request with
+  more than ten unresolved threads may conservatively re-trigger one extra
+  rework when the sample shifts.
+- For signals the binary cannot observe (no change request URL, foreign
+  forge), record what the forge really shows via `slopmachine observe`,
+  passing `--unit` when several units are delivered.
+- `AWAITING_SIGNALS` means every remaining unit waits on external signals.
+  Never invent a signal.
 
 ## Post-review flow
 

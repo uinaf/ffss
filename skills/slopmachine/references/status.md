@@ -46,18 +46,23 @@ slopmachine status --json
 slopmachine verify --cmd 'go test ./...' --run demo
 ```
 
-A successful mutation invoked with `--json` already returns its resulting
-status document. A dry-run projection additionally includes `dry_run: true`
-and `validated_command`; it does not represent persisted state. Re-read status
-after plain output or an error before choosing the next step.
-`verify --cmd --dry-run` cannot know the command outcome, so it keeps the
-current state and adds `outcome_undetermined: true`.
+- A successful mutation invoked with `--json` already returns its resulting
+  status document.
+- A dry-run projection additionally includes `dry_run: true` and
+  `validated_command`; it does not represent persisted state.
+- Re-read status after plain output or an error before choosing the next
+  step.
+- `verify --cmd --dry-run` cannot know the command outcome, so it keeps the
+  current state and adds `outcome_undetermined: true`.
 
-Arrays are always present, including when empty. `next_action` contains a
-usable command template; replace angle-bracket placeholders with real values.
-Field masks validate every requested name and omit optional fields that are not
-present in the canonical status document; they never synthesize `null` values.
-Structured intake, review, and delivery actions use stdin through `--file -` or
-`--evidence -`; do not create the payload in the repository.
-Delivery requires one clean result from every identity in
-`required_reviewers`. Repeating the same reviewer does not satisfy the gate.
+- Arrays are always present, including when empty.
+- `next_action` contains a usable command template; replace angle-bracket
+  placeholders with real values.
+- Field masks validate every requested name and omit optional fields that are
+  not present in the canonical status document; they never synthesize `null`
+  values.
+- Structured intake, review, and delivery actions use stdin through
+  `--file -` or `--evidence -`; do not create the payload in the repository.
+- Delivery requires one clean result from every identity in
+  `required_reviewers`. Repeating the same reviewer does not satisfy the
+  gate.

@@ -25,7 +25,7 @@ capability preflight rather than claiming an unenforceable isolation guarantee.
 | Mode | Authentication and configuration | Isolation controls |
 | --- | --- | --- |
 | `native` (default) | Existing environment, user configuration, and configured provider or session authentication | Ask mode in an empty workspace; user sandbox configuration is preserved |
-| `strict` | Empty home and Cursor state; requires `CURSOR_API_KEY` | Ask mode, forced sandbox, and generated deny rules for shell, file, and MCP access |
+| `strict` | Empty home and Cursor state; requires `CURSOR_API_KEY` | Ask mode, forced sandbox, and generated deny rules for shell, file, and Model Context Protocol (MCP) access |
 
 ## Output contract
 
@@ -33,15 +33,17 @@ The outer JSON must be one successful Cursor `result` envelope with a non-empty
 string result. The adapter appends a trusted protocol instruction and the exact
 embedded review schema after the frozen bundle.
 
-The inner result is first decoded as exactly one canonical review object. If
-that fails, the only recovery accepts non-JSON prose followed by one complete
-canonical object that consumes the remaining suffix. Fences, ambiguous braces,
-JSON-value prefixes, malformed or multiple objects, suffix prose, and
-non-canonical reviews fail closed. Successful recovery is recorded as
-`cursor_trailing_object`. Rejected documents receive a sanitized category such
-as invalid JSON, invalid document shape, multiple documents, suffix content,
-fenced output, or schema mismatch. The one shared retry converts that category
-into trusted correction guidance without echoing provider output.
+- The inner result is first decoded as exactly one canonical review object.
+- If that fails, the only recovery accepts non-JSON prose followed by one
+  complete canonical object that consumes the remaining suffix.
+- Fences, ambiguous braces, JSON-value prefixes, malformed or multiple objects,
+  suffix prose, and non-canonical reviews fail closed.
+- Successful recovery is recorded as `cursor_trailing_object`.
+- Rejected documents receive a sanitized category such as invalid JSON, invalid
+  document shape, multiple documents, suffix content, fenced output, or schema
+  mismatch.
+- The one shared retry converts that category into trusted correction guidance
+  without echoing provider output.
 
 ## Verify
 

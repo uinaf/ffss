@@ -67,10 +67,11 @@ Use transcripts for efficiency, policy, and diagnosis:
 - human questions or approvals
 - token, duration, and resource or cost class
 
-Do not accept an agent's completion statement as proof. Keep tasks
-implementation-agnostic unless the implementation is itself the contract.
-Every task should have an unambiguous specification and a known-valid solution
-or setup that proves the grader can pass.
+- Do not accept an agent's completion statement as proof.
+- Keep tasks implementation-agnostic unless the implementation is itself the
+  contract.
+- Every task should have an unambiguous specification and a known-valid
+  solution or setup that proves the grader can pass.
 
 ## Reliability Profile
 
@@ -87,10 +88,11 @@ false success: 0
 evidence: runner image, model, harness revision, date
 ```
 
-Use `pass@1` for the probability that one attempt succeeds and `pass^k` when
-every one of `k` attempts must succeed. Name the metric rather than reporting an
-ambiguous "pass rate." For long-horizon work, report both a typical success
-threshold and a higher-reliability threshold when enough trials exist.
+- Use `pass@1` for the probability that one attempt succeeds and `pass^k` when
+  every one of `k` attempts must succeed.
+- Name the metric rather than reporting an ambiguous "pass rate."
+- For long-horizon work, report both a typical success threshold and a
+  higher-reliability threshold when enough trials exist.
 
 ## Eval Maintenance
 
