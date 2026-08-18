@@ -66,6 +66,26 @@ ln -sfn ~/.claude/plugins/marketplaces/ffss/skills/* ~/.config/opencode/skills/
 Reference bindings elsewhere in the family: slopzapper (forge review bot),
 slopscouter (QA, planned), slopbench (evals), slopwake.
 
+### Which skill owns what
+
+Route by the artifact, not the verb:
+
+| Artifact or task | Owner |
+| --- | --- |
+| README, AGENTS.md, docs/, specs: content, currency, house style | [`slopscriber`](skills/slopscriber/) |
+| Prose voice, de-slopping a text or diff | [`slopclean`](skills/slopclean/) |
+| Issues, epics, tracker tickets | [`slopspec`](skills/slopspec/) |
+| Opening the change request | [`slopcourier`](skills/slopcourier/) |
+| Getting an open change request to settled | [`slopnanny`](skills/slopnanny/) |
+| Independent code review | [`slopguard`](skills/slopguard/) |
+| Governed multi-unit run | [`slopmachine`](skills/slopmachine/) |
+| Boot, gates, proof paths: can an agent verify here | [`slopprep`](skills/slopprep/) |
+| Chat replies | [`wat`](skills/wat/) |
+| PR/issue templates, `SECURITY.md`, rulesets, releases, GitHub shell | [gh-setup](https://github.com/uinaf/agent-skills/tree/main/skills/gh-setup), lives in agent-skills |
+
+The one seam worth naming: `AGENTS.md` orientation and proof paths belong to
+slopprep; its compression, currency, and style belong to slopscriber.
+
 ## Status
 
 Live. Each CLI releases from this repo on its own tag (`slopmachine/vX.Y.Z`,
