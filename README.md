@@ -72,8 +72,11 @@ lane, in agent-skills. The one seam worth naming: `AGENTS.md` orientation and
 proof paths belong to slopprep; its compression, currency, and style belong
 to slopscriber.
 
-Reference bindings elsewhere in the family: slopzapper (forge review bot),
-slopscouter (QA, planned), slopbench (evals), slopwake.
+Reference bindings elsewhere in the family:
+[slopzapper](https://slopzapper.uinaf.dev) (forge review bot),
+slopscouter (QA, planned),
+[slopbench](https://github.com/uinaf/slopbench) (evals), and
+[slopwake](https://github.com/uinaf/slopwake).
 
 ## License
 
