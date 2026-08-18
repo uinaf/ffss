@@ -151,6 +151,25 @@ EOF
 
 chmod 755 "$fake_bin/uname" "$fake_bin/sha256sum" "$fake_bin/curl" "$fake_bin/git"
 
+# The shasum-fallback case needs a PATH with no sha256sum anywhere, so build
+# one from the fake shims (minus the sha256sum shim) plus only the real
+# commands the installer requires.
+no_sha256sum_bin=$scratch/bin-no-sha256sum
+restricted_bin=$scratch/restricted-bin
+mkdir -p "$no_sha256sum_bin" "$restricted_bin"
+for shim in uname curl git; do
+  ln -s "$fake_bin/$shim" "$no_sha256sum_bin/$shim"
+done
+for tool in tar gzip mktemp mkdir cp chmod mv rm; do
+  tool_path=$(command -v "$tool" || true)
+  if [ -n "$tool_path" ]; then
+    ln -s "$tool_path" "$restricted_bin/$tool"
+  fi
+done
+if [ -n "$fixture_shasum" ]; then
+  ln -s "$fixture_shasum" "$restricted_bin/shasum"
+fi
+
 case_number=0
 new_case() {
   case_number=$((case_number + 1))
@@ -177,6 +196,18 @@ run_installer() {
     TEST_UNAME_M="${TEST_UNAME_M:-x86_64}" \
     FAKE_CURL_MODE="${FAKE_CURL_MODE:-}" \
     FAKE_GIT_MODE="${FAKE_GIT_MODE:-}" \
+    /bin/sh "$installer" "$@"
+}
+
+run_installer_without_sha256sum() {
+  PATH="$no_sha256sum_bin:$restricted_bin" \
+    HOME="$case_home" \
+    TMPDIR="$case_tmp" \
+    FIXTURE_DIR="$case_fixtures" \
+    FAKE_CURL_LOG="$case_log" \
+    SLOPGUARD_INSTALL_REPOSITORY_URL="${TEST_REPOSITORY_URL:-https://fixture.invalid}" \
+    TEST_UNAME_S="${TEST_UNAME_S:-Linux}" \
+    TEST_UNAME_M="${TEST_UNAME_M:-x86_64}" \
     /bin/sh "$installer" "$@"
 }
 
@@ -277,6 +308,17 @@ TEST_UNAME_S=Darwin TEST_UNAME_M=arm64 run_installer >/dev/null
 test "$("$case_home/.local/bin/slopguard" --version)" = \
   'slopguard v1.2.3 (fixture-darwin-arm64)'
 assert_no_residue
+
+# Case: no sha256sum on the PATH at all — the installer falls back to
+# shasum -a 256, the macOS default.
+if [ -n "$fixture_shasum" ]; then
+  new_case
+  TEST_UNAME_S=Darwin TEST_UNAME_M=arm64 run_installer_without_sha256sum \
+    --version 1.2.3 >/dev/null
+  test "$("$case_home/.local/bin/slopguard" --version)" = \
+    'slopguard v1.2.3 (fixture-darwin-arm64)'
+  assert_no_residue
+fi
 
 new_case
 TEST_UNAME_S=FreeBSD expect_failure 'unsupported operating system: FreeBSD' \
