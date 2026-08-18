@@ -42,7 +42,15 @@ Check the files agents and humans actually rely on:
 - `docs/`
 - durable specs, runbooks, and decision docs
 
-Flag stale commands, dead paths, duplicate guidance, routing failures, narrative history, exhaustive negative inventories, and repo-internal details leaking into reader-facing docs. Flag every [house style](references/style.md) violation: paragraph-shaped guidance the reader must mine for facts, references trapped in code spans, adjective-carried claims, and unexplained jargon.
+Flag:
+
+- stale commands, dead paths, and duplicate guidance
+- routing failures and narrative history
+- exhaustive negative inventories
+- repo-internal details leaking into reader-facing docs
+- every [house style](references/style.md) violation: paragraph-shaped
+  guidance the reader must mine for facts, references trapped in code spans,
+  adjective-carried claims, and unexplained jargon
 
 Before editing:
 
