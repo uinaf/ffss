@@ -58,11 +58,11 @@ SLOPGUARD_TEST_LIVE=1 \
 '''
 
 [tasks."installer:test"]
-description = "Run the offline Linux installer fixture tests"
+description = "Run the offline installer fixture tests"
 run = "bash scripts/test-install.sh"
 
 [tasks."installer:check"]
-description = "Validate the Linux installer"
+description = "Validate the installer script"
 depends = ["installer:test"]
 run = '''
 set -e

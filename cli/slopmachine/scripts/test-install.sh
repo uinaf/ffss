@@ -10,7 +10,7 @@ trap 'rm -rf "$scratch"' EXIT
 grep -F 'name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"' \
   "$repository_root/.goreleaser.yaml" >/dev/null
 grep -F 'name_template: checksums.txt' "$repository_root/.goreleaser.yaml" >/dev/null
-grep -F "archive=slopmachine_\${release_tag}_linux_\${architecture}.tar.gz" \
+grep -F "archive=slopmachine_\${release_tag}_\${os}_\${architecture}.tar.gz" \
   "$installer" >/dev/null
 
 fixtures=$scratch/fixtures
@@ -20,28 +20,29 @@ fixture_shasum=$(command -v shasum || true)
 mkdir -p "$fixtures" "$fake_bin"
 
 make_archive() {
-  local architecture=$1
-  local payload=$scratch/payload-$architecture
+  local os=$1
+  local architecture=$2
+  local payload=$scratch/payload-$os-$architecture
   mkdir -p "$payload"
-  printf '#!/bin/sh\nprintf '\''slopmachine v1.2.3 (fixture-%s)\\n'\''\n' \
-    "$architecture" > "$payload/slopmachine"
+  printf '#!/bin/sh\nprintf '\''slopmachine v1.2.3 (fixture-%s-%s)\\n'\''\n' \
+    "$os" "$architecture" > "$payload/slopmachine"
   chmod 755 "$payload/slopmachine"
   printf 'fixture license\n' > "$payload/LICENSE"
   printf 'fixture readme\n' > "$payload/README.md"
-  tar -czf "$fixtures/slopmachine_v1.2.3_linux_${architecture}.tar.gz" \
+  tar -czf "$fixtures/slopmachine_v1.2.3_${os}_${architecture}.tar.gz" \
     -C "$payload" slopmachine LICENSE README.md
 }
 
-make_archive amd64
-make_archive arm64
+make_archive linux amd64
+make_archive linux arm64
+make_archive darwin amd64
+make_archive darwin arm64
 (
   cd "$fixtures"
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum slopmachine_v1.2.3_linux_amd64.tar.gz \
-      slopmachine_v1.2.3_linux_arm64.tar.gz > checksums.txt
+    sha256sum slopmachine_v1.2.3_*.tar.gz > checksums.txt
   else
-    shasum -a 256 slopmachine_v1.2.3_linux_amd64.tar.gz \
-      slopmachine_v1.2.3_linux_arm64.tar.gz > checksums.txt
+    shasum -a 256 slopmachine_v1.2.3_*.tar.gz > checksums.txt
   fi
 )
 
@@ -229,13 +230,13 @@ new_case
 destination_without_home=$case_root/no-home-bin
 run_installer_without_home --dest "$destination_without_home" >/dev/null
 test "$("$destination_without_home/slopmachine" --version)" = \
-  'slopmachine v1.2.3 (fixture-amd64)'
+  'slopmachine v1.2.3 (fixture-linux-amd64)'
 assert_no_residue
 
 new_case
 run_installer >/dev/null
 test "$("$case_home/.local/bin/slopmachine" --version)" = \
-  'slopmachine v1.2.3 (fixture-amd64)'
+  'slopmachine v1.2.3 (fixture-linux-amd64)'
 grep -Fx \
   'https://fixture.invalid/releases/download/slopmachine%2Fv1.2.3/slopmachine_v1.2.3_linux_amd64.tar.gz' \
   "$case_log" >/dev/null
@@ -256,14 +257,29 @@ custom_destination=$case_root/custom-bin-with-space/'chosen bin'
 TEST_UNAME_M=aarch64 run_installer --version 1.2.3 \
   --dest "$custom_destination" >/dev/null
 test "$("$custom_destination/slopmachine" --version)" = \
-  'slopmachine v1.2.3 (fixture-arm64)'
+  'slopmachine v1.2.3 (fixture-linux-arm64)'
 grep -Fx \
   'https://fixture.invalid/releases/download/slopmachine%2Fv1.2.3/slopmachine_v1.2.3_linux_arm64.tar.gz' \
   "$case_log" >/dev/null
 assert_no_residue
 
 new_case
-TEST_UNAME_S=Darwin expect_failure 'unsupported operating system: Darwin' \
+TEST_UNAME_S=Darwin run_installer >/dev/null
+test "$("$case_home/.local/bin/slopmachine" --version)" = \
+  'slopmachine v1.2.3 (fixture-darwin-amd64)'
+grep -Fx \
+  'https://fixture.invalid/releases/download/slopmachine%2Fv1.2.3/slopmachine_v1.2.3_darwin_amd64.tar.gz' \
+  "$case_log" >/dev/null
+assert_no_residue
+
+new_case
+TEST_UNAME_S=Darwin TEST_UNAME_M=arm64 run_installer >/dev/null
+test "$("$case_home/.local/bin/slopmachine" --version)" = \
+  'slopmachine v1.2.3 (fixture-darwin-arm64)'
+assert_no_residue
+
+new_case
+TEST_UNAME_S=FreeBSD expect_failure 'unsupported operating system: FreeBSD' \
   run_installer
 assert_no_residue
 
@@ -309,7 +325,7 @@ test "$("$case_home/.local/bin/slopmachine")" = 'old slopmachine'
 new_case
 FAKE_GIT_MODE=absent run_installer >/dev/null
 test "$("$case_home/.local/bin/slopmachine" --version)" = \
-  'slopmachine v1.2.3 (fixture-amd64)'
+  'slopmachine v1.2.3 (fixture-linux-amd64)'
 assert_no_residue
 
 # Case: the newest tag has no published release (a crash between tag push
@@ -318,7 +334,7 @@ assert_no_residue
 new_case
 FAKE_CURL_MODE=draft-tag run_installer >/dev/null
 test "$("$case_home/.local/bin/slopmachine" --version)" = \
-  'slopmachine v1.2.3 (fixture-amd64)'
+  'slopmachine v1.2.3 (fixture-linux-amd64)'
 grep -Fx \
   'https://fixture.invalid/releases/download/slopmachine%2Fv9.9.9/checksums.txt' \
   "$case_log" >/dev/null

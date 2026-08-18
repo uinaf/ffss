@@ -25,7 +25,7 @@ Each CLI release contains:
 - Apple creates tickets for standalone binaries but does not support stapling
   tickets to them, so Gatekeeper retrieves the ticket online.
 
-## Linux installer trust boundary
+## Installer trust boundary
 
 The installer script and the release tag, matching archive, and `checksums.txt`
 it obtains all come over HTTPS from GitHub. The checksum detects a corrupt or
@@ -45,7 +45,7 @@ the binary.
   archive against the release's `checksums.txt`.
 - `--check` reports without touching the binary and exits 8 when an update is
   available.
-- It shares the Linux installer's trust boundary (checksum and archive over one
+- It shares the installer's trust boundary (checksum and archive over one
   HTTPS hosting boundary); use the Cosign and attestation workflow below for
   independent provenance.
 - Homebrew-managed installs are refused: use `brew upgrade --cask slopmachine`.
