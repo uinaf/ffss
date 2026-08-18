@@ -499,6 +499,19 @@ func TestFreezeSkipSecretScanDoesNotCallScanner(t *testing.T) {
 	}
 }
 
+func TestNewContextCanceledProbeIsNotSecretScan(t *testing.T) {
+	repository := committedRepository(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, err := NewContext(ctx, Options{Repository: repository})
+	if err == nil || errors.Is(err, ErrSecretScan) {
+		t.Fatalf("NewContext() error = %v", err)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("NewContext() error = %v, want canceled", err)
+	}
+}
+
 func TestNewContextMissingTruffleHogIsSecretScan(t *testing.T) {
 	repository := committedRepository(t)
 	gitPath, err := exec.LookPath("git")

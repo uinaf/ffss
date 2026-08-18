@@ -123,6 +123,9 @@ func (collector *Collector) forRepository(ctx context.Context, repository string
 	if scanner == nil && !collector.skipSecretScan {
 		scanner, err = newTruffleHogScanner(ctx, collector.truffleHogPath, repository)
 		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, err
+			}
 			return nil, fmt.Errorf("%w: %w", ErrSecretScan, err)
 		}
 	}

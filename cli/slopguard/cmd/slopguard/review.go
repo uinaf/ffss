@@ -98,7 +98,12 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	collector, err := newCollector()
 	if err != nil {
 		class := protocol.FailureCapability
-		if errors.Is(err, target.ErrSecretScan) {
+		switch {
+		case errors.Is(err, context.Canceled):
+			class = protocol.FailureCancelled
+		case errors.Is(err, context.DeadlineExceeded):
+			class = protocol.FailureTimeout
+		case errors.Is(err, target.ErrSecretScan):
 			class = protocol.FailureSecretScan
 		}
 		return writeReviewResult(stdout, stderr, *output, orchestrator.Failure(class, fmt.Errorf("initialize target collector: %w", err)))

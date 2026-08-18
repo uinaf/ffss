@@ -296,6 +296,29 @@ func TestReviewCommandRejectsIncompleteLowConfidenceCleanResult(t *testing.T) {
 	}
 }
 
+func TestReviewCommandClassifiesCancelledCollectorInit(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepository(t)
+	reviewer := &scriptedReviewer{}
+	dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+	dependencies.newCollector = func() (*target.Collector, error) {
+		return nil, fmt.Errorf("%w: %w", target.ErrSecretScan, context.Canceled)
+	}
+	var stdout bytes.Buffer
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--output", "json"}, &stdout, io.Discard, dependencies)
+	if exit != 2 || len(reviewer.prompts) != 0 {
+		t.Fatalf("exit=%d calls=%d output=%s", exit, len(reviewer.prompts), stdout.String())
+	}
+	var result protocol.Report
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Failure == nil || result.Failure.Class != protocol.FailureCancelled {
+		t.Fatalf("failure = %+v", result.Failure)
+	}
+}
+
 func TestReviewCommandClassifiesMissingScannerAsSecretScan(t *testing.T) {
 	t.Parallel()
 
