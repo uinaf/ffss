@@ -68,16 +68,12 @@ slopscouter (QA, planned), slopbench (evals), slopwake.
 
 ## Status
 
-Live.
+Live. Each CLI releases from this repo on its own tag (`slopmachine/vX.Y.Z`,
+`slopguard/vX.Y.Z`); signing and verification are covered in each member's
+release docs ([slopmachine](cli/slopmachine/docs/RELEASES.md),
+[slopguard](cli/slopguard/docs/RELEASES.md)).
 
-- Both CLIs release from this repo on per-member tags (`slopmachine/vX.Y.Z`,
-  `slopguard/vX.Y.Z`): signed and notarized macOS builds, Cosign-signed
-  checksums, GitHub build attestations, Homebrew casks in
-  [`uinaf/homebrew-tap`](https://github.com/uinaf/homebrew-tap), Linux
-  installers, and in-place `selfupdate`.
-- CI runs each member's own gate (`mise run verify` inside `cli/slopmachine/`
-  and `cli/slopguard/`) plus a skills lint.
-- Next: [M3 dispatch + M4 learn](https://github.com/uinaf/ffss/issues/27).
+Next: [M3 dispatch + M4 learn](https://github.com/uinaf/ffss/issues/27).
 
 ## License
 
