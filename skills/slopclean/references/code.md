@@ -41,5 +41,5 @@ alone unless asked.
 
 - A pattern that hides a real defect (a defensive check masking an actual
   reachable state) is a finding, not a cleanup; report it.
-- Behavior, public API, and test semantics never change in a cleaning
-  pass.
+- Behavior and public API never change in a cleaning pass; test changes
+  are [test mode](tests.md)'s lane with its own stop conditions.

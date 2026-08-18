@@ -1,14 +1,16 @@
 interface:
   display_name: "slopclean"
-  short_description: "Strip AI tells from writing or a diff"
+  short_description: "Strip AI tells from writing, a diff, or a test suite"
   default_prompt: |
-    Use $slopclean to clean the artifact: pick prose or code mode, detect
-    machine patterns (puffery, stock vocabulary, crutch punctuation,
-    filler, narrating comments, defensive boilerplate, hedged names),
-    rewrite in place preserving meaning and behavior, add concrete voice
-    where the text is sterile, and self-audit for remaining tells. Never
-    change behavior, facts, or public API; report defects hiding behind
-    slop instead of polishing them; one pass, not a sterilizing loop.
+    Use $slopclean to clean the artifact: pick prose, code, or test mode,
+    detect machine patterns (puffery, stock vocabulary, crutch punctuation,
+    filler, narrating comments, defensive boilerplate, hedged names,
+    tautological or overmocked tests, repetitive setup), rewrite in place
+    preserving meaning and behavior, add concrete voice where the text is
+    sterile, and self-audit for remaining tells. Never change behavior,
+    facts, or public API; in test mode never weaken a real assertion or
+    delete a behavior's only coverage; report defects hiding behind slop
+    instead of polishing them; one pass, not a sterilizing loop.
 
 policy:
   allow_implicit_invocation: true
