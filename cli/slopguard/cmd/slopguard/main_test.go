@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -295,6 +296,76 @@ func TestReviewCommandRejectsIncompleteLowConfidenceCleanResult(t *testing.T) {
 	}
 }
 
+func TestReviewCommandClassifiesCancelledCollectorInit(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepository(t)
+	reviewer := &scriptedReviewer{}
+	dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+	dependencies.newCollector = func() (*target.Collector, error) {
+		return nil, fmt.Errorf("%w: %w", target.ErrSecretScan, context.Canceled)
+	}
+	var stdout bytes.Buffer
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--output", "json"}, &stdout, io.Discard, dependencies)
+	if exit != 2 || len(reviewer.prompts) != 0 {
+		t.Fatalf("exit=%d calls=%d output=%s", exit, len(reviewer.prompts), stdout.String())
+	}
+	var result protocol.Report
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Failure == nil || result.Failure.Class != protocol.FailureCancelled {
+		t.Fatalf("failure = %+v", result.Failure)
+	}
+}
+
+func TestReviewCommandClassifiesMissingScannerAsSecretScan(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepository(t)
+	reviewer := &scriptedReviewer{}
+	dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+	dependencies.newCollector = func() (*target.Collector, error) {
+		return nil, fmt.Errorf("%w: find trufflehog: missing", target.ErrSecretScan)
+	}
+	var stdout bytes.Buffer
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--output", "json"}, &stdout, io.Discard, dependencies)
+	if exit != 2 || len(reviewer.prompts) != 0 {
+		t.Fatalf("exit=%d calls=%d output=%s", exit, len(reviewer.prompts), stdout.String())
+	}
+	var result protocol.Report
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Failure == nil || result.Failure.Class != protocol.FailureSecretScan {
+		t.Fatalf("failure = %+v", result.Failure)
+	}
+}
+
+func TestReviewCommandSkipSecretScanBypassesScanner(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepository(t)
+	reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
+	scanner := scannerError{err: target.ErrSecretFound}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--skip-secret-scan", "--output", "json"}, &stdout, &stderr, reviewDependencies(t, scanner, reviewer))
+	if exit != 0 || len(reviewer.prompts) != 1 {
+		t.Fatalf("exit=%d calls=%d stdout=%s stderr=%s", exit, len(reviewer.prompts), stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "secret scan skipped") {
+		t.Fatalf("stderr = %q, want skip notice", stderr.String())
+	}
+	var result protocol.Report
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != protocol.StatusClean {
+		t.Fatalf("result = %+v", result)
+	}
+}
+
 func TestReviewCommandClassifiesSecretTimeoutAndCancellation(t *testing.T) {
 	t.Parallel()
 
@@ -377,7 +448,7 @@ func TestTopLevelAndCommandHelp(t *testing.T) {
 		t.Fatalf("top-level help exit=%d output=%q", exit, stdout.String())
 	}
 	stdout.Reset()
-	if exit := run(t.Context(), []string{"review", "--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "Usage of slopguard review") {
+	if exit := run(t.Context(), []string{"review", "--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "Usage of slopguard review") || !strings.Contains(stdout.String(), "-skip-secret-scan") {
 		t.Fatalf("review help exit=%d output=%q", exit, stdout.String())
 	}
 	stdout.Reset()

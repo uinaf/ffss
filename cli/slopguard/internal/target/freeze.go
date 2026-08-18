@@ -31,6 +31,7 @@ type Collector struct {
 	scanner        Scanner
 	gitPath        string
 	truffleHogPath string
+	skipSecretScan bool
 }
 
 type collected struct {
@@ -53,7 +54,12 @@ func New(options Options) (*Collector, error) {
 }
 
 func NewContext(ctx context.Context, options Options) (*Collector, error) {
-	collector := &Collector{scanner: options.Scanner, gitPath: options.GitPath, truffleHogPath: options.TruffleHogPath}
+	collector := &Collector{
+		scanner:        options.Scanner,
+		gitPath:        options.GitPath,
+		truffleHogPath: options.TruffleHogPath,
+		skipSecretScan: options.SkipSecretScan,
+	}
 	if options.Repository == "" {
 		return collector, nil
 	}
@@ -87,11 +93,16 @@ func (collector *Collector) Freeze(ctx context.Context, repository string, reque
 	if first.target.SnapshotHash != second.target.SnapshotHash {
 		return nil, fmt.Errorf("target changed while freezing: %w", ErrSourceChanged)
 	}
-	if err := collector.scanner.Scan(ctx, first.payload); err != nil {
-		if errors.Is(err, ErrSecretFound) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return nil, err
+	if !request.SkipSecretScan {
+		if collector.scanner == nil {
+			return nil, fmt.Errorf("%w: secret scanner is unavailable", ErrSecretScan)
 		}
-		return nil, fmt.Errorf("%w: %w", ErrSecretScan, err)
+		if err := collector.scanner.Scan(ctx, first.payload); err != nil {
+			if errors.Is(err, ErrSecretFound) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("%w: %w", ErrSecretScan, err)
+		}
 	}
 	return &Bundle{
 		repository:   root,
@@ -109,13 +120,16 @@ func (collector *Collector) forRepository(ctx context.Context, repository string
 		return nil, err
 	}
 	scanner := collector.scanner
-	if scanner == nil {
+	if scanner == nil && !collector.skipSecretScan {
 		scanner, err = newTruffleHogScanner(ctx, collector.truffleHogPath, repository)
 		if err != nil {
-			return nil, err
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("%w: %w", ErrSecretScan, err)
 		}
 	}
-	return &Collector{git: git, scanner: scanner}, nil
+	return &Collector{git: git, scanner: scanner, skipSecretScan: collector.skipSecretScan}, nil
 }
 
 func validateRequest(request *Request) error {
