@@ -26,5 +26,9 @@ npm run summarize                             # writes .skillcheck/scorecards/<U
 
 Auth is split on purpose: `lint` needs no credentials and runs in CI. Sweeps
 need model auth (`ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN` for a gateway,
-or the local Claude Code session) and stay operator-run. Details in the
+or the local Claude Code session) and stay operator-run. The judge always
+grades through that Anthropic selection; `--harness codex` or
+`--harness cursor` additionally needs the matching CLI login (or
+`OPENAI_API_KEY` / `CURSOR_API_KEY`) for the agent leg, e.g.
+`npm run sweep -- --harness cursor --agent composer-2.5`. Details in the
 [skillcheck docs](https://github.com/uinaf/skillcheck/tree/main/docs).
