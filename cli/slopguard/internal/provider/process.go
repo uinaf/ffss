@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/processgroup"
+	"github.com/uinaf/ffss/cli/slopguard/internal/processgroup"
 )
 
 type processErrorKind string

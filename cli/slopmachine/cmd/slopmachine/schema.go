@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/status"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/status"
 )
 
 type introspectionDocument struct {

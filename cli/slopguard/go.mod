@@ -1,4 +1,4 @@
-module github.com/uinaf/ffsstack/cli/slopguard
+module github.com/uinaf/ffss/cli/slopguard
 
 go 1.26.0
 

@@ -34,7 +34,7 @@ Install the latest amd64 or arm64 release without Go, Homebrew, `jq`, or
 
 ```bash
 curl --proto '=https' --tlsv1.2 -fsSL \
-  https://raw.githubusercontent.com/uinaf/ffsstack/main/cli/slopmachine/install.sh | sh
+  https://raw.githubusercontent.com/uinaf/ffss/main/cli/slopmachine/install.sh | sh
 ~/.local/bin/slopmachine version
 ```
 
@@ -216,7 +216,7 @@ registered, not hardcoded: `slopguard` and `bugbot` are built in,
 and `slopmachine reviewers --add NAME` registers others (a hosted bot such as
 slopzapper, a CI reviewer, a QA provider). The intake's `required_reviewers`
 selects among them; run the matching installed tool, such as the
-[`slopguard`](https://github.com/uinaf/ffsstack/tree/main/cli/slopguard) CLI or Cursor's
+[`slopguard`](https://github.com/uinaf/ffss/tree/main/cli/slopguard) CLI or Cursor's
 `/review-bugbot`, when the intake requires it.
 
 ## Documentation

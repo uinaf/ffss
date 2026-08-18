@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
 func TestLoadUsesDocumentedPrecedenceAndSources(t *testing.T) {

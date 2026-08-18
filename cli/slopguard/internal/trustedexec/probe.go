@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/processgroup"
+	"github.com/uinaf/ffss/cli/slopguard/internal/processgroup"
 )
 
 func Probe(arguments []string, directory string, environment []string) Check {

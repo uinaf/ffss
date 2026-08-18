@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/forge"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/status"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/store"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/watch"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/forge"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/status"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/store"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/watch"
 )
 
 const (

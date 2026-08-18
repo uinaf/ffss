@@ -9,10 +9,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/config"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/provider"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/target"
+	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
+	"github.com/uinaf/ffss/cli/slopguard/internal/target"
 )
 
 const retryHeader = "\nSLOPGUARD-TRUSTED-PROTOCOL-RETRY-V1\nThe previous response did not satisfy the required review protocol. "

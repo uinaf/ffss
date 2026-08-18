@@ -3,9 +3,9 @@
   "type": "weighted_checklist",
   "checklist": [
     {"name": "Non-security classification", "description": "reporting-plan.md treats the stdout separation problem as a reproducible non-security CLI defect", "max_score": 10},
-    {"name": "Open and closed search", "description": "The plan uses gh issue list --repo uinaf/ffsstack --state all with a sanitized title search", "max_score": 10},
+    {"name": "Open and closed search", "description": "The plan uses gh issue list --repo uinaf/ffss --state all with a sanitized title search", "max_score": 10},
     {"name": "Automatic public creation", "description": "Because no match exists and sanitization is possible, the plan proceeds to gh issue create rather than merely suggesting it", "max_score": 10},
-    {"name": "Body file used", "description": "The plan writes a sanitized temporary body and uses gh issue create --repo uinaf/ffsstack --body-file", "max_score": 10},
+    {"name": "Body file used", "description": "The plan writes a sanitized temporary body and uses gh issue create --repo uinaf/ffss --body-file", "max_score": 10},
     {"name": "Safe metadata included", "description": "The issue includes slopguard 0.1.1, Linux amd64, provider name or fake-provider fact, isolation/web state if known, and the stable high-level failure behavior", "max_score": 10},
     {"name": "Synthetic reproduction included", "description": "The reproduction steps use the public synthetic repository, path-with-space condition, fake provider, and JSON output", "max_score": 10},
     {"name": "Expected behavior included", "description": "The issue says stdout should contain exactly one valid JSON report while progress remains on stderr", "max_score": 10},

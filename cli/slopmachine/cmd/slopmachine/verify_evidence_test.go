@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/store"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/store"
 )
 
 // verifyGHStub lets a test rewrite the stub's payloads and failure between

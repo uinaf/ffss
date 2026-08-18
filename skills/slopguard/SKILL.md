@@ -117,7 +117,7 @@ vulnerability reporting path.
 For a reproducible non-security defect in slopguard itself:
 
 1. Reduce it to sanitized steps that do not require private source.
-2. Search open and closed issues in `uinaf/ffsstack`.
+2. Search open and closed issues in `uinaf/ffss`.
 3. If no matching issue exists and GitHub access is available, create one
    automatically with the CLI version, OS/architecture, provider name,
    isolation mode, failure class, sanitized steps, expected behavior, and

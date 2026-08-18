@@ -37,7 +37,7 @@ mkdir "$raw_dir"
 SLOPMACHINE_COVERAGE_DIR="$raw_dir" GOCOVERDIR="$raw_dir" go test -count=1 ./cmd/slopmachine
 integration_percent=$(
   go tool covdata percent -i="$raw_dir" |
-    awk '$1 == "github.com/uinaf/ffsstack/cli/slopmachine/cmd/slopmachine" { gsub(/%/, "", $3); print $3 }'
+    awk '$1 == "github.com/uinaf/ffss/cli/slopmachine/cmd/slopmachine" { gsub(/%/, "", $3); print $3 }'
 )
 awk -v value="$integration_percent" 'BEGIN { exit !(value + 0 >= 55) }' || {
   echo "coverage: CLI integration is ${integration_percent}%, below 55%" >&2

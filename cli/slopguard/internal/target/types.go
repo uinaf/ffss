@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
 var (

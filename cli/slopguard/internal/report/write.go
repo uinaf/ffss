@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
 func WriteJSON(output io.Writer, value protocol.Report) error {

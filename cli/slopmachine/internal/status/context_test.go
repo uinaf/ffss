@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/status"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/status"
 )
 
 func TestFromContextNamesCanonicalVerifyCommand(t *testing.T) {

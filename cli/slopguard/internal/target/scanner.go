@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/processgroup"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/trustedexec"
+	"github.com/uinaf/ffss/cli/slopguard/internal/processgroup"
+	"github.com/uinaf/ffss/cli/slopguard/internal/trustedexec"
 )
 
 type truffleHogScanner struct {

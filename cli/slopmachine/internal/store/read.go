@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
 )
 
 // Event is one persisted machine transition for a run.

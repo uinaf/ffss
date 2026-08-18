@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/config"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
-	contractschema "github.com/uinaf/ffsstack/cli/slopguard/schema"
+	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 )
 
 const (

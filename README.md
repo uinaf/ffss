@@ -1,8 +1,8 @@
-![ffsstack — the flipflopslopstack.](https://uinaf.dev/og/banner/ffsstack.png)
+![ffss — the flipflopslopstack.](https://uinaf.dev/og/banner/ffss.png)
 
-# uinaf/ffsstack
+# uinaf/ffss
 
-**ffsstack**, the flipflopslopstack. A state machine that doesn't believe
+**ffss**, the flipflopslopstack. A state machine that doesn't believe
 the agent, a reviewer that doesn't like the agent, and some skills so the
 agent behaves. Ships slop; checks receipts.
 
@@ -20,18 +20,18 @@ and Grok read the same marketplace and the portable root manifest:
 
 ```text
 # Claude Code
-/plugin marketplace add uinaf/ffsstack
-/plugin install ffsstack@ffsstack
+/plugin marketplace add uinaf/ffss
+/plugin install ffss@ffss
 
 # Codex CLI
-codex plugin marketplace add uinaf/ffsstack
-codex plugin add ffsstack@ffsstack
+codex plugin marketplace add uinaf/ffss
+codex plugin add ffss@ffss
 
 # Cursor CLI (then /plugins in interactive mode to install)
-cursor-agent plugin marketplace add https://github.com/uinaf/ffsstack
+cursor-agent plugin marketplace add https://github.com/uinaf/ffss
 
 # Grok CLI
-grok plugin install uinaf/ffsstack --trust
+grok plugin install uinaf/ffss --trust
 ```
 
 OpenCode has no compatible plugin format; its plugin API carries hooks and
@@ -40,7 +40,7 @@ instead, for example from the Claude Code checkout:
 
 ```text
 mkdir -p ~/.config/opencode/skills
-ln -sfn ~/.claude/plugins/marketplaces/ffsstack/skills/* ~/.config/opencode/skills/
+ln -sfn ~/.claude/plugins/marketplaces/ffss/skills/* ~/.config/opencode/skills/
 ```
 
 The plugin is SHA-versioned; updates follow this repo's `main`. Skills marked
@@ -74,7 +74,7 @@ in [`uinaf/homebrew-tap`](https://github.com/uinaf/homebrew-tap), Linux
 installers, and in-place `selfupdate`. CI runs each member's own gate
 (`mise run verify` inside `cli/slopmachine/` and `cli/slopguard/`) plus a
 skills lint. Next:
-[M3 dispatch + M4 learn](https://github.com/uinaf/ffsstack/issues/27).
+[M3 dispatch + M4 learn](https://github.com/uinaf/ffss/issues/27).
 
 ## License
 

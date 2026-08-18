@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/config"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/provider"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/target"
-	contractschema "github.com/uinaf/ffsstack/cli/slopguard/schema"
+	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
+	"github.com/uinaf/ffss/cli/slopguard/internal/target"
+	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 )
 
 func TestReviewCommandCleanJSON(t *testing.T) {

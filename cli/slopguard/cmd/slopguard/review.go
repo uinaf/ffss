@@ -9,12 +9,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/config"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/orchestrator"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/provider"
-	reportwriter "github.com/uinaf/ffsstack/cli/slopguard/internal/report"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/target"
+	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/orchestrator"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
+	reportwriter "github.com/uinaf/ffss/cli/slopguard/internal/report"
+	"github.com/uinaf/ffss/cli/slopguard/internal/target"
 )
 
 type stringList []string

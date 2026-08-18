@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/repo"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/repo"
 
 	_ "modernc.org/sqlite"
 )

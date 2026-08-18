@@ -8,8 +8,8 @@ import (
 )
 
 func TestRedactRemoteStripsUserinfo(t *testing.T) {
-	got := redactRemote("https://TOKEN@github.com/uinaf/ffsstack/cli/slopmachine.git")
-	want := "https://github.com/uinaf/ffsstack/cli/slopmachine.git"
+	got := redactRemote("https://TOKEN@github.com/uinaf/ffss/cli/slopmachine.git")
+	want := "https://github.com/uinaf/ffss/cli/slopmachine.git"
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}

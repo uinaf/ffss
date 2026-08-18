@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/trustedexec"
+	"github.com/uinaf/ffss/cli/slopguard/internal/trustedexec"
 )
 
 const diagnosticLimit = 8 << 10

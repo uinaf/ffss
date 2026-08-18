@@ -1,6 +1,6 @@
 package reviewpolicy
 
-import contractschema "github.com/uinaf/ffsstack/cli/slopguard/schema"
+import contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 
 var cursorReviewProtocol = `
 SLOPGUARD-TRUSTED-REVIEW-PROTOCOL-V1

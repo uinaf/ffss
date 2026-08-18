@@ -2,10 +2,10 @@
 
 set -eu
 
-# slopguard release assets ship from the ffsstack monorepo on
+# slopguard release assets ship from the ffss monorepo on
 # slopguard/vX.Y.Z tags; earlier artifacts are autoreview releases in the
 # legacy uinaf/autoreview repository.
-repository_url=${SLOPGUARD_INSTALL_REPOSITORY_URL:-https://github.com/uinaf/ffsstack}
+repository_url=${SLOPGUARD_INSTALL_REPOSITORY_URL:-https://github.com/uinaf/ffss}
 while [ "${repository_url%/}" != "$repository_url" ]; do
   repository_url=${repository_url%/}
 done
@@ -124,9 +124,9 @@ valid_release_tag() {
   done
 }
 
-# Releases live in the shared ffsstack repository under member-prefixed
+# Releases live in the shared ffss repository under member-prefixed
 # tags (slopguard/vX.Y.Z); "latest" means this member's newest release.
-api_url=${SLOPGUARD_INSTALL_API_URL:-https://api.github.com/repos/uinaf/ffsstack/releases}
+api_url=${SLOPGUARD_INSTALL_API_URL:-https://api.github.com/repos/uinaf/ffss/releases}
 if [ "$requested_version" = latest ]; then
   # Tag listing over git avoids the unauthenticated API quota entirely;
   # any git failure (absent, blocked, offline proto) falls back to the API.

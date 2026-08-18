@@ -11,8 +11,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/forge"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/forge"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
 )
 
 // Target is one delivered unit with its recorded delivery evidence.

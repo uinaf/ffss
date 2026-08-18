@@ -20,12 +20,12 @@ import (
 	"time"
 
 	"github.com/mattn/go-isatty"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/buildinfo"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/repo"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/serve"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/status"
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/store"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/buildinfo"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/repo"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/serve"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/status"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/store"
 )
 
 func main() {

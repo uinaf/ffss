@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
 )
 
 // The pin and the digests of the vendored pair. scripts/sync-design-css.sh is

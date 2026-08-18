@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/target"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/trustedexec"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/target"
+	"github.com/uinaf/ffss/cli/slopguard/internal/trustedexec"
 	"go.yaml.in/yaml/v3"
 )
 

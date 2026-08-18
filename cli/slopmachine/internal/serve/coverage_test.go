@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/store"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/store"
 )
 
 func TestNewValidationAndDefault(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/uinaf/ffsstack/cli/slopmachine/internal/machine"
+	"github.com/uinaf/ffss/cli/slopmachine/internal/machine"
 )
 
 func TestValidateTelemetry(t *testing.T) {

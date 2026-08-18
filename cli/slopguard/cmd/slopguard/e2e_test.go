@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/config"
-	"github.com/uinaf/ffsstack/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
 const providerOutputSentinel = "AR_REVIEW_SOURCE_SENTINEL_7f8e9d"

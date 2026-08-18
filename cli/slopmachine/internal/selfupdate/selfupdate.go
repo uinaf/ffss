@@ -1,6 +1,6 @@
 // Package selfupdate replaces the running binary with a published release.
 // It mirrors the installer's contract: member-prefixed tags on the shared
-// ffsstack repository, sha256 verification against the release's
+// ffss repository, sha256 verification against the release's
 // checksums.txt, and an atomic rename into place. Homebrew-managed installs
 // are refused — the cask owns those binaries.
 package selfupdate
@@ -37,9 +37,9 @@ type Options struct {
 	// RequestVersion pins the target release (vX.Y.Z); empty resolves the
 	// member's newest published release.
 	RequestVersion string
-	// APIBase lists releases; default https://api.github.com/repos/uinaf/ffsstack/releases.
+	// APIBase lists releases; default https://api.github.com/repos/uinaf/ffss/releases.
 	APIBase string
-	// DownloadBase serves release assets; default https://github.com/uinaf/ffsstack.
+	// DownloadBase serves release assets; default https://github.com/uinaf/ffss.
 	DownloadBase string
 	// ExecutablePath is the binary to replace; empty resolves the running
 	// executable through its symlinks.
@@ -123,10 +123,10 @@ func withDefaults(opts Options) (Options, error) {
 		return opts, ErrNotRelease
 	}
 	if opts.APIBase == "" {
-		opts.APIBase = "https://api.github.com/repos/uinaf/ffsstack/releases"
+		opts.APIBase = "https://api.github.com/repos/uinaf/ffss/releases"
 	}
 	if opts.DownloadBase == "" {
-		opts.DownloadBase = "https://github.com/uinaf/ffsstack"
+		opts.DownloadBase = "https://github.com/uinaf/ffss"
 	}
 	if opts.Client == nil {
 		// Bounded end to end: a stalled server must fail the update, not
