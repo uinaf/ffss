@@ -74,6 +74,10 @@ and stop conditions, plus parent/child/blocking relationships. Use the exact
 shapes in [artifact-shapes.md](references/artifact-shapes.md) rather than
 duplicating them here.
 
+Write every issue, epic, and ticket body in the
+[house style](../slopscriber/references/style.md): outcome first, one fact per
+line, bullets over paragraphs, links over code spans, no narration or hedging.
+
 Blocking edge example: `Migrate auth tokens` blocks `Wire login UI` because the
 UI cannot verify against the new token contract until migration lands; shared
 theme alone is not a blocker.
@@ -86,7 +90,9 @@ approval unless already approved.
 
 Search for an existing canonical issue before creating a duplicate. When the conversation started from an issue, epic, or project, update or attach to it unless the user asked for a new planning root.
 
-Preserve repository templates, terminology, labels, teams, projects, milestones, and issue types. Create blockers before dependents so relationships can reference real identifiers. Use native parent/child and dependency relationships when the tracker and available tool support them; otherwise record explicit links in the artifact bodies.
+- Preserve repository templates, terminology, labels, teams, projects, milestones, and issue types.
+- Create blockers before dependents so relationships can reference real identifiers.
+- Use native parent/child and dependency relationships when the tracker and available tool support them; otherwise record explicit links in the artifact bodies.
 
 If the preferred tracker cannot be written:
 

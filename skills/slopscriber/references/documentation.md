@@ -27,10 +27,10 @@ Default order:
 5. Compact links to deeper docs
 6. Short contributing and license pointers
 
-Package repos need install plus one minimal usage example. App repos keep
-end-user use in the README and contributor setup elsewhere. A workspace or
-coordination repo may replace usage with its ownership model, quick start, and
-source-of-truth registry.
+- Package repos need install plus one minimal usage example.
+- App repos keep end-user use in the README and contributor setup elsewhere.
+- A workspace or coordination repo may replace usage with its ownership model,
+  quick start, and source-of-truth registry.
 
 Do not mirror filesystem order. Put the most useful destination first and use
 labels such as `Architecture`, `Release workflow`, or `Security` unless the
@@ -48,10 +48,11 @@ order:
 5. Pull-request expectations
 6. Release notes only when contributors need them
 
-Keep commands copyable and verified. Link release, deployment, architecture,
-and lengthy policy instead of turning the guide into a handbook. If the repo
-has no contributor policy, report the gap rather than drafting governance from
-taste.
+- Keep commands copyable and verified.
+- Link release, deployment, architecture, and lengthy policy instead of
+  turning the guide into a handbook.
+- If the repo has no contributor policy, report the gap rather than drafting
+  governance from taste.
 
 ## Security
 
@@ -67,10 +68,11 @@ contact, support promise, or private-reporting capability.
 
 ## Deep Docs
 
-Use task-specific current-state guides for architecture, APIs, deployment,
-operations, and recovery. Architecture docs should explain the system and
-important boundaries, preferably with the smallest useful diagram. Decision
-records explain why a consequential choice was made.
+- Use task-specific current-state guides for architecture, APIs, deployment,
+  operations, and recovery.
+- Architecture docs should explain the system and important boundaries,
+  preferably with the smallest useful diagram.
+- Decision records explain why a consequential choice was made.
 
 Keep one canonical navigation list. Do not repeat it across README sections,
 contributor docs, and agent guidance.
@@ -85,9 +87,11 @@ Agent work artifacts coordinate how it changes:
 - `docs/decisions/`: durable choices and trade-offs
 - the repository tracker: tactical execution and resumable status
 
-Connect them with short links. Do not pour implementation plans, prompt text,
-or unfinished reasoning into reader-facing docs. Promote an artifact only after
-it becomes a stable contract the repository owns.
+- Connect them with short links.
+- Do not pour implementation plans, prompt text, or unfinished reasoning into
+  reader-facing docs.
+- Promote an artifact only after it becomes a stable contract the repository
+  owns.
 
 ## Maintenance
 

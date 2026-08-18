@@ -56,20 +56,25 @@ The vocabulary is "change request"; the forge decides the tool:
 
    Use the repository's template verbatim, including shared org defaults
    (on GitHub, an `<owner>/.github` repository). Fill it problem-first:
-   the problem as the requester stated it, then the solution in plain
-   sentences, a risk only when there is a real one, and proof only when
-   CI cannot show it (a screenshot, before/after numbers); delete an
-   empty proof section rather than restating the checks CI runs. With no
-   template anywhere, write the same flow as plain sentences without
-   headings. No implementation inventories, no headings beyond the
-   template's own.
+   - the problem as the requester stated it, then the solution in plain
+     sentences
+   - a risk only when there is a real one
+   - proof only when CI cannot show it (a screenshot, before/after
+     numbers); delete an empty proof section rather than restating the
+     checks CI runs
+   - with no template anywhere, the same flow in the
+     [house style](../slopscriber/references/style.md): a one- or
+     two-sentence problem lead, then labeled bullets; never a
+     multi-sentence paragraph wall, no headings
+   - no implementation inventories, no headings beyond the template's own
    - BAD: "## Summary Refactors the websocket layer. ## Changed server.ts,
      compression.ts, 12 tests. ## Risks None. ## Verification Tests
      pass. ## Complexity Medium." (a heading scaffold restating the diff)
    - GOOD: "Dashboard clients on slow links were dropping updates because
-     every frame shipped uncompressed. Negotiating permessage-deflate
-     cuts frame size by 70%+ on the busiest feeds, measured against the
-     staging firehose."
+     every frame shipped uncompressed.
+     - **Fix:** negotiate permessage-deflate on the websocket.
+     - **Measured:** frame size down 70%+ on the busiest feeds, against
+       the staging firehose."
 6. Give a non-trivial change its single clearest review aid: a labeled
    screenshot or recording, a focused diagram, or sanitized contract
    input/output. Load [visual-evidence.md](references/visual-evidence.md)
@@ -78,14 +83,15 @@ The vocabulary is "change request"; the forge decides the tool:
 
 ## Compose with slopmachine
 
-When an active slopmachine run asked for this delivery, hand the URL
-straight back through stdin evidence and let the binary judge it (a
-forge-bound repo verifies the change request and head before accepting).
-`delivery_mode` must match the run; read it from the status document
-(`delivery_mode` field) instead of assuming one:
+When an active slopmachine run asked for this delivery:
 
-Validate first, then apply, per the slopship protocol: the same payload
-with `--dry-run --json`, proceed only when the projection matches:
+- Hand the URL straight back through stdin evidence and let the binary judge
+  it (a forge-bound repo verifies the change request and head before
+  accepting).
+- Read `delivery_mode` from the status document instead of assuming one; it
+  must match the run.
+- Validate first, then apply, per the slopship protocol: the same payload
+  with `--dry-run --json`, proceed only when the projection matches:
 
 ```bash
 slopmachine deliver --evidence - --dry-run --json --run <run-id> <<'JSON'

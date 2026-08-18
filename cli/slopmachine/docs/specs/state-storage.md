@@ -127,8 +127,8 @@ database.
 ### Preserve dry-run and output guarantees
 
 Dry runs use the same resolved path as the real command. They never create,
-migrate, or update canonical database state. SQLite may create WAL coordination
-sidecars for a read-only snapshot; repository-local safety therefore requires
+migrate, or update canonical database state. SQLite may create write-ahead log (WAL)
+coordination sidecars for a read-only snapshot; repository-local safety therefore requires
 the database, WAL, and shared-memory paths to be ignored before any open.
 `init --dry-run` succeeds when the selected path does not exist; other dry runs
 report that canonical state is unavailable.

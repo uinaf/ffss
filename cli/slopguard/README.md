@@ -25,15 +25,17 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 ~/.local/bin/slopguard --version
 ```
 
-Pass `--version "$TAG"` or `--dest /chosen/bin` after `sh -s --` to pin a
-release or override `${HOME}/.local/bin`. The installer downloads the archive
-and `checksums.txt` from the same GitHub Release, verifies the exact SHA-256,
-and atomically replaces the destination binary. Installer-managed binaries
-upgrade in place with `slopguard selfupdate` (`--check` probes without
-touching the binary); brew-managed installs upgrade through `brew upgrade`
-instead. See
-[Release verification](docs/RELEASES.md#linux-installer-trust-boundary) for the
-HTTPS trust boundary and independent Cosign and GitHub attestation checks.
+- Pass `--version "$TAG"` or `--dest /chosen/bin` after `sh -s --` to pin a
+  release or override `${HOME}/.local/bin`.
+- The installer downloads the archive and `checksums.txt` from the same
+  GitHub Release, verifies the exact SHA-256, and atomically replaces the
+  destination binary.
+- Installer-managed binaries upgrade in place with `slopguard selfupdate`
+  (`--check` probes without touching the binary); brew-managed installs
+  upgrade through `brew upgrade` instead.
+- See [Release verification](docs/RELEASES.md#linux-installer-trust-boundary)
+  for the HTTPS trust boundary and independent Cosign and GitHub attestation
+  checks.
 
 Consumers that prefer Go tooling can instead install with Go 1.26 or newer:
 

@@ -32,8 +32,8 @@ Web access is off unless trusted configuration enables it.
 ## Output contract
 
 Codex structured output uses a projection of the canonical JSON Schema that
-omits the unsupported `not` path rule. The returned last-message file and JSONL
-agent message must agree after surrounding whitespace is removed. The result is
+omits the unsupported `not` path rule. The returned last-message file and JSON Lines
+(JSONL) agent message must agree after surrounding whitespace is removed. The result is
 then decoded against the complete canonical Go contract; schema projection does
 not make an invalid result acceptable.
 

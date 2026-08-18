@@ -10,7 +10,8 @@ The adapter capability-probes the installed CLI before model invocation. Every
 mode requires `--print`, `--no-session-persistence`, JSON-structured output, an
 explicit model and effort, a fixed tool inventory, `dontAsk` permissions, and
 disabled Chrome integration. Strict mode also requires `--safe-mode`, user-only
-setting sources, strict MCP configuration, and an MCP-tool deny rule.
+setting sources, strict Model Context Protocol (MCP) configuration, and an
+MCP-tool deny rule.
 
 The frozen prompt is delivered on standard input followed by a trusted review
 policy. Each finding location must fit completely within one individual

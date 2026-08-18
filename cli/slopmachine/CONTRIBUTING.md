@@ -31,10 +31,11 @@ Run the deterministic local gate before opening a pull request:
 mise run verify
 ```
 
-Coverage is enforced per production package: 80% minimum, with the state
-machine and status contract held to 90%. The CLI child-process integration
-surface has a separate floor. The gate also runs the race detector, installer
-fixtures, release configuration checks, and the repo-local build.
+- Coverage is enforced per production package: 80% minimum, with the state
+  machine and status contract held to 90%. The CLI child-process integration
+  surface has a separate floor.
+- The gate also runs the race detector, installer fixtures, release
+  configuration checks, and the repo-local build.
 
 ## Pull requests
 
@@ -46,25 +47,27 @@ Control plane UI lives in `internal/serve` (Go `html/template` + embedded
 `@uinaf/design` CSS). Keep it a read-only projector over sqlite; do not add
 mutations that bypass the CLI state machine.
 
-`internal/serve/static/{tokens,components}.css` is vendored from the npm
-registry, because the server is loopback-only and ships as one binary. Move the
-pin with `./scripts/sync-design-css.sh <version>`, which fetches the pair and
-records the version and digests in `internal/serve/design_css_test.go`; never
-hand-edit the two files. The sheet loads Berkeley Mono from `cdn.uinaf.dev` and
-falls back to the local monospace stack offline. `app.css` holds only page frame
-and table behavior. A second test fails when a template or a Go-built class
-names a class neither the vendored pair nor `app.css` defines, which is the
-check `design-check` performs in Node repos.
+- `internal/serve/static/{tokens,components}.css` is vendored from the npm
+  registry, because the server is loopback-only and ships as one binary.
+- Move the pin with `./scripts/sync-design-css.sh <version>`, which fetches
+  the pair and records the version and digests in
+  `internal/serve/design_css_test.go`; never hand-edit the two files.
+- The sheet loads Berkeley Mono from `cdn.uinaf.dev` and falls back to the
+  local monospace stack offline. `app.css` holds only page frame and table
+  behavior.
+- A second test fails when a template or a Go-built class names a class
+  neither the vendored pair nor `app.css` defines, which is the check
+  `design-check` performs in Node repos.
 
-Agent-facing command schemas live with the binary in
-`cmd/slopmachine/schema.go`; strict raw payload DTOs live in
-`cmd/slopmachine/input.go`; state-location policy lives in
-`cmd/slopmachine/storage.go`. When adding or changing a command, keep its
-parser, runtime schema, JSON output, dry-run behavior, and child-process
-contract in sync. Tests require every parsed command to appear in
-`slopmachine schema`.
-Keep the checked-in [agent CLI contract](docs/AGENT_INTERFACE.md) aligned with
-observable behavior, but do not duplicate runtime schemas in prose.
+- Agent-facing command schemas live with the binary in
+  `cmd/slopmachine/schema.go`; strict raw payload DTOs live in
+  `cmd/slopmachine/input.go`; state-location policy lives in
+  `cmd/slopmachine/storage.go`.
+- When adding or changing a command, keep its parser, runtime schema, JSON
+  output, dry-run behavior, and child-process contract in sync. Tests require
+  every parsed command to appear in `slopmachine schema`.
+- Keep the checked-in [agent CLI contract](docs/AGENT_INTERFACE.md) aligned
+  with observable behavior, but do not duplicate runtime schemas in prose.
 
 ## Releases
 
@@ -73,11 +76,11 @@ secrets with other uinaf CLIs) and the `uinaf-releaser` GitHub App scoped to
 `slopmachine` + `homebrew-tap`. Do not delete published tags to retry; re-run
 the workflow on the tagged HEAD instead.
 
-The skill ships through this repo's agent-plugin marketplace
-(`.claude-plugin/marketplace.json`); merging to `main` is the publication.
-The root CI skills-lint job is the gate; it runs
-[uinaf/skillcheck](https://github.com/uinaf/skillcheck) (node 24 or newer).
-Run it locally:
+- The skill ships through this repo's agent-plugin marketplace
+  (`.claude-plugin/marketplace.json`); merging to `main` is the publication.
+- The root CI skills-lint job is the gate; it runs
+  [uinaf/skillcheck](https://github.com/uinaf/skillcheck) (node 24 or newer).
+  Run it locally:
 
 ```bash
 cd tools/skill-evals && npm ci && npm run lint

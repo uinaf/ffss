@@ -52,17 +52,21 @@ Put human prose in title, question, answer, or reason fields.
 
 ## State location
 
-The default database lives under the user's XDG data directory, outside the
-repository. A sandbox may set `SLOPMACHINE_DB` to an explicit writable path.
-Relative overrides resolve from the Git worktree root. There is no automatic
-repository-local fallback; use `.slopmachine/` only when the environment
-requires it and the database, WAL, and shared-memory paths are untracked and
-ignored. Run `slopmachine storage --json` to inspect the resolved path and Git
-safety. The CLI never edits ignore files.
+- The default database lives under the user's XDG (Cross-Desktop Group) data
+  directory, outside the repository.
+- A sandbox may set `SLOPMACHINE_DB` to an explicit writable path.
+- Relative overrides resolve from the Git worktree root.
+- There is no automatic repository-local fallback; use `.slopmachine/` only
+  when the environment requires it and the database, WAL (write-ahead log),
+  and shared-memory paths are untracked and ignored.
+- Run `slopmachine storage --json` to inspect the resolved path and Git
+  safety.
+- The CLI never edits ignore files.
 
-An existing caller-selected run ID returns `run_exists`; an invalid XDG or
-relative database setting returns `invalid_state_config`; a state location
-that cannot be prepared (for example an unwritable directory) returns
-`state_unavailable` with the resolved path and a `SLOPMACHINE_DB` recovery.
-All exit 2 so an agent can correct its input without treating the failure as
-an internal defect.
+- An existing caller-selected run ID returns `run_exists`.
+- An invalid XDG or relative database setting returns `invalid_state_config`.
+- A state location that cannot be prepared (for example an unwritable
+  directory) returns `state_unavailable` with the resolved path and a
+  `SLOPMACHINE_DB` recovery.
+- All exit 2 so an agent can correct its input without treating the failure
+  as an internal defect.

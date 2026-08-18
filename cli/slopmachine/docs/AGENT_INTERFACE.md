@@ -105,24 +105,27 @@ construct it from untrusted text.
 
 ## Observe external signals
 
-Delivery does not settle a unit. `slopmachine watch --once` observes every
-delivered unit's change request on the forge and records the signals itself;
-passes are idempotent, and `--interval SECONDS` polls with a bounded
-iteration count. `slopmachine observe` records one signal manually:
-`merged` settles the unit; `checks_failed`, `review_feedback`, and
-`head_moved` return it to the build loop with the cause recorded, and later
-units keep building while earlier ones wait (`AWAITING_SIGNALS`).
-`observe.unit` is required only when several units are delivered; the
-`delivered_units` status field lists the candidates. Exit 7 from watch
-means the final pass left at least one delivered unit unobserved (auth,
-rate limit, transient failure, or a missing change request); failures
-recovered by a later interval pass do not affect the exit status. Stdout
-still carries the watch document (observations already recorded plus an
-`error_kind` field), not the ok:false error envelope. Feedback identity
-has two accepted limits under the bounded thread sample: a thread
-reopened without a new comment is not re-detected (any new comment is),
-and with more than ten unresolved threads a sample shift may
-conservatively re-trigger one extra rework rather than miss a signal.
+Delivery does not settle a unit.
+
+- `slopmachine watch --once` observes every delivered unit's change request on
+  the forge and records the signals itself; passes are idempotent, and
+  `--interval SECONDS` polls with a bounded iteration count.
+- `slopmachine observe` records one signal manually: `merged` settles the
+  unit; `checks_failed`, `review_feedback`, and `head_moved` return it to the
+  build loop with the cause recorded, and later units keep building while
+  earlier ones wait (`AWAITING_SIGNALS`).
+- `observe.unit` is required only when several units are delivered; the
+  `delivered_units` status field lists the candidates.
+- Exit 7 from watch means the final pass left at least one delivered unit
+  unobserved (auth, rate limit, transient failure, or a missing change
+  request); failures recovered by a later interval pass do not affect the exit
+  status.
+- Stdout still carries the watch document (observations already recorded plus
+  an `error_kind` field), not the ok:false error envelope.
+- Feedback identity has two accepted limits under the bounded thread sample: a
+  thread reopened without a new comment is not re-detected (any new comment
+  is), and with more than ten unresolved threads a sample shift may
+  conservatively re-trigger one extra rework rather than miss a signal.
 
 ## Verified evidence
 
@@ -175,13 +178,14 @@ sandbox_dir="$(mktemp -d)"
 export SLOPMACHINE_DB="$sandbox_dir/slopmachine.sqlite"
 ```
 
-There is no automatic repository-local fallback. If a constrained environment
-requires repository-local state, explicitly point `SLOPMACHINE_DB` at
-`.slopmachine/slopmachine.sqlite`. Relative values resolve from the Git worktree
-root. The CLI refuses repository-local state unless the database, `-wal`, and
-`-shm` paths are untracked and ignored. A `/.slopmachine/` entry in
-`$(git rev-parse --git-path info/exclude)` satisfies that boundary without a
-shared `.gitignore` change.
+- There is no automatic repository-local fallback.
+- If a constrained environment requires repository-local state, explicitly
+  point `SLOPMACHINE_DB` at `.slopmachine/slopmachine.sqlite`. Relative values
+  resolve from the Git worktree root.
+- The CLI refuses repository-local state unless the database, `-wal`, and
+  `-shm` paths are untracked and ignored.
+- A `/.slopmachine/` entry in `$(git rev-parse --git-path info/exclude)`
+  satisfies that boundary without a shared `.gitignore` change.
 
 Inspect resolution without creating or migrating state:
 
@@ -215,9 +219,10 @@ input, or re-read status after an illegal transition, unmet guard, ambiguous
 run, revision conflict, or verification failure. Never bypass the state
 machine because a suggested transition failed.
 
-`run_exists` identifies a caller-selected run ID collision.
-`invalid_state_config` identifies a malformed XDG or relative database
-selection. `state_unavailable` identifies a resolved state location that
-cannot be prepared, such as an unwritable directory; its message names the
-resolved path and the recovery is a writable `SLOPMACHINE_DB`. All three
-exit 2 and are recoverable by changing caller input.
+- `run_exists` identifies a caller-selected run ID collision.
+- `invalid_state_config` identifies a malformed XDG or relative database
+  selection.
+- `state_unavailable` identifies a resolved state location that cannot be
+  prepared, such as an unwritable directory; its message names the resolved
+  path and the recovery is a writable `SLOPMACHINE_DB`.
+- All three exit 2 and are recoverable by changing caller input.

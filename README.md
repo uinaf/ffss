@@ -43,12 +43,13 @@ mkdir -p ~/.config/opencode/skills
 ln -sfn ~/.claude/plugins/marketplaces/ffss/skills/* ~/.config/opencode/skills/
 ```
 
-The plugin is SHA-versioned; updates follow this repo's `main`. Skills marked
-`disable-model-invocation` load only on explicit `/name` invocation in
-harnesses that support the flag. Codex mirrors that policy with
-`policy.allow_implicit_invocation: false` in each matching `agents/openai.yaml`.
-The repo root [`plugin.json`](plugin.json) is the shared manifest from the
-[Agent Plugins standard](https://agent-plugins.org/).
+- The plugin is SHA-versioned; updates follow this repo's `main`.
+- Skills marked `disable-model-invocation` load only on explicit `/name`
+  invocation in harnesses that support the flag; Codex mirrors that policy
+  with `policy.allow_implicit_invocation: false` in each matching
+  `agents/openai.yaml`.
+- The repo root [`plugin.json`](plugin.json) is the shared manifest from the
+  [Agent Plugins standard](https://agent-plugins.org/).
 
 | Skill | What it does |
 | --- | --- |
@@ -67,14 +68,12 @@ slopscouter (QA, planned), slopbench (evals), slopwake.
 
 ## Status
 
-Live. Both CLIs release from this repo on per-member tags
-(`slopmachine/vX.Y.Z`, `slopguard/vX.Y.Z`): signed and notarized macOS
-builds, Cosign-signed checksums, GitHub build attestations, Homebrew casks
-in [`uinaf/homebrew-tap`](https://github.com/uinaf/homebrew-tap), Linux
-installers, and in-place `selfupdate`. CI runs each member's own gate
-(`mise run verify` inside `cli/slopmachine/` and `cli/slopguard/`) plus a
-skills lint. Next:
-[M3 dispatch + M4 learn](https://github.com/uinaf/ffss/issues/27).
+Live. Each CLI releases from this repo on its own tag (`slopmachine/vX.Y.Z`,
+`slopguard/vX.Y.Z`); signing and verification are covered in each member's
+release docs ([slopmachine](cli/slopmachine/docs/RELEASES.md),
+[slopguard](cli/slopguard/docs/RELEASES.md)).
+
+Next: [M3 dispatch + M4 learn](https://github.com/uinaf/ffss/issues/27).
 
 ## License
 

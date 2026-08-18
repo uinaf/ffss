@@ -22,14 +22,16 @@ scripts, Make/`just`, or checked-in scripts already used by CI.
 
 ### Doctor
 
-Give every driven target one read-only "is this instance worth driving?"
-check covering whichever contracts the target actually has, for example
-process up, expected build or revision, port owned by the expected process,
-authentication valid. Drivers run it before driving and again after anything
-surprising. Doctor never mutates state, never repairs, and never
-replaces bootstrap; it reports whether the running instance matches the
-declared contract and names the missing capability when it does not. A plain
-repo-local script is a complete implementation when it covers those checks.
+- Give every driven target one read-only "is this instance worth driving?"
+  check covering whichever contracts the target actually has, for example
+  process up, expected build or revision, port owned by the expected process,
+  authentication valid.
+- Drivers run it before driving and again after anything surprising.
+- Doctor never mutates state, never repairs, and never replaces bootstrap; it
+  reports whether the running instance matches the declared contract and names
+  the missing capability when it does not.
+- A plain repo-local script is a complete implementation when it covers those
+  checks.
 
 ### Runtime resource ownership
 
@@ -55,12 +57,13 @@ direct child PID.
   owned IDs and explicit teardown command as a handoff. Do not report the
   lifecycle complete until the resource is released or ownership is accepted.
 
-Kill what the attempt started, by recorded ID or owned process group, never
-by process name, so `killall`-style cleanup is always out. Broad resource
-cleanup such as `simctl shutdown all`, deleting every container, or stopping
-shared databases is allowed only when the command's declared scope owns the
-entire target set. Cleanup releases resources and never eats the evidence:
-captured artifacts and logs survive teardown.
+- Kill what the attempt started, by recorded ID or owned process group, never
+  by process name, so `killall`-style cleanup is always out.
+- Broad resource cleanup such as `simctl shutdown all`, deleting every
+  container, or stopping shared databases is allowed only when the command's
+  declared scope owns the entire target set.
+- Cleanup releases resources and never eats the evidence: captured artifacts
+  and logs survive teardown.
 
 Own tool versions once. Preserve the repository's runtime and package-manager
 declarations, lockfile, catalogs, or tool manager. Make CI consume those owners
@@ -82,9 +85,10 @@ Put deterministic policy in the narrowest existing mechanical surface:
 - a tested module or local action in the repository's primary typed language
   when existing tools cannot express the rule
 
-Adopt an existing linter or hook shape before adding another. Baseline noisy
-checks before making them blocking. Error output should name the violated rule,
-affected boundary, and recovery action when one exists.
+- Adopt an existing linter or hook shape before adding another.
+- Baseline noisy checks before making them blocking.
+- Error output should name the violated rule, affected boundary, and recovery
+  action when one exists.
 
 For TypeScript repositories that already lint with Oxlint, offer vendoring the
 [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) rules during
@@ -92,12 +96,13 @@ readiness setup: copy and own the rule source in the repository (the
 installed Oxlint toolchain still runs it) and baseline the rules before
 making them blocking. Do not introduce Oxlint itself solely to carry them.
 
-Treat a new shell script as the last adapter, not the first implementation. It
-may set strict process options and sequence a few established commands. Move to
-the repository's typed language or an existing library as soon as the flow
-parses JSON/YAML, branches on domain state, transforms data, retries, manages
-concurrency, or needs unit tests. Never create a shell wrapper that only
-duplicates a package script, task-runner target, or framework command.
+- Treat a new shell script as the last adapter, not the first implementation.
+  It may set strict process options and sequence a few established commands.
+- Move to the repository's typed language or an existing library as soon as
+  the flow parses JSON/YAML, branches on domain state, transforms data,
+  retries, manages concurrency, or needs unit tests.
+- Never create a shell wrapper that only duplicates a package script,
+  task-runner target, or framework command.
 
 ## Machine Identity
 
@@ -110,11 +115,12 @@ Credentials are compatible with readiness when ownership is explicit:
 - the operator provisions, rotates, revokes, and recovers identities outside
   normal task execution
 
-Prefer separate roles for triage, test fixtures, artifact submission, delivery,
-and production changes. Denied or missing scope must fail without printing
-values and identify the recovery owner. Never embed bootstrap secrets, write
-fetched secrets to artifacts, or switch a human profile during an unattended
-run.
+- Prefer separate roles for triage, test fixtures, artifact submission,
+  delivery, and production changes.
+- Denied or missing scope must fail without printing values and identify the
+  recovery owner.
+- Never embed bootstrap secrets, write fetched secrets to artifacts, or switch
+  a human profile during an unattended run.
 
 ## Observable and Reproducible State
 
@@ -125,9 +131,10 @@ Expose the smallest machine-readable signal appropriate to the target:
 - UI: interactable runtime surface plus console or application diagnostics
 - stateful system: reproducible fixtures and isolated write/read round trips
 
-Use versioned seed data when empty state cannot exercise the real contract.
-Keep diagnostics contextual and redacted. Do not require a health endpoint or
-JSON logging where the repository's shipped surface provides a better signal.
+- Use versioned seed data when empty state cannot exercise the real contract.
+- Keep diagnostics contextual and redacted.
+- Do not require a health endpoint or JSON logging where the repository's
+  shipped surface provides a better signal.
 
 ## Isolation
 
@@ -135,12 +142,13 @@ Concurrent tasks must not collide through workspaces, branches, ports,
 processes, databases, external fixtures, artifact paths, or result refs. Grade
 collision freedom and cleanup, not one allocation algorithm.
 
-When managed Codex or Claude worktrees need ignored local files,
-`.worktreeinclude` may name a small explicit set already covered by
-`.gitignore`. Do not include broad `.env*`, secret directories, caches,
-dependencies, build output, or machine-global configuration. Manual worktrees
-and custom hooks need their own copy or bootstrap path; do not assume the
-managed-worktree mechanism runs there.
+- When managed Codex or Claude worktrees need ignored local files,
+  `.worktreeinclude` may name a small explicit set already covered by
+  `.gitignore`.
+- Do not include broad `.env*`, secret directories, caches, dependencies,
+  build output, or machine-global configuration.
+- Manual worktrees and custom hooks need their own copy or bootstrap path; do
+  not assume the managed-worktree mechanism runs there.
 
 ## Unattended Execution
 
@@ -165,22 +173,25 @@ queued -> provisioning -> executing -> proving -> submitting -> reconciling
        -> blocked | retrying | failed | canceled | complete
 ```
 
-Implementation and no-diff QA are separate result types. A QA task must not
-manufacture a branch or pull request unless its contract requests repository
-changes. Every preserved artifact ties task, attempt, revision or build,
-scenario, producer, capture time, format, and redaction status to an observed
-outcome.
+- Implementation and no-diff QA are separate result types.
+- A QA task must not manufacture a branch or pull request unless its contract
+  requests repository changes.
+- Every preserved artifact ties task, attempt, revision or build, scenario,
+  producer, capture time, format, and redaction status to an observed outcome.
 
 ## Recovery and Back-Pressure
 
-Retry only classified recoverable failures while a configured budget remains.
-Treat repeated unchanged failure as an escalation signal. Preserve the last
-diagnostic, owned state, attempted recovery, and next safe action.
+- Retry only classified recoverable failures while a configured budget
+  remains.
+- Treat repeated unchanged failure as an escalation signal.
+- Preserve the last diagnostic, owned state, attempted recovery, and next safe
+  action.
 
-Run targeted checks at the earliest reliable boundary. Keep successful hooks
-quiet and failures concise; do not rerun commands merely to redisplay output.
-Long or secret-bearing operations require non-cancellable critical sections or
-durable reconciliation rather than optimistic process-exit handling.
+- Run targeted checks at the earliest reliable boundary.
+- Keep successful hooks quiet and failures concise; do not rerun commands
+  merely to redisplay output.
+- Long or secret-bearing operations require non-cancellable critical sections
+  or durable reconciliation rather than optimistic process-exit handling.
 
 ## Maintained Examples
 

@@ -38,14 +38,15 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 ~/.local/bin/slopmachine version
 ```
 
-To pin a release or choose an install directory, pass `--version "$TAG"` or
-`--dest /chosen/bin` after `sh -s --`. The installer verifies the archive
-against the release checksum before atomically replacing the binary.
-Installer-managed binaries upgrade in place with `slopmachine selfupdate`
-(`--check` probes without touching the binary); brew-managed installs
-upgrade through `brew upgrade` instead. See
-[Release verification](docs/RELEASES.md#linux-installer-trust-boundary) for
-independent Cosign and GitHub attestation checks.
+- To pin a release or choose an install directory, pass `--version "$TAG"`
+  or `--dest /chosen/bin` after `sh -s --`.
+- The installer verifies the archive against the release checksum before
+  atomically replacing the binary.
+- Installer-managed binaries upgrade in place with `slopmachine selfupdate`
+  (`--check` probes without touching the binary); brew-managed installs
+  upgrade through `brew upgrade` instead.
+- See [Release verification](docs/RELEASES.md#linux-installer-trust-boundary)
+  for independent Cosign and GitHub attestation checks.
 
 The installer finishes with a non-fatal `PATH` check: it warns when `PATH`
 resolves a different `slopmachine` than the install destination and names
@@ -54,13 +55,15 @@ the winning copy.
 To build from source without replacing the packaged CLI on `PATH`, see
 [Run locally](CONTRIBUTING.md#run-locally).
 
-State is stored at `$XDG_DATA_HOME/slopmachine/slopmachine.sqlite`, or
-`~/.local/share/slopmachine/slopmachine.sqlite` when `XDG_DATA_HOME` is unset.
-The CLI creates the state directory and database on first use with private
-permissions. Set `SLOPMACHINE_DB` to use a different writable database path.
-Relative overrides resolve from the Git worktree root. Inspect the selected
-location with `slopmachine storage --json`; repository-local databases are
-rejected unless the database and its SQLite sidecars are untracked and ignored.
+- State is stored at `$XDG_DATA_HOME/slopmachine/slopmachine.sqlite`, or
+  `~/.local/share/slopmachine/slopmachine.sqlite` when `XDG_DATA_HOME` is
+  unset. The CLI creates the state directory and database on first use with
+  private permissions.
+- Set `SLOPMACHINE_DB` to use a different writable database path; relative
+  overrides resolve from the Git worktree root.
+- Inspect the selected location with `slopmachine storage --json`;
+  repository-local databases are rejected unless the database and its SQLite
+  sidecars are untracked and ignored.
 
 ## Quick start
 
@@ -168,30 +171,37 @@ slopmachine repo register \
   --forge-reviewer 'slopzapper=slopzapper'
 ```
 
-A registered repo drives defaults and gates: new runs inherit the delivery
-mode, `next_action` names the canonical verify command verbatim, and release
-fails closed when a required reviewer holds no review binding. Unregistered
-repositories keep profile-less behavior.
+A registered repo drives defaults and gates; unregistered repositories keep
+profile-less behavior.
+
+- New runs inherit the delivery mode.
+- `next_action` names the canonical verify command verbatim.
+- Release fails closed when a required reviewer holds no review binding.
 
 A forge-bound profile also moves evidence from narrated to observed (status
-states the mode in `evidence_verification`): deliver evidence must name a
-change request that exists and matches the delivered head, and review
-evidence from a `--forge-reviewer`-mapped identity must be corroborated by a
-submitted review from that login on the referenced change request. When the
-forge is unreachable the command exits 7 rather than trusting the claim;
-`--unverified --reason TEXT` records an explicit, audited bypass.
+states the mode in `evidence_verification`):
+
+- Deliver evidence must name a change request that exists and matches the
+  delivered head.
+- Review evidence from a `--forge-reviewer`-mapped identity must be
+  corroborated by a submitted review from that login on the referenced
+  change request.
+- When the forge is unreachable the command exits 7 rather than trusting the
+  claim; `--unverified --reason TEXT` records an explicit, audited bypass.
 
 ## Telemetry
 
-Every transition can carry recorded telemetry (wall-clock duration,
-estimated tokens and cost, and the route actually used: venue, harness,
-role→model map) via `--telemetry PATH|-` or a `telemetry` object in raw
-`--input` payloads. `verify --cmd` measures its own duration. Absent
-telemetry is always valid; wrong shapes fail closed. `status --json`
-exposes per-run totals (`total_duration_ms`, `total_tokens`,
-`total_cost_cents`, `telemetry_events`) and `serve` shows them per run.
-This is recorded input for the routing ledger; the machine never enforces
-spend and never handles model keys.
+- Every transition can carry recorded telemetry (wall-clock duration,
+  estimated tokens and cost, and the route actually used: venue, harness,
+  role→model map) via `--telemetry PATH|-` or a `telemetry` object in raw
+  `--input` payloads.
+- `verify --cmd` measures its own duration.
+- Absent telemetry is always valid; wrong shapes fail closed.
+- `status --json` exposes per-run totals (`total_duration_ms`,
+  `total_tokens`, `total_cost_cents`, `telemetry_events`) and `serve` shows
+  them per run.
+- This is recorded input for the routing ledger; the machine never enforces
+  spend and never handles model keys.
 
 ## Browser view
 
@@ -211,13 +221,15 @@ The family [agent skill](../../skills/slopmachine/SKILL.md) teaches agents to dr
 the installed CLI and obey `next_action`. It is intentionally thin: the binary
 owns the state machine, schemas, and store.
 
-Independent review remains a companion step. Reviewer identities are
-registered, not hardcoded: `slopguard` and `bugbot` are built in,
-and `slopmachine reviewers --add NAME` registers others (a hosted bot such as
-slopzapper, a CI reviewer, a QA provider). The intake's `required_reviewers`
-selects among them; run the matching installed tool, such as the
-[`slopguard`](https://github.com/uinaf/ffss/tree/main/cli/slopguard) CLI or Cursor's
-`/review-bugbot`, when the intake requires it.
+Independent review remains a companion step.
+
+- Reviewer identities are registered, not hardcoded: `slopguard` and
+  `bugbot` are built in, and `slopmachine reviewers --add NAME` registers
+  others (a hosted bot such as slopzapper, a CI reviewer, a QA provider).
+- The intake's `required_reviewers` selects among them; run the matching
+  installed tool, such as the
+  [`slopguard`](https://github.com/uinaf/ffss/tree/main/cli/slopguard) CLI
+  or Cursor's `/review-bugbot`, when the intake requires it.
 
 ## Documentation
 

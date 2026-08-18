@@ -18,15 +18,17 @@ model and effort, bounded-turn, permission, feature-disable, working-directory,
 and authentication surfaces. It checks `--version`, `--help`, and `grok models`
 before model invocation when `XAI_API_KEY` is absent.
 
-The frozen prompt is written to a private `0600` file inside the empty provider
-workspace and removed with that workspace after the run. The prompt never
-appears in process arguments. Every run disables plan mode, subagents, memory,
-shell, edits, file reads, grep, and MCP tools. The `dontAsk` permission mode
-silently denies tools without an explicit allow rule and prevents interactive
-approval prompts. Tool filtering uses Grok's documented internal IDs. With web
-off, the adapter starts from `web_search` and removes it with
-`--disallowed-tools`. It also removes the always-on `search_tool` and `use_tool`
-MCP meta-tools, leaving no tools for the model to call.
+- The frozen prompt is written to a private `0600` file inside the empty
+  provider workspace and removed with that workspace after the run. The prompt
+  never appears in process arguments.
+- Every run disables plan mode, subagents, memory, shell, edits, file reads,
+  grep, and Model Context Protocol (MCP) tools.
+- The `dontAsk` permission mode silently denies tools without an explicit
+  allow rule and prevents interactive approval prompts.
+- Tool filtering uses Grok's documented internal IDs. With web off, the
+  adapter starts from `web_search` and removes it with `--disallowed-tools`.
+  It also removes the always-on `search_tool` and `use_tool` MCP meta-tools,
+  leaving no tools for the model to call.
 
 ## Isolation and web access
 
@@ -52,16 +54,19 @@ Grok also receives a trusted single-shot completion policy after the frozen
 bundle. Its provider-only schema wraps the canonical review with completion
 evidence: at least 160 characters of overall explanation, exactly one
 substantive assessment for every changed file, and a file-matching index for
-every finding. Because Grok can mechanically populate that shape while still
-describing future review work, the provider contract also requires at least
-0.7 overall confidence that the entire review is complete. This threshold does
-not filter individual findings: every finding is retained regardless of its
-own confidence. The local decoder validates the exact frozen file set and then
-discards the private evidence before rendering the stable public result. These
-checks also reject explicit progress commitments such as starting, interim, or
-future review work in the overall explanation. The normal protocol retry gets
-one chance to return a complete review; a second incomplete result fails
-closed.
+every finding.
+
+- Because Grok can mechanically populate that shape while still describing
+  future review work, the provider contract also requires at least 0.7 overall
+  confidence that the entire review is complete.
+- This threshold does not filter individual findings: every finding is
+  retained regardless of its own confidence.
+- The local decoder validates the exact frozen file set and then discards the
+  private evidence before rendering the stable public result.
+- These checks also reject explicit progress commitments such as starting,
+  interim, or future review work in the overall explanation.
+- The normal protocol retry gets one chance to return a complete review; a
+  second incomplete result fails closed.
 
 Grok treats the schema's unanchored non-whitespace string pattern as a
 full-string constraint and otherwise truncates explanations, titles, bodies,

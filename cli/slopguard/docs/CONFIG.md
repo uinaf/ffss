@@ -28,17 +28,21 @@ isolation: native
 web_access: false
 ```
 
-Unknown keys, multiple YAML documents, invalid types, and retry counts above one
-are errors. Configuration cannot contain commands, provider argument strings,
-or named profiles. There is no `.slopguard.local.yaml`.
+- Unknown keys, multiple YAML documents, invalid types, and retry counts above
+  one are errors.
+- Configuration cannot contain commands, provider argument strings, or named
+  profiles.
+- There is no `.slopguard.local.yaml`.
 
 `max_bytes` defaults to 1 MiB and must be between 1 byte and 128 MiB
 (`134217728`).
 
-Each configuration file must be a regular file no larger than 64 KiB, and
-symbolic links are rejected. Boolean fields accept only `true` or `false`;
-`yes`, `no`, `on`, and `off` are invalid. A trusted account-home XDG file must
-also be owned by the current user and must not be group- or world-writable.
+- Each configuration file must be a regular file no larger than 64 KiB, and
+  symbolic links are rejected.
+- Boolean fields accept only `true` or `false`; `yes`, `no`, `on`, and `off`
+  are invalid.
+- A trusted account-home XDG file must also be owned by the current user and
+  must not be group- or world-writable.
 
 The corresponding environment variables are `SLOPGUARD_ENGINE`,
 `SLOPGUARD_MODEL`, `SLOPGUARD_REASONING_EFFORT`, `SLOPGUARD_TIMEOUT`,
@@ -53,30 +57,37 @@ source may select stricter `strict` isolation. A
 higher-precedence repository or environment source cannot weaken an already
 selected `strict` value back to `native`.
 
-Web access defaults to off for Codex, Claude, and Grok. An explicit CLI
-`--engine cursor` changes an otherwise unset default to on because Cursor Agent
-has no documented per-run web-disable control. Cursor selected by repository,
-environment, or XDG engine configuration does not receive that implicit grant;
-pass `--web-access` with the explicit command, or set `web_access: true` in an
-ownership-checked account XDG config. An explicit `web_access: false` from any
-source remains authoritative and makes Cursor fail capability preflight. A path selected through
-`XDG_CONFIG_HOME`, repository configuration, and environment variables cannot
-enable web access. Their `web_access: true` values are rejected even when an
-explicit CLI Cursor selection would otherwise imply web; omit the untrusted
-restatement and let the flag-derived value apply.
+Web access defaults to off for Codex, Claude, and Grok.
+
+- An explicit CLI `--engine cursor` changes an otherwise unset default to on
+  because Cursor Agent has no documented per-run web-disable control.
+- Cursor selected by repository, environment, or XDG engine configuration does
+  not receive that implicit grant; pass `--web-access` with the explicit
+  command, or set `web_access: true` in an ownership-checked account XDG
+  config.
+- An explicit `web_access: false` from any source remains authoritative and
+  makes Cursor fail capability preflight.
+- A path selected through `XDG_CONFIG_HOME`, repository configuration, and
+  environment variables cannot enable web access. Their `web_access: true`
+  values are rejected even when an explicit CLI Cursor selection would
+  otherwise imply web; omit the untrusted restatement and let the flag-derived
+  value apply.
 
 Both isolation modes run the provider from a new empty temporary workspace and
-pass only the already frozen review bundle. `strict` replaces home and provider
-state directories with empty temporary directories and preserves only required
-system variables, proxy and certificate settings, and supported provider API
-keys. `native` preserves the normal provider environment, user configuration,
-and configured authentication.
-Strict authentication requires the provider's supported API-key environment
-variable; provider or session authentication belongs to native mode. Grok
-strict mode uses `XAI_API_KEY`; native mode uses the normal `grok login`
-session. Explicit CLI
-Cursor selection still grants otherwise-unset web access in strict mode; pass
-`--web-access=false` to reject that capability and fail preflight instead.
+pass only the already frozen review bundle.
+
+- `strict` replaces home and provider state directories with empty temporary
+  directories and preserves only required system variables, proxy and
+  certificate settings, and supported provider API keys.
+- `native` preserves the normal provider environment, user configuration, and
+  configured authentication.
+- Strict authentication requires the provider's supported API-key environment
+  variable; provider or session authentication belongs to native mode.
+- Grok strict mode uses `XAI_API_KEY`; native mode uses the normal `grok login`
+  session.
+- Explicit CLI Cursor selection still grants otherwise-unset web access in
+  strict mode; pass `--web-access=false` to reject that capability and fail
+  preflight instead.
 
 ## Effective configuration
 
