@@ -92,4 +92,4 @@ without making the deterministic local gate depend on the network.
 ## Security
 
 Do not open public issues for vulnerabilities. Use private vulnerability
-reporting (see [SECURITY.md](SECURITY.md)).
+reporting (see the repo [security policy](../../SECURITY.md)).

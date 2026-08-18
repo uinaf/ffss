@@ -236,7 +236,7 @@ Independent review remains a companion step.
 - [Agent CLI contract](docs/AGENT_INTERFACE.md)
 - [Release artifacts and verification](docs/RELEASES.md)
 - [Contributing](CONTRIBUTING.md)
-- [Security](SECURITY.md)
+- [Security](../../SECURITY.md)
 
 ## License
 
