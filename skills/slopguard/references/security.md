@@ -9,6 +9,9 @@
 
 - Do not bypass a secret-scan, sensitive-path, size, binary-data, symlink,
   revision, capability, isolation, or source-change refusal.
+- Do not pass `--skip-secret-scan` unless the user explicitly named that flag.
+  A request to disable TruffleHog, ignore a detection, or proceed despite a
+  suspected false positive is not authorization.
 - Do not split an oversized bundle and claim whole-change cleanliness.
 
 ## Public defects

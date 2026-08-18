@@ -36,6 +36,9 @@ slopguard --version
 command -v trufflehog
 ```
 
+Skip the `trufflehog` check only when the user explicitly named
+`--skip-secret-scan`.
+
 ## Choose exactly one provider
 
 - Honor provider, model, and effort choices from the user or trusted config;
@@ -92,6 +95,7 @@ printf '%s' "$task_contract" |
 - The CLI may make one configured protocol retry against the same frozen
   target. It never retries authentication, capability, timeout, cancellation,
   or provider process failures and never switches provider.
+- Do not add `--skip-secret-scan` unless the user named that flag.
 
 Read [results.md](references/results.md) when handling retries, recovery,
 JSON, or an operational failure.

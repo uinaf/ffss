@@ -84,8 +84,14 @@ review fan-out above that limit.
   including deleted bytes and appended context.
 - It runs offline with verification disabled, no update check, one worker, no
   inherited environment, and `--fail-on-scan-errors`.
-- Any detection, scan error, missing executable, output overflow, or
-  cancellation is an operational failure.
+- Any detection, scan error, missing executable, or output overflow is a
+  `secret_scan` failure.
+- Cancellation and deadline expiry keep the `cancelled` and `timeout` classes.
+- Pass `--skip-secret-scan` to omit TruffleHog resolution and the frozen-payload
+  scan for one run. This is an explicit operator override for a known false
+  positive; it is not available from configuration or environment variables.
+- A skipped scan still freezes the same payload and prints `secret scan skipped`
+  on stderr.
 - The scanner runs in its own process group and terminates remaining
   descendants before returning on any exit path.
 - TruffleHog is an external runtime dependency; its AGPL code is not linked or

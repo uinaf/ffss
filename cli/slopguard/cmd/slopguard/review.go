@@ -41,6 +41,7 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	var contextFiles stringList
 	flags.Var(&contextFiles, "context-file", "repository-relative context file (repeatable)")
 	output := flags.String("output", "terminal", "output format: terminal or json")
+	skipSecretScan := flags.Bool("skip-secret-scan", false, "omit TruffleHog for this run")
 	configFlags := bindConfigFlags(flags)
 	flagStderr := stderr
 	if jsonRequested {
@@ -91,12 +92,16 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	newCollector := dependencies.newCollector
 	if newCollector == nil {
 		newCollector = func() (*target.Collector, error) {
-			return target.NewContext(ctx, target.Options{Repository: *repository})
+			return target.NewContext(ctx, target.Options{Repository: *repository, SkipSecretScan: *skipSecretScan})
 		}
 	}
 	collector, err := newCollector()
 	if err != nil {
-		return writeReviewResult(stdout, stderr, *output, orchestrator.Failure(protocol.FailureCapability, fmt.Errorf("initialize target collector: %w", err)))
+		class := protocol.FailureCapability
+		if errors.Is(err, target.ErrSecretScan) {
+			class = protocol.FailureSecretScan
+		}
+		return writeReviewResult(stdout, stderr, *output, orchestrator.Failure(class, fmt.Errorf("initialize target collector: %w", err)))
 	}
 	newReviewer := dependencies.newReviewer
 	if newReviewer == nil {
@@ -107,12 +112,13 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		NewReviewer: newReviewer,
 		Repository:  *repository,
 		Target: target.Request{
-			Mode:         protocol.TargetMode(*mode),
-			Base:         *base,
-			Commit:       *commit,
-			Prompt:       resolvedPrompt,
-			ContextFiles: append([]string(nil), contextFiles...),
-			MaxBytes:     effective.MaxBytes.Value,
+			Mode:           protocol.TargetMode(*mode),
+			Base:           *base,
+			Commit:         *commit,
+			Prompt:         resolvedPrompt,
+			ContextFiles:   append([]string(nil), contextFiles...),
+			MaxBytes:       effective.MaxBytes.Value,
+			SkipSecretScan: *skipSecretScan,
 		},
 		Config: effective,
 		Progress: func(message string) {

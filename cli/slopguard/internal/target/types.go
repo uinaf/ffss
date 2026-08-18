@@ -17,12 +17,13 @@ var (
 )
 
 type Request struct {
-	Mode         protocol.TargetMode
-	Base         string
-	Commit       string
-	Prompt       string
-	ContextFiles []string
-	MaxBytes     int64
+	Mode           protocol.TargetMode
+	Base           string
+	Commit         string
+	Prompt         string
+	ContextFiles   []string
+	MaxBytes       int64
+	SkipSecretScan bool
 }
 
 type Scanner interface {
@@ -34,6 +35,7 @@ type Options struct {
 	GitPath        string
 	TruffleHogPath string
 	Scanner        Scanner
+	SkipSecretScan bool
 }
 
 type Contributor struct {

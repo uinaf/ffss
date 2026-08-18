@@ -481,6 +481,76 @@ func TestFreezeAcceptsDiffLineLargerThanDefaultLimitWhenConfigured(t *testing.T)
 	}
 }
 
+func TestFreezeSkipSecretScanDoesNotCallScanner(t *testing.T) {
+	t.Parallel()
+
+	repository := committedRepository(t)
+	writeFile(t, repository, "file.txt", "changed\n")
+	scanner := &recordingScanner{err: ErrSecretFound}
+	bundle, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, SkipSecretScan: true})
+	if err != nil {
+		t.Fatalf("Freeze() error = %v", err)
+	}
+	if scanner.calls != 0 {
+		t.Fatalf("scanner calls = %d, want 0", scanner.calls)
+	}
+	if got := targetPaths(bundle.Target()); !equalStrings(got, []string{"file.txt"}) {
+		t.Fatalf("target paths = %v", got)
+	}
+}
+
+func TestNewContextMissingTruffleHogIsSecretScan(t *testing.T) {
+	repository := committedRepository(t)
+	gitPath, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", t.TempDir())
+	_, err = NewContext(t.Context(), Options{Repository: repository, GitPath: gitPath})
+	if !errors.Is(err, ErrSecretScan) || !strings.Contains(err.Error(), "find trufflehog") {
+		t.Fatalf("NewContext() error = %v", err)
+	}
+}
+
+func TestNewContextSkipSecretScanDoesNotRequireTruffleHog(t *testing.T) {
+	repository := committedRepository(t)
+	writeFile(t, repository, "file.txt", "changed\n")
+	gitPath, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", filepath.Dir(gitPath)+string(os.PathListSeparator)+t.TempDir())
+	collector, err := NewContext(t.Context(), Options{Repository: repository, SkipSecretScan: true})
+	if err != nil {
+		t.Fatalf("NewContext() error = %v", err)
+	}
+	if collector.scanner != nil {
+		t.Fatal("skip-secret-scan resolved a scanner")
+	}
+	bundle, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, SkipSecretScan: true})
+	if err != nil {
+		t.Fatalf("Freeze() error = %v", err)
+	}
+	if got := targetPaths(bundle.Target()); !equalStrings(got, []string{"file.txt"}) {
+		t.Fatalf("target paths = %v", got)
+	}
+}
+
+func TestFreezeFailsClosedWhenSecretScannerIsUnavailable(t *testing.T) {
+	t.Parallel()
+
+	repository := committedRepository(t)
+	writeFile(t, repository, "file.txt", "changed\n")
+	collector, err := New(Options{SkipSecretScan: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	if !errors.Is(err, ErrSecretScan) || !strings.Contains(err.Error(), "secret scanner is unavailable") {
+		t.Fatalf("Freeze() error = %v", err)
+	}
+}
+
 func TestFreezeFailsClosedOnScannerErrorAndCancellation(t *testing.T) {
 	t.Parallel()
 

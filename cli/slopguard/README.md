@@ -49,7 +49,9 @@ refuses them. Signed, versioned builds come from the tap or the installer.
 
 Runtime dependencies are Git 2.41 or newer, the `trufflehog` executable, and
 the selected review harness available on `PATH`. Multiple supported harnesses
-may be installed; `--engine` selects exactly one for each run.
+may be installed; `--engine` selects exactly one for each run. Pass
+`--skip-secret-scan` to omit TruffleHog for one run when a known false
+positive blocks review; the flag is CLI-only.
 
 ## Quick use
 

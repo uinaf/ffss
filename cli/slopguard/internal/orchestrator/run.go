@@ -85,6 +85,9 @@ func Run(ctx context.Context, options Options) protocol.Report {
 		return failure(protocol.FailureInternal, errors.New("provider factory is unavailable"), nil, []protocol.Attempt{})
 	}
 
+	if options.Target.SkipSecretScan {
+		progress("secret scan skipped")
+	}
 	progress("collecting frozen target")
 	bundle, err := options.Collector.Freeze(ctx, options.Repository, options.Target)
 	if err != nil {
