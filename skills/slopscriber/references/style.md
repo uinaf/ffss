@@ -19,6 +19,8 @@ every pass; rewrite violations instead of preserving the author's shape.
 - Add a small diagram, tree, or table when structure or flow beats prose.
 - No greetings, hedges, marketing tone, or narration of the author's own
   actions. Cap disclaimers and caveats at one clause.
+- No em dashes; use a period, colon, or comma instead (banner alt text is
+  the one exception).
 - Commit to one recommendation with exact commands and `file:line` targets.
   End with at most one concrete next action.
 

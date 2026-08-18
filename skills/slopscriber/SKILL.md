@@ -132,7 +132,7 @@ Keep the footer to 5 labeled lines or fewer. List changed files once.
 
 ## References
 
-- [references/style.md](references/style.md): the house writing shape — outcome first, bullets over paragraphs, links over code spans, examples as spec
+- [references/style.md](references/style.md): the house writing shape: outcome first, bullets over paragraphs, links over code spans, examples as spec
 - [references/agent-first.md](references/agent-first.md): agent-first writing, positive state, progressive disclosure, AGENTS.md shape
 - [references/documentation.md](references/documentation.md): README, contributing, security, and repository-doc shapes
 - [references/source-boundaries.md](references/source-boundaries.md): durable ownership and private/local evidence boundaries
