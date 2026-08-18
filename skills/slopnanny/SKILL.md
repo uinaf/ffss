@@ -1,6 +1,6 @@
 ---
 name: slopnanny
-description: "Babysit an open change request through review and CI to a settled outcome: observe checks and reviewer feedback, verify every bot claim before acting, fix real findings without scope creep, answer threads with commit hashes, and merge once green. Use when asked to babysit, monitor, or watch a pull/merge/change request, or after slopcourier delivers one. Do not use to create change requests or run a review yourself."
+description: "Babysit an open change request through review and CI to a settled outcome: observe checks and reviewer feedback, verify every bot claim before acting, fix real findings without scope creep, answer threads with commit hashes, and merge once green unless asked to hold. Use when asked to babysit, monitor, or watch a pull/merge/change request, or after slopcourier delivers one. Do not use to create change requests or run a review yourself."
 ---
 
 # Slopnanny
