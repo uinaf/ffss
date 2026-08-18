@@ -1,0 +1,31 @@
+{
+  "context": "Tests the lane boundary: a slopmachine run with delivery_mode direct-trunk must not get a change request even though the user asked for a PR; the delivery is the trunk commit itself, recorded through slopmachine deliver with a commit_sha.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "No change request",
+      "max_score": 32,
+      "description": "The agent does not open, prepare, or plan a pull request for this run"
+    },
+    {
+      "name": "Direct-trunk lane explained",
+      "max_score": 24,
+      "description": "delivery-status.md explains that the run's delivery_mode is direct-trunk, so the delivery is the trunk commit recorded via slopmachine deliver with its commit_sha, not a change request"
+    },
+    {
+      "name": "Status read, not assumed",
+      "max_score": 16,
+      "description": "The explanation is grounded in the provided run-status.json (delivery_mode, run_id run-3ka9), not in a guessed default"
+    },
+    {
+      "name": "User redirected, not obeyed blindly",
+      "max_score": 16,
+      "description": "The response tells the user what the correct recording step is instead of silently doing nothing or filing the PR anyway to please them"
+    },
+    {
+      "name": "No second runtime",
+      "max_score": 12,
+      "description": "The agent does not hand-edit run state, fabricate deliver evidence, or invent a parallel workflow to force a PR-shaped outcome"
+    }
+  ]
+}

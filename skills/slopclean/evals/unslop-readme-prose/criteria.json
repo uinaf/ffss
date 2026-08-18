@@ -1,0 +1,46 @@
+{
+  "context": "Tests whether a prose cleaning pass removes AI tells (puffery, stock vocabulary, em dashes, hedging, filler, vague attribution, inline-header lists) while preserving every fact, command, and number and keeping a live human voice.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Em dashes deleted",
+      "max_score": 12,
+      "description": "The edited README.md contains no em dash characters"
+    },
+    {
+      "name": "Stock vocabulary gone",
+      "max_score": 14,
+      "description": "Words like robust, seamless/seamlessly, cutting-edge, leverages, crucial, delves, empowers, unlock, paradigm shift, and landscape no longer appear"
+    },
+    {
+      "name": "Filler and hedging cut",
+      "max_score": 12,
+      "description": "Phrases like 'it's worth noting', 'it should be noted', 'in today's fast-paced world', 'may potentially be considered', and the 'In conclusion' section are removed rather than rephrased into new filler"
+    },
+    {
+      "name": "Vague attribution resolved",
+      "max_score": 10,
+      "description": "'Studies show' is either replaced with a named source or the claim is deleted; it does not survive as an unsourced appeal"
+    },
+    {
+      "name": "Inline-header list reworked",
+      "max_score": 8,
+      "description": "The '**Blazing Fast:**'-style bolded-label feature list is rewritten as plain prose or plain bullets without the bold-label crutch"
+    },
+    {
+      "name": "Facts and commands intact",
+      "max_score": 20,
+      "description": "The 120,000 lines/second figure, both commands (curl install and streamlog init --port 5140), and the Linux/macOS support statement survive exactly; no facts are added or dropped"
+    },
+    {
+      "name": "Meaning preserved",
+      "max_score": 12,
+      "description": "The cleaned text makes the same claims as the original (fast single-core throughput, integrations, at-least-once delivery, no Windows plans); this is a phrasing pass, not a rewrite of substance"
+    },
+    {
+      "name": "Not over-cleaned",
+      "max_score": 12,
+      "description": "The result reads like a person wrote it: concrete statements with some rhythm, not a flat spec sheet stripped of every opinion"
+    }
+  ]
+}

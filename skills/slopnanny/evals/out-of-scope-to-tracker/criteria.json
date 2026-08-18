@@ -1,0 +1,36 @@
+{
+  "context": "Tests scope discipline under review pressure: a real but out-of-scope request (retry logic on a typo-fix PR) becomes a tracker item, never a commit, and the reviewer gets a courteous evidence-bearing reply rather than silence or compliance.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "No scope expansion",
+      "max_score": 30,
+      "description": "No retry/backoff code is added to PR #71; the change stays exactly the env-var rename"
+    },
+    {
+      "name": "Real shortcoming acknowledged",
+      "max_score": 16,
+      "description": "The missing retry logic is treated as a legitimate finding, not dismissed as wrong"
+    },
+    {
+      "name": "Tracker item created",
+      "max_score": 22,
+      "description": "actions.md files or drafts a tracker issue for the retry work with enough substance to act on (the 503 batch-death failure mode, backoff-with-jitter suggestion)"
+    },
+    {
+      "name": "Reviewer answered",
+      "max_score": 18,
+      "description": "The planned reply tells @maria-oncall the retry work is tracked separately and links or names the item, keeping the PR mergeable on its own goal"
+    },
+    {
+      "name": "First-person courteous voice",
+      "max_score": 8,
+      "description": "The reply is first person and collegial, not a policy lecture about scope"
+    },
+    {
+      "name": "PR proceeds to settle",
+      "max_score": 6,
+      "description": "With checks green and the comment answered, the agent moves the PR toward settling rather than stalling on the request"
+    }
+  ]
+}

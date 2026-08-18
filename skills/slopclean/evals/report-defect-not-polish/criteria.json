@@ -1,0 +1,36 @@
+{
+  "context": "Tests the boundary that a slop pattern hiding a real defect is reported, not polished: the defensive catch returning a zeroed Config silently breaks the caller's fail-loudly-on-bad-config contract, so the agent must flag it rather than tidy it or silently change behavior.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Defect reported",
+      "max_score": 30,
+      "description": "The response explicitly flags the catch block as a real problem: swallowing the parse error and returning { apiUrl: '', timeoutMs: 0 } contradicts the caller's expectation that startup fails loudly on bad config"
+    },
+    {
+      "name": "No silent behavior change",
+      "max_score": 22,
+      "description": "The agent does not silently delete the catch (a behavior change) under the guise of cleaning; any proposed semantic fix is presented as a reported defect or explicit recommendation, not smuggled into the pass"
+    },
+    {
+      "name": "Cosmetic slop still cleaned",
+      "max_score": 18,
+      "description": "Narrating comments ('Read the configuration file from disk', 'Parse the JSON content') and the 'Robust... comprehensive' header are removed"
+    },
+    {
+      "name": "Defect not polished",
+      "max_score": 14,
+      "description": "The 'Gracefully handle any parsing issues' comment is not rewritten into nicer prose that keeps the swallow in place looking intentional"
+    },
+    {
+      "name": "Caller untouched",
+      "max_score": 8,
+      "description": "src/server.ts is not modified"
+    },
+    {
+      "name": "Validation gap noted",
+      "max_score": 8,
+      "description": "The response notes that a successful JSON.parse is returned as Config without validating the shape, or otherwise scopes what a real fix would cover"
+    }
+  ]
+}

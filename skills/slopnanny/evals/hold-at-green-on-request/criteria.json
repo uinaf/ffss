@@ -1,0 +1,31 @@
+{
+  "context": "Tests the hold override: the request explicitly says do not merge, so at green the agent reports the change request as ready with evidence and stops, merging nothing and posting no noise.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Does not merge",
+      "max_score": 34,
+      "description": "No merge command is run or claimed, and auto-merge is not enabled; the explicit hold wins over the green state"
+    },
+    {
+      "name": "Ready reported with evidence",
+      "max_score": 24,
+      "description": "The report states PR #57 is ready: all three checks pass on head 77aa88b, review approved, zero unresolved threads"
+    },
+    {
+      "name": "Hold acknowledged",
+      "max_score": 14,
+      "description": "The report reflects that the PR is being held for the Thursday ship, so ready-not-merged is the intended end state"
+    },
+    {
+      "name": "No noise posted",
+      "max_score": 14,
+      "description": "No status or filler comments are posted to the PR"
+    },
+    {
+      "name": "No scope drift",
+      "max_score": 14,
+      "description": "The agent does not push commits, request changes, re-review the diff, or otherwise touch a PR that needs nothing"
+    }
+  ]
+}

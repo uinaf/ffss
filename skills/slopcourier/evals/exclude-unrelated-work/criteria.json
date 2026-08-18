@@ -1,0 +1,41 @@
+{
+  "context": "Tests the intended-change-only precondition: the branch carries an unrelated WIP commit and an unrelated dirty file, and the delivery plan must exclude both from the change request while preserving them, not discarding them.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "WIP commit excluded",
+      "max_score": 26,
+      "description": "The plan does not ship f00dbeef (the redis cursor-cache experiment) in the pull request; it moves it aside (e.g. to another branch) or otherwise keeps it out of the delivered range"
+    },
+    {
+      "name": "Unrelated work preserved",
+      "max_score": 20,
+      "description": "Neither the WIP commit nor the dirty internal/cache/redis.go change is deleted, reset --hard away, or force-overwritten; both survive somewhere recoverable (branch, stash)"
+    },
+    {
+      "name": "No force-push",
+      "max_score": 14,
+      "description": "The plan does not force-push without flagging that it needs explicit approval; a clean-branch approach that avoids force-pushing entirely also satisfies this"
+    },
+    {
+      "name": "One change request",
+      "max_score": 12,
+      "description": "Exactly one pull request is planned, containing the two pagination commits"
+    },
+    {
+      "name": "Exclusion explained",
+      "max_score": 10,
+      "description": "delivery-plan.md says why the WIP work was excluded (unrelated to the pagination fix)"
+    },
+    {
+      "name": "Body stays in lane",
+      "max_score": 10,
+      "description": "The PR title/body cover the pagination fix problem-first and do not mention or apologize for the cache experiment"
+    },
+    {
+      "name": "Duplicate check present",
+      "max_score": 8,
+      "description": "The command sequence checks whether a PR for the branch already exists before creating one"
+    }
+  ]
+}
