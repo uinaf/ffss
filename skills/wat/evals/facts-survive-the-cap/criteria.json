@@ -1,0 +1,36 @@
+{
+  "context": "Tests that the six-line cap yields to decision-relevant facts: nine repos with PR numbers, states, and three distinct failure causes cannot be compressed into six lines without losing facts, so the rewrite stays labeled and terse but keeps every identifier, dropping only narration.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "All PR identifiers kept",
+      "max_score": 26,
+      "description": "All nine PRs survive with their repos and numbers: #341, #128, #77, #204, #55 merged; #93 running; #166, #310, #89 failing"
+    },
+    {
+      "name": "Failure causes kept",
+      "max_score": 22,
+      "description": "The three distinct causes survive: gateway's dropped createPool export, metrics' two pinned snapshot tests in dashboards.test.ts, scheduler's redis peer-dependency conflict"
+    },
+    {
+      "name": "Cap exceeded only as needed",
+      "max_score": 14,
+      "description": "The rewrite is longer than six lines only because the facts require it; there is no padding, restatement, or per-repo prose"
+    },
+    {
+      "name": "Labeled structure",
+      "max_score": 14,
+      "description": "Facts are grouped under labeled bullets (e.g. **Merged:**, **Running:**, **Failing:**) rather than a paragraph"
+    },
+    {
+      "name": "Narration deleted",
+      "max_score": 12,
+      "description": "'Quite a journey', 'fingers crossed', 'smooth sailing', 'great news', and similar filler are gone"
+    },
+    {
+      "name": "One next action",
+      "max_score": 12,
+      "description": "The rewrite ends with at most one next action (the three failing PRs, with the tonight-vs-tomorrow question as that single decision), without 'happy to do either' offers"
+    }
+  ]
+}

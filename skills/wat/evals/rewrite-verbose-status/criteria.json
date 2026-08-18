@@ -1,0 +1,41 @@
+{
+  "context": "Tests the terse rewrite: the narrated status becomes at most six lines of labeled facts that lead with what happened, keep every identifier and count, end with at most one next action, and drop all narration, hedging, and closing offers.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "First line answers what happened",
+      "max_score": 16,
+      "description": "The rewrite opens with the outcome (fix pushed / tests corrected, PR moving), not with process or preamble"
+    },
+    {
+      "name": "Labeled facts",
+      "max_score": 16,
+      "description": "Facts appear as labeled bullets (e.g. **Pushed:**, **Fixed:**, **Running:**, **Next:**) with one fact per line"
+    },
+    {
+      "name": "Six lines or fewer",
+      "max_score": 14,
+      "description": "The rewrite is at most six lines"
+    },
+    {
+      "name": "Identifiers and counts kept",
+      "max_score": 22,
+      "description": "Commit 4f2a1c9, PR #212, 3 of 17 failing tests, the timezone-fixture cause, and the 14% bundle-size observation all survive"
+    },
+    {
+      "name": "One next action, no offers",
+      "max_score": 12,
+      "description": "At most one next action (re-request review once CI is green) and no 'let me know if…' closing offer"
+    },
+    {
+      "name": "Narration and hedging deleted",
+      "max_score": 12,
+      "description": "No 'rabbit hole', 'long story short', 'hopefully', 'as we speak', or other process narration and hedging survives"
+    },
+    {
+      "name": "No adjectival padding",
+      "max_score": 8,
+      "description": "Facts carry numbers and identifiers, not adjectives like 'nicely' or 'interesting'"
+    }
+  ]
+}

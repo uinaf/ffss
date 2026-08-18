@@ -1,0 +1,31 @@
+{
+  "context": "Tests quiet discipline and signal freshness: the only comment predates the latest push and was already answered by it, checks are still running, so the correct move is no forge action at all — a brief waiting status to the user, no filler comments, no premature settling.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Stale comment not re-acted",
+      "max_score": 26,
+      "description": "The 13:40 bot nit is recognized as older than the 14:02 push and already answered; no new fix, reply, or commit is produced for it"
+    },
+    {
+      "name": "Nothing posted to the forge",
+      "max_score": 24,
+      "description": "No comments, replies, or status notes are posted to the PR; nothing changed, so the thread stays silent"
+    },
+    {
+      "name": "Accurate pending status",
+      "max_score": 20,
+      "description": "The user's status says build and test are still running on head 9b8c7d6 with lint already passing, and that the PR is not yet settled"
+    },
+    {
+      "name": "No invented signals",
+      "max_score": 16,
+      "description": "The agent does not predict check outcomes, claim readiness, or manufacture a review verdict while checks are pending"
+    },
+    {
+      "name": "Keeps watching",
+      "max_score": 14,
+      "description": "The stated next step is continuing to observe until the checks finish, not closing out the babysit"
+    }
+  ]
+}

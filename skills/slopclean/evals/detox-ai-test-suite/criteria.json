@@ -1,0 +1,41 @@
+{
+  "context": "Tests whether a test-mode cleaning pass deletes tautological and vacuous tests, unmocks pure functions so the real code is exercised, collapses happy-path clones, and preserves or strengthens every real assertion.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Tautologies removed",
+      "max_score": 16,
+      "description": "The expect(total(items)).toBe(total(items)) self-comparison and the expect(total).toBeDefined() existence check are deleted or replaced with assertions against independent expected values"
+    },
+    {
+      "name": "Mock replaced with real call",
+      "max_score": 18,
+      "description": "The applyDiscount test calls the real applyDiscount instead of asserting against a vi.fn() mock of it; applyDiscount ends up with genuine coverage (e.g. a real value and/or the out-of-range throw)"
+    },
+    {
+      "name": "Happy-path clones collapsed",
+      "max_score": 14,
+      "description": "The one/two/three-item copies are consolidated into one test or a parameterized table rather than three near-identical bodies"
+    },
+    {
+      "name": "Real coverage preserved",
+      "max_score": 22,
+      "description": "The negative-quantity throw assertion survives, and correct-total behavior is still asserted with independent expected numbers; no behavior loses its only coverage"
+    },
+    {
+      "name": "Module untouched",
+      "max_score": 12,
+      "description": "src/cart.ts is not modified"
+    },
+    {
+      "name": "No new test slop",
+      "max_score": 10,
+      "description": "The rewritten suite adds no snapshot-of-own-output tests, no mocks of pure code, and no comments narrating each assertion"
+    },
+    {
+      "name": "Coverage gaps reported honestly",
+      "max_score": 8,
+      "description": "If any boundary is left untested (e.g. discount percent out of range, empty cart), the response either adds the test or names the gap instead of staying silent"
+    }
+  ]
+}

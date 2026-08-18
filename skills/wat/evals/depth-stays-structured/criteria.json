@@ -1,0 +1,36 @@
+{
+  "context": "Tests that a depth request wins over the line cap without reverting to narration: the answer opens with the terse what-happened rewrite, then explains the race mechanism step by step in structured form, keeping every identifier and adding no filler.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Terse summary first",
+      "max_score": 18,
+      "description": "The answer opens with a compact labeled rewrite of what happened (root cause found, fix in PR #250, 20/20 staging deploys clean) before the deep dive"
+    },
+    {
+      "name": "Step-by-step mechanism",
+      "max_score": 26,
+      "description": "The depth section walks the race in ordered steps: deploy job in release.yml references a cached layer, nightly cleanup evicts it in the overlap window, the deploy then hits manifest-unknown"
+    },
+    {
+      "name": "Structured, not novelized",
+      "max_score": 18,
+      "description": "The explanation uses numbered steps or labeled bullets, not paragraph storytelling; no 'fascinating interplay' style returns"
+    },
+    {
+      "name": "Identifiers preserved",
+      "max_score": 16,
+      "description": "release.yml, runs 4412 and 4437, PR #250, and the 20-deploy verification all appear"
+    },
+    {
+      "name": "Fit for handoff",
+      "max_score": 12,
+      "description": "The mechanism explanation stands alone for the platform team: cause, trigger condition, observed error, and the lock fix are all present"
+    },
+    {
+      "name": "No filler or offers",
+      "max_score": 10,
+      "description": "No hedging, feelings, or 'walk you through sometime' offers; the vague 'other small things' is either dropped or turned into concrete facts"
+    }
+  ]
+}

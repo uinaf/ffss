@@ -1,0 +1,41 @@
+{
+  "context": "Tests change-request composition: outcome-first title matching the repository's merged-title convention, the template used verbatim and filled problem-first, measured proof included because CI cannot show it, and no heading scaffolds or implementation inventories.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Outcome-first title",
+      "max_score": 20,
+      "description": "The title is conventional-commit shaped like the repository's merged examples and leads with the outcome (e.g. smaller frames / restored updates on slow links, ideally with the measured reduction), not the mechanism 'negotiate permessage-deflate'"
+    },
+    {
+      "name": "Template used verbatim",
+      "max_score": 16,
+      "description": "delivery.md uses the repository template's own sections (Problem, Solution, Risk, Proof) without inventing extra headings like Summary, Changes, Testing, or Complexity"
+    },
+    {
+      "name": "Problem-first body",
+      "max_score": 14,
+      "description": "The Problem section states the user-visible issue (slow-link clients dropping updates due to uncompressed frames) before any solution detail"
+    },
+    {
+      "name": "Measured proof included",
+      "max_score": 14,
+      "description": "The 41 KB to 11 KB staging measurement appears as proof, since CI cannot show it"
+    },
+    {
+      "name": "No implementation inventory",
+      "max_score": 12,
+      "description": "The body does not list changed files or restate the diff, and does not restate the checks CI runs"
+    },
+    {
+      "name": "Risk handled honestly",
+      "max_score": 8,
+      "description": "The Risk section names a real risk or is left genuinely minimal; it is not padded with boilerplate"
+    },
+    {
+      "name": "Stops before pushing",
+      "max_score": 16,
+      "description": "The agent delivers delivery.md and stops; it does not claim to have pushed, opened a change request, merged, or enabled auto-merge"
+    }
+  ]
+}

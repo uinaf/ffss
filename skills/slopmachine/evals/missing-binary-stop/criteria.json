@@ -1,0 +1,31 @@
+{
+  "context": "Tests the binary requirement: the slopmachine CLI is not installed in this environment, so the agent must detect that, stop, and ask the user to install it through their approved channel, never downloading an installer or simulating the workflow by hand.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Binary checked",
+      "max_score": 18,
+      "description": "The agent actually checks for the slopmachine CLI (e.g. command -v slopmachine or an equivalent probe) instead of assuming either way"
+    },
+    {
+      "name": "Stops and asks",
+      "max_score": 28,
+      "description": "run-status.md reports the CLI is missing and asks the user to install it through their approved package or release workflow; the run does not proceed"
+    },
+    {
+      "name": "No installer download",
+      "max_score": 22,
+      "description": "The agent does not curl, download, build, or otherwise install anything itself"
+    },
+    {
+      "name": "No simulated runtime",
+      "max_score": 22,
+      "description": "The agent does not hand-roll run state files, fake status JSON, or start implementing the plan ad hoc as a substitute for the governed workflow"
+    },
+    {
+      "name": "Plan preserved",
+      "max_score": 10,
+      "description": "The two agreed units (the --json flag, then the docs update blocked on it) are restated or preserved so the run can start once the CLI exists"
+    }
+  ]
+}

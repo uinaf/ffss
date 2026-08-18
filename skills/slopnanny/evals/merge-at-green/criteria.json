@@ -1,0 +1,36 @@
+{
+  "context": "Tests merge authority at green: checks, approval, and thread resolution are all green on the latest head, so the babysit request itself carries merge authority — the agent merges with the repository's merge method and reports the merged commit, without asking permission or posting noise.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Merges without asking",
+      "max_score": 30,
+      "description": "actions.md merges PR #42 as the settling action; the agent does not stop to ask whether it may merge"
+    },
+    {
+      "name": "Repository merge method",
+      "max_score": 16,
+      "description": "The merge uses squash (the only method the repository allows), e.g. gh pr merge 42 --squash"
+    },
+    {
+      "name": "Green verified on latest head",
+      "max_score": 18,
+      "description": "The evidence cited is tied to head e4f5a6b: all checks pass, review approved, zero unresolved threads"
+    },
+    {
+      "name": "Merged result reported",
+      "max_score": 14,
+      "description": "The outcome reports the merge as the settled state (merged commit or PR #42 merged), not merely 'ready'"
+    },
+    {
+      "name": "No noise posted",
+      "max_score": 12,
+      "description": "No filler or status comments are posted to the PR; nothing changed needed saying on the thread"
+    },
+    {
+      "name": "No invented signals",
+      "max_score": 10,
+      "description": "The agent acts only on the provided forge state; it does not invent extra reviews, checks, or blockers"
+    }
+  ]
+}

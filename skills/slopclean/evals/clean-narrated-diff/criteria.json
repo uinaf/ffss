@@ -1,0 +1,41 @@
+{
+  "context": "Tests whether a code-mode cleaning pass deletes narrating and change-history comments, removes unused escape hatches, collapses single-caller wrappers, and renames hedged identifiers, all without changing behavior or the exported API.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Narrating comments deleted",
+      "max_score": 18,
+      "description": "Comments that restate the next line ('Loop through the attempts', 'Call fetch with the provided URL', 'Check if the response was successful', etc.) are gone"
+    },
+    {
+      "name": "Change-history comments deleted",
+      "max_score": 10,
+      "description": "The 'Updated to use the new retry approach as discussed' header and similar session-history narration are removed"
+    },
+    {
+      "name": "Dead options removed",
+      "max_score": 14,
+      "description": "The unused 'strategy' ('Reserved for future use') and 'legacyMode' ('kept just in case') options are deleted from RetryOptions"
+    },
+    {
+      "name": "Wrapper collapsed",
+      "max_score": 12,
+      "description": "The single-caller doActualFetchInternal indirection is inlined; retryFetch calls fetch directly"
+    },
+    {
+      "name": "Hedged names fixed",
+      "max_score": 10,
+      "description": "maybeDelaySafely is renamed to say what it is (e.g. delay/sleep) or inlined; no maybe/safely hedging remains in identifiers"
+    },
+    {
+      "name": "Behavior unchanged",
+      "max_score": 22,
+      "description": "retryFetch keeps the same signature, default of 3 retries, exponential backoff timing, ok-check, and final throw; the error swallow-and-retry semantics in the catch are not altered (removing the console.log is fine, changing what is caught or rethrown is not)"
+    },
+    {
+      "name": "No new slop",
+      "max_score": 14,
+      "description": "The cleanup introduces no comments narrating the cleanup itself and no new defensive code"
+    }
+  ]
+}
