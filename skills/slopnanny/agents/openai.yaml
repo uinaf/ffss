@@ -8,7 +8,10 @@ interface:
     every bot claim against the code before acting, fix real findings with
     the smallest in-scope change and reply with the commit hash, reject
     wrong or out-of-scope findings with evidence, stay quiet when nothing
-    changed, stop when green, and never merge without an explicit request.
+    changed, and once required checks and reviewers are green on the latest
+    commit, merge with the repository's merge method and report the merged
+    commit; hold at green only when asked, and never merge past a blocking
+    human review or an unresolved thread.
 
 policy:
   allow_implicit_invocation: true
