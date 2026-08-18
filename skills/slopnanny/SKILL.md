@@ -1,6 +1,6 @@
 ---
 name: slopnanny
-description: "Babysit an open change request through review and CI to a settled outcome: observe checks and reviewer feedback, verify every bot claim before acting, fix real findings without scope creep, answer threads with commit hashes, and stop when green. Use when asked to babysit, monitor, or watch a pull/merge/change request, or after slopcourier delivers one. Do not use to create change requests, run a review yourself, or merge without an explicit request."
+description: "Babysit an open change request through review and CI to a settled outcome: observe checks and reviewer feedback, verify every bot claim before acting, fix real findings without scope creep, answer threads with commit hashes, and merge once green. Use when asked to babysit, monitor, or watch a pull/merge/change request, or after slopcourier delivers one. Do not use to create change requests or run a review yourself."
 ---
 
 # Slopnanny
@@ -50,10 +50,11 @@ Replies post under the authenticated account and are that identity speaking:
 ## Quiet discipline
 
 - Nothing changed → say nothing. No filler comments, no status noise.
-- Stop when required checks and reviewers are green on the latest commit:
-  report the change request as ready.
-- Merge only when explicitly requested; being green is a report, not an
-  authorization.
+- When required checks and reviewers are green on the latest commit, merge
+  with the repository's merge method and report the merged commit; the
+  babysit request carries merge authority. Hold at green only when the
+  request says to, and never merge past a blocking human review or an
+  unresolved thread.
 - On a slopmachine run, keep driving status: rework causes route through
   `slopmachine` commands, and settlement comes from `watch` observing the
   merge, never from narrating it.
