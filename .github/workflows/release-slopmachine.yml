@@ -182,7 +182,7 @@ jobs:
           ./scripts/verify-apple-credentials.sh "$APPLE_TEAM_ID"
           # goreleaser OSS needs a plain semver tag; the member prefix lives
           # only on the pushed tag. The local alias is never pushed.
-          git tag -f "${{ steps.tag.outputs.version }}"
+          git tag -f "$GORELEASER_CURRENT_TAG"
           exec goreleaser release --clean --skip=publish
 
       - name: Verify checksums and signature

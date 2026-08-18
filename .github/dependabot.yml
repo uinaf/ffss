@@ -2,12 +2,12 @@ version: 2
 updates:
   - package-ecosystem: gomod
     directories:
-      - /cli/slopshipper
+      - /cli/slopmachine
       - /cli/slopguard
     schedule:
       interval: monthly
     cooldown:
-      default-days: 1
+      default-days: 7
     groups:
       go-patch-minor:
         update-types: ["patch", "minor"]
@@ -21,7 +21,7 @@ updates:
     schedule:
       interval: monthly
     cooldown:
-      default-days: 1
+      default-days: 7
     groups:
       actions-patch-minor:
         update-types: ["patch", "minor"]

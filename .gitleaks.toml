@@ -1,0 +1,10 @@
+# Fixture and historical test data; no live credentials.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "eval scratch manifests and historical test fixtures"
+paths = [
+  '''tools/skill-evals/scratch/''',
+  '''autoreview/internal/config/config_test.go''',
+]
