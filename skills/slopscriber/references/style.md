@@ -23,6 +23,11 @@ every pass; rewrite violations instead of preserving the author's shape.
   the one exception).
 - Commit to one recommendation with exact commands and `file:line` targets.
   End with at most one concrete next action.
+- In a uinaf-owned repository, voice and register (casing and name styling)
+  are owned by the live design contract: fetch `voice` via the
+  design.uinaf.dev MCP `search_guidelines` (fallback
+  [design.md](https://design.uinaf.dev/design.md)) and apply it over this
+  file where they overlap. Its rules are not restated here.
 
 ## The examples are the specification
 
