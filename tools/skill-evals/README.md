@@ -25,10 +25,17 @@ npm run summarize                             # writes .skillcheck/scorecards/<U
 ```
 
 Auth is split on purpose: `lint` needs no credentials and runs in CI. Sweeps
-need model auth (`ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN` for a gateway,
-or the local Claude Code session) and stay operator-run. The judge always
-grades through that Anthropic selection; `--harness codex` or
-`--harness cursor` additionally needs the matching CLI login (or
-`OPENAI_API_KEY` / `CURSOR_API_KEY`) for the agent leg, e.g.
-`npm run sweep -- --harness cursor --agent composer-2.5`. Details in the
+need model auth and stay operator-run. A bare `--judge` model grades through
+the Anthropic selection (`ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN` for a
+gateway, or the local Claude Code session); a provider-qualified judge uses
+that provider's env instead. `--harness codex` or `--harness cursor` needs the
+matching CLI login (or `OPENAI_API_KEY` / `CURSOR_API_KEY`) for the agent leg.
+A fully non-Anthropic sweep:
+
+```sh
+OPENAI_API_KEY=… OPENAI_BASE_URL=… npm run sweep -- --harness cursor \
+  --agent composer-2.5 --judge openai:chat:gpt-5.6-sol --judge-effort high
+```
+
+Details in the
 [skillcheck docs](https://github.com/uinaf/skillcheck/tree/main/docs).
