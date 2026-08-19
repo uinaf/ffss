@@ -24,8 +24,9 @@ every pass; rewrite violations instead of preserving the author's shape.
 - Commit to one recommendation with exact commands and `file:line` targets.
   End with at most one concrete next action.
 - File names stay lowercase (`docs/usage.md`, `scripts/check.ts`). Files
-  whose caps are the ecosystem convention keep them: `README.md`,
-  `CONTRIBUTING.md`, `AGENTS.md`, `LICENSE`, `SKILL.md`, `DESIGN.md`.
+  whose caps are the ecosystem convention keep them, such as `README.md`,
+  `CONTRIBUTING.md`, `SECURITY.md`, `AGENTS.md`, `LICENSE`, `SKILL.md`,
+  and `DESIGN.md`.
 - In a uinaf-owned repository, voice and register (casing and name styling)
   are owned by the live design contract: fetch `voice` via the
   design.uinaf.dev MCP `search_guidelines` (fallback
