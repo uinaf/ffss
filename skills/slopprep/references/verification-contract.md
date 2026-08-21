@@ -58,13 +58,16 @@ logic.
   runner when it already owns the graph.
 - Give independent checks separate tasks and run their dependency graph in
   parallel. Keep output attributable to each lane and preserve every failure.
+  Tasks that write the same generated directory, compiler state, or local cache
+  are not independent; isolate that state or encode an ordering edge.
 - Select affected work from explicit inputs. Exercise added, modified, deleted,
   renamed, staged, unstaged, and untracked cases that the local contract claims
   to support. When local freshness cannot safely represent one case, retain a
   forced full command and make merge-diff CI authoritative for it.
 - Include the task-graph definition itself in each cached lane's inputs. A
   changed command, dependency edge, source map, or cache policy must invalidate
-  every lane whose meaning changed.
+  every lane whose meaning changed. Include runtime and toolchain pin files in
+  every cached lane they can affect.
 - Treat task-runner source/output freshness as an optimization, not as
   Git-equivalent affected detection. Preserved timestamps, deletion, and rename
   handling must be proven before freshness can represent those cases.
