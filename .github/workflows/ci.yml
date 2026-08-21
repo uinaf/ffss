@@ -12,7 +12,7 @@ permissions:
 jobs:
   changes:
     name: classify changes
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     outputs:
       slopmachine: ${{ steps.filter.outputs.slopmachine }}
       slopguard: ${{ steps.filter.outputs.slopguard }}
@@ -39,7 +39,7 @@ jobs:
     name: slopmachine verify
     needs: changes
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.slopmachine == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     defaults:
       run:
         working-directory: cli/slopmachine
@@ -65,7 +65,7 @@ jobs:
     name: slopguard verify
     needs: changes
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.slopguard == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     defaults:
       run:
         working-directory: cli/slopguard
@@ -91,7 +91,7 @@ jobs:
     name: skills lint
     needs: changes
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.skills == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
