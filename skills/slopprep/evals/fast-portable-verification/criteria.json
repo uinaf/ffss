@@ -1,0 +1,56 @@
+{
+  "context": "Tests whether the agent consolidates slow duplicated local and CI checks into one runner-neutral task graph with affected selection, parallel lanes, safe caches, and exhaustive delivery boundaries.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "One repository-owned command graph",
+      "max_score": 15,
+      "description": "Local, GitHub Actions, and GitLab CI delegate to the same mise verification tasks instead of maintaining separate validation commands"
+    },
+    {
+      "name": "Parallel verification lanes",
+      "max_score": 12,
+      "description": "Independent format, OpenTofu, shell, and secret checks are separate tasks joined by an explicit parallel dependency graph"
+    },
+    {
+      "name": "Affected inputs are explicit",
+      "max_score": 12,
+      "description": "Each fast lane declares relevant sources or an equivalent structured affected contract, with a documented full-force fallback for unsupported deletion or rename cases"
+    },
+    {
+      "name": "Provider-neutral CI adapters",
+      "max_score": 12,
+      "description": "GitHub and GitLab configuration performs checkout, cache or lane orchestration, and repository task invocation without duplicating validation policy"
+    },
+    {
+      "name": "Safe persistent caches",
+      "max_score": 10,
+      "description": "Provider and build caches are separate from ephemeral working state and keyed by lock or source revision plus platform compatibility inputs"
+    },
+    {
+      "name": "Cold correctness is preserved",
+      "max_score": 8,
+      "description": "The design remains correct on cache miss and does not require pre-existing local state"
+    },
+    {
+      "name": "Secret scan keeps coverage",
+      "max_score": 8,
+      "description": "Generated state and .git are excluded without disabling detectors, candidate verification, or the repository-owned secret policy"
+    },
+    {
+      "name": "Delivery remains exhaustive",
+      "max_score": 10,
+      "description": "Apply, deploy, release, and live acceptance remain outside selective or cached verification unless independently proven safe"
+    },
+    {
+      "name": "No changed-file shell policy",
+      "max_score": 7,
+      "description": "The solution removes the custom changed-file shell selector and does not replace it with another script that parses Git state or CI payloads"
+    },
+    {
+      "name": "Measured proof",
+      "max_score": 6,
+      "description": "The report distinguishes unchanged, relevant-change, warm-full, and cold-full cases, identifies the slowest owned lane separately from runner provisioning, and honestly labels timings unverified because this prompt has no executable checkout"
+    }
+  ]
+}

@@ -44,6 +44,54 @@ It should:
 Do not create a parallel agent-only verification wrapper. Improve the ordinary
 command used by contributors and CI.
 
+## Fast Portable Execution
+
+The repository owns verification. CI providers only provision a checkout,
+restore safe caches, inject scoped runner capabilities, select repository-owned
+lanes, invoke them, and aggregate their results. GitHub Actions, GitLab CI,
+Buildkite, local agents, and developer shells must not carry separate validation
+logic.
+
+- Extend the existing task graph or manifest before adding a runner or wrapper.
+  For heterogeneous repositories, `mise` tasks with explicit dependencies and
+  sources are a suitable existing surface; use another established project
+  runner when it already owns the graph.
+- Give independent checks separate tasks and run their dependency graph in
+  parallel. Keep output attributable to each lane and preserve every failure.
+- Select affected work from explicit inputs. Exercise added, modified, deleted,
+  renamed, staged, unstaged, and untracked cases that the local contract claims
+  to support. When local freshness cannot safely represent one case, retain a
+  forced full command and make merge-diff CI authoritative for it.
+- Treat task-runner source/output freshness as an optimization, not as
+  Git-equivalent affected detection. Preserved timestamps, deletion, and rename
+  handling must be proven before freshness can represent those cases.
+- Keep affected-input policy in one repository-owned map. If every CI adapter
+  cannot consume that map, run the exhaustive repository gate in CI instead of
+  copying path filters into provider configuration.
+- Keep one exhaustive, non-cached path. Selection and caches optimize proof;
+  they never redefine which changes require proof.
+- Separate ephemeral working state from persistent download and build caches.
+  Key provider, compiler, dependency, and generated-tool caches by the relevant
+  lockfile or source revision plus operating system, architecture, and toolchain
+  when those affect compatibility. A cache miss must remain correct.
+- Exclude `.git`, dependency directories, build output, generated state, and
+  large binaries from filesystem scans unless the scanner's policy explicitly
+  owns them. Do not narrow detectors or disable verification merely to improve
+  timing.
+- Check task-runner install behavior in clean CI. Some runners auto-install every
+  declared tool before one selected task; either cache that installation once or
+  disable task auto-install and install the selected lane's declared tools.
+- Do not share caches from untrusted change execution with privileged deploy,
+  publish, signing, or secret-bearing jobs.
+- Keep policy application, deployment, release, migration, and live acceptance
+  exhaustive unless their owning contract independently proves safe selection.
+
+Record four timings after a material change: unchanged selection, one relevant
+change, warm full verification, and cold full verification. Also report the
+slowest lane and distinguish task time from provisioning, tool installation,
+cache restore, and runner queue time. Optimize measured ownership boundaries,
+not the workflow's total duration by guesswork.
+
 ## Real-Surface Evidence
 
 Choose the smallest check set that can honestly disprove the claim:

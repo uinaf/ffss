@@ -1,6 +1,6 @@
 ---
 name: slopprep
-description: "Audit and improve repository guidance, lifecycle commands, and runner infrastructure for dependable autonomous work. Use when making a repo agent-ready, agent guidance lacks orientation or proof paths, agents cannot boot or verify, setup still needs a human, or a runner must finish tasks unsupervised. Do not use for reviewing an existing diff, an ordinary builder self-check in a healthy repo, or prose-only documentation cleanup."
+description: "Audit and improve repository guidance, lifecycle commands, fast portable verification, and runner infrastructure for dependable autonomous work. Use when making a repo agent-ready, local or CI gates are slow, duplicated, platform-bound, or ad hoc, agents cannot boot or verify, setup still needs a human, or a runner must finish tasks unsupervised. Do not use for reviewing an existing diff, an ordinary builder self-check in a healthy repo, or prose-only documentation cleanup."
 disable-model-invocation: true
 ---
 
@@ -86,6 +86,16 @@ same surface humans and CI already use.
 - Do not invent a parallel `agent-*` script layer.
 - If entrypoints are missing, extend the existing build manifest, task graph,
   compiler/linter/test framework, or typed project CLI.
+- Make verification runner-neutral: local work and GitHub Actions, GitLab CI,
+  Buildkite, or another runner invoke the same repository-owned tasks. Provider
+  configuration may select lanes and restore caches; it must not own a second
+  command graph.
+- Split independent checks into explicit task-graph lanes, run them in parallel,
+  and select affected lanes at the earliest reliable boundary. Keep a forced
+  full gate for broad changes and before claims that require exhaustive proof.
+- Measure unchanged, relevant-change, warm-full, and cold-full paths. Read
+  [references/verification-contract.md](references/verification-contract.md#fast-portable-execution)
+  before changing verification performance or CI selection.
 - A shell file is not required merely to give the command a name; conversely,
   when a plain repo-local script satisfies the contract, it is the finished
   output. Do not scaffold a generator or framework around it.
