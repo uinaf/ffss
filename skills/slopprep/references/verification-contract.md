@@ -56,6 +56,11 @@ logic.
   For heterogeneous repositories, `mise` tasks with explicit dependencies and
   sources are a suitable existing surface; use another established project
   runner when it already owns the graph.
+- Keep each command, dependency set, and test-file list in one live task owner.
+  Compatibility package scripts delegate to that task instead of copying its
+  implementation. Contract tests inspect the task definition actually used by
+  the graph, or execute that task; an assertion against an unused wrapper does
+  not protect the live gate.
 - Give independent checks separate tasks and run their dependency graph in
   parallel. Keep output attributable to each lane and preserve every failure.
   Tasks that write the same generated directory, compiler state, or local cache
