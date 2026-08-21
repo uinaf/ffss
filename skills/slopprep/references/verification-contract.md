@@ -74,8 +74,11 @@ logic.
 - Keep one exhaustive, non-cached path. Selection and caches optimize proof;
   they never redefine which changes require proof.
 - Model generated artifacts as outputs of one task and dependencies of every
-  consumer. Prove the graph once without pre-existing generated output; a warm
-  checkout can hide a missing edge behind stale files.
+  consumer. A dependency edge may only order execution; unless the runner
+  explicitly includes dependency hashes, each cached consumer must also
+  fingerprint the generated files it reads. Prove the graph once without
+  pre-existing generated output; a warm checkout can hide a missing edge behind
+  stale files.
 - Separate ephemeral working state from persistent download and build caches.
   Key provider, compiler, dependency, and generated-tool caches by the relevant
   lockfile or source revision plus operating system, architecture, and toolchain
