@@ -111,6 +111,9 @@ logic.
   publish, signing, or secret-bearing jobs.
 - Keep policy application, deployment, release, migration, and live acceptance
   exhaustive unless their owning contract independently proves safe selection.
+- Before pushing verification-only work, inspect automatic release
+  classification. Use a non-releasing commit type unless a product release is
+  authorized; do not let a verification optimization trigger publication.
 
 Record four timings after a material change: unchanged selection, one relevant
 change, warm full verification, and cold full verification. Also report the
