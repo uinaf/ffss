@@ -62,6 +62,9 @@ logic.
   renamed, staged, unstaged, and untracked cases that the local contract claims
   to support. When local freshness cannot safely represent one case, retain a
   forced full command and make merge-diff CI authoritative for it.
+- Include the task-graph definition itself in each cached lane's inputs. A
+  changed command, dependency edge, source map, or cache policy must invalidate
+  every lane whose meaning changed.
 - Treat task-runner source/output freshness as an optimization, not as
   Git-equivalent affected detection. Preserved timestamps, deletion, and rename
   handling must be proven before freshness can represent those cases.
@@ -70,6 +73,9 @@ logic.
   copying path filters into provider configuration.
 - Keep one exhaustive, non-cached path. Selection and caches optimize proof;
   they never redefine which changes require proof.
+- Model generated artifacts as outputs of one task and dependencies of every
+  consumer. Prove the graph once without pre-existing generated output; a warm
+  checkout can hide a missing edge behind stale files.
 - Separate ephemeral working state from persistent download and build caches.
   Key provider, compiler, dependency, and generated-tool caches by the relevant
   lockfile or source revision plus operating system, architecture, and toolchain
@@ -81,6 +87,15 @@ logic.
 - Check task-runner install behavior in clean CI. Some runners auto-install every
   declared tool before one selected task; either cache that installation once or
   disable task auto-install and install the selected lane's declared tools.
+- Treat environment tracking as cache policy. Fingerprint variables that can
+  change results, and explicitly leave shell bookkeeping such as `SHLVL` and
+  package-manager launch metadata such as `INIT_CWD` untracked only after proving
+  they do not affect output. Otherwise identical work in a new shell becomes a
+  false cache miss.
+- With Vite+ task graphs, keep package-script caching disabled unless every
+  script is pure. A global `run.cache: true` also caches deploy, publish, and
+  migration scripts; prefer the default task-only cache or opt safe tasks in
+  individually.
 - Do not share caches from untrusted change execution with privileged deploy,
   publish, signing, or secret-bearing jobs.
 - Keep policy application, deployment, release, migration, and live acceptance
