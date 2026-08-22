@@ -352,7 +352,9 @@ func waitForTestExecutable(t *testing.T, path string) {
 	t.Helper()
 	const attempts = 8
 	delay := 5 * time.Millisecond
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	// Race-instrumented provider tests can delay process startup under ordinary
+	// host load. Keep the readiness probe bounded without treating 2s as a hang.
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	for attempt := 0; attempt < attempts; attempt++ {
 		command := exec.CommandContext(ctx, path)
