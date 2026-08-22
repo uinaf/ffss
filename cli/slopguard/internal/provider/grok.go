@@ -15,6 +15,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"golang.org/x/mod/semver"
+
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/reviewpolicy"
@@ -43,6 +45,7 @@ type Grok struct {
 	repository  string
 	executable  string
 	environment []string
+	preparation preparationCache
 }
 
 func NewGrok(options GrokOptions) *Grok {
@@ -84,9 +87,14 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("resolve reviewed repository: %v", err), nil, nil)
 	}
-	executables, err := discoverExecutableCandidates(grok.executable, repository, grok.environment)
-	if err != nil {
-		return Result{}, newFailure(protocol.FailureCapability, err.Error(), grok.environment, nil)
+	key := effectivePreparationKey(request.Config)
+	prepared, cached := grok.preparation.get(key)
+	var candidates []string
+	if !cached {
+		candidates, err = discoverExecutableCandidates(grok.executable, repository, grok.environment)
+		if err != nil {
+			return Result{}, newFailure(protocol.FailureCapability, err.Error(), grok.environment, nil)
+		}
 	}
 	if failure := strictCredentialFailure(request.Config, protocol.ProviderGrok, grok.environment); failure != nil {
 		return Result{}, failure
@@ -101,10 +109,19 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 			returnError = newFailure(protocol.FailureInternal, err.Error(), runtime.Environment(), nil)
 		}
 	}()
-	executable, version, err := grok.selectExecutable(reviewContext, executables, runtime.Workspace, runtime.Environment(), request.Config)
-	if err != nil {
-		return Result{}, err
+	environment := runtime.Environment()
+	environment = setEnvironmentValue(environment, "GROK_MEMORY", "0")
+	environment = setEnvironmentValue(environment, "GROK_SUBAGENTS", "0")
+	if !cached {
+		prepared, err = selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
+			return grok.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
+		})
+		if err != nil {
+			return Result{}, err
+		}
+		grok.preparation.store(key, prepared)
 	}
+	executable, version := prepared.Path, prepared.Version
 	promptPath := filepath.Join(runtime.Workspace, "review.prompt")
 	prompt, err := os.OpenFile(promptPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
 	if err != nil {
@@ -136,9 +153,9 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 	}
 	process, processErr := runProcess(reviewContext, processSpec{
 		Path:        executable,
-		Arguments:   grokArguments(request.Config, runtime.Workspace, promptPath, string(providerSchema), model),
+		Arguments:   grokArguments(request.Config, runtime.Workspace, promptPath, string(providerSchema), model, version),
 		Directory:   runtime.Workspace,
-		Environment: runtime.Environment(),
+		Environment: environment,
 		Timeout:     time.Duration(request.Config.Timeout.Value),
 		StdoutLimit: providerStdoutLimit,
 		StderrLimit: providerStderrLimit,
@@ -148,7 +165,7 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
-		return Result{}, processFailure("Grok review", class, processErr, process, runtime.Environment(), &attempt, strictCredentialRecovery(request.Config, protocol.ProviderGrok)).withExecution(resolvedExecution)
+		return Result{}, processFailure("Grok review", class, processErr, process, environment, &attempt, strictCredentialRecovery(request.Config, protocol.ProviderGrok)).withExecution(resolvedExecution)
 	}
 	review, err := decodeGrokEnvelope(process.Stdout, request.Target)
 	if err != nil {
@@ -160,13 +177,13 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		}
 		attempt.ErrorClass = &class
 		if class == protocol.FailureProvider {
-			return Result{}, newFailure(class, err.Error(), runtime.Environment(), &attempt).withExecution(resolvedExecution)
+			return Result{}, newFailure(class, err.Error(), environment, &attempt).withExecution(resolvedExecution)
 		}
 		reason := protocol.ProtocolReasonInvalidEnvelope
 		if errors.Is(err, errGrokIncompleteReview) {
 			reason = protocol.ProtocolReasonReviewValidation
 		}
-		return Result{}, invalidProviderOutput("Grok", "result envelope", reason, runtime.Environment(), &attempt).withExecution(resolvedExecution)
+		return Result{}, invalidProviderOutput("Grok", "result envelope", reason, environment, &attempt).withExecution(resolvedExecution)
 	}
 	attempt.Outcome = protocol.AttemptValid
 	return Result{
@@ -180,25 +197,6 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 			Applied: false,
 		},
 	}, nil
-}
-
-func (grok *Grok) selectExecutable(ctx context.Context, executables []string, workspace string, environment []string, effective config.Effective) (string, string, error) {
-	var lastCapabilityError error
-	for _, executable := range executables {
-		version, err := grok.preflight(ctx, executable, workspace, environment, effective)
-		if err == nil {
-			return executable, version, nil
-		}
-		var failure *Error
-		if !errors.As(err, &failure) || failure.Class != protocol.FailureCapability {
-			return "", "", err
-		}
-		lastCapabilityError = err
-	}
-	if lastCapabilityError != nil {
-		return "", "", lastCapabilityError
-	}
-	return "", "", newFailure(protocol.FailureCapability, "Grok has no usable executable candidate", environment, nil)
 }
 
 func (grok *Grok) preflight(ctx context.Context, executable, workspace string, environment []string, effective config.Effective) (string, error) {
@@ -231,8 +229,11 @@ func (grok *Grok) preflight(ctx context.Context, executable, workspace string, e
 	}
 	required := []string{
 		"--prompt-file", "--output-format", "--json-schema", "--model", "--reasoning-effort", "--max-turns",
-		"--permission-mode", "--tools", "--disallowed-tools", "--allow", "--deny", "--no-plan", "--no-subagents", "--no-memory", "--disable-web-search",
+		"--permission-mode", "--tools", "--disallowed-tools", "--allow", "--deny", "--no-plan", "--no-subagents", "--disable-web-search",
 		"--verbatim", "--cwd",
+	}
+	if grokNeedsNoMemoryFlag(string(match[1])) {
+		required = append(required, "--no-memory")
 	}
 	if effective.Isolation.Value == protocol.IsolationStrict {
 		required = append(required, "--sandbox")
@@ -247,7 +248,7 @@ func (grok *Grok) preflight(ctx context.Context, executable, workspace string, e
 	return string(match[1]), nil
 }
 
-func grokArguments(effective config.Effective, workspace, promptPath, schema, model string) []string {
+func grokArguments(effective config.Effective, workspace, promptPath, schema, model, version string) []string {
 	arguments := []string{
 		"--prompt-file", promptPath,
 		"--output-format", "json",
@@ -258,7 +259,11 @@ func grokArguments(effective config.Effective, workspace, promptPath, schema, mo
 		"--permission-mode", "dontAsk",
 		"--no-plan",
 		"--no-subagents",
-		"--no-memory",
+	}
+	if grokNeedsNoMemoryFlag(version) {
+		arguments = append(arguments, "--no-memory")
+	}
+	arguments = append(arguments,
 		"--verbatim",
 		"--cwd", workspace,
 		"--deny", "Bash",
@@ -267,7 +272,7 @@ func grokArguments(effective config.Effective, workspace, promptPath, schema, mo
 		"--deny", "Read",
 		"--deny", "Grep",
 		"--deny", "MCPTool",
-	}
+	)
 	if effective.WebAccess.Value {
 		arguments = append(arguments,
 			"--tools", "web_search,web_fetch",
@@ -288,6 +293,11 @@ func grokArguments(effective config.Effective, workspace, promptPath, schema, mo
 		arguments = append(arguments, "--sandbox", "workspace")
 	}
 	return arguments
+}
+
+func grokNeedsNoMemoryFlag(version string) bool {
+	value := "v" + version
+	return semver.IsValid(value) && semver.Compare(value, "v1.0.5") < 0
 }
 
 type grokCompletion struct {

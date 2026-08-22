@@ -68,7 +68,7 @@ func TestFakeProviderCLIsRejectInvalidReviewArguments(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		valid := grokArguments(grokConfig(protocol.IsolationStrict, false, 5*time.Second), workspace, promptPath, string(schema), "test-model")
+		valid := grokArguments(grokConfig(protocol.IsolationStrict, false, 5*time.Second), workspace, promptPath, string(schema), "test-model", "1.0.4")
 		executable := newFakeGrok(t, fakeGrokOptions{}).path
 		mutations := [][]string{
 			appendCopy(valid, "--unknown"),

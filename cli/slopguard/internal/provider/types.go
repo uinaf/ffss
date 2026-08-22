@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -83,6 +84,41 @@ type Error struct {
 type reportedProviderError struct {
 	Class   protocol.FailureClass
 	Message string
+}
+
+type preparationKey struct {
+	Isolation protocol.Isolation
+	WebAccess bool
+}
+
+type preparedExecutable struct {
+	Path    string
+	Version string
+}
+
+type preparationCache struct {
+	mu     sync.Mutex
+	values map[preparationKey]preparedExecutable
+}
+
+func (cache *preparationCache) get(key preparationKey) (preparedExecutable, bool) {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	prepared, ok := cache.values[key]
+	return prepared, ok
+}
+
+func (cache *preparationCache) store(key preparationKey, prepared preparedExecutable) {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	if cache.values == nil {
+		cache.values = make(map[preparationKey]preparedExecutable)
+	}
+	cache.values[key] = prepared
+}
+
+func effectivePreparationKey(effective config.Effective) preparationKey {
+	return preparationKey{Isolation: effective.Isolation.Value, WebAccess: effective.WebAccess.Value}
 }
 
 func (failure *reportedProviderError) Error() string {

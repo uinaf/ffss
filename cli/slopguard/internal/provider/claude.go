@@ -32,6 +32,7 @@ type Claude struct {
 	repository  string
 	executable  string
 	environment []string
+	preparation preparationCache
 }
 
 func NewClaude(options ClaudeOptions) *Claude {
@@ -78,9 +79,14 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("resolve reviewed repository: %v", err), nil, nil)
 	}
-	executable, err := discoverExecutable(claude.executable, repository, claude.environment)
-	if err != nil {
-		return Result{}, newFailure(protocol.FailureCapability, err.Error(), claude.environment, nil)
+	key := effectivePreparationKey(request.Config)
+	prepared, cached := claude.preparation.get(key)
+	var candidates []string
+	if !cached {
+		candidates, err = discoverExecutableCandidates(claude.executable, repository, claude.environment)
+		if err != nil {
+			return Result{}, newFailure(protocol.FailureCapability, err.Error(), claude.environment, nil)
+		}
 	}
 	if failure := strictCredentialFailure(request.Config, protocol.ProviderClaude, claude.environment); failure != nil {
 		return Result{}, failure
@@ -99,10 +105,16 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	if request.Config.Isolation.Value == protocol.IsolationStrict {
 		environment = setEnvironmentValue(environment, "CLAUDE_CODE_DISABLE_AUTO_MEMORY", "1")
 	}
-	version, err := claude.preflight(reviewContext, executable, runtime.Workspace, environment, request.Config)
-	if err != nil {
-		return Result{}, err
+	if !cached {
+		prepared, err = selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
+			return claude.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
+		})
+		if err != nil {
+			return Result{}, err
+		}
+		claude.preparation.store(key, prepared)
 	}
+	executable, version := prepared.Path, prepared.Version
 	providerSchema, err := contractschema.ClaudeReviewV1()
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, err.Error(), environment, nil)

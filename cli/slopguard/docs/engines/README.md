@@ -22,6 +22,14 @@ the reviewed repository and invokes it directly with an argument array.
 Repository material is sent on standard input or through a private temporary
 prompt file; it is never placed in process arguments.
 
+Implicit PATH discovery checks candidates in order and skips only executables
+that fail the provider capability contract. An explicit executable path stays
+authoritative and never falls back. Successful executable identity, version,
+and capability preparation is cached for the lifetime of one reviewer and one
+isolation/web policy, so a malformed-review retry does not repeat probes.
+Credentials, workspaces, processes, prompt/output files, timeout, and cleanup
+state remain fresh for every attempt.
+
 Every engine runs in an empty temporary workspace and its own process group with
 a fixed timeout and bounded output. The runtime terminates remaining process
 group members after success, failure, timeout, cancellation, or output overflow.

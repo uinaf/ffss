@@ -1,10 +1,13 @@
 package provider
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
 func discoverExecutable(name, repository string, environment []string) (string, error) {
@@ -52,6 +55,25 @@ func discoverExecutableCandidates(name, repository string, environment []string)
 		return nil, fmt.Errorf("provider executable %q was not found outside the reviewed repository", name)
 	}
 	return candidates, nil
+}
+
+func selectCompatibleExecutable(candidates []string, preflight func(string) (string, error)) (preparedExecutable, error) {
+	var lastCapabilityError error
+	for _, candidate := range candidates {
+		version, err := preflight(candidate)
+		if err == nil {
+			return preparedExecutable{Path: candidate, Version: version}, nil
+		}
+		var failure *Error
+		if !errors.As(err, &failure) || failure.Class != protocol.FailureCapability {
+			return preparedExecutable{}, err
+		}
+		lastCapabilityError = err
+	}
+	if lastCapabilityError != nil {
+		return preparedExecutable{}, lastCapabilityError
+	}
+	return preparedExecutable{}, fmt.Errorf("provider has no usable executable candidate")
 }
 
 func validateExecutable(path, repository string) (string, error) {

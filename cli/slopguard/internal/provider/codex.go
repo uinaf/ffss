@@ -40,6 +40,7 @@ type Codex struct {
 	repository  string
 	executable  string
 	environment []string
+	preparation preparationCache
 }
 
 func NewCodex(options CodexOptions) *Codex {
@@ -80,9 +81,14 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("resolve reviewed repository: %v", err), nil, nil)
 	}
-	executable, err := discoverExecutable(codex.executable, repository, codex.environment)
-	if err != nil {
-		return Result{}, newFailure(protocol.FailureCapability, err.Error(), codex.environment, nil)
+	key := effectivePreparationKey(request.Config)
+	prepared, cached := codex.preparation.get(key)
+	var candidates []string
+	if !cached {
+		candidates, err = discoverExecutableCandidates(codex.executable, repository, codex.environment)
+		if err != nil {
+			return Result{}, newFailure(protocol.FailureCapability, err.Error(), codex.environment, nil)
+		}
 	}
 	if failure := strictCredentialFailure(request.Config, protocol.ProviderCodex, codex.environment); failure != nil {
 		return Result{}, failure
@@ -97,10 +103,16 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 			returnError = newFailure(protocol.FailureInternal, err.Error(), runtime.Environment(), nil)
 		}
 	}()
-	version, err := codex.preflight(reviewContext, executable, runtime, request.Config)
-	if err != nil {
-		return Result{}, err
+	if !cached {
+		prepared, err = selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
+			return codex.preflight(reviewContext, candidate, runtime, request.Config)
+		})
+		if err != nil {
+			return Result{}, err
+		}
+		codex.preparation.store(key, prepared)
 	}
+	executable, version := prepared.Path, prepared.Version
 	state, err := os.MkdirTemp("", "slopguard-codex-state-")
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("create Codex state: %v", err), runtime.Environment(), nil)

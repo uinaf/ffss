@@ -112,6 +112,43 @@ func TestGrokReviewNativeUsesSessionAuthAndExplicitWebPolicy(t *testing.T) {
 	}
 }
 
+func TestGrokReviewUsesMemoryEnvironmentWhenFlagIsUnavailable(t *testing.T) {
+	t.Parallel()
+
+	help := strings.Replace(grokHelp(), "--no-memory\n", "", 1)
+	fake := newFakeGrok(t, fakeGrokOptions{version: "1.0.5", help: help})
+	reviewer := NewGrok(GrokOptions{
+		Repository: t.TempDir(), Executable: fake.path,
+		Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"},
+	})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Provider.Version != "1.0.5" {
+		t.Fatalf("provider = %+v", result.Provider)
+	}
+	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
+	if contains(arguments, "--no-memory") {
+		t.Fatalf("Grok 1.0.5 arguments retained --no-memory: %v", arguments)
+	}
+	environment := readTestFile(t, fake.environment)
+	if !strings.Contains(environment, "GROK_MEMORY=0") || !strings.Contains(environment, "GROK_SUBAGENTS=0") {
+		t.Fatalf("Grok environment = %s", environment)
+	}
+}
+
+func TestGrokNeedsNoMemoryFlag(t *testing.T) {
+	if !grokNeedsNoMemoryFlag("1.0.4") {
+		t.Fatal("Grok 1.0.4 must retain --no-memory")
+	}
+	for _, version := range []string{"1.0.5", "1.1.0", "invalid"} {
+		if grokNeedsNoMemoryFlag(version) {
+			t.Fatalf("grokNeedsNoMemoryFlag(%q) = true", version)
+		}
+	}
+}
+
 func TestGrokReviewFailsCapabilityProbeBeforeInvocation(t *testing.T) {
 	t.Parallel()
 
@@ -462,6 +499,7 @@ func TestGrokReviewOmitsProviderFailureOutput(t *testing.T) {
 
 type fakeGrokOptions struct {
 	help        string
+	version     string
 	output      string
 	reviewError string
 	delay       string
@@ -472,6 +510,7 @@ type fakeGrok struct {
 	arguments   string
 	prompt      string
 	environment string
+	probes      string
 }
 
 func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
@@ -480,9 +519,13 @@ func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
 	fake := fakeGrok{
 		path: filepath.Join(root, "grok"), arguments: filepath.Join(root, "arguments.txt"),
 		prompt: filepath.Join(root, "prompt.txt"), environment: filepath.Join(root, "environment.txt"),
+		probes: filepath.Join(root, "probes.txt"),
 	}
 	if options.help == "" {
 		options.help = grokHelp()
+	}
+	if options.version == "" {
+		options.version = "1.0.4"
 	}
 	if options.output == "" {
 		options.output = grokEnvelope(validGrokReview())
@@ -502,8 +545,8 @@ func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
 	script := "#!/bin/sh\n" +
 		"set -eu\n" +
 		"fail_contract() { printf '%s\\n' 'unexpected Grok CLI arguments' >&2; exit 64; }\n" +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = '--version' ]; then printf '%s\\n' 'grok 1.0.4 (fake)'; exit 0; fi\n" +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = '--help' ]; then printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = '--version' ]; then printf '%s\\n' version >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote("grok "+options.version+" (fake)") + "; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = '--help' ]; then printf '%s\\n' help >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
 		"printf '%s\\n' \"$@\" > " + shellQuote(fake.arguments) + "\n" +
 		"[ \"${1:-}\" = '--prompt-file' ] || fail_contract; shift\n" +
 		"prompt_path=${1:-}; [ -f \"$prompt_path\" ] || fail_contract; shift\n" +
@@ -513,7 +556,9 @@ func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
 		"[ \"${1:-}\" = '--reasoning-effort' ] || fail_contract; shift; [ -n \"${1:-}\" ] || fail_contract; shift\n" +
 		"[ \"${1:-}\" = '--max-turns' ] || fail_contract; shift; [ \"${1:-}\" = '2' ] || fail_contract; shift\n" +
 		"[ \"${1:-}\" = '--permission-mode' ] || fail_contract; shift; [ \"${1:-}\" = 'dontAsk' ] || fail_contract; shift\n" +
-		"for flag in --no-plan --no-subagents --no-memory --verbatim; do [ \"${1:-}\" = \"$flag\" ] || fail_contract; shift; done\n" +
+		"for flag in --no-plan --no-subagents; do [ \"${1:-}\" = \"$flag\" ] || fail_contract; shift; done\n" +
+		"if [ \"${1:-}\" = '--no-memory' ]; then shift; fi\n" +
+		"[ \"${1:-}\" = '--verbatim' ] || fail_contract; shift\n" +
 		"[ \"${1:-}\" = '--cwd' ] || fail_contract; shift; [ -d \"${1:-}\" ] || fail_contract; shift\n" +
 		"for tool in Bash Edit Write Read Grep MCPTool; do [ \"${1:-}\" = '--deny' ] || fail_contract; shift; [ \"${1:-}\" = \"$tool\" ] || fail_contract; shift; done\n" +
 		"[ \"${1:-}\" = '--tools' ] || fail_contract; shift; if [ \"${1:-}\" = 'web_search,web_fetch' ]; then shift; [ \"${1:-}\" = '--disallowed-tools' ] || fail_contract; shift; [ \"${1:-}\" = 'search_tool,use_tool,Agent' ] || fail_contract; shift; [ \"${1:-}\" = '--allow' ] || fail_contract; shift; [ \"${1:-}\" = 'WebFetch' ] || fail_contract; shift; [ \"${1:-}\" = '--allow' ] || fail_contract; shift; [ \"${1:-}\" = 'WebSearch' ] || fail_contract; shift; else [ \"${1:-}\" = 'web_search' ] || fail_contract; shift; [ \"${1:-}\" = '--disallowed-tools' ] || fail_contract; shift; [ \"${1:-}\" = 'web_search,search_tool,use_tool,Agent' ] || fail_contract; shift; [ \"${1:-}\" = '--disable-web-search' ] || fail_contract; shift; for tool in WebFetch WebSearch; do [ \"${1:-}\" = '--deny' ] || fail_contract; shift; [ \"${1:-}\" = \"$tool\" ] || fail_contract; shift; done; fi\n" +
