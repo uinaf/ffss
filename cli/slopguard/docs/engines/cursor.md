@@ -33,8 +33,10 @@ The outer JSON must be one successful Cursor `result` envelope with a non-empty
 string result. The adapter appends a trusted protocol instruction and the exact
 embedded review schema after the frozen bundle.
 
-An outer result with `is_error: true` is a provider-reported failure and does
-not consume the malformed-review retry. The result text remains private.
+An outer object with `type: result`, `subtype: error`, `is_error: true`, and a
+non-empty `result` is a provider-reported failure and does not consume the
+malformed-review retry. Unknown subtypes and missing or blank result text are
+malformed protocol output. Provider result text remains private.
 
 - The inner result is first decoded as exactly one canonical review object.
 - If that fails, the only recovery accepts non-JSON prose followed by one
