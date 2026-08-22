@@ -97,8 +97,15 @@ type preparedExecutable struct {
 }
 
 type preparationCache struct {
-	mu     sync.Mutex
-	values map[preparationKey]preparedExecutable
+	mu       sync.Mutex
+	values   map[preparationKey]preparedExecutable
+	inFlight map[preparationKey]*preparationCall
+}
+
+type preparationCall struct {
+	done     chan struct{}
+	prepared preparedExecutable
+	err      error
 }
 
 func (cache *preparationCache) get(key preparationKey) (preparedExecutable, bool) {
@@ -108,21 +115,45 @@ func (cache *preparationCache) get(key preparationKey) (preparedExecutable, bool
 	return prepared, ok
 }
 
-func (cache *preparationCache) resolve(key preparationKey, prepare func() (preparedExecutable, error)) (preparedExecutable, error) {
+func (cache *preparationCache) resolve(ctx context.Context, key preparationKey, prepare func() (preparedExecutable, error)) (preparedExecutable, error) {
 	cache.mu.Lock()
-	defer cache.mu.Unlock()
 	if prepared, ok := cache.values[key]; ok {
+		cache.mu.Unlock()
 		return prepared, nil
 	}
-	prepared, err := prepare()
-	if err != nil {
-		return preparedExecutable{}, err
+	if call, ok := cache.inFlight[key]; ok {
+		cache.mu.Unlock()
+		select {
+		case <-call.done:
+			return call.prepared, call.err
+		case <-ctx.Done():
+			return preparedExecutable{}, ctx.Err()
+		}
 	}
-	if cache.values == nil {
-		cache.values = make(map[preparationKey]preparedExecutable)
+	if cache.inFlight == nil {
+		cache.inFlight = make(map[preparationKey]*preparationCall)
 	}
-	cache.values[key] = prepared
-	return prepared, nil
+	call := &preparationCall{done: make(chan struct{})}
+	cache.inFlight[key] = call
+	cache.mu.Unlock()
+
+	call.prepared, call.err = prepare()
+
+	cache.mu.Lock()
+	delete(cache.inFlight, key)
+	if call.err == nil {
+		if cache.values == nil {
+			cache.values = make(map[preparationKey]preparedExecutable)
+		}
+		cache.values[key] = call.prepared
+	}
+	close(call.done)
+	cache.mu.Unlock()
+
+	if call.err != nil {
+		return preparedExecutable{}, call.err
+	}
+	return call.prepared, nil
 }
 
 func effectivePreparationKey(effective config.Effective) preparationKey {

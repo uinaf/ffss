@@ -125,6 +125,14 @@ func isOrdinaryProcessExit(err error) bool {
 	return errors.As(err, &failure) && failure.Kind == processExit
 }
 
+func isCapabilityProbeFailure(err error) bool {
+	failure := new(processError)
+	if !errors.As(err, &failure) {
+		return false
+	}
+	return failure.Kind == processStart || failure.Kind == processOutputLimit
+}
+
 type boundedBuffer struct {
 	mu       sync.Mutex
 	buffer   bytes.Buffer

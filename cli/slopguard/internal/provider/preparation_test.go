@@ -90,7 +90,7 @@ func TestPreparationCacheCoalescesMissesAndDoesNotCacheFailures(t *testing.T) {
 		wait.Add(1)
 		go func() {
 			defer wait.Done()
-			prepared, err := cache.resolve(key, func() (preparedExecutable, error) {
+			prepared, err := cache.resolve(context.Background(), key, func() (preparedExecutable, error) {
 				calls.Add(1)
 				time.Sleep(25 * time.Millisecond)
 				return preparedExecutable{Path: "/provider", Version: "1.0.0"}, nil
@@ -115,13 +115,13 @@ func TestPreparationCacheCoalescesMissesAndDoesNotCacheFailures(t *testing.T) {
 
 	failureKey := preparationKey{Isolation: protocol.IsolationNative}
 	failedCalls := 0
-	if _, err := cache.resolve(failureKey, func() (preparedExecutable, error) {
+	if _, err := cache.resolve(context.Background(), failureKey, func() (preparedExecutable, error) {
 		failedCalls++
 		return preparedExecutable{}, errors.New("probe failed")
 	}); err == nil {
 		t.Fatal("failed preparation was accepted")
 	}
-	if _, err := cache.resolve(failureKey, func() (preparedExecutable, error) {
+	if _, err := cache.resolve(context.Background(), failureKey, func() (preparedExecutable, error) {
 		failedCalls++
 		return preparedExecutable{Path: "/native-provider", Version: "1.0.0"}, nil
 	}); err != nil {
@@ -133,7 +133,7 @@ func TestPreparationCacheCoalescesMissesAndDoesNotCacheFailures(t *testing.T) {
 
 	policyCalls := 0
 	webKey := preparationKey{Isolation: protocol.IsolationNative, WebAccess: true}
-	if _, err := cache.resolve(webKey, func() (preparedExecutable, error) {
+	if _, err := cache.resolve(context.Background(), webKey, func() (preparedExecutable, error) {
 		policyCalls++
 		return preparedExecutable{Path: "/web-provider", Version: "1.0.0"}, nil
 	}); err != nil {
@@ -166,6 +166,46 @@ func TestCompatibleSelectionPreservesCandidateOrderAndStopsOnNonCapabilityFailur
 	})
 	if err == nil || strings.Join(order, ",") != "first" {
 		t.Fatalf("non-capability selection order = %v, error = %v", order, err)
+	}
+}
+
+func TestPreparationCacheScopesInflightCallsByPolicyAndHonorsWaiterContext(t *testing.T) {
+	t.Parallel()
+
+	cache := &preparationCache{}
+	slowKey := preparationKey{Isolation: protocol.IsolationStrict}
+	started := make(chan struct{})
+	release := make(chan struct{})
+	finished := make(chan error, 1)
+	go func() {
+		_, err := cache.resolve(context.Background(), slowKey, func() (preparedExecutable, error) {
+			close(started)
+			<-release
+			return preparedExecutable{Path: "/strict", Version: "1.0.0"}, nil
+		})
+		finished <- err
+	}()
+	<-started
+
+	otherKey := preparationKey{Isolation: protocol.IsolationNative}
+	if _, err := cache.resolve(context.Background(), otherKey, func() (preparedExecutable, error) {
+		return preparedExecutable{Path: "/native", Version: "1.0.0"}, nil
+	}); err != nil {
+		t.Fatalf("independent policy preparation blocked: %v", err)
+	}
+
+	waitContext, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	if _, err := cache.resolve(waitContext, slowKey, func() (preparedExecutable, error) {
+		t.Fatal("waiter started duplicate preparation")
+		return preparedExecutable{}, nil
+	}); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("waiter error = %v, want context deadline", err)
+	}
+
+	close(release)
+	if err := <-finished; err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -245,5 +285,24 @@ func TestExplicitProviderExecutableDoesNotFallback(t *testing.T) {
 				t.Fatalf("compatible PATH candidate was invoked after explicit failure: %v", statErr)
 			}
 		})
+	}
+}
+
+func TestImplicitCandidateStopsAfterProviderProbeFailure(t *testing.T) {
+	t.Parallel()
+
+	shimDirectory := t.TempDir()
+	provider := filepath.Join(shimDirectory, "codex")
+	writeTestExecutableAt(t, provider, "#!/bin/sh\nprintf '%s\\n' 'rate limited' >&2\nexit 7\n")
+	fake := newFakeCodex(t, fakeCodexOptions{})
+	environment := []string{
+		"PATH=" + strings.Join([]string{shimDirectory, filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)),
+		"OPENAI_API_KEY=secret",
+	}
+	reviewer := NewCodex(CodexOptions{Repository: t.TempDir(), Environment: environment})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: codexConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	_ = assertProviderError(t, err, protocol.FailureProvider)
+	if _, statErr := os.Stat(fake.arguments); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("compatible candidate was invoked after provider probe failure: %v", statErr)
 	}
 }

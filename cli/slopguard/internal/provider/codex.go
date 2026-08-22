@@ -104,7 +104,7 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		}
 	}()
 	if !cached {
-		prepared, err = codex.preparation.resolve(key, func() (preparedExecutable, error) {
+		prepared, err = codex.preparation.resolve(reviewContext, key, func() (preparedExecutable, error) {
 			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
 				return codex.preflight(reviewContext, candidate, runtime, request.Config)
 			})
@@ -486,7 +486,7 @@ func probeFailure(operation string, err error, result processResult, environment
 
 func probeFailureWithAuthRecovery(operation string, err error, result processResult, environment []string, fallback protocol.FailureClass, authRecovery string) *Error {
 	class := classifyProcessFailure(err, result)
-	if class == protocol.FailureProvider {
+	if class == protocol.FailureProvider && isCapabilityProbeFailure(err) {
 		class = fallback
 	}
 	return processFailure(operation, class, err, result, environment, nil, authRecovery)

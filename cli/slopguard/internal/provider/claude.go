@@ -106,7 +106,7 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 		environment = setEnvironmentValue(environment, "CLAUDE_CODE_DISABLE_AUTO_MEMORY", "1")
 	}
 	if !cached {
-		prepared, err = claude.preparation.resolve(key, func() (preparedExecutable, error) {
+		prepared, err = claude.preparation.resolve(reviewContext, key, func() (preparedExecutable, error) {
 			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
 				return claude.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
 			})
