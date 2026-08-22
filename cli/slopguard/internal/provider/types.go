@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -127,7 +128,7 @@ func (cache *preparationCache) resolve(ctx context.Context, key preparationKey, 
 			cache.mu.Unlock()
 			select {
 			case <-call.done:
-				if call.err != nil && ctx.Err() == nil && call.contextErr != nil {
+				if call.err != nil && ctx.Err() == nil && preparationFailureCausedByContext(call.err, call.contextErr) {
 					continue
 				}
 				return call.prepared, call.err
@@ -160,6 +161,27 @@ func (cache *preparationCache) resolve(ctx context.Context, key preparationKey, 
 			return preparedExecutable{}, call.err
 		}
 		return call.prepared, nil
+	}
+}
+
+func preparationFailureCausedByContext(err, contextErr error) bool {
+	if err == nil || contextErr == nil {
+		return false
+	}
+	if errors.Is(err, contextErr) {
+		return true
+	}
+	var failure *Error
+	if !errors.As(err, &failure) {
+		return false
+	}
+	switch {
+	case errors.Is(contextErr, context.Canceled):
+		return failure.Class == protocol.FailureCancelled
+	case errors.Is(contextErr, context.DeadlineExceeded):
+		return failure.Class == protocol.FailureTimeout
+	default:
+		return false
 	}
 }
 

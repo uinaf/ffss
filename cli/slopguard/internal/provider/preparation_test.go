@@ -253,6 +253,43 @@ func TestPreparationCacheRetriesAfterLeaderCancellation(t *testing.T) {
 	}
 }
 
+func TestPreparationCacheDoesNotRetryCoincidentFailureAfterLeaderCancellation(t *testing.T) {
+	t.Parallel()
+
+	cache := &preparationCache{}
+	key := preparationKey{Isolation: protocol.IsolationStrict}
+	leaderContext, cancelLeader := context.WithCancel(context.Background())
+	leaderStarted := make(chan struct{})
+	leaderDone := make(chan error, 1)
+	go func() {
+		_, err := cache.resolve(leaderContext, key, func() (preparedExecutable, error) {
+			close(leaderStarted)
+			<-leaderContext.Done()
+			return preparedExecutable{}, &Error{Class: protocol.FailureAuth, Message: "authentication failed"}
+		})
+		leaderDone <- err
+	}()
+	<-leaderStarted
+
+	waiterDone := make(chan error, 1)
+	go func() {
+		_, err := cache.resolve(context.Background(), key, func() (preparedExecutable, error) {
+			t.Error("waiter retried a genuine authentication failure")
+			return preparedExecutable{}, nil
+		})
+		waiterDone <- err
+	}()
+	time.Sleep(10 * time.Millisecond)
+	cancelLeader()
+
+	for _, err := range []error{<-leaderDone, <-waiterDone} {
+		var failure *Error
+		if !errors.As(err, &failure) || failure.Class != protocol.FailureAuth {
+			t.Fatalf("shared error = %v, want authentication failure", err)
+		}
+	}
+}
+
 func TestCodexClaudeAndCursorSkipImplicitIncompatibleCandidate(t *testing.T) {
 	t.Parallel()
 
