@@ -36,17 +36,19 @@ type Collector struct {
 
 type collected struct {
 	target       protocol.Target
+	stateHash    string
 	payload      string
 	contributors []Contributor
 }
 
 type targetPlan struct {
-	oldRevision string
-	newRevision string
-	attributes  string
-	sandbox     *gitSandbox
-	target      protocol.Target
-	local       bool
+	oldRevision           string
+	newRevision           string
+	requestedBaseRevision string
+	attributes            string
+	sandbox               *gitSandbox
+	target                protocol.Target
+	local                 bool
 }
 
 func New(options Options) (*Collector, error) {
@@ -109,6 +111,7 @@ func (collector *Collector) Freeze(ctx context.Context, repository string, reque
 		request:      request,
 		collector:    collector,
 		target:       first.target,
+		stateHash:    first.stateHash,
 		payload:      first.payload,
 		contributors: append([]Contributor(nil), first.contributors...),
 	}, nil
@@ -318,7 +321,7 @@ func (collector *Collector) collect(ctx context.Context, root string, request Re
 	if err := budget.SizeError(); err != nil {
 		return nil, err
 	}
-	stateHash, err := collector.sourceStateHash(ctx, root, plan)
+	stateHash, err := collector.sourceStateHash(ctx, root, plan, contexts)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +362,7 @@ func (collector *Collector) collect(ctx context.Context, root string, request Re
 		return nil, err
 	}
 	plan.target.SnapshotHash = snapshot
-	return &collected{target: plan.target, payload: payload, contributors: contributors}, nil
+	return &collected{target: plan.target, stateHash: stateHash, payload: payload, contributors: contributors}, nil
 }
 
 func (collector *Collector) plan(ctx context.Context, root string, request Request, sandbox *gitSandbox) (*targetPlan, error) {
@@ -374,20 +377,11 @@ func (collector *Collector) plan(ctx context.Context, root string, request Reque
 		}
 		return &targetPlan{oldRevision: head, local: true, sandbox: sandbox, attributes: sandbox.attributeSource, target: protocol.Target{Mode: protocol.TargetLocal, HeadRevision: head}}, nil
 	case protocol.TargetBranch:
-		base, err := collector.resolveCommit(ctx, root, request.Base)
+		base, mergeBase, head, err := collector.resolveBranch(ctx, root, request.Base)
 		if err != nil {
-			return nil, fmt.Errorf("resolve base: %w", err)
+			return nil, err
 		}
-		head, err := collector.resolveCommit(ctx, root, "HEAD")
-		if err != nil {
-			return nil, fmt.Errorf("resolve HEAD: %w", err)
-		}
-		mergeBase, err := collector.git.runSandbox(ctx, root, sandbox, nil, 128<<10, "merge-base", base, head)
-		if err != nil {
-			return nil, fmt.Errorf("resolve merge base: %w", err)
-		}
-		mergeBaseRevision := strings.TrimSpace(string(mergeBase))
-		return &targetPlan{oldRevision: mergeBaseRevision, newRevision: head, sandbox: sandbox, attributes: sandbox.attributeSource, target: protocol.Target{Mode: protocol.TargetBranch, BaseRevision: mergeBaseRevision, HeadRevision: head}}, nil
+		return &targetPlan{oldRevision: mergeBase, newRevision: head, requestedBaseRevision: base, sandbox: sandbox, attributes: sandbox.attributeSource, target: protocol.Target{Mode: protocol.TargetBranch, BaseRevision: mergeBase, HeadRevision: head}}, nil
 	case protocol.TargetCommit:
 		commit, err := collector.resolveCommit(ctx, root, request.Commit)
 		if err != nil {
@@ -411,6 +405,61 @@ func (collector *Collector) plan(ctx context.Context, root string, request Reque
 	default:
 		return nil, fmt.Errorf("unsupported target mode %q", request.Mode)
 	}
+}
+
+func (collector *Collector) resolveBranch(ctx context.Context, root, requestedBase string) (string, string, string, error) {
+	base, err := collector.resolveCommit(ctx, root, requestedBase)
+	if err != nil {
+		return "", "", "", fmt.Errorf("resolve base: %w", err)
+	}
+	head, err := collector.resolveCommit(ctx, root, "HEAD")
+	if err != nil {
+		return "", "", "", fmt.Errorf("resolve HEAD: %w", err)
+	}
+	mergeBase, err := collector.git.runNoReplace(ctx, root, nil, 128<<10, "merge-base", base, head)
+	if err != nil {
+		return "", "", "", fmt.Errorf("resolve merge base: %w", err)
+	}
+	mergeBaseRevision := strings.TrimSpace(string(mergeBase))
+	if !validObjectID(mergeBaseRevision) {
+		return "", "", "", fmt.Errorf("resolve merge base: Git returned invalid object ID")
+	}
+	return base, mergeBaseRevision, head, nil
+}
+
+func (collector *Collector) immutableSourceStateHash(ctx context.Context, root string, request Request) (string, error) {
+	plan := &targetPlan{}
+	switch request.Mode {
+	case protocol.TargetBranch:
+		base, mergeBase, head, err := collector.resolveBranch(ctx, root, request.Base)
+		if err != nil {
+			return "", err
+		}
+		plan.requestedBaseRevision = base
+		plan.target = protocol.Target{Mode: protocol.TargetBranch, BaseRevision: mergeBase, HeadRevision: head}
+	case protocol.TargetCommit:
+		commit, err := collector.resolveCommit(ctx, root, request.Commit)
+		if err != nil {
+			return "", fmt.Errorf("resolve commit: %w", err)
+		}
+		plan.target = protocol.Target{Mode: protocol.TargetCommit, CommitRevision: commit}
+	default:
+		return "", fmt.Errorf("unsupported immutable target mode %q", request.Mode)
+	}
+	contexts := make(map[string][]byte, len(request.ContextFiles))
+	remaining := request.MaxBytes
+	for _, path := range request.ContextFiles {
+		content, size, err := readContainedFile(root, path, remaining)
+		if err != nil {
+			return "", fmt.Errorf("read context %q: %w", path, err)
+		}
+		if size > remaining {
+			return "", fmt.Errorf("context %q exceeds verification budget", path)
+		}
+		remaining -= size
+		contexts[path] = content
+	}
+	return immutableStateHash(plan, contexts)
 }
 
 func (collector *Collector) resolveHEAD(ctx context.Context, root string) (string, bool, error) {

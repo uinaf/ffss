@@ -429,6 +429,43 @@ func TestReviewCommandRefusesSourceMutation(t *testing.T) {
 	}
 }
 
+func TestReviewCommandAcceptsUnrelatedImmutableMutation(t *testing.T) {
+	t.Parallel()
+
+	for _, mode := range []protocol.TargetMode{protocol.TargetBranch, protocol.TargetCommit} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			repository := reviewRepository(t)
+			gitCommand(t, repository, "switch", "-q", "-c", "feature")
+			gitCommand(t, repository, "add", "app.go")
+			gitCommand(t, repository, "-c", "user.name=Slopguard Test", "-c", "user.email=test@example.invalid", "commit", "-q", "-m", "reviewed")
+			arguments := []string{"review", "--repository", repository, "--mode", string(mode), "--engine", "codex", "--output", "json"}
+			if mode == protocol.TargetBranch {
+				arguments = append(arguments, "--base", "main")
+			} else {
+				arguments = append(arguments, "--commit", "HEAD")
+			}
+			reviewer := &scriptedReviewer{results: []reviewStep{{before: func() {
+				if err := os.WriteFile(filepath.Join(repository, "unrelated.txt"), []byte("unrelated\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}, result: cleanResult()}}}
+			var stdout bytes.Buffer
+			exit := run(t.Context(), arguments, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+			if exit != 0 {
+				t.Fatalf("run() exit = %d, output = %s", exit, stdout.String())
+			}
+			var result protocol.Report
+			if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Status != protocol.StatusClean || result.Failure != nil {
+				t.Fatalf("result = %+v", result)
+			}
+		})
+	}
+}
+
 func TestReviewCommandReportsOutputFailure(t *testing.T) {
 	t.Parallel()
 

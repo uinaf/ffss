@@ -708,7 +708,54 @@ func (writer *deletedBatchWriter) Err() error {
 	return nil
 }
 
-func (collector *Collector) sourceStateHash(ctx context.Context, root string, plan *targetPlan) (string, error) {
+func (collector *Collector) sourceStateHash(ctx context.Context, root string, plan *targetPlan, contexts map[string][]byte) (string, error) {
+	if !plan.local {
+		return immutableStateHash(plan, contexts)
+	}
+	return collector.localSourceStateHash(ctx, root, plan)
+}
+
+func immutableStateHash(plan *targetPlan, contexts map[string][]byte) (string, error) {
+	hash := sha256.New()
+	sections := []struct {
+		label string
+		value string
+	}{
+		{label: "mode", value: string(plan.target.Mode)},
+		{label: "requested-base", value: plan.requestedBaseRevision},
+		{label: "merge-base", value: plan.target.BaseRevision},
+		{label: "head", value: plan.target.HeadRevision},
+		{label: "commit", value: plan.target.CommitRevision},
+	}
+	for _, section := range sections {
+		value := section.value
+		if err := hashSourceSection(hash, section.label, func(output io.Writer) error {
+			_, err := io.WriteString(output, value)
+			return err
+		}); err != nil {
+			return "", fmt.Errorf("fingerprint %s: %w", section.label, err)
+		}
+	}
+	for _, path := range sortedKeys(contexts) {
+		path := path
+		content := contexts[path]
+		if err := hashSourceSection(hash, "context-path", func(output io.Writer) error {
+			_, err := io.WriteString(output, path)
+			return err
+		}); err != nil {
+			return "", fmt.Errorf("fingerprint context path: %w", err)
+		}
+		if err := hashSourceSection(hash, "context-content", func(output io.Writer) error {
+			_, err := output.Write(content)
+			return err
+		}); err != nil {
+			return "", fmt.Errorf("fingerprint context %q: %w", path, err)
+		}
+	}
+	return "sha256:" + hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func (collector *Collector) localSourceStateHash(ctx context.Context, root string, plan *targetPlan) (string, error) {
 	headRevision, unborn, err := collector.resolveHEAD(ctx, root)
 	if err != nil {
 		return "", err

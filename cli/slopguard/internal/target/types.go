@@ -126,6 +126,7 @@ type Bundle struct {
 	request      Request
 	collector    *Collector
 	target       protocol.Target
+	stateHash    string
 	payload      string
 	contributors []Contributor
 }
@@ -152,6 +153,19 @@ func (bundle *Bundle) Contributors() []Contributor {
 }
 
 func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
+	if bundle.request.Mode != protocol.TargetLocal {
+		current, err := bundle.collector.immutableSourceStateHash(ctx, bundle.repository, bundle.request)
+		if err != nil {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return ctxErr
+			}
+			return fmt.Errorf("%w: verify immutable target: %v", ErrSourceChanged, err)
+		}
+		if current != bundle.stateHash {
+			return ErrSourceChanged
+		}
+		return nil
+	}
 	current, err := bundle.collector.collect(ctx, bundle.repository, bundle.request, false)
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
