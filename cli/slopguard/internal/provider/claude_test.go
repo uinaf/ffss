@@ -128,7 +128,7 @@ func TestClaudeReviewFailsCapabilityProbeBeforeInvocation(t *testing.T) {
 func TestClaudeReviewNativeReportsProviderAuthenticationFailure(t *testing.T) {
 	t.Parallel()
 
-	fake := newFakeClaude(t, fakeClaudeOptions{reviewError: "not authenticated"})
+	fake := newFakeClaude(t, fakeClaudeOptions{reviewOutputError: `{"type":"result","subtype":"success","is_error":true,"api_error_status":401,"result":"Invalid API key"}`})
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home"}})
 	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationNative, false, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureAuth)
@@ -293,10 +293,11 @@ func TestClaudeReviewRejectsUnsupportedEffort(t *testing.T) {
 }
 
 type fakeClaudeOptions struct {
-	help        string
-	output      string
-	reviewError string
-	delay       string
+	help              string
+	output            string
+	reviewError       string
+	reviewOutputError string
+	delay             string
 }
 
 type fakeClaude struct {
@@ -324,7 +325,9 @@ func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 		t.Fatal(err)
 	}
 	reviewFailure := ""
-	if options.reviewError != "" {
+	if options.reviewOutputError != "" {
+		reviewFailure = "printf '%s' " + shellQuote(options.reviewOutputError) + "\nexit 7\n"
+	} else if options.reviewError != "" {
 		reviewFailure = "printf '%b' " + shellQuote(options.reviewError) + " >&2\nexit 7\n"
 	}
 	delay := ""

@@ -49,12 +49,16 @@ func TestBinaryLiveProviderMatrix(t *testing.T) {
 
 	providers := selectedLiveProviders(t)
 	routes := selectedLiveAuthRoutes(t)
+	requireLiveStrictCredentials(t, providers, routes)
 	for _, live := range providers {
 		if _, err := exec.LookPath(live.executable); err != nil {
 			t.Fatalf("live %s verification requires %s on PATH", live.name, live.executable)
 		}
 	}
 	repeat := liveRepeat(t)
+	if err := validateLiveMatrixSize(len(providers), len(routes), repeat); err != nil {
+		t.Fatal(err)
+	}
 	binary := buildSlopguardBinary(t)
 	cleanRepository, cleanCommit := liveFixtureRepository(t, "after")
 	defectiveRepository, defectiveCommit := liveFixtureRepository(t, "defective")
@@ -153,6 +157,28 @@ func TestSelectedLiveAuthRoutes(t *testing.T) {
 	})
 }
 
+func TestValidateLiveMatrixSize(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		providers int
+		routes    int
+		repeat    int
+		wantError bool
+	}{
+		{name: "one route maximum", providers: 4, routes: 1, repeat: 10},
+		{name: "two route maximum", providers: 4, routes: 2, repeat: 5},
+		{name: "selected provider matrix", providers: 1, routes: 2, repeat: 10},
+		{name: "too many reviews", providers: 4, routes: 2, repeat: 6, wantError: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := validateLiveMatrixSize(test.providers, test.routes, test.repeat)
+			if (err != nil) != test.wantError {
+				t.Fatalf("validateLiveMatrixSize() error = %v, wantError = %t", err, test.wantError)
+			}
+		})
+	}
+}
+
 func selectedLiveProviders(t *testing.T) []liveProvider {
 	t.Helper()
 	available := []liveProvider{
@@ -212,6 +238,30 @@ func selectedLiveAuthRoutes(t *testing.T) []liveAuthRoute {
 		routes = append(routes, route)
 	}
 	return routes
+}
+
+func requireLiveStrictCredentials(t *testing.T, providers []liveProvider, routes []liveAuthRoute) {
+	t.Helper()
+	strictSelected := false
+	for _, route := range routes {
+		strictSelected = strictSelected || route == liveAuthStrictKey
+	}
+	if !strictSelected {
+		return
+	}
+	for _, live := range providers {
+		_, _ = liveStrictCredential(t, live)
+	}
+}
+
+func validateLiveMatrixSize(providers, routes, repeat int) error {
+	const controlsPerRoute = 2
+	const maximumReviews = 80
+	reviews := providers * routes * controlsPerRoute * repeat
+	if reviews > maximumReviews {
+		return fmt.Errorf("live provider matrix requests %d reviews; maximum is %d within the 8h30m test timeout", reviews, maximumReviews)
+	}
+	return nil
 }
 
 func liveRepeat(t *testing.T) int {

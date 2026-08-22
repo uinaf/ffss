@@ -156,7 +156,7 @@ func TestGrokReviewSkipsIncompatibleToolManagerShim(t *testing.T) {
 func TestGrokReviewNativeReportsProviderAuthenticationFailure(t *testing.T) {
 	t.Parallel()
 
-	fake := newFakeGrok(t, fakeGrokOptions{reviewError: "not authenticated"})
+	fake := newFakeGrok(t, fakeGrokOptions{reviewError: "Not signed in. To authenticate, run grok login."})
 	reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home"}})
 	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationNative, false, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureAuth)

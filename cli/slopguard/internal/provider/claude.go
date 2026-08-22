@@ -127,7 +127,7 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	})
 	attempt := protocol.Attempt{Number: 1, DurationMS: process.Duration.Milliseconds()}
 	if processErr != nil {
-		class := classifyProcessFailure(processErr, process)
+		class := classifyClaudeProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
 		return Result{}, processFailure("Claude review", class, processErr, process, environment, &attempt, strictCredentialRecovery(request.Config, protocol.ProviderClaude)).withExecution(resolvedExecution)
@@ -158,6 +158,29 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 			Applied: false,
 		},
 	}, nil
+}
+
+func classifyClaudeProcessFailure(err error, result processResult) protocol.FailureClass {
+	class := classifyProcessFailure(err, result)
+	if class == protocol.FailureProvider && claudeAuthenticationStatus(result.Stdout) == 401 {
+		return protocol.FailureAuth
+	}
+	return class
+}
+
+func claudeAuthenticationStatus(output []byte) int {
+	output = bytes.TrimSpace(output)
+	if len(output) == 0 || protocol.RejectDuplicateKeys(output) != nil {
+		return 0
+	}
+	var envelope struct {
+		IsError        *bool `json:"is_error"`
+		APIErrorStatus *int  `json:"api_error_status"`
+	}
+	if err := json.Unmarshal(output, &envelope); err != nil || envelope.IsError == nil || !*envelope.IsError || envelope.APIErrorStatus == nil {
+		return 0
+	}
+	return *envelope.APIErrorStatus
 }
 
 func (claude *Claude) preflight(ctx context.Context, executable, workspace string, environment []string, effective config.Effective) (string, error) {

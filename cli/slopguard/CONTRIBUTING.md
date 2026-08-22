@@ -69,11 +69,14 @@ SLOPGUARD_LIVE_PROVIDERS=grok SLOPGUARD_LIVE_REPEAT=3 mise run verify:live
 - Cursor runs with web access because its harness cannot guarantee per-run
   web disablement; the other providers run with web access off.
 - `SLOPGUARD_LIVE_REPEAT` is bounded from 1 through 10.
+- The selected providers, routes, 2 controls, and repeat count may request at
+  most 80 reviews, which keeps the worst-case retry path inside the 8h30m test
+  timeout.
 - These checks consume provider quota and require every selected harness
   plus `trufflehog` on `PATH`.
 - At the maximum repeat value, the default four-provider route can take more
-  than eight hours when every review consumes its protocol retry. Selecting
-  both auth routes doubles the review count.
+  than eight hours when every review consumes its protocol retry. The full
+  two-route matrix therefore caps the repeat count at 5.
 
 ## Pull Requests
 
