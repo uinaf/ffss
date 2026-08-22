@@ -20,7 +20,7 @@ import (
 func TestGrokReviewStrictUsesFrozenPromptAndBoundedPolicy(t *testing.T) {
 	t.Parallel()
 
-	fake := newFakeGrok(t, fakeGrokOptions{authError: "not logged in"})
+	fake := newFakeGrok(t, fakeGrokOptions{})
 	reviewer := NewGrok(GrokOptions{
 		Repository: t.TempDir(), Executable: fake.path,
 		Environment: []string{
@@ -83,7 +83,7 @@ func TestGrokReviewNativeUsesSessionAuthAndExplicitWebPolicy(t *testing.T) {
 	fake := newFakeGrok(t, fakeGrokOptions{})
 	reviewer := NewGrok(GrokOptions{
 		Repository: t.TempDir(), Executable: fake.path,
-		Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home", "GROK_HOME=/native/grok"},
+		Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home", "GROK_HOME=/native/grok", "XAI_BASE_URL=https://gateway.invalid"},
 	})
 	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationNative, true, 5*time.Second)})
 	if err != nil {
@@ -107,7 +107,7 @@ func TestGrokReviewNativeUsesSessionAuthAndExplicitWebPolicy(t *testing.T) {
 		}
 	}
 	environment := readTestFile(t, fake.environment)
-	if !strings.Contains(environment, "HOME=/native/home") || !strings.Contains(environment, "GROK_HOME=/native/grok") {
+	if !strings.Contains(environment, "HOME=/native/home") || !strings.Contains(environment, "GROK_HOME=/native/grok") || !strings.Contains(environment, "XAI_BASE_URL=https://gateway.invalid") {
 		t.Fatalf("native environment = %s", environment)
 	}
 }
@@ -153,34 +153,17 @@ func TestGrokReviewSkipsIncompatibleToolManagerShim(t *testing.T) {
 	}
 }
 
-func TestGrokReviewReportsAuthenticationFailure(t *testing.T) {
+func TestGrokReviewNativeReportsProviderAuthenticationFailure(t *testing.T) {
 	t.Parallel()
 
-	for _, test := range []struct {
-		name    string
-		options fakeGrokOptions
-	}{
-		{name: "not authenticated", options: fakeGrokOptions{loggedOut: true}},
-		{name: "not logged in", options: fakeGrokOptions{authStatus: "You are not logged in.\nAvailable models:"}},
-		{name: "logged out", options: fakeGrokOptions{authStatus: "You are logged out.\nAvailable models:"}},
-		{name: "no active session", options: fakeGrokOptions{authStatus: "No active session.\nAvailable models:"}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			fake := newFakeGrok(t, test.options)
-			reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home"}})
-			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationNative, false, 5*time.Second)})
-			_ = assertProviderError(t, err, protocol.FailureAuth)
-		})
-	}
-}
-
-func TestGrokReviewReportsAuthenticationFormatDriftAsCapabilityFailure(t *testing.T) {
-	t.Parallel()
-
-	fake := newFakeGrok(t, fakeGrokOptions{authStatus: "Account ready."})
+	fake := newFakeGrok(t, fakeGrokOptions{reviewError: "not authenticated"})
 	reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home"}})
 	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationNative, false, 5*time.Second)})
-	_ = assertProviderError(t, err, protocol.FailureCapability)
+	failure := assertProviderError(t, err, protocol.FailureAuth)
+	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
+		t.Fatalf("attempt = %+v", failure.Attempt)
+	}
+	assertExecutionMetadata(t, failure, protocol.ProviderGrok, "1.0.4", protocol.IsolationNative, false)
 }
 
 func TestGrokReviewStrictExplainsCredentialRequirement(t *testing.T) {
@@ -479,9 +462,6 @@ func TestGrokReviewOmitsProviderFailureOutput(t *testing.T) {
 
 type fakeGrokOptions struct {
 	help        string
-	loggedOut   bool
-	authError   string
-	authStatus  string
 	output      string
 	reviewError string
 	delay       string
@@ -511,16 +491,6 @@ func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
 	if err := os.WriteFile(outputPath, []byte(options.output), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	authBlock := "printf '%s\\n' 'You are logged in with grok.com.\n\nDefault model: grok-4.6\n\nAvailable models:\n  * grok-4.6 (default)'\nexit 0"
-	if options.loggedOut {
-		authBlock = "printf '%s\\n' 'You are not authenticated.\n\nDefault model: grok-4.6\n\nAvailable models:\n  * grok-4.6 (default)'\nexit 0"
-	}
-	if options.authStatus != "" {
-		authBlock = "printf '%s\\n' " + shellQuote(options.authStatus) + "\nexit 0"
-	}
-	if options.authError != "" {
-		authBlock = "printf '%s' " + shellQuote(options.authError) + " >&2\nexit 1"
-	}
 	reviewFailure := ""
 	if options.reviewError != "" {
 		reviewFailure = "printf '%b' " + shellQuote(options.reviewError) + " >&2\nexit 7\n"
@@ -534,7 +504,6 @@ func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
 		"fail_contract() { printf '%s\\n' 'unexpected Grok CLI arguments' >&2; exit 64; }\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = '--version' ]; then printf '%s\\n' 'grok 1.0.4 (fake)'; exit 0; fi\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = '--help' ]; then printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = 'models' ]; then " + authBlock + "; fi\n" +
 		"printf '%s\\n' \"$@\" > " + shellQuote(fake.arguments) + "\n" +
 		"[ \"${1:-}\" = '--prompt-file' ] || fail_contract; shift\n" +
 		"prompt_path=${1:-}; [ -f \"$prompt_path\" ] || fail_contract; shift\n" +
@@ -571,7 +540,7 @@ func grokHelp() string {
 		"--disallowed-tools <tools>",
 		"--allow <rule>",
 		"--deny <rule>",
-		"--no-plan", "--no-subagents", "--no-memory", "--disable-web-search", "--verbatim", "--cwd <path>", "--sandbox <profile>", "models",
+		"--no-plan", "--no-subagents", "--no-memory", "--disable-web-search", "--verbatim", "--cwd <path>", "--sandbox <profile>",
 	}, "\n")
 }
 

@@ -15,11 +15,19 @@ import (
 )
 
 type liveProvider struct {
-	name       protocol.ProviderName
-	executable string
-	model      string
-	webAccess  bool
+	name        protocol.ProviderName
+	executable  string
+	model       string
+	webAccess   bool
+	credentials []string
 }
+
+type liveAuthRoute string
+
+const (
+	liveAuthNativeConfig liveAuthRoute = "native-config"
+	liveAuthStrictKey    liveAuthRoute = "strict-key"
+)
 
 type liveControl struct {
 	name        string
@@ -40,6 +48,7 @@ func TestBinaryLiveProviderMatrix(t *testing.T) {
 	}
 
 	providers := selectedLiveProviders(t)
+	routes := selectedLiveAuthRoutes(t)
 	for _, live := range providers {
 		if _, err := exec.LookPath(live.executable); err != nil {
 			t.Fatalf("live %s verification requires %s on PATH", live.name, live.executable)
@@ -73,12 +82,14 @@ func TestBinaryLiveProviderMatrix(t *testing.T) {
 
 	for round := 1; round <= repeat; round++ {
 		for _, live := range providers {
-			for _, control := range controls {
-				name := fmt.Sprintf("%s/round-%d/%s", live.name, round, control.name)
-				t.Run(name, func(t *testing.T) {
-					report := runLiveReview(t, binary, live, control)
-					validateLiveReport(t, report, live, control)
-				})
+			for _, route := range routes {
+				for _, control := range controls {
+					name := fmt.Sprintf("%s/%s/round-%d/%s", live.name, route, round, control.name)
+					t.Run(name, func(t *testing.T) {
+						report := runLiveReview(t, binary, live, route, control)
+						validateLiveReport(t, report, live, route, control)
+					})
+				}
 			}
 		}
 	}
@@ -87,12 +98,15 @@ func TestBinaryLiveProviderMatrix(t *testing.T) {
 func TestLiveReviewEnvironmentIsolation(t *testing.T) {
 	t.Setenv("SLOPGUARD_REASONING_EFFORT", "low")
 	t.Setenv("CURSOR_CONFIG_DIR", "/provider/state")
+	t.Setenv("CODEX_API_KEY", "direct-codex-key")
+	t.Setenv("OPENAI_API_KEY", "direct-openai-key")
 	t.Setenv("GIT_CONFIG_GLOBAL", "/host/global.gitconfig")
 	t.Setenv("GIT_CONFIG_SYSTEM", "/host/system.gitconfig")
 	t.Setenv("XDG_CONFIG_HOME", "/host/xdg")
 
 	values := make(map[string]string)
-	for _, entry := range liveReviewEnvironment(t) {
+	live := liveProvider{name: protocol.ProviderCodex, credentials: []string{"CODEX_API_KEY", "OPENAI_API_KEY"}}
+	for _, entry := range liveReviewEnvironment(t, live, liveAuthNativeConfig) {
 		name, value, _ := strings.Cut(entry, "=")
 		if strings.HasPrefix(name, "SLOPGUARD_") {
 			t.Fatalf("live environment retained %s", name)
@@ -108,15 +122,44 @@ func TestLiveReviewEnvironmentIsolation(t *testing.T) {
 	if values["XDG_CONFIG_HOME"] == "/host/xdg" || !filepath.IsAbs(values["XDG_CONFIG_HOME"]) {
 		t.Fatalf("XDG_CONFIG_HOME = %q", values["XDG_CONFIG_HOME"])
 	}
+	if values["CODEX_API_KEY"] != "" || values["OPENAI_API_KEY"] != "" {
+		t.Fatalf("native config route retained a direct provider key")
+	}
+
+	strictValues := make(map[string]string)
+	for _, entry := range liveReviewEnvironment(t, live, liveAuthStrictKey) {
+		name, value, _ := strings.Cut(entry, "=")
+		strictValues[name] = value
+	}
+	if strictValues["CODEX_API_KEY"] == "" || strictValues["OPENAI_API_KEY"] != "" {
+		t.Fatalf("strict key route did not isolate one provider key")
+	}
+}
+
+func TestSelectedLiveAuthRoutes(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		t.Setenv("SLOPGUARD_LIVE_AUTH_ROUTES", "")
+		routes := selectedLiveAuthRoutes(t)
+		if len(routes) != 1 || routes[0] != liveAuthNativeConfig {
+			t.Fatalf("default routes = %v", routes)
+		}
+	})
+	t.Run("explicit matrix", func(t *testing.T) {
+		t.Setenv("SLOPGUARD_LIVE_AUTH_ROUTES", "native-config,strict-key")
+		routes := selectedLiveAuthRoutes(t)
+		if len(routes) != 2 || routes[0] != liveAuthNativeConfig || routes[1] != liveAuthStrictKey {
+			t.Fatalf("explicit routes = %v", routes)
+		}
+	})
 }
 
 func selectedLiveProviders(t *testing.T) []liveProvider {
 	t.Helper()
 	available := []liveProvider{
-		{name: protocol.ProviderCodex, executable: "codex", model: provider.DefaultCodexModel},
-		{name: protocol.ProviderClaude, executable: "claude", model: provider.DefaultClaudeModel},
-		{name: protocol.ProviderCursor, executable: "cursor-agent", model: provider.DefaultCursorModel, webAccess: true},
-		{name: protocol.ProviderGrok, executable: "grok", model: provider.DefaultGrokModel},
+		{name: protocol.ProviderCodex, executable: "codex", model: provider.DefaultCodexModel, credentials: []string{"CODEX_API_KEY", "OPENAI_API_KEY"}},
+		{name: protocol.ProviderClaude, executable: "claude", model: provider.DefaultClaudeModel, credentials: []string{"ANTHROPIC_API_KEY"}},
+		{name: protocol.ProviderCursor, executable: "cursor-agent", model: provider.DefaultCursorModel, webAccess: true, credentials: []string{"CURSOR_API_KEY"}},
+		{name: protocol.ProviderGrok, executable: "grok", model: provider.DefaultGrokModel, credentials: []string{"XAI_API_KEY"}},
 	}
 	selection := strings.TrimSpace(os.Getenv("SLOPGUARD_LIVE_PROVIDERS"))
 	if selection == "" {
@@ -145,6 +188,30 @@ func selectedLiveProviders(t *testing.T) []liveProvider {
 		t.Fatalf("SLOPGUARD_LIVE_PROVIDERS contains unsupported providers: %s", strings.Join(unknown, ", "))
 	}
 	return selected
+}
+
+func selectedLiveAuthRoutes(t *testing.T) []liveAuthRoute {
+	t.Helper()
+	selection := strings.TrimSpace(os.Getenv("SLOPGUARD_LIVE_AUTH_ROUTES"))
+	if selection == "" {
+		return []liveAuthRoute{liveAuthNativeConfig}
+	}
+	seen := make(map[liveAuthRoute]struct{})
+	routes := make([]liveAuthRoute, 0, 2)
+	for _, value := range strings.Split(selection, ",") {
+		route := liveAuthRoute(strings.TrimSpace(value))
+		switch route {
+		case liveAuthNativeConfig, liveAuthStrictKey:
+		default:
+			t.Fatalf("SLOPGUARD_LIVE_AUTH_ROUTES contains unsupported route %q", value)
+		}
+		if _, duplicate := seen[route]; duplicate {
+			t.Fatalf("SLOPGUARD_LIVE_AUTH_ROUTES repeats route %q", route)
+		}
+		seen[route] = struct{}{}
+		routes = append(routes, route)
+	}
+	return routes
 }
 
 func liveRepeat(t *testing.T) int {
@@ -231,7 +298,7 @@ func gitOutput(t *testing.T, repository string, arguments ...string) string {
 	return strings.TrimSpace(string(output))
 }
 
-func runLiveReview(t *testing.T, binary string, live liveProvider, control liveControl) protocol.Report {
+func runLiveReview(t *testing.T, binary string, live liveProvider, route liveAuthRoute, control liveControl) protocol.Report {
 	t.Helper()
 	arguments := []string{
 		"review",
@@ -240,7 +307,7 @@ func runLiveReview(t *testing.T, binary string, live liveProvider, control liveC
 		"--commit", control.commit,
 		"--engine", string(live.name),
 		"--model", live.model,
-		"--isolation", "native",
+		"--isolation", string(liveRouteIsolation(route)),
 		"--retries", "1",
 		"--timeout", "3m",
 		"--output", "json",
@@ -252,7 +319,7 @@ func runLiveReview(t *testing.T, binary string, live liveProvider, control liveC
 		arguments = append(arguments, "--web-access=false", "--reasoning-effort", "high")
 	}
 	command := exec.CommandContext(t.Context(), binary, arguments...)
-	command.Env = liveReviewEnvironment(t)
+	command.Env = liveReviewEnvironment(t, live, route)
 	command.Stdin = strings.NewReader(control.contract)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -269,13 +336,37 @@ func runLiveReview(t *testing.T, binary string, live liveProvider, control liveC
 	return report
 }
 
-func liveReviewEnvironment(t *testing.T) []string {
+func liveReviewEnvironment(t *testing.T, live liveProvider, route liveAuthRoute) []string {
 	t.Helper()
-	return replaceEnvironment(withoutEnvironmentPrefix(os.Environ(), "SLOPGUARD_"), map[string]string{
+	environment := withoutEnvironmentPrefix(os.Environ(), "SLOPGUARD_")
+	environment = withoutEnvironmentNames(environment, live.credentials)
+	if route == liveAuthStrictKey {
+		name, value := liveStrictCredential(t, live)
+		environment = append(environment, name+"="+value)
+	}
+	return replaceEnvironment(environment, map[string]string{
 		"GIT_CONFIG_GLOBAL": "/dev/null",
 		"GIT_CONFIG_SYSTEM": "/dev/null",
 		"XDG_CONFIG_HOME":   t.TempDir(),
 	})
+}
+
+func liveStrictCredential(t *testing.T, live liveProvider) (string, string) {
+	t.Helper()
+	for _, name := range live.credentials {
+		if value := strings.TrimSpace(os.Getenv(name)); value != "" {
+			return name, value
+		}
+	}
+	t.Fatalf("live %s strict-key route requires one of %s", live.name, strings.Join(live.credentials, ", "))
+	return "", ""
+}
+
+func liveRouteIsolation(route liveAuthRoute) protocol.Isolation {
+	if route == liveAuthStrictKey {
+		return protocol.IsolationStrict
+	}
+	return protocol.IsolationNative
 }
 
 func withoutEnvironmentPrefix(environment []string, prefix string) []string {
@@ -289,7 +380,22 @@ func withoutEnvironmentPrefix(environment []string, prefix string) []string {
 	return filtered
 }
 
-func validateLiveReport(t *testing.T, report protocol.Report, live liveProvider, control liveControl) {
+func withoutEnvironmentNames(environment, names []string) []string {
+	removed := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		removed[name] = struct{}{}
+	}
+	filtered := make([]string, 0, len(environment))
+	for _, entry := range environment {
+		name, _, _ := strings.Cut(entry, "=")
+		if _, remove := removed[name]; !remove {
+			filtered = append(filtered, entry)
+		}
+	}
+	return filtered
+}
+
+func validateLiveReport(t *testing.T, report protocol.Report, live liveProvider, route liveAuthRoute, control liveControl) {
 	t.Helper()
 	if report.Status != control.wantStatus || report.Failure != nil || report.Review == nil {
 		t.Fatalf("live %s %s result = %+v", live.name, control.name, report)
@@ -300,15 +406,16 @@ func validateLiveReport(t *testing.T, report protocol.Report, live liveProvider,
 	if report.Metadata.Target == nil || report.Metadata.Target.Mode != protocol.TargetCommit || report.Metadata.Target.CommitRevision != control.commit {
 		t.Fatalf("live %s target metadata = %+v", live.name, report.Metadata.Target)
 	}
-	if report.Metadata.Isolation == nil || *report.Metadata.Isolation != protocol.IsolationNative || report.Metadata.WebAccess != live.webAccess {
+	if report.Metadata.Isolation == nil || *report.Metadata.Isolation != liveRouteIsolation(route) || report.Metadata.WebAccess != live.webAccess {
 		t.Fatalf("live %s execution policy: isolation=%v web_access=%v", live.name, report.Metadata.Isolation, report.Metadata.WebAccess)
 	}
 	if len(report.Metadata.Attempts) == 0 || len(report.Metadata.Attempts) > 2 || report.Metadata.Attempts[len(report.Metadata.Attempts)-1].Outcome != protocol.AttemptValid {
 		t.Fatalf("live %s attempts = %+v", live.name, report.Metadata.Attempts)
 	}
 	t.Logf(
-		"provider=%s version=%s status=%s findings=%d attempts=%d duration_ms=%d web_access=%t",
+		"provider=%s auth_route=%s version=%s status=%s findings=%d attempts=%d duration_ms=%d web_access=%t",
 		live.name,
+		route,
 		report.Metadata.Provider.Version,
 		report.Status,
 		len(report.Review.Findings),

@@ -46,23 +46,34 @@ mise run skill:lint
 Authenticated provider regression checks are committed but intentionally
 separate from deterministic verification and CI. They build the current CLI,
 materialize public synthetic clean and defective commits, run builder tests,
-and review both controls through each selected provider with native session
-authentication:
+and review both controls through each selected provider with native
+configuration or strict-key authentication:
 
 ```bash
 mise run verify:live
 SLOPGUARD_LIVE_PROVIDERS=codex,grok mise run verify:live
+SLOPGUARD_LIVE_PROVIDERS=codex SLOPGUARD_LIVE_AUTH_ROUTES=strict-key mise run verify:live
+SLOPGUARD_LIVE_AUTH_ROUTES=native-config,strict-key mise run verify:live
 SLOPGUARD_LIVE_PROVIDERS=grok SLOPGUARD_LIVE_REPEAT=3 mise run verify:live
 ```
 
-- The default checks Codex, Claude, Cursor, and Grok sequentially.
+- The default checks Codex, Claude, Cursor, and Grok sequentially through
+  `native-config`.
+- `native-config` removes the selected provider's direct API-key variables and
+  preserves normal provider state and helper configuration. Run it from an
+  isolated session or gateway/helper profile when those routes need separate
+  proof.
+- `strict-key` requires one supported direct key for every selected provider,
+  then relies on strict isolation to remove provider state and competing auth.
+- `SLOPGUARD_LIVE_AUTH_ROUTES` accepts `native-config`, `strict-key`, or both.
 - Cursor runs with web access because its harness cannot guarantee per-run
   web disablement; the other providers run with web access off.
 - `SLOPGUARD_LIVE_REPEAT` is bounded from 1 through 10.
 - These checks consume provider quota and require every selected harness
   plus `trufflehog` on `PATH`.
-- At the maximum repeat value, the default four-provider matrix can take
-  more than eight hours when every review consumes its protocol retry.
+- At the maximum repeat value, the default four-provider route can take more
+  than eight hours when every review consumes its protocol retry. Selecting
+  both auth routes doubles the review count.
 
 ## Pull Requests
 

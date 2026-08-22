@@ -14,9 +14,10 @@ The adapter always passes an explicit model; an empty model setting resolves to
 ## Runtime contract
 
 The adapter requires the official headless prompt-file, JSON Schema, explicit
-model and effort, bounded-turn, permission, feature-disable, working-directory,
-and authentication surfaces. It checks `--version`, `--help`, and `grok models`
-before model invocation when `XAI_API_KEY` is absent.
+model and effort, bounded-turn, permission, feature-disable, and
+working-directory surfaces. It checks `--version` and `--help` before model
+invocation. Native mode lets the actual Grok review process resolve
+authentication from the preserved environment and user configuration.
 
 - The frozen prompt is written to a private `0600` file inside the empty
   provider workspace and removed with that workspace after the run. The prompt
@@ -38,7 +39,7 @@ in both modes.
 
 | Mode | Authentication and configuration | Isolation controls |
 | --- | --- | --- |
-| `native` (default) | Existing environment, `grok login` session, and user configuration | Empty workspace and explicit per-run tool and feature policy |
+| `native` (default) | Existing environment, user configuration, and configured provider or session authentication | Empty workspace and explicit per-run tool and feature policy |
 | `strict` | Empty home and `GROK_HOME`; requires `XAI_API_KEY` | Grok `workspace` sandbox plus the same explicit deny policy |
 
 ## Output contract
@@ -78,7 +79,7 @@ The compatibility contract and live structured-output smoke were confirmed
 against Grok Build CLI v1.0.4. Capability discovery checks every trusted PATH
 candidate, skipping incompatible tool-manager targets before selecting a real
 Grok executable. It fails closed when no candidate preserves the required
-flags, enumerated values, or authentication-status shape.
+flags or enumerated values.
 
 Each attempt invokes the selected xAI model and may consume plan or API quota.
 The one configured protocol retry invokes it again only after malformed output;
