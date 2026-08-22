@@ -233,6 +233,22 @@ func TestRunProcessCancellationKillsChildProcessGroup(t *testing.T) {
 	}
 }
 
+func TestRunProcessPreStartCancellationPreservesCause(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	script := writeTestExecutable(t, "pre-start-cancel", "#!/bin/sh\nexit 0\n")
+	_, err := runProcess(ctx, processSpec{
+		Path: script, Directory: t.TempDir(), Environment: []string{"PATH=/usr/bin:/bin"},
+		Timeout: time.Second, StdoutLimit: 1024, StderrLimit: 1024,
+	})
+	var failure *processError
+	if !errors.As(err, &failure) || failure.Kind != processCancelled || !failure.ContextCaused {
+		t.Fatalf("runProcess() error = %v, failure = %+v", err, failure)
+	}
+}
+
 func TestRunProcessCleansDescendantsAfterLeaderExit(t *testing.T) {
 	tests := []struct {
 		name       string

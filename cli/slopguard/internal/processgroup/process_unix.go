@@ -12,10 +12,13 @@ func configure(command *exec.Cmd) {
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }
 
-func terminate(leaderPID int) error {
+func terminate(leaderPID int) (bool, error) {
 	err := syscall.Kill(-leaderPID, syscall.SIGKILL)
 	if errors.Is(err, syscall.ESRCH) {
-		return nil
+		return false, nil
 	}
-	return err
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

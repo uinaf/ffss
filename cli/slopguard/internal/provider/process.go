@@ -118,7 +118,7 @@ func runProcess(ctx context.Context, spec processSpec) (processResult, error) {
 	case result.ExitCode == -1:
 		kind = processStart
 	}
-	contextCaused := (kind == processTimeout || kind == processCancelled) && runResult.ContextTerminated
+	contextCaused := (kind == processTimeout || kind == processCancelled) && runResult.ContextCaused
 	return result, &processError{Kind: kind, Result: result, Err: err, ContextCaused: contextCaused}
 }
 
