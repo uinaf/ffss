@@ -249,7 +249,7 @@ func TestGitSandboxPreservesIndexModTime(t *testing.T) {
 	if err != nil {
 		t.Fatalf("repositoryRoot() error = %v", err)
 	}
-	sandbox, err := prepared.newGitSandbox(context.Background(), root)
+	sandbox, err := prepared.newGitSandbox(context.Background(), root, true)
 	if err != nil {
 		t.Fatalf("newGitSandbox() error = %v", err)
 	}
@@ -910,7 +910,7 @@ func TestGitSandboxIgnoresRepositoryInfoAttributesAndFilterConfig(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	sandbox, err := collector.newGitSandbox(context.Background(), repository)
+	sandbox, err := collector.newGitSandbox(context.Background(), repository, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1098,6 +1098,36 @@ func TestFreezeSeesMergeParentsPastShallowMetadata(t *testing.T) {
 	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: merge})
 	if err == nil || !strings.Contains(err.Error(), "merge commits are unsupported") {
 		t.Fatalf("Freeze() error = %v", err)
+	}
+}
+
+func TestBranchFreezeAndVerifyIgnoreLiveAncestryOverrides(t *testing.T) {
+	t.Parallel()
+
+	for _, metadata := range []string{"shallow", "info/grafts"} {
+		t.Run(metadata, func(t *testing.T) {
+			t.Parallel()
+			repository := committedRepository(t)
+			base := gitCommand(t, repository, "rev-parse", "HEAD")
+			gitCommand(t, repository, "switch", "-c", "feature")
+			writeFile(t, repository, "file.txt", "feature\n")
+			gitCommand(t, repository, "commit", "-am", "feature")
+			head := gitCommand(t, repository, "rev-parse", "HEAD")
+			writeFile(t, repository, filepath.Join(".git", metadata), head+"\n")
+
+			bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
+			if err != nil {
+				t.Fatalf("Freeze() error = %v", err)
+			}
+			if bundle.Target().BaseRevision != base || bundle.Target().HeadRevision != head {
+				t.Fatalf("target = %+v", bundle.Target())
+			}
+
+			writeFile(t, repository, filepath.Join(".git", metadata), base+"\n")
+			if err := bundle.VerifyUnchanged(context.Background()); err != nil {
+				t.Fatalf("VerifyUnchanged() error = %v", err)
+			}
+		})
 	}
 }
 

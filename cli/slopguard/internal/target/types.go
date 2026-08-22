@@ -154,8 +154,20 @@ func (bundle *Bundle) Contributors() []Contributor {
 
 func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
 	if bundle.request.Mode != protocol.TargetLocal {
+		var sandbox *gitSandbox
+		if bundle.request.Mode == protocol.TargetBranch {
+			var err error
+			sandbox, err = bundle.collector.newGitSandbox(ctx, bundle.repository, false)
+			if err != nil {
+				if ctxErr := ctx.Err(); ctxErr != nil {
+					return ctxErr
+				}
+				return fmt.Errorf("%w: prepare immutable verification: %v", ErrSourceChanged, err)
+			}
+			defer func() { _ = sandbox.Close() }()
+		}
 		err := verifyStableImmutableState(ctx, bundle.stateHash, func(ctx context.Context) (string, error) {
-			return bundle.collector.immutableSourceStateHash(ctx, bundle.repository, bundle.request)
+			return bundle.collector.immutableSourceStateHash(ctx, bundle.repository, bundle.request, sandbox)
 		})
 		if err != nil {
 			if ctxErr := ctx.Err(); ctxErr != nil {

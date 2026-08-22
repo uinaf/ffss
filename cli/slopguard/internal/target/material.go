@@ -126,7 +126,7 @@ func (collector *Collector) validateTrackedWorktree(ctx context.Context, root st
 	return parser.Err()
 }
 
-func (collector *Collector) newGitSandbox(ctx context.Context, root string) (_ *gitSandbox, returnErr error) {
+func (collector *Collector) newGitSandbox(ctx context.Context, root string, includeWorktree bool) (_ *gitSandbox, returnErr error) {
 	objectFormatOutput, err := collector.git.run(ctx, root, nil, 128<<10, "rev-parse", "--show-object-format")
 	if err != nil {
 		return nil, fmt.Errorf("resolve Git object format: %w", err)
@@ -139,13 +139,17 @@ func (collector *Collector) newGitSandbox(ctx context.Context, root string) (_ *
 	if err != nil {
 		return nil, err
 	}
-	originalIndex, err := collector.gitMetadataPath(ctx, root, "index")
-	if err != nil {
-		return nil, err
-	}
-	originalExclude, err := collector.gitMetadataPath(ctx, root, "info/exclude")
-	if err != nil {
-		return nil, err
+	var originalIndex string
+	var originalExclude string
+	if includeWorktree {
+		originalIndex, err = collector.gitMetadataPath(ctx, root, "index")
+		if err != nil {
+			return nil, err
+		}
+		originalExclude, err = collector.gitMetadataPath(ctx, root, "info/exclude")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	directory, err := os.MkdirTemp("", "slopguard-git-")
@@ -183,34 +187,36 @@ func (collector *Collector) newGitSandbox(ctx context.Context, root string) (_ *
 	if err := os.WriteFile(filepath.Join(directory, "HEAD"), []byte("ref: refs/heads/slopguard\n"), 0o600); err != nil {
 		return nil, fmt.Errorf("initialize isolated Git HEAD: %w", err)
 	}
-	// Preserve the original index mtime. A naive copy advances the file's
-	// timestamp and closes Git's racy-git window, which can hide same-size
-	// worktree edits (including symlink retargets) on the verification collect.
-	var indexModTime time.Time
-	var hasIndex bool
-	if info, statErr := os.Stat(originalIndex); statErr == nil {
-		indexModTime = info.ModTime()
-		hasIndex = true
-	} else if !errors.Is(statErr, os.ErrNotExist) {
-		return nil, fmt.Errorf("inspect Git index: %w", statErr)
-	}
-	copiedIndex := filepath.Join(directory, "index")
-	if err := copyStableFile(filepath.Dir(originalIndex), filepath.Base(originalIndex), copiedIndex, maximumIndexBytes); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("copy Git index: %w", err)
+	if includeWorktree {
+		// Preserve the original index mtime. A naive copy advances the file's
+		// timestamp and closes Git's racy-git window, which can hide same-size
+		// worktree edits (including symlink retargets) on the verification collect.
+		var indexModTime time.Time
+		var hasIndex bool
+		if info, statErr := os.Stat(originalIndex); statErr == nil {
+			indexModTime = info.ModTime()
+			hasIndex = true
+		} else if !errors.Is(statErr, os.ErrNotExist) {
+			return nil, fmt.Errorf("inspect Git index: %w", statErr)
 		}
-	} else if hasIndex {
-		if err := os.Chtimes(copiedIndex, indexModTime, indexModTime); err != nil {
-			return nil, fmt.Errorf("preserve Git index mtime: %w", err)
+		copiedIndex := filepath.Join(directory, "index")
+		if err := copyStableFile(filepath.Dir(originalIndex), filepath.Base(originalIndex), copiedIndex, maximumIndexBytes); err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				return nil, fmt.Errorf("copy Git index: %w", err)
+			}
+		} else if hasIndex {
+			if err := os.Chtimes(copiedIndex, indexModTime, indexModTime); err != nil {
+				return nil, fmt.Errorf("preserve Git index mtime: %w", err)
+			}
 		}
-	}
-	excludeRoot := filepath.Dir(filepath.Dir(originalExclude))
-	excludeRelative, err := filepath.Rel(excludeRoot, originalExclude)
-	if err != nil {
-		return nil, fmt.Errorf("resolve Git exclude path: %w", err)
-	}
-	if err := copyStableFile(excludeRoot, filepath.ToSlash(excludeRelative), filepath.Join(directory, "info", "exclude"), metadataLimit); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("copy Git excludes: %w", err)
+		excludeRoot := filepath.Dir(filepath.Dir(originalExclude))
+		excludeRelative, err := filepath.Rel(excludeRoot, originalExclude)
+		if err != nil {
+			return nil, fmt.Errorf("resolve Git exclude path: %w", err)
+		}
+		if err := copyStableFile(excludeRoot, filepath.ToSlash(excludeRelative), filepath.Join(directory, "info", "exclude"), metadataLimit); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("copy Git excludes: %w", err)
+		}
 	}
 
 	sandbox := &gitSandbox{
@@ -222,8 +228,10 @@ func (collector *Collector) newGitSandbox(ctx context.Context, root string) (_ *
 			"GIT_NO_REPLACE_OBJECTS=1",
 		},
 	}
-	if err := rejectSplitIndex(filepath.Join(directory, "index"), objectFormat); err != nil {
-		return nil, err
+	if includeWorktree {
+		if err := rejectSplitIndex(filepath.Join(directory, "index"), objectFormat); err != nil {
+			return nil, err
+		}
 	}
 	emptyTree, err := collector.git.runSandbox(ctx, root, sandbox, nil, 128<<10, "hash-object", "-w", "-t", "tree", "--stdin")
 	if err != nil {
@@ -233,15 +241,17 @@ func (collector *Collector) newGitSandbox(ctx context.Context, root string) (_ *
 	if !validObjectID(sandbox.attributeSource) {
 		return nil, fmt.Errorf("git returned invalid empty-tree object ID")
 	}
-	head, unborn, err := collector.resolveHEAD(ctx, root)
-	if err != nil {
-		return nil, err
-	}
-	if unborn {
-		head = sandbox.attributeSource
-	}
-	if err := os.WriteFile(filepath.Join(directory, "HEAD"), []byte(head+"\n"), 0o600); err != nil {
-		return nil, fmt.Errorf("write isolated Git HEAD: %w", err)
+	if includeWorktree {
+		head, unborn, err := collector.resolveHEAD(ctx, root)
+		if err != nil {
+			return nil, err
+		}
+		if unborn {
+			head = sandbox.attributeSource
+		}
+		if err := os.WriteFile(filepath.Join(directory, "HEAD"), []byte(head+"\n"), 0o600); err != nil {
+			return nil, fmt.Errorf("write isolated Git HEAD: %w", err)
+		}
 	}
 	return sandbox, nil
 }

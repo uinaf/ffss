@@ -235,7 +235,7 @@ func (collector *Collector) collect(ctx context.Context, root string, request Re
 	if err := collector.validateRepositoryConfig(ctx, root); err != nil {
 		return nil, err
 	}
-	sandbox, err := collector.newGitSandbox(ctx, root)
+	sandbox, err := collector.newGitSandbox(ctx, root, request.Mode == protocol.TargetLocal)
 	if err != nil {
 		return nil, err
 	}
@@ -377,7 +377,7 @@ func (collector *Collector) plan(ctx context.Context, root string, request Reque
 		}
 		return &targetPlan{oldRevision: head, local: true, sandbox: sandbox, attributes: sandbox.attributeSource, target: protocol.Target{Mode: protocol.TargetLocal, HeadRevision: head}}, nil
 	case protocol.TargetBranch:
-		base, mergeBase, head, err := collector.resolveBranch(ctx, root, request.Base)
+		base, mergeBase, head, err := collector.resolveBranch(ctx, root, request.Base, sandbox)
 		if err != nil {
 			return nil, err
 		}
@@ -407,7 +407,10 @@ func (collector *Collector) plan(ctx context.Context, root string, request Reque
 	}
 }
 
-func (collector *Collector) resolveBranch(ctx context.Context, root, requestedBase string) (string, string, string, error) {
+func (collector *Collector) resolveBranch(ctx context.Context, root, requestedBase string, sandbox *gitSandbox) (string, string, string, error) {
+	if sandbox == nil {
+		return "", "", "", fmt.Errorf("resolve branch requires isolated Git metadata")
+	}
 	base, err := collector.resolveCommit(ctx, root, requestedBase)
 	if err != nil {
 		return "", "", "", fmt.Errorf("resolve base: %w", err)
@@ -416,7 +419,7 @@ func (collector *Collector) resolveBranch(ctx context.Context, root, requestedBa
 	if err != nil {
 		return "", "", "", fmt.Errorf("resolve HEAD: %w", err)
 	}
-	mergeBase, err := collector.git.runNoReplace(ctx, root, nil, 128<<10, "merge-base", base, head)
+	mergeBase, err := collector.git.runSandbox(ctx, root, sandbox, nil, 128<<10, "merge-base", base, head)
 	if err != nil {
 		return "", "", "", fmt.Errorf("resolve merge base: %w", err)
 	}
@@ -427,14 +430,14 @@ func (collector *Collector) resolveBranch(ctx context.Context, root, requestedBa
 	return base, mergeBaseRevision, head, nil
 }
 
-func (collector *Collector) immutableSourceStateHash(ctx context.Context, root string, request Request) (string, error) {
+func (collector *Collector) immutableSourceStateHash(ctx context.Context, root string, request Request, sandbox *gitSandbox) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
 	plan := &targetPlan{}
 	switch request.Mode {
 	case protocol.TargetBranch:
-		base, mergeBase, head, err := collector.resolveBranch(ctx, root, request.Base)
+		base, mergeBase, head, err := collector.resolveBranch(ctx, root, request.Base, sandbox)
 		if err != nil {
 			return "", err
 		}
