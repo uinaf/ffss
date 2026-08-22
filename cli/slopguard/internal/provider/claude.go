@@ -127,7 +127,7 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	})
 	attempt := protocol.Attempt{Number: 1, DurationMS: process.Duration.Milliseconds()}
 	if processErr != nil {
-		class := classifyProcessFailure(processErr, process)
+		class := classifyClaudeProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
 		return Result{}, processFailure("Claude review", class, processErr, process, environment, &attempt, strictCredentialRecovery(request.Config, protocol.ProviderClaude)).withExecution(resolvedExecution)
@@ -158,6 +158,29 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 			Applied: false,
 		},
 	}, nil
+}
+
+func classifyClaudeProcessFailure(err error, result processResult) protocol.FailureClass {
+	class := classifyProcessFailure(err, result)
+	if class == protocol.FailureProvider && claudeAuthenticationStatus(result.Stdout) == 401 {
+		return protocol.FailureAuth
+	}
+	return class
+}
+
+func claudeAuthenticationStatus(output []byte) int {
+	output = bytes.TrimSpace(output)
+	if len(output) == 0 || protocol.RejectDuplicateKeys(output) != nil {
+		return 0
+	}
+	var envelope struct {
+		IsError        *bool `json:"is_error"`
+		APIErrorStatus *int  `json:"api_error_status"`
+	}
+	if err := json.Unmarshal(output, &envelope); err != nil || envelope.IsError == nil || !*envelope.IsError || envelope.APIErrorStatus == nil {
+		return 0
+	}
+	return *envelope.APIErrorStatus
 }
 
 func (claude *Claude) preflight(ctx context.Context, executable, workspace string, environment []string, effective config.Effective) (string, error) {
@@ -198,15 +221,6 @@ func (claude *Claude) preflight(ctx context.Context, executable, workspace strin
 	if missing := missingCapabilities(string(helpResult.Stdout)+string(helpResult.Stderr), required); len(missing) != 0 {
 		return "", newFailure(protocol.FailureCapability, "Claude is missing required flags: "+strings.Join(missing, ", "), environment, nil)
 	}
-	if environmentValue(environment, "ANTHROPIC_API_KEY") == "" {
-		authResult, err := run("auth", "status", "--json")
-		if err != nil {
-			return "", probeFailure("Claude authentication", err, authResult, environment, protocol.FailureAuth)
-		}
-		if err := decodeClaudeAuth(authResult.Stdout); err != nil {
-			return "", newFailure(protocol.FailureAuth, "Claude returned an invalid authentication status; authenticate the provider CLI and retry", environment, nil)
-		}
-	}
 	return string(match[1]), nil
 }
 
@@ -238,28 +252,6 @@ func claudeArguments(effective config.Effective, schema, model string) []string 
 		"--effort", string(effective.ReasoningEffort.Value),
 	)
 	return arguments
-}
-
-func decodeClaudeAuth(output []byte) error {
-	output = bytes.TrimSpace(output)
-	if len(output) == 0 {
-		return fmt.Errorf("status output is empty")
-	}
-	if err := protocol.RejectDuplicateKeys(output); err != nil {
-		return err
-	}
-	var status struct {
-		LoggedIn   *bool  `json:"loggedIn"`
-		AuthMethod string `json:"authMethod"`
-		Provider   string `json:"apiProvider"`
-	}
-	if err := json.Unmarshal(output, &status); err != nil {
-		return err
-	}
-	if status.LoggedIn == nil || !*status.LoggedIn || strings.TrimSpace(status.AuthMethod) == "" || strings.TrimSpace(status.Provider) == "" {
-		return fmt.Errorf("not logged in")
-	}
-	return nil
 }
 
 func decodeClaudeEnvelope(output []byte) ([]byte, error) {

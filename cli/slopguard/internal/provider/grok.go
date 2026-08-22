@@ -31,7 +31,6 @@ var grokVersionPattern = regexp.MustCompile(`\b(\d+\.\d+\.\d+)\b`)
 var (
 	errGrokIncompleteTurn   = errors.New("Grok did not complete the bounded review turn")
 	errGrokIncompleteReview = errors.New("Grok did not complete the review")
-	errGrokUnauthenticated  = errors.New("Grok is not authenticated")
 )
 
 type GrokOptions struct {
@@ -233,7 +232,7 @@ func (grok *Grok) preflight(ctx context.Context, executable, workspace string, e
 	required := []string{
 		"--prompt-file", "--output-format", "--json-schema", "--model", "--reasoning-effort", "--max-turns",
 		"--permission-mode", "--tools", "--disallowed-tools", "--allow", "--deny", "--no-plan", "--no-subagents", "--no-memory", "--disable-web-search",
-		"--verbatim", "--cwd", "models",
+		"--verbatim", "--cwd",
 	}
 	if effective.Isolation.Value == protocol.IsolationStrict {
 		required = append(required, "--sandbox")
@@ -244,18 +243,6 @@ func (grok *Grok) preflight(ctx context.Context, executable, workspace string, e
 	}
 	if !optionSupports(help, "--output-format", "json") || !optionSupports(help, "--permission-mode", "dontAsk") {
 		return "", newFailure(protocol.FailureCapability, "Grok is missing required option values: --output-format=json or --permission-mode=dontAsk", environment, nil)
-	}
-	if environmentValue(environment, "XAI_API_KEY") == "" {
-		authResult, err := run("models")
-		if err != nil {
-			return "", probeFailure("Grok authentication", err, authResult, environment, protocol.FailureAuth)
-		}
-		if err := decodeGrokAuth(append(authResult.Stdout, authResult.Stderr...)); err != nil {
-			if errors.Is(err, errGrokUnauthenticated) {
-				return "", newFailure(protocol.FailureAuth, "Grok is not authenticated; run grok login or set XAI_API_KEY, then retry", environment, nil)
-			}
-			return "", newFailure(protocol.FailureCapability, "Grok models returned an unsupported authentication status format", environment, nil)
-		}
 	}
 	return string(match[1]), nil
 }
@@ -301,18 +288,6 @@ func grokArguments(effective config.Effective, workspace, promptPath, schema, mo
 		arguments = append(arguments, "--sandbox", "workspace")
 	}
 	return arguments
-}
-
-func decodeGrokAuth(output []byte) error {
-	text := string(bytes.TrimSpace(output))
-	lower := strings.ToLower(text)
-	if text == "" || containsAny(lower, "not authenticated", "not logged in", "logged out", "no active session") {
-		return errGrokUnauthenticated
-	}
-	if !strings.Contains(lower, "you are logged in") || !strings.Contains(lower, "available models:") {
-		return fmt.Errorf("unrecognized authentication status")
-	}
-	return nil
 }
 
 type grokCompletion struct {
@@ -508,13 +483,4 @@ func validateGrokCompletion(completion grokCompletion, review protocol.Review, t
 		return fmt.Errorf("completion links %d findings, want %d", len(seenFindings), len(review.Findings))
 	}
 	return nil
-}
-
-func containsAny(text string, values ...string) bool {
-	for _, value := range values {
-		if strings.Contains(text, value) {
-			return true
-		}
-	}
-	return false
 }

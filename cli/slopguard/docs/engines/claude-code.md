@@ -13,6 +13,10 @@ disabled Chrome integration. Strict mode also requires `--safe-mode`, user-only
 setting sources, strict Model Context Protocol (MCP) configuration, and an
 MCP-tool deny rule.
 
+Native mode lets the actual Claude review process resolve authentication from
+the preserved environment and user configuration. A separate auth-status
+surface cannot block a configured session, gateway, helper, or key.
+
 The frozen prompt is delivered on standard input followed by a trusted review
 policy. Each finding location must fit completely within one individual
 reviewed line range; cross-hunk concerns must be narrowed to one establishing
@@ -26,7 +30,7 @@ unavailable.
 
 | Mode | Authentication and configuration | Isolation controls |
 | --- | --- | --- |
-| `native` (default) | Existing environment, keychain login, and user configuration | Empty workspace and explicit safe tool inventory |
+| `native` (default) | Existing environment, user configuration, and configured provider or session authentication | Empty workspace and explicit safe tool inventory |
 | `strict` | Empty home and Claude state; requires `ANTHROPIC_API_KEY` | Safe mode, disabled auto-memory, strict MCP, and no unsafe tools |
 
 ## Output contract

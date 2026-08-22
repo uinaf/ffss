@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -18,7 +17,7 @@ import (
 func TestClaudeReviewStrictUsesFrozenStdinAndSafeMode(t *testing.T) {
 	t.Parallel()
 
-	fake := newFakeClaude(t, fakeClaudeOptions{authError: "not logged in"})
+	fake := newFakeClaude(t, fakeClaudeOptions{})
 	reviewer := NewClaude(ClaudeOptions{
 		Repository: t.TempDir(), Executable: fake.path,
 		Environment: []string{
@@ -84,7 +83,13 @@ func TestClaudeReviewNativePreservesConfigurationAndEnablesWeb(t *testing.T) {
 	fake := newFakeClaude(t, fakeClaudeOptions{})
 	reviewer := NewClaude(ClaudeOptions{
 		Repository: t.TempDir(), Executable: fake.path,
-		Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home", "CLAUDE_CONFIG_DIR=/native/claude"},
+		Environment: []string{
+			"PATH=/usr/bin:/bin",
+			"HOME=/native/home",
+			"CLAUDE_CONFIG_DIR=/native/claude",
+			"ANTHROPIC_AUTH_TOKEN=test-provider-helper",
+			"ANTHROPIC_BASE_URL=https://gateway.invalid",
+		},
 	})
 	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationNative, true, 5*time.Second)})
 	if err != nil {
@@ -103,7 +108,7 @@ func TestClaudeReviewNativePreservesConfigurationAndEnablesWeb(t *testing.T) {
 		t.Fatalf("native web arguments = %v", arguments)
 	}
 	environment := readTestFile(t, fake.environment)
-	if !strings.Contains(environment, "HOME=/native/home") || !strings.Contains(environment, "CLAUDE_CONFIG_DIR=/native/claude") || strings.Contains(environment, "CLAUDE_CODE_DISABLE_AUTO_MEMORY") {
+	if !strings.Contains(environment, "HOME=/native/home") || !strings.Contains(environment, "CLAUDE_CONFIG_DIR=/native/claude") || !strings.Contains(environment, "ANTHROPIC_AUTH_TOKEN=test-provider-helper") || !strings.Contains(environment, "ANTHROPIC_BASE_URL=https://gateway.invalid") || strings.Contains(environment, "CLAUDE_CODE_DISABLE_AUTO_MEMORY") {
 		t.Fatalf("native environment = %s", environment)
 	}
 }
@@ -120,13 +125,17 @@ func TestClaudeReviewFailsCapabilityProbeBeforeInvocation(t *testing.T) {
 	}
 }
 
-func TestClaudeReviewReportsAuthenticationFailure(t *testing.T) {
+func TestClaudeReviewNativeReportsProviderAuthenticationFailure(t *testing.T) {
 	t.Parallel()
 
-	fake := newFakeClaude(t, fakeClaudeOptions{loggedOut: true})
+	fake := newFakeClaude(t, fakeClaudeOptions{reviewOutputError: `{"type":"result","subtype":"success","is_error":true,"api_error_status":401,"result":"Invalid API key"}`})
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home"}})
 	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationNative, false, 5*time.Second)})
-	_ = assertProviderError(t, err, protocol.FailureAuth)
+	failure := assertProviderError(t, err, protocol.FailureAuth)
+	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
+		t.Fatalf("attempt = %+v", failure.Attempt)
+	}
+	assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", protocol.IsolationNative, false)
 }
 
 func TestClaudeReviewStrictExplainsCredentialRequirement(t *testing.T) {
@@ -284,12 +293,11 @@ func TestClaudeReviewRejectsUnsupportedEffort(t *testing.T) {
 }
 
 type fakeClaudeOptions struct {
-	help        string
-	loggedOut   bool
-	authError   string
-	output      string
-	reviewError string
-	delay       string
+	help              string
+	output            string
+	reviewError       string
+	reviewOutputError string
+	delay             string
 }
 
 type fakeClaude struct {
@@ -316,17 +324,10 @@ func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 	if err := os.WriteFile(outputPath, []byte(options.output), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	loggedIn := !options.loggedOut
-	authOutput, err := json.Marshal(map[string]any{"loggedIn": loggedIn, "authMethod": "claude.ai", "apiProvider": "firstParty"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	authBlock := "printf '%s' " + shellQuote(string(authOutput)) + "\nexit 0"
-	if options.authError != "" {
-		authBlock = "printf '%s' " + shellQuote(options.authError) + " >&2\nexit 1"
-	}
 	reviewFailure := ""
-	if options.reviewError != "" {
+	if options.reviewOutputError != "" {
+		reviewFailure = "printf '%s' " + shellQuote(options.reviewOutputError) + "\nexit 7\n"
+	} else if options.reviewError != "" {
 		reviewFailure = "printf '%b' " + shellQuote(options.reviewError) + " >&2\nexit 7\n"
 	}
 	delay := ""
@@ -364,7 +365,6 @@ func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 		"}\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' '2.1.220 (Claude Code)'; exit 0; fi\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--help\" ]; then printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
-		"if [ \"$#\" -eq 3 ] && [ \"$1\" = \"auth\" ] && [ \"$2\" = \"status\" ] && [ \"$3\" = \"--json\" ]; then " + authBlock + "; fi\n" +
 		"validate_review \"$@\" || fail_contract\n" +
 		"printf '%s\\n' \"$@\" > " + shellQuote(fake.arguments) + "\n" +
 		"cat > " + shellQuote(fake.prompt) + "\n" +

@@ -83,8 +83,8 @@ pass only the already frozen review bundle.
   configured authentication.
 - Strict authentication requires the provider's supported API-key environment
   variable; provider or session authentication belongs to native mode.
-- Grok strict mode uses `XAI_API_KEY`; native mode uses the normal `grok login`
-  session.
+- Grok strict mode uses `XAI_API_KEY`; native mode preserves configured
+  provider or session authentication.
 - Explicit CLI Cursor selection still grants otherwise-unset web access in
   strict mode; pass `--web-access=false` to reject that capability and fail
   preflight instead.

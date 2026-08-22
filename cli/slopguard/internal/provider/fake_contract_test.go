@@ -94,9 +94,7 @@ func TestFakeProviderCLIsRejectInvalidProbeArguments(t *testing.T) {
 		arguments  []string
 	}{
 		{name: "codex extra version flag", executable: func(t *testing.T) string { return newFakeCodex(t, fakeCodexOptions{}).path }, arguments: []string{"--version", "--json"}},
-		{name: "claude incomplete auth", executable: func(t *testing.T) string { return newFakeClaude(t, fakeClaudeOptions{}).path }, arguments: []string{"auth", "status"}},
 		{name: "cursor conflicting status format", executable: func(t *testing.T) string { return newFakeCursor(t, fakeCursorOptions{}).path }, arguments: []string{"status", "--format", "text"}},
-		{name: "grok extra models flag", executable: func(t *testing.T) string { return newFakeGrok(t, fakeGrokOptions{}).path }, arguments: []string{"models", "--json"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

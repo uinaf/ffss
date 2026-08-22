@@ -44,7 +44,7 @@ description = "Run deterministic repository verification"
 depends = ["fmt:check", "test", "test:race", "vet", "build", "installer:check"]
 
 [tasks."verify:live"]
-description = "Opt in to authenticated CLI-level provider regression controls"
+description = "Opt in to the authenticated CLI-level provider and auth-route matrix"
 run = '''
 set -e
 command -v trufflehog >/dev/null || {
@@ -173,5 +173,4 @@ native_binary="$(find dist -type f -path "*${native_target}*/slopguard" -print -
 test -n "$native_binary"
 "$native_binary" --version | grep -E '^slopguard v[0-9]+\.[0-9]+\.[0-9]+-snapshot-[0-9a-f]+ \([0-9a-f]{40}\)$'
 '''
-
 

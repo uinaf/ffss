@@ -15,6 +15,7 @@ func TestMean(t *testing.T) {
 		{name: "negative", values: []int{-3, 3}, want: 0},
 		{name: "large", values: []int{maxInt, maxInt}, want: float64(maxInt)},
 		{name: "mixed extremes", values: []int{maxInt, minInt}, want: -0.5},
+		{name: "fractional cancellation", values: []int{maxInt, 1, -maxInt}, want: 1.0 / 3.0},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
