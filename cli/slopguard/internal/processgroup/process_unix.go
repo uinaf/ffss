@@ -22,3 +22,12 @@ func terminate(leaderPID int) (bool, error) {
 	}
 	return true, nil
 }
+
+func leaderKilledBySIGKILL(err error) bool {
+	var exitError *exec.ExitError
+	if !errors.As(err, &exitError) || exitError.ProcessState == nil {
+		return false
+	}
+	status, ok := exitError.ProcessState.Sys().(syscall.WaitStatus)
+	return ok && status.Signaled() && status.Signal() == syscall.SIGKILL
+}

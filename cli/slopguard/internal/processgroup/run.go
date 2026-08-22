@@ -60,6 +60,6 @@ func Run(ctx context.Context, command *exec.Cmd) Result {
 	return Result{
 		CommandErr:    errors.Join(watchErr, waitErr),
 		CleanupErr:    cleanupErr,
-		ContextCaused: contextWon && terminated,
+		ContextCaused: contextWon && terminated && leaderKilledBySIGKILL(waitErr),
 	}
 }
