@@ -201,7 +201,7 @@ func TestClaudeReviewSchemaProjectsUnsupportedPathKeyword(t *testing.T) {
 func TestGrokReviewSchemaProjectsUnsupportedKeywords(t *testing.T) {
 	t.Parallel()
 
-	data, err := contractschema.GrokReviewV1([]string{"internal/provider/grok.go", "schema/embed.go"})
+	data, err := contractschema.GrokReviewV1(2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,8 +221,8 @@ func TestGrokReviewSchemaProjectsUnsupportedKeywords(t *testing.T) {
 	files := requireObject(t, completionProperties["files"], "properties.completion.properties.files")
 	file := requireObject(t, files["items"], "properties.completion.properties.files.items")
 	fileProperties := requireObject(t, file["properties"], "properties.completion.properties.files.items.properties")
-	assessment := requireObject(t, fileProperties["assessment"], "properties.completion.properties.files.items.properties.assessment")
-	filePath := requireObject(t, fileProperties["file_path"], "properties.completion.properties.files.items.properties.file_path")
+	startIndex := requireObject(t, fileProperties["start_index"], "properties.completion.properties.files.items.properties.start_index")
+	endIndex := requireObject(t, fileProperties["end_index"], "properties.completion.properties.files.items.properties.end_index")
 	finding := requireObject(t, definitions["finding"], "$defs.finding")
 	findingProperties := requireObject(t, finding["properties"], "$defs.finding.properties")
 	if _, ok := document["$schema"]; ok {
@@ -237,21 +237,17 @@ func TestGrokReviewSchemaProjectsUnsupportedKeywords(t *testing.T) {
 	if overallConfidence["minimum"] != contractschema.GrokMinimumOverallConfidence {
 		t.Fatalf("Grok overall_confidence minimum = %v", overallConfidence["minimum"])
 	}
-	if files["minItems"] != float64(2) || files["maxItems"] != float64(2) {
+	if files["minItems"] != float64(1) || files["maxItems"] != float64(1) {
 		t.Fatalf("Grok completion file count constraints = %+v", files)
 	}
-	if assessment["minLength"] != float64(contractschema.GrokMinimumFileAssessmentCharacters) {
-		t.Fatalf("Grok completion assessment minLength = %v", assessment["minLength"])
+	if startIndex["minimum"] != float64(0) || startIndex["maximum"] != float64(0) {
+		t.Fatalf("Grok completion start index constraints = %+v", startIndex)
 	}
-	if assessment["maxLength"] != float64(contractschema.GrokMaximumFileAssessmentCharacters) {
-		t.Fatalf("Grok completion assessment maxLength = %v", assessment["maxLength"])
-	}
-	if paths := requireArray(t, filePath["enum"], "completion file_path enum"); len(paths) != 2 || paths[0] != "internal/provider/grok.go" || paths[1] != "schema/embed.go" {
-		t.Fatalf("Grok completion file paths = %+v", paths)
+	if endIndex["minimum"] != float64(1) || endIndex["maximum"] != float64(1) {
+		t.Fatalf("Grok completion end index constraints = %+v", endIndex)
 	}
 	for path, constraint := range map[string]map[string]any{
 		"properties.review.properties.overall_explanation": overallExplanation,
-		"properties.completion.files.assessment":           assessment,
 		"$defs.relative_path":                              relativePath,
 		"$defs.finding.properties.title":                   requireObject(t, findingProperties["title"], "$defs.finding.properties.title"),
 		"$defs.finding.properties.body":                    requireObject(t, findingProperties["body"], "$defs.finding.properties.body"),
@@ -262,6 +258,14 @@ func TestGrokReviewSchemaProjectsUnsupportedKeywords(t *testing.T) {
 		if constraint["type"] != "string" || constraint["minLength"] == nil || constraint["maxLength"] == nil {
 			t.Fatalf("Grok string constraints at %s = %+v", path, constraint)
 		}
+	}
+}
+
+func TestGrokReviewSchemaRejectsNegativeFileCount(t *testing.T) {
+	t.Parallel()
+
+	if _, err := contractschema.GrokReviewV1(-1); err == nil {
+		t.Fatal("expected negative file count to fail")
 	}
 }
 

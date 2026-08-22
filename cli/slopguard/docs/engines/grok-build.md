@@ -56,17 +56,18 @@ extraction and engine-local protocol recovery are not accepted.
 
 Grok also receives a trusted single-shot completion policy after the frozen
 bundle. Its provider-only schema wraps the canonical review with completion
-evidence: at least 160 characters of overall explanation, exactly one
-substantive assessment for every changed file, and a file-matching index for
-every finding.
+evidence: at least 160 characters of overall explanation and one inclusive
+zero-based range covering the complete frozen file order exactly once. Findings
+remain linked to reviewed files by the canonical review location.
 
 - Because Grok can mechanically populate that shape while still describing
   future review work, the provider contract also requires at least 0.7 overall
   confidence that the entire review is complete.
 - This threshold does not filter individual findings: every finding is
   retained regardless of its own confidence.
-- The local decoder validates the exact frozen file set and then discards the
-  private evidence before rendering the stable public result.
+- The local decoder validates the range against the exact frozen file count,
+  checks every finding path against that file set, and then discards the private
+  evidence before rendering the stable public result.
 - These checks also reject explicit progress commitments such as starting,
   interim, or future review work in the overall explanation.
 - The normal protocol retry gets one chance to return a complete review; a

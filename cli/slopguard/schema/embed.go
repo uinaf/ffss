@@ -13,8 +13,6 @@ var reviewV1 []byte
 var resultV1 []byte
 
 const GrokMinimumOverallExplanationCharacters = 160
-const GrokMinimumFileAssessmentCharacters = 80
-const GrokMaximumFileAssessmentCharacters = 1000
 const GrokMinimumOverallConfidence = 0.7
 
 func ReviewV1() []byte {
@@ -33,7 +31,10 @@ func ClaudeReviewV1() ([]byte, error) {
 	return providerReviewV1("Claude", true, false, 0)
 }
 
-func GrokReviewV1(filePaths []string) ([]byte, error) {
+func GrokReviewV1(fileCount int) ([]byte, error) {
+	if fileCount < 0 {
+		return nil, fmt.Errorf("Grok review schema received a negative target file count")
+	}
 	document, err := providerReviewDocument(true, true, GrokMinimumOverallExplanationCharacters)
 	if err != nil {
 		return nil, err
@@ -47,7 +48,7 @@ func GrokReviewV1(filePaths []string) ([]byte, error) {
 		return nil, fmt.Errorf("review schema is missing overall_confidence")
 	}
 	overallConfidence["minimum"] = GrokMinimumOverallConfidence
-	return grokCompletionReviewV1(document, filePaths)
+	return grokCompletionReviewV1(document, fileCount)
 }
 
 func providerReviewV1(provider string, omitDraftURI, omitNonWhitespacePattern bool, minimumOverallExplanation int) ([]byte, error) {
@@ -96,20 +97,7 @@ func providerReviewDocument(omitDraftURI, omitNonWhitespacePattern bool, minimum
 	return document, nil
 }
 
-func grokCompletionReviewV1(document map[string]any, filePaths []string) ([]byte, error) {
-	seen := make(map[string]struct{}, len(filePaths))
-	pathValues := make([]any, 0, len(filePaths))
-	for _, filePath := range filePaths {
-		if filePath == "" {
-			return nil, fmt.Errorf("Grok review schema received an empty target file path")
-		}
-		if _, exists := seen[filePath]; exists {
-			return nil, fmt.Errorf("Grok review schema received duplicate target file path %q", filePath)
-		}
-		seen[filePath] = struct{}{}
-		pathValues = append(pathValues, filePath)
-	}
-
+func grokCompletionReviewV1(document map[string]any, fileCount int) ([]byte, error) {
 	review := map[string]any{
 		"type":                 document["type"],
 		"additionalProperties": document["additionalProperties"],
@@ -118,9 +106,11 @@ func grokCompletionReviewV1(document map[string]any, filePaths []string) ([]byte
 	}
 	document["title"] = "slopguard Grok completed review v1"
 	document["required"] = []string{"review", "completion"}
-	filePath := map[string]any{"type": "string"}
-	if len(pathValues) > 0 {
-		filePath["enum"] = pathValues
+	rangeCount := 0
+	lastFileIndex := 0
+	if fileCount > 0 {
+		rangeCount = 1
+		lastFileIndex = fileCount - 1
 	}
 	document["properties"] = map[string]any{
 		"review": review,
@@ -132,16 +122,15 @@ func grokCompletionReviewV1(document map[string]any, filePaths []string) ([]byte
 				"status": map[string]any{"enum": []string{"complete"}},
 				"files": map[string]any{
 					"type":     "array",
-					"minItems": len(filePaths),
-					"maxItems": len(filePaths),
+					"minItems": rangeCount,
+					"maxItems": rangeCount,
 					"items": map[string]any{
 						"type":                 "object",
 						"additionalProperties": false,
-						"required":             []string{"file_path", "assessment", "finding_indexes"},
+						"required":             []string{"start_index", "end_index"},
 						"properties": map[string]any{
-							"file_path":       filePath,
-							"assessment":      map[string]any{"type": "string", "minLength": GrokMinimumFileAssessmentCharacters, "maxLength": GrokMaximumFileAssessmentCharacters},
-							"finding_indexes": map[string]any{"type": "array", "items": map[string]any{"type": "integer", "minimum": 0}, "uniqueItems": true},
+							"start_index": map[string]any{"type": "integer", "minimum": 0, "maximum": 0},
+							"end_index":   map[string]any{"type": "integer", "minimum": lastFileIndex, "maximum": lastFileIndex},
 						},
 					},
 				},

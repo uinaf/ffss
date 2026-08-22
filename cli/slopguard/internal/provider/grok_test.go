@@ -14,6 +14,7 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/reviewpolicy"
+	targetpkg "github.com/uinaf/ffss/cli/slopguard/internal/target"
 	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 )
 
@@ -318,24 +319,16 @@ func TestGrokReviewRequiresExactPerFileCompletionEvidence(t *testing.T) {
 	t.Parallel()
 
 	target := protocol.Target{Files: []protocol.ReviewedFile{{FilePath: "a.go"}, {FilePath: "b.go"}}}
-	assessment := "The changed logic in a.go was inspected against the complete task contract and its relevant edge cases, with no actionable defect identified."
-	omittedFile := grokEnvelopeWithFiles(validGrokReview(), []grokCompletedFileReview{{
-		FilePath:       "a.go",
-		Assessment:     assessment,
-		FindingIndexes: []int{},
-	}})
+	omittedFile := grokEnvelopeWithFiles(validGrokReview(), []grokCompletedFileRange{{StartIndex: 0, EndIndex: 0}})
 	var review any
 	if err := json.Unmarshal([]byte(validGrokReview()), &review); err != nil {
 		t.Fatal(err)
 	}
-	missingFindingIndexes, err := json.Marshal(map[string]any{
+	missingEndIndex, err := json.Marshal(map[string]any{
 		"review": review,
 		"completion": map[string]any{
 			"status": "complete",
-			"files": []any{
-				map[string]any{"file_path": "a.go", "assessment": assessment, "finding_indexes": []int{}},
-				map[string]any{"file_path": "b.go", "assessment": assessment},
-			},
+			"files":  []any{map[string]any{"start_index": 0}},
 		},
 	})
 	if err != nil {
@@ -346,7 +339,9 @@ func TestGrokReviewRequiresExactPerFileCompletionEvidence(t *testing.T) {
 		output string
 	}{
 		{name: "omitted target file", output: omittedFile},
-		{name: "missing required finding indexes", output: grokRawEnvelope(string(missingFindingIndexes))},
+		{name: "missing range endpoint", output: grokRawEnvelope(string(missingEndIndex))},
+		{name: "duplicate range", output: grokEnvelopeWithFiles(validGrokReview(), []grokCompletedFileRange{{StartIndex: 0, EndIndex: 1}, {StartIndex: 0, EndIndex: 1}})},
+		{name: "out of target range", output: grokEnvelopeWithFiles(validGrokReview(), []grokCompletedFileRange{{StartIndex: 0, EndIndex: 2}})},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fake := newFakeGrok(t, fakeGrokOptions{output: test.output})
@@ -367,11 +362,7 @@ func TestValidateGrokCompletion(t *testing.T) {
 	review := protocol.Review{
 		Findings: []protocol.Finding{{Location: protocol.Location{FilePath: "b.go"}}},
 	}
-	assessment := "The changed file was inspected against the complete task contract, relevant control flow, and edge cases before reaching this assessment."
-	valid := grokCompletion{Status: "complete", Files: []grokCompletedFileReview{
-		{FilePath: "a.go", Assessment: assessment, FindingIndexes: []int{}},
-		{FilePath: "b.go", Assessment: assessment, FindingIndexes: []int{0}},
-	}}
+	valid := grokCompletion{Status: "complete", Files: []grokCompletedFileRange{{StartIndex: 0, EndIndex: 1}}}
 	if err := validateGrokCompletion(valid, review, target); err != nil {
 		t.Fatalf("valid completion: %v", err)
 	}
@@ -381,19 +372,23 @@ func TestValidateGrokCompletion(t *testing.T) {
 		completion grokCompletion
 	}{
 		{name: "status", completion: grokCompletion{Files: valid.Files}},
-		{name: "unexpected file", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: assessment}, {FilePath: "c.go", Assessment: assessment, FindingIndexes: []int{0}}}}},
-		{name: "duplicate file", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: assessment}, {FilePath: "a.go", Assessment: assessment, FindingIndexes: []int{0}}}}},
-		{name: "short assessment", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: "too short"}, {FilePath: "b.go", Assessment: assessment, FindingIndexes: []int{0}}}}},
-		{name: "long assessment including whitespace", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: strings.Repeat("a", contractschema.GrokMaximumFileAssessmentCharacters) + " "}, {FilePath: "b.go", Assessment: assessment, FindingIndexes: []int{0}}}}},
-		{name: "invalid finding index", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: assessment}, {FilePath: "b.go", Assessment: assessment, FindingIndexes: []int{1}}}}},
-		{name: "wrong finding file", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: assessment, FindingIndexes: []int{0}}, {FilePath: "b.go", Assessment: assessment}}}},
-		{name: "unlinked finding", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileReview{{FilePath: "a.go", Assessment: assessment}, {FilePath: "b.go", Assessment: assessment}}}},
+		{name: "missing range", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileRange{}}},
+		{name: "duplicate range", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileRange{{StartIndex: 0, EndIndex: 1}, {StartIndex: 0, EndIndex: 1}}}},
+		{name: "incomplete range", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileRange{{StartIndex: 0, EndIndex: 0}}}},
+		{name: "out of target range", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileRange{{StartIndex: 0, EndIndex: 2}}}},
+		{name: "negative range", completion: grokCompletion{Status: "complete", Files: []grokCompletedFileRange{{StartIndex: -1, EndIndex: 1}}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if err := validateGrokCompletion(test.completion, review, target); err == nil {
 				t.Fatal("expected invalid completion")
 			}
 		})
+	}
+	wrongFile := review
+	wrongFile.Findings = append([]protocol.Finding(nil), review.Findings...)
+	wrongFile.Findings[0].Location.FilePath = "c.go"
+	if err := validateGrokCompletion(valid, wrongFile, target); err == nil {
+		t.Fatal("expected finding outside target to fail")
 	}
 }
 
@@ -417,11 +412,7 @@ func TestGrokCompletionConfidenceDoesNotFilterIndividualFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files := []grokCompletedFileReview{{
-		FilePath:       "file.go",
-		Assessment:     "The changed boundary branch was inspected against the supplied contract and the finding records the concrete uncertain edge case without suppressing it.",
-		FindingIndexes: []int{0},
-	}}
+	files := []grokCompletedFileRange{{StartIndex: 0, EndIndex: 0}}
 	document, err := decodeGrokCompletedReview([]byte(grokCompletedReviewJSON(string(encodedReview), files)), target)
 	if err != nil {
 		t.Fatal(err)
@@ -483,6 +474,23 @@ func TestGrokReviewEnforcesOutputBounds(t *testing.T) {
 		t.Fatalf("attempt = %+v", failure.Attempt)
 	}
 	assertExecutionMetadata(t, failure, protocol.ProviderGrok, "1.0.4", protocol.IsolationStrict, false)
+}
+
+func TestGrokCompletionEvidenceFitsOutputLimitForMaximumTarget(t *testing.T) {
+	t.Parallel()
+
+	maximumFileCount := int(targetpkg.MaximumMaxBytes)
+	output := grokEnvelopeWithFiles(validGrokReview(), []grokCompletedFileRange{{StartIndex: 0, EndIndex: maximumFileCount - 1}})
+	if int64(len(output)) >= providerStdoutLimit {
+		t.Fatalf("maximum-target completion output = %d bytes, limit = %d", len(output), providerStdoutLimit)
+	}
+	schema, err := contractschema.GrokReviewV1(maximumFileCount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if int64(len(schema)) >= providerStdoutLimit {
+		t.Fatalf("maximum-target provider schema = %d bytes, output limit = %d", len(schema), providerStdoutLimit)
+	}
 }
 
 func TestGrokReviewUsesExplicitDefaultModel(t *testing.T) {
@@ -621,7 +629,7 @@ func grokEnvelope(review string) string {
 	return grokMismatchedEnvelope(review, review)
 }
 
-func grokEnvelopeWithFiles(review string, files []grokCompletedFileReview) string {
+func grokEnvelopeWithFiles(review string, files []grokCompletedFileRange) string {
 	document := grokCompletedReviewJSON(review, files)
 	return grokRawMismatchedEnvelope(document, document)
 }
@@ -652,13 +660,13 @@ func grokMismatchedEnvelope(textReview, structuredReview string) string {
 	return grokRawMismatchedEnvelope(grokCompletedReviewJSON(textReview, nil), grokCompletedReviewJSON(structuredReview, nil))
 }
 
-func grokCompletedReviewJSON(review string, files []grokCompletedFileReview) string {
+func grokCompletedReviewJSON(review string, files []grokCompletedFileRange) string {
 	var decodedReview any
 	if err := json.Unmarshal([]byte(review), &decodedReview); err != nil {
 		panic(err)
 	}
 	if files == nil {
-		files = []grokCompletedFileReview{}
+		files = []grokCompletedFileRange{}
 	}
 	encoded, err := json.Marshal(map[string]any{
 		"review": decodedReview,

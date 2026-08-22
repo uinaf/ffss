@@ -64,7 +64,7 @@ func TestFakeProviderCLIsRejectInvalidReviewArguments(t *testing.T) {
 		if err := os.WriteFile(promptPath, []byte("review input"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		schema, err := contractschema.GrokReviewV1(nil)
+		schema, err := contractschema.GrokReviewV1(0)
 		if err != nil {
 			t.Fatal(err)
 		}
