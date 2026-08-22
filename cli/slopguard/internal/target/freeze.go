@@ -428,6 +428,9 @@ func (collector *Collector) resolveBranch(ctx context.Context, root, requestedBa
 }
 
 func (collector *Collector) immutableSourceStateHash(ctx context.Context, root string, request Request) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	plan := &targetPlan{}
 	switch request.Mode {
 	case protocol.TargetBranch:
@@ -446,9 +449,15 @@ func (collector *Collector) immutableSourceStateHash(ctx context.Context, root s
 	default:
 		return "", fmt.Errorf("unsupported immutable target mode %q", request.Mode)
 	}
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	contexts := make(map[string][]byte, len(request.ContextFiles))
 	remaining := request.MaxBytes
 	for _, path := range request.ContextFiles {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
 		content, size, err := readContainedFile(root, path, remaining)
 		if err != nil {
 			return "", fmt.Errorf("read context %q: %w", path, err)
@@ -459,7 +468,10 @@ func (collector *Collector) immutableSourceStateHash(ctx context.Context, root s
 		remaining -= size
 		contexts[path] = content
 	}
-	return immutableStateHash(plan, contexts)
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	return immutableStateHash(ctx, plan, contexts)
 }
 
 func (collector *Collector) resolveHEAD(ctx context.Context, root string) (string, bool, error) {

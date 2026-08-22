@@ -710,12 +710,12 @@ func (writer *deletedBatchWriter) Err() error {
 
 func (collector *Collector) sourceStateHash(ctx context.Context, root string, plan *targetPlan, contexts map[string][]byte) (string, error) {
 	if !plan.local {
-		return immutableStateHash(plan, contexts)
+		return immutableStateHash(ctx, plan, contexts)
 	}
 	return collector.localSourceStateHash(ctx, root, plan)
 }
 
-func immutableStateHash(plan *targetPlan, contexts map[string][]byte) (string, error) {
+func immutableStateHash(ctx context.Context, plan *targetPlan, contexts map[string][]byte) (string, error) {
 	hash := sha256.New()
 	sections := []struct {
 		label string
@@ -728,6 +728,9 @@ func immutableStateHash(plan *targetPlan, contexts map[string][]byte) (string, e
 		{label: "commit", value: plan.target.CommitRevision},
 	}
 	for _, section := range sections {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
 		value := section.value
 		if err := hashSourceSection(hash, section.label, func(output io.Writer) error {
 			_, err := io.WriteString(output, value)
@@ -737,6 +740,9 @@ func immutableStateHash(plan *targetPlan, contexts map[string][]byte) (string, e
 		}
 	}
 	for _, path := range sortedKeys(contexts) {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
 		path := path
 		content := contexts[path]
 		if err := hashSourceSection(hash, "context-path", func(output io.Writer) error {
@@ -746,13 +752,30 @@ func immutableStateHash(plan *targetPlan, contexts map[string][]byte) (string, e
 			return "", fmt.Errorf("fingerprint context path: %w", err)
 		}
 		if err := hashSourceSection(hash, "context-content", func(output io.Writer) error {
-			_, err := output.Write(content)
-			return err
+			return writeContextHash(ctx, output, content)
 		}); err != nil {
 			return "", fmt.Errorf("fingerprint context %q: %w", path, err)
 		}
 	}
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	return "sha256:" + hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func writeContextHash(ctx context.Context, output io.Writer, content []byte) error {
+	const chunkBytes = 64 << 10
+	for len(content) > 0 {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		length := min(len(content), chunkBytes)
+		if _, err := output.Write(content[:length]); err != nil {
+			return err
+		}
+		content = content[length:]
+	}
+	return ctx.Err()
 }
 
 func (collector *Collector) localSourceStateHash(ctx context.Context, root string, plan *targetPlan) (string, error) {

@@ -749,6 +749,49 @@ func TestVerifyUnchangedImmutableModesDetectRelevantChanges(t *testing.T) {
 	}
 }
 
+func TestVerifyStableImmutableStateRechecksBeforeSuccess(t *testing.T) {
+	t.Parallel()
+
+	states := []string{"expected", "changed"}
+	calls := 0
+	err := verifyStableImmutableState(context.Background(), "expected", func(context.Context) (string, error) {
+		state := states[calls]
+		calls++
+		return state, nil
+	})
+	if !errors.Is(err, ErrSourceChanged) || calls != 2 {
+		t.Fatalf("verifyStableImmutableState() calls=%d error=%v", calls, err)
+	}
+}
+
+func TestVerifyStableImmutableStateHonorsCancellationBeforeSuccess(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := 0
+	err := verifyStableImmutableState(ctx, "expected", func(context.Context) (string, error) {
+		calls++
+		if calls == 2 {
+			cancel()
+		}
+		return "expected", nil
+	})
+	if !errors.Is(err, context.Canceled) || calls != 2 {
+		t.Fatalf("verifyStableImmutableState() calls=%d error=%v", calls, err)
+	}
+}
+
+func TestImmutableStateHashHonorsCancellationDuringContextHash(t *testing.T) {
+	t.Parallel()
+
+	ctx := &cancelAfterChecksContext{Context: context.Background(), remaining: 8}
+	plan := &targetPlan{target: protocol.Target{Mode: protocol.TargetCommit, CommitRevision: strings.Repeat("a", 40)}}
+	_, err := immutableStateHash(ctx, plan, map[string][]byte{"context.txt": bytes.Repeat([]byte{'x'}, 128<<10)})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("immutableStateHash() error = %v, want cancellation", err)
+	}
+}
+
 func TestVerifyUnchangedRejectsNewRepositoryFilterWithoutExecutingIt(t *testing.T) {
 	t.Parallel()
 
@@ -1481,6 +1524,19 @@ type ScannerFunc func(context.Context, string) error
 
 func (scan ScannerFunc) Scan(ctx context.Context, payload string) error {
 	return scan(ctx, payload)
+}
+
+type cancelAfterChecksContext struct {
+	context.Context
+	remaining int
+}
+
+func (ctx *cancelAfterChecksContext) Err() error {
+	ctx.remaining--
+	if ctx.remaining <= 0 {
+		return context.Canceled
+	}
+	return nil
 }
 
 func newRepository(t *testing.T) string {

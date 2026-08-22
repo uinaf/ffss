@@ -154,15 +154,17 @@ func (bundle *Bundle) Contributors() []Contributor {
 
 func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
 	if bundle.request.Mode != protocol.TargetLocal {
-		current, err := bundle.collector.immutableSourceStateHash(ctx, bundle.repository, bundle.request)
+		err := verifyStableImmutableState(ctx, bundle.stateHash, func(ctx context.Context) (string, error) {
+			return bundle.collector.immutableSourceStateHash(ctx, bundle.repository, bundle.request)
+		})
 		if err != nil {
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return ctxErr
 			}
+			if errors.Is(err, ErrSourceChanged) {
+				return err
+			}
 			return fmt.Errorf("%w: verify immutable target: %v", ErrSourceChanged, err)
-		}
-		if current != bundle.stateHash {
-			return ErrSourceChanged
 		}
 		return nil
 	}
@@ -177,6 +179,22 @@ func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
 		return ErrSourceChanged
 	}
 	return nil
+}
+
+func verifyStableImmutableState(ctx context.Context, expected string, snapshot func(context.Context) (string, error)) error {
+	for range 2 {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		current, err := snapshot(ctx)
+		if err != nil {
+			return err
+		}
+		if current != expected {
+			return ErrSourceChanged
+		}
+	}
+	return ctx.Err()
 }
 
 type SizeError struct {
