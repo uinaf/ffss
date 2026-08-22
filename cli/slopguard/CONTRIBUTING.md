@@ -60,9 +60,9 @@ SLOPGUARD_LIVE_PROVIDERS=grok SLOPGUARD_LIVE_REPEAT=3 mise run verify:live
 - The default checks Codex, Claude, Cursor, and Grok sequentially through
   `native-config`.
 - `native-config` removes the selected provider's direct API-key variables and
-  preserves normal provider state and helper configuration. Run it from an
-  isolated session or gateway/helper profile when those routes need separate
-  proof.
+  preserves normal provider state, XDG configuration, and helper configuration.
+  Run it from an isolated session or gateway/helper profile when those routes
+  need separate proof.
 - `strict-key` requires one supported direct key for every selected provider,
   then relies on strict isolation to remove provider state and competing auth.
 - `SLOPGUARD_LIVE_AUTH_ROUTES` accepts `native-config`, `strict-key`, or both.

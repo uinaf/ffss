@@ -119,7 +119,7 @@ func TestLiveReviewEnvironmentIsolation(t *testing.T) {
 	if values["GIT_CONFIG_GLOBAL"] != "/dev/null" || values["GIT_CONFIG_SYSTEM"] != "/dev/null" {
 		t.Fatalf("Git config environment = %q, %q", values["GIT_CONFIG_GLOBAL"], values["GIT_CONFIG_SYSTEM"])
 	}
-	if values["XDG_CONFIG_HOME"] == "/host/xdg" || !filepath.IsAbs(values["XDG_CONFIG_HOME"]) {
+	if values["XDG_CONFIG_HOME"] != "/host/xdg" {
 		t.Fatalf("XDG_CONFIG_HOME = %q", values["XDG_CONFIG_HOME"])
 	}
 	if values["CODEX_API_KEY"] != "" || values["OPENAI_API_KEY"] != "" {
@@ -347,7 +347,6 @@ func liveReviewEnvironment(t *testing.T, live liveProvider, route liveAuthRoute)
 	return replaceEnvironment(environment, map[string]string{
 		"GIT_CONFIG_GLOBAL": "/dev/null",
 		"GIT_CONFIG_SYSTEM": "/dev/null",
-		"XDG_CONFIG_HOME":   t.TempDir(),
 	})
 }
 
