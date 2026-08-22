@@ -314,6 +314,22 @@ func TestClaudeReviewPrefersReportedFailureOnNonZeroExit(t *testing.T) {
 	}
 }
 
+func TestClaudeReviewRejectsMalformedTypedFailureOnNonZeroExit(t *testing.T) {
+	t.Parallel()
+
+	output := `{"type":"unknown","subtype":"error","is_error":true,"api_error_status":401,"result":"` + providerOutputSentinel + `"}`
+	fake := newFakeClaude(t, fakeClaudeOptions{reviewOutputError: output})
+	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	failure := assertProviderError(t, err, protocol.FailureProvider)
+	if strings.Contains(failure.Message, providerOutputSentinel) {
+		t.Fatalf("provider failure disclosed provider output: %q", failure.Message)
+	}
+	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
+		t.Fatalf("attempt = %+v", failure.Attempt)
+	}
+}
+
 func TestClaudeReviewEnforcesOutputBounds(t *testing.T) {
 	t.Parallel()
 
