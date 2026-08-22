@@ -619,6 +619,136 @@ func TestVerifyUnchangedDetectsIndexOnlyMutation(t *testing.T) {
 	}
 }
 
+func TestVerifyUnchangedImmutableModesIgnoreUnrelatedWorktreeState(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		request func(*testing.T, string) Request
+	}{
+		{
+			name: "branch",
+			request: func(t *testing.T, repository string) Request {
+				gitCommand(t, repository, "switch", "-c", "feature")
+				writeFile(t, repository, "file.txt", "feature\n")
+				gitCommand(t, repository, "commit", "-am", "feature")
+				return Request{Mode: protocol.TargetBranch, Base: "main"}
+			},
+		},
+		{
+			name: "commit",
+			request: func(t *testing.T, repository string) Request {
+				writeFile(t, repository, "file.txt", "reviewed\n")
+				gitCommand(t, repository, "commit", "-am", "reviewed")
+				return Request{Mode: protocol.TargetCommit, Commit: gitCommand(t, repository, "rev-parse", "HEAD")}
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			repository := committedRepository(t)
+			request := test.request(t, repository)
+			bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, request)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			writeFile(t, repository, "file.txt", "unrelated worktree change\n")
+			writeFile(t, repository, "staged.txt", "unrelated index change\n")
+			gitCommand(t, repository, "add", "staged.txt")
+			writeFile(t, repository, "untracked.txt", "unrelated untracked change\n")
+			gitCommand(t, repository, "config", "review.unrelated", "changed")
+
+			if err := bundle.VerifyUnchanged(context.Background()); err != nil {
+				t.Fatalf("VerifyUnchanged() error = %v", err)
+			}
+		})
+	}
+}
+
+func TestVerifyUnchangedImmutableModesDetectRelevantChanges(t *testing.T) {
+	t.Parallel()
+
+	t.Run("branch head", func(t *testing.T) {
+		t.Parallel()
+		repository := committedRepository(t)
+		gitCommand(t, repository, "switch", "-c", "feature")
+		writeFile(t, repository, "file.txt", "feature\n")
+		gitCommand(t, repository, "commit", "-am", "feature")
+		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeFile(t, repository, "next.txt", "next\n")
+		gitCommand(t, repository, "add", "next.txt")
+		gitCommand(t, repository, "commit", "-m", "move head")
+		if err := bundle.VerifyUnchanged(context.Background()); !errors.Is(err, ErrSourceChanged) {
+			t.Fatalf("VerifyUnchanged() error = %v, want moved head", err)
+		}
+	})
+
+	t.Run("branch base", func(t *testing.T) {
+		t.Parallel()
+		repository := committedRepository(t)
+		base := gitCommand(t, repository, "rev-parse", "HEAD")
+		gitCommand(t, repository, "switch", "-c", "feature")
+		writeFile(t, repository, "file.txt", "feature\n")
+		gitCommand(t, repository, "commit", "-am", "feature")
+		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		advancedBase := gitCommand(t, repository, "commit-tree", base+"^{tree}", "-p", base, "-m", "advance base")
+		gitCommand(t, repository, "update-ref", "refs/heads/main", advancedBase, base)
+		if err := bundle.VerifyUnchanged(context.Background()); !errors.Is(err, ErrSourceChanged) {
+			t.Fatalf("VerifyUnchanged() error = %v, want moved base", err)
+		}
+	})
+
+	t.Run("commit ref", func(t *testing.T) {
+		t.Parallel()
+		repository := committedRepository(t)
+		first := gitCommand(t, repository, "rev-parse", "HEAD")
+		gitCommand(t, repository, "branch", "reviewed", first)
+		writeFile(t, repository, "file.txt", "second\n")
+		gitCommand(t, repository, "commit", "-am", "second")
+		second := gitCommand(t, repository, "rev-parse", "HEAD")
+		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "reviewed"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		gitCommand(t, repository, "update-ref", "refs/heads/reviewed", second, first)
+		if err := bundle.VerifyUnchanged(context.Background()); !errors.Is(err, ErrSourceChanged) {
+			t.Fatalf("VerifyUnchanged() error = %v, want moved commit ref", err)
+		}
+	})
+
+	for _, mode := range []protocol.TargetMode{protocol.TargetBranch, protocol.TargetCommit} {
+		t.Run(string(mode)+" context", func(t *testing.T) {
+			t.Parallel()
+			repository := committedRepository(t)
+			writeFile(t, repository, "file.txt", "reviewed\n")
+			gitCommand(t, repository, "commit", "-am", "reviewed")
+			writeFile(t, repository, "context.txt", "before\n")
+			request := Request{Mode: mode, ContextFiles: []string{"context.txt"}}
+			if mode == protocol.TargetBranch {
+				request.Base = "main~1"
+			} else {
+				request.Commit = "HEAD"
+			}
+			bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			writeFile(t, repository, "context.txt", "after\n")
+			if err := bundle.VerifyUnchanged(context.Background()); !errors.Is(err, ErrSourceChanged) {
+				t.Fatalf("VerifyUnchanged() error = %v, want changed context", err)
+			}
+		})
+	}
+}
+
 func TestVerifyUnchangedRejectsNewRepositoryFilterWithoutExecutingIt(t *testing.T) {
 	t.Parallel()
 
