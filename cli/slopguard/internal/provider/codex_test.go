@@ -283,7 +283,6 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 		{name: "malformed review", options: fakeCodexOptions{result: `{"findings":[]}`}},
 		{name: "envelope mismatch", options: fakeCodexOptions{envelopeMessage: `{"findings":[],"overall_explanation":"Different.","overall_confidence":0.9}`}},
 		{name: "invalid envelope", options: fakeCodexOptions{rawEnvelope: "not-json\n"}},
-		{name: "provider error sentinel", options: fakeCodexOptions{rawEnvelope: `{"type":"error","message":"` + providerOutputSentinel + `"}` + "\n"}},
 		{
 			name: "event after completion",
 			options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
@@ -313,6 +312,26 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 			assertExecutionMetadata(t, failure, protocol.ProviderCodex, "0.146.0", protocol.IsolationStrict, false)
 		})
 	}
+}
+
+func TestCodexReviewClassifiesReportedProviderEvent(t *testing.T) {
+	t.Parallel()
+
+	fake := newFakeCodex(t, fakeCodexOptions{rawEnvelope: `{"type":"error","message":"` + providerOutputSentinel + `"}` + "\n"})
+	reviewer := NewCodex(CodexOptions{
+		Repository:  t.TempDir(),
+		Executable:  fake.path,
+		Environment: []string{"PATH=/usr/bin:/bin", "OPENAI_API_KEY=test-provider-secret"},
+	})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: codexConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	failure := assertProviderError(t, err, protocol.FailureProvider)
+	if strings.Contains(failure.Message, providerOutputSentinel) {
+		t.Fatalf("provider failure disclosed provider output: %q", failure.Message)
+	}
+	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
+		t.Fatalf("attempt = %+v", failure.Attempt)
+	}
+	assertExecutionMetadata(t, failure, protocol.ProviderCodex, "0.146.0", protocol.IsolationStrict, false)
 }
 
 func TestCodexReviewEnforcesOutputBounds(t *testing.T) {

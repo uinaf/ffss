@@ -295,7 +295,6 @@ func TestCursorReviewRejectsMalformedEnvelope(t *testing.T) {
 		output string
 	}{
 		{name: "not JSON", output: "not-json"},
-		{name: "failed result", output: `{"type":"result","subtype":"error","is_error":true,"result":"failed"}`},
 		{name: "missing result", output: `{"type":"result","subtype":"success","is_error":false}`},
 		{name: "duplicate key", output: `{"type":"result","type":"result","subtype":"success","is_error":false,"result":"x"}`},
 		{name: "sentinel key", output: `{"` + providerOutputSentinel + `":1,"` + providerOutputSentinel + `":2}`},
@@ -314,6 +313,22 @@ func TestCursorReviewRejectsMalformedEnvelope(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCursorReviewClassifiesReportedProviderFailure(t *testing.T) {
+	t.Parallel()
+
+	fake := newFakeCursor(t, fakeCursorOptions{output: `{"type":"result","subtype":"error","is_error":true,"result":"` + providerOutputSentinel + `"}`})
+	reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+	failure := assertProviderError(t, err, protocol.FailureProvider)
+	if strings.Contains(failure.Message, providerOutputSentinel) {
+		t.Fatalf("provider failure disclosed provider output: %q", failure.Message)
+	}
+	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
+		t.Fatalf("attempt = %+v", failure.Attempt)
+	}
+	assertExecutionMetadata(t, failure, protocol.ProviderCursor, "2026.07.23-e383d2b", protocol.IsolationStrict, true)
 }
 
 func TestCursorReviewOmitsProviderFailureOutput(t *testing.T) {

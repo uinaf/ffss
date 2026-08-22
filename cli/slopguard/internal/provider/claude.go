@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -134,6 +135,12 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	}
 	reviewData, err := decodeClaudeEnvelope(process.Stdout)
 	if err != nil {
+		var reported *reportedProviderError
+		if errors.As(err, &reported) {
+			attempt.Outcome = protocol.AttemptFailed
+			attempt.ErrorClass = &reported.Class
+			return Result{}, newFailure(reported.Class, reported.Message, environment, &attempt).withExecution(resolvedExecution)
+		}
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
@@ -266,12 +273,27 @@ func decodeClaudeEnvelope(output []byte) ([]byte, error) {
 		Type             string          `json:"type"`
 		Subtype          string          `json:"subtype"`
 		IsError          *bool           `json:"is_error"`
+		APIErrorStatus   *int            `json:"api_error_status"`
 		StructuredOutput json.RawMessage `json:"structured_output"`
 	}
 	if err := json.Unmarshal(output, &envelope); err != nil {
 		return nil, err
 	}
-	if envelope.Type != "result" || envelope.Subtype != "success" || envelope.IsError == nil || *envelope.IsError {
+	if envelope.Type == "result" && envelope.IsError != nil && *envelope.IsError {
+		class := protocol.FailureProvider
+		message := "Claude reported a provider failure"
+		if envelope.APIErrorStatus != nil {
+			switch *envelope.APIErrorStatus {
+			case 401, 403:
+				class = protocol.FailureAuth
+				message = "Claude reported an authentication failure"
+			case 429:
+				message = "Claude reported a rate limit"
+			}
+		}
+		return nil, &reportedProviderError{Class: class, Message: message}
+	}
+	if envelope.Type != "result" || envelope.Subtype != "success" || envelope.IsError == nil {
 		return nil, fmt.Errorf("Claude did not report a successful result")
 	}
 	structured := bytes.TrimSpace(envelope.StructuredOutput)

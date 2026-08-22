@@ -154,6 +154,12 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 	}
 	message, err := decodeCodexEnvelope(process.Stdout)
 	if err != nil {
+		var reported *reportedProviderError
+		if errors.As(err, &reported) {
+			attempt.Outcome = protocol.AttemptFailed
+			attempt.ErrorClass = &reported.Class
+			return Result{}, newFailure(reported.Class, reported.Message, runtime.Environment(), &attempt).withExecution(resolvedExecution)
+		}
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
@@ -341,7 +347,7 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 			}
 			turnCompleted = true
 		case "error", "turn.failed":
-			return "", fmt.Errorf("Codex reported %s", event.Type)
+			return "", &reportedProviderError{Class: protocol.FailureProvider, Message: "Codex reported a provider failure"}
 		case "":
 			return "", fmt.Errorf("Codex event is missing type")
 		}

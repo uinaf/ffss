@@ -239,7 +239,6 @@ func TestClaudeReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 		output string
 	}{
 		{name: "not JSON", output: "not-json"},
-		{name: "failed result", output: `{"type":"result","subtype":"error","is_error":true,"structured_output":{}}`},
 		{name: "missing structured output", output: `{"type":"result","subtype":"success","is_error":false}`},
 		{name: "duplicate envelope key", output: `{"type":"result","type":"result","subtype":"success","is_error":false,"structured_output":{}}`},
 		{name: "sentinel envelope key", output: `{"` + providerOutputSentinel + `":1,"` + providerOutputSentinel + `":2}`},
@@ -262,6 +261,36 @@ func TestClaudeReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 				t.Fatalf("protocol failure disclosed provider output: %q", failure.Message)
 			}
 			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptMalformed {
+				t.Fatalf("attempt = %+v", failure.Attempt)
+			}
+			assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", protocol.IsolationStrict, false)
+		})
+	}
+}
+
+func TestClaudeReviewClassifiesReportedFailures(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name   string
+		status string
+		class  protocol.FailureClass
+	}{
+		{name: "authentication", status: `401`, class: protocol.FailureAuth},
+		{name: "rate limit", status: `429`, class: protocol.FailureProvider},
+		{name: "unavailable model stays generic", status: `400`, class: protocol.FailureProvider},
+		{name: "missing status stays generic", status: `null`, class: protocol.FailureProvider},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			output := `{"type":"result","subtype":"error","is_error":true,"api_error_status":` + test.status + `,"result":"` + providerOutputSentinel + `"}`
+			fake := newFakeClaude(t, fakeClaudeOptions{output: output})
+			reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
+			failure := assertProviderError(t, err, test.class)
+			if strings.Contains(failure.Message, providerOutputSentinel) {
+				t.Fatalf("provider failure disclosed provider output: %q", failure.Message)
+			}
+			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 				t.Fatalf("attempt = %+v", failure.Attempt)
 			}
 			assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", protocol.IsolationStrict, false)

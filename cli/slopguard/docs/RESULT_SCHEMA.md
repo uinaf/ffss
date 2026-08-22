@@ -104,6 +104,10 @@ failures include a stable correction category such as `finding_location`,
 classified without exposing its contents. A configured protocol retry receives
 category-specific trusted guidance against the same frozen target.
 
+Documented provider error envelopes and events are failed attempts, not
+malformed reviews. Only a provider response that reached the review boundary
+and violated that contract can consume the protocol retry.
+
 ## Compatibility
 
 `schema_version` is a string so future incompatible contracts can coexist
