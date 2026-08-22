@@ -44,9 +44,10 @@ type processResult struct {
 }
 
 type processError struct {
-	Kind   processErrorKind
-	Result processResult
-	Err    error
+	Kind          processErrorKind
+	Result        processResult
+	Err           error
+	ContextCaused bool
 }
 
 func (failure *processError) Error() string {
@@ -117,7 +118,8 @@ func runProcess(ctx context.Context, spec processSpec) (processResult, error) {
 	case result.ExitCode == -1:
 		kind = processStart
 	}
-	return result, &processError{Kind: kind, Result: result, Err: err}
+	contextCaused := (kind == processTimeout || kind == processCancelled) && result.ExitCode == -1
+	return result, &processError{Kind: kind, Result: result, Err: err, ContextCaused: contextCaused}
 }
 
 func isOrdinaryProcessExit(err error) bool {

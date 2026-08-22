@@ -62,6 +62,35 @@ func TestCapabilityProbeFailureRequiresOutputBound(t *testing.T) {
 	}
 }
 
+func TestProcessFailurePreservesContextCausality(t *testing.T) {
+	t.Parallel()
+
+	contextFailure := processFailure(
+		"provider review",
+		protocol.FailureCancelled,
+		&processError{Kind: processCancelled, Err: context.Canceled, ContextCaused: true},
+		processResult{ExitCode: -1},
+		nil,
+		nil,
+		"",
+	)
+	if !contextFailure.ContextCaused {
+		t.Fatal("context-caused process failure lost causality")
+	}
+	coincidentFailure := processFailure(
+		"provider review",
+		protocol.FailureCancelled,
+		&processError{Kind: processCancelled, Err: errors.New("exit status 7")},
+		processResult{ExitCode: 7},
+		nil,
+		nil,
+		"",
+	)
+	if coincidentFailure.ContextCaused {
+		t.Fatal("provider exit was marked context-caused")
+	}
+}
+
 func TestRunProcessEmptyEnvironmentDoesNotInheritParent(t *testing.T) {
 	t.Parallel()
 

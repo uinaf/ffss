@@ -452,7 +452,9 @@ func processFailure(operation string, class protocol.FailureClass, err error, re
 		message += fmt.Sprintf(" with exit code %d", result.ExitCode)
 	}
 	message += "; " + processRecovery(class, kind, authRecovery)
-	return newFailure(class, message, environment, attempt)
+	failure := newFailure(class, message, environment, attempt)
+	failure.ContextCaused = processErr.ContextCaused
+	return failure
 }
 
 func processRecovery(class protocol.FailureClass, kind processErrorKind, authRecovery string) string {

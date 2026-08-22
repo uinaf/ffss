@@ -75,11 +75,12 @@ type Reviewer interface {
 }
 
 type Error struct {
-	Class     protocol.FailureClass
-	Message   string
-	Attempt   *protocol.Attempt
-	Reason    protocol.ProtocolReason
-	Execution *Execution
+	Class         protocol.FailureClass
+	Message       string
+	Attempt       *protocol.Attempt
+	Reason        protocol.ProtocolReason
+	Execution     *Execution
+	ContextCaused bool
 }
 
 type reportedProviderError struct {
@@ -173,6 +174,9 @@ func preparationFailureCausedByContext(err, contextErr error) bool {
 	}
 	var failure *Error
 	if !errors.As(err, &failure) {
+		return false
+	}
+	if !failure.ContextCaused {
 		return false
 	}
 	switch {
