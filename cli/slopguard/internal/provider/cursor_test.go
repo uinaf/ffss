@@ -295,6 +295,8 @@ func TestCursorReviewRejectsMalformedEnvelope(t *testing.T) {
 		output string
 	}{
 		{name: "not JSON", output: "not-json"},
+		{name: "unknown failure subtype", output: `{"type":"result","subtype":"unknown","is_error":true,"result":"failed"}`},
+		{name: "failure missing result", output: `{"type":"result","subtype":"error","is_error":true}`},
 		{name: "missing result", output: `{"type":"result","subtype":"success","is_error":false}`},
 		{name: "duplicate key", output: `{"type":"result","type":"result","subtype":"success","is_error":false,"result":"x"}`},
 		{name: "sentinel key", output: `{"` + providerOutputSentinel + `":1,"` + providerOutputSentinel + `":2}`},

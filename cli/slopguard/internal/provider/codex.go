@@ -323,8 +323,10 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 			Type     string `json:"type"`
 			ThreadID string `json:"thread_id"`
 			Message  string `json:"message"`
-			Error    any    `json:"error"`
-			Item     *struct {
+			Error    *struct {
+				Message string `json:"message"`
+			} `json:"error"`
+			Item *struct {
 				Type string `json:"type"`
 				Text string `json:"text"`
 			} `json:"item"`
@@ -355,7 +357,15 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 				return "", fmt.Errorf("invalid turn.completed event")
 			}
 			turnCompleted = true
-		case "error", "turn.failed":
+		case "error":
+			if strings.TrimSpace(event.Message) == "" {
+				return "", fmt.Errorf("Codex returned an invalid error event")
+			}
+			return "", &reportedProviderError{Class: protocol.FailureProvider, Message: "Codex reported a provider failure"}
+		case "turn.failed":
+			if event.Error == nil || strings.TrimSpace(event.Error.Message) == "" {
+				return "", fmt.Errorf("Codex returned an invalid turn.failed event")
+			}
 			return "", &reportedProviderError{Class: protocol.FailureProvider, Message: "Codex reported a provider failure"}
 		case "":
 			return "", fmt.Errorf("Codex event is missing type")

@@ -269,6 +269,9 @@ func decodeCursorEnvelope(output []byte) (string, error) {
 		return "", err
 	}
 	if envelope.Type == "result" && envelope.IsError != nil && *envelope.IsError {
+		if envelope.Subtype != "error" || strings.TrimSpace(envelope.Result) == "" {
+			return "", fmt.Errorf("Cursor returned an invalid failure result")
+		}
 		return "", &reportedProviderError{Class: protocol.FailureProvider, Message: "Cursor reported a provider failure"}
 	}
 	if envelope.Type != "result" || envelope.Subtype != "success" || envelope.IsError == nil {

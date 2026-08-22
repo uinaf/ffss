@@ -239,6 +239,8 @@ func TestClaudeReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 		output string
 	}{
 		{name: "not JSON", output: "not-json"},
+		{name: "unknown failure subtype", output: `{"type":"result","subtype":"unknown","is_error":true,"api_error_status":401,"result":"failed"}`},
+		{name: "failure missing result", output: `{"type":"result","subtype":"error","is_error":true,"api_error_status":401}`},
 		{name: "missing structured output", output: `{"type":"result","subtype":"success","is_error":false}`},
 		{name: "duplicate envelope key", output: `{"type":"result","type":"result","subtype":"success","is_error":false,"structured_output":{}}`},
 		{name: "sentinel envelope key", output: `{"` + providerOutputSentinel + `":1,"` + providerOutputSentinel + `":2}`},
@@ -317,7 +319,7 @@ func TestClaudeReviewPrefersReportedFailureOnNonZeroExit(t *testing.T) {
 func TestClaudeReviewRejectsMalformedTypedFailureOnNonZeroExit(t *testing.T) {
 	t.Parallel()
 
-	output := `{"type":"unknown","subtype":"error","is_error":true,"api_error_status":401,"result":"` + providerOutputSentinel + `"}`
+	output := `{"type":"result","subtype":"unknown","is_error":true,"api_error_status":401,"result":"` + providerOutputSentinel + `"}`
 	fake := newFakeClaude(t, fakeClaudeOptions{reviewOutputError: output})
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
 	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})

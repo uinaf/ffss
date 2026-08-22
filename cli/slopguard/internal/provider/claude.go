@@ -260,12 +260,16 @@ func decodeClaudeEnvelope(output []byte) ([]byte, error) {
 		Subtype          string          `json:"subtype"`
 		IsError          *bool           `json:"is_error"`
 		APIErrorStatus   *int            `json:"api_error_status"`
+		Result           string          `json:"result"`
 		StructuredOutput json.RawMessage `json:"structured_output"`
 	}
 	if err := json.Unmarshal(output, &envelope); err != nil {
 		return nil, err
 	}
 	if envelope.Type == "result" && envelope.IsError != nil && *envelope.IsError {
+		if (envelope.Subtype != "success" && envelope.Subtype != "error") || strings.TrimSpace(envelope.Result) == "" {
+			return nil, fmt.Errorf("Claude returned an invalid failure result")
+		}
 		class := protocol.FailureProvider
 		message := "Claude reported a provider failure"
 		if envelope.APIErrorStatus != nil {

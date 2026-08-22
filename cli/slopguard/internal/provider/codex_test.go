@@ -283,6 +283,9 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 		{name: "malformed review", options: fakeCodexOptions{result: `{"findings":[]}`}},
 		{name: "envelope mismatch", options: fakeCodexOptions{envelopeMessage: `{"findings":[],"overall_explanation":"Different.","overall_confidence":0.9}`}},
 		{name: "invalid envelope", options: fakeCodexOptions{rawEnvelope: "not-json\n"}},
+		{name: "error missing message", options: fakeCodexOptions{rawEnvelope: `{"type":"error"}` + "\n"}},
+		{name: "turn failure missing error", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.failed"}` + "\n"}},
+		{name: "turn failure missing message", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.failed","error":{}}` + "\n"}},
 		{
 			name: "event after completion",
 			options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
@@ -319,14 +322,17 @@ func TestCodexReviewClassifiesReportedProviderEvent(t *testing.T) {
 
 	for _, test := range []struct {
 		name                 string
+		rawEnvelope          string
 		exitAfterOutputError string
 	}{
-		{name: "zero exit"},
-		{name: "non-zero exit beats stderr prose", exitAfterOutputError: "not authenticated"},
+		{name: "error zero exit", rawEnvelope: `{"type":"error","message":"` + providerOutputSentinel + `"}` + "\n"},
+		{name: "error non-zero exit beats stderr prose", rawEnvelope: `{"type":"error","message":"` + providerOutputSentinel + `"}` + "\n", exitAfterOutputError: "not authenticated"},
+		{name: "turn failure zero exit", rawEnvelope: `{"type":"turn.failed","error":{"message":"` + providerOutputSentinel + `"}}` + "\n"},
+		{name: "turn failure non-zero exit beats stderr prose", rawEnvelope: `{"type":"turn.failed","error":{"message":"` + providerOutputSentinel + `"}}` + "\n", exitAfterOutputError: "not authenticated"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fake := newFakeCodex(t, fakeCodexOptions{
-				rawEnvelope:          `{"type":"error","message":"` + providerOutputSentinel + `"}` + "\n",
+				rawEnvelope:          test.rawEnvelope,
 				exitAfterOutputError: test.exitAfterOutputError,
 			})
 			reviewer := NewCodex(CodexOptions{
