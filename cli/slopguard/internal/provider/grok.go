@@ -134,11 +134,7 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 	if err := prompt.Close(); err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("close Grok prompt: %v", err), runtime.Environment(), nil)
 	}
-	filePaths := make([]string, 0, len(request.Target.Files))
-	for _, file := range request.Target.Files {
-		filePaths = append(filePaths, file.FilePath)
-	}
-	providerSchema, err := contractschema.GrokReviewV1(filePaths)
+	providerSchema, err := contractschema.GrokReviewV1(len(request.Target.Files))
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, err.Error(), runtime.Environment(), nil)
 	}
@@ -301,14 +297,13 @@ func grokNeedsNoMemoryFlag(version string) bool {
 }
 
 type grokCompletion struct {
-	Status string                    `json:"status"`
-	Files  []grokCompletedFileReview `json:"files"`
+	Status string                   `json:"status"`
+	Files  []grokCompletedFileRange `json:"files"`
 }
 
-type grokCompletedFileReview struct {
-	FilePath       string `json:"file_path"`
-	Assessment     string `json:"assessment"`
-	FindingIndexes []int  `json:"finding_indexes"`
+type grokCompletedFileRange struct {
+	StartIndex int `json:"start_index"`
+	EndIndex   int `json:"end_index"`
 }
 
 type grokCompletedReview struct {
@@ -411,23 +406,21 @@ func decodeGrokCompletion(data []byte) (grokCompletion, error) {
 	if raw.Status == nil || raw.Files == nil {
 		return grokCompletion{}, fmt.Errorf("completion is missing required fields")
 	}
-	completion := grokCompletion{Status: *raw.Status, Files: make([]grokCompletedFileReview, 0, len(*raw.Files))}
+	completion := grokCompletion{Status: *raw.Status, Files: make([]grokCompletedFileRange, 0, len(*raw.Files))}
 	for index, data := range *raw.Files {
 		var file struct {
-			FilePath       *string `json:"file_path"`
-			Assessment     *string `json:"assessment"`
-			FindingIndexes *[]int  `json:"finding_indexes"`
+			StartIndex *int `json:"start_index"`
+			EndIndex   *int `json:"end_index"`
 		}
 		if err := decodeGrokJSONDocument(data, &file); err != nil {
 			return grokCompletion{}, fmt.Errorf("decode completion file %d: %w", index, err)
 		}
-		if file.FilePath == nil || file.Assessment == nil || file.FindingIndexes == nil {
+		if file.StartIndex == nil || file.EndIndex == nil {
 			return grokCompletion{}, fmt.Errorf("completion file %d is missing required fields", index)
 		}
-		completion.Files = append(completion.Files, grokCompletedFileReview{
-			FilePath:       *file.FilePath,
-			Assessment:     *file.Assessment,
-			FindingIndexes: *file.FindingIndexes,
+		completion.Files = append(completion.Files, grokCompletedFileRange{
+			StartIndex: *file.StartIndex,
+			EndIndex:   *file.EndIndex,
 		})
 	}
 	return completion, nil
@@ -452,45 +445,27 @@ func validateGrokCompletion(completion grokCompletion, review protocol.Review, t
 	if completion.Status != "complete" {
 		return fmt.Errorf("completion status is not complete")
 	}
-	if len(completion.Files) != len(target.Files) {
-		return fmt.Errorf("completion covers %d files, want %d", len(completion.Files), len(target.Files))
+	expectedRanges := 0
+	if len(target.Files) > 0 {
+		expectedRanges = 1
+	}
+	if len(completion.Files) != expectedRanges {
+		return fmt.Errorf("completion has %d file ranges, want %d", len(completion.Files), expectedRanges)
 	}
 	expectedFiles := make(map[string]struct{}, len(target.Files))
 	for _, file := range target.Files {
 		expectedFiles[file.FilePath] = struct{}{}
 	}
-	seenFiles := make(map[string]struct{}, len(completion.Files))
-	seenFindings := make(map[int]struct{}, len(review.Findings))
-	for _, file := range completion.Files {
-		if _, expected := expectedFiles[file.FilePath]; !expected {
-			return fmt.Errorf("completion includes unexpected file %q", file.FilePath)
-		}
-		if _, duplicate := seenFiles[file.FilePath]; duplicate {
-			return fmt.Errorf("completion repeats file %q", file.FilePath)
-		}
-		seenFiles[file.FilePath] = struct{}{}
-		trimmedAssessmentCharacters := utf8.RuneCountInString(strings.TrimSpace(file.Assessment))
-		if trimmedAssessmentCharacters < contractschema.GrokMinimumFileAssessmentCharacters {
-			return fmt.Errorf("completion assessment for %q is too short", file.FilePath)
-		}
-		if utf8.RuneCountInString(file.Assessment) > contractschema.GrokMaximumFileAssessmentCharacters {
-			return fmt.Errorf("completion assessment for %q is too long", file.FilePath)
-		}
-		for _, findingIndex := range file.FindingIndexes {
-			if findingIndex < 0 || findingIndex >= len(review.Findings) {
-				return fmt.Errorf("completion for %q references invalid finding index %d", file.FilePath, findingIndex)
-			}
-			if _, duplicate := seenFindings[findingIndex]; duplicate {
-				return fmt.Errorf("completion references finding index %d more than once", findingIndex)
-			}
-			if review.Findings[findingIndex].Location.FilePath != file.FilePath {
-				return fmt.Errorf("completion links finding index %d to the wrong file", findingIndex)
-			}
-			seenFindings[findingIndex] = struct{}{}
+	if expectedRanges == 1 {
+		fileRange := completion.Files[0]
+		if fileRange.StartIndex != 0 || fileRange.EndIndex != len(target.Files)-1 {
+			return fmt.Errorf("completion file range is %d-%d, want 0-%d", fileRange.StartIndex, fileRange.EndIndex, len(target.Files)-1)
 		}
 	}
-	if len(seenFindings) != len(review.Findings) {
-		return fmt.Errorf("completion links %d findings, want %d", len(seenFindings), len(review.Findings))
+	for index, finding := range review.Findings {
+		if _, expected := expectedFiles[finding.Location.FilePath]; !expected {
+			return fmt.Errorf("finding index %d references unexpected file %q", index, finding.Location.FilePath)
+		}
 	}
 	return nil
 }
