@@ -40,6 +40,7 @@ type Codex struct {
 	repository  string
 	executable  string
 	environment []string
+	preparation preparationCache
 }
 
 func NewCodex(options CodexOptions) *Codex {
@@ -80,13 +81,8 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("resolve reviewed repository: %v", err), nil, nil)
 	}
-	executable, err := discoverExecutable(codex.executable, repository, codex.environment)
-	if err != nil {
-		return Result{}, newFailure(protocol.FailureCapability, err.Error(), codex.environment, nil)
-	}
-	if failure := strictCredentialFailure(request.Config, protocol.ProviderCodex, codex.environment); failure != nil {
-		return Result{}, failure
-	}
+	key := effectivePreparationKey(request.Config)
+	prepared, cached := codex.preparation.get(key)
 	runtime, err := config.PrepareRuntime(request.Config, codex.environment)
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("prepare provider runtime: %v", err), codex.environment, nil)
@@ -97,10 +93,26 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 			returnError = newFailure(protocol.FailureInternal, err.Error(), runtime.Environment(), nil)
 		}
 	}()
-	version, err := codex.preflight(reviewContext, executable, runtime, request.Config)
-	if err != nil {
-		return Result{}, err
+	if !cached {
+		prepared, err = codex.preparation.resolve(reviewContext, key, func() (preparedExecutable, error) {
+			candidates, discoverErr := discoverExecutableCandidates(codex.executable, repository, codex.environment)
+			if discoverErr != nil {
+				return preparedExecutable{}, newFailure(protocol.FailureCapability, discoverErr.Error(), codex.environment, nil)
+			}
+			if failure := strictCredentialFailure(request.Config, protocol.ProviderCodex, codex.environment); failure != nil {
+				return preparedExecutable{}, failure
+			}
+			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
+				return codex.preflight(reviewContext, candidate, runtime, request.Config)
+			})
+		})
+		if err != nil {
+			return Result{}, err
+		}
+	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderCodex, codex.environment); failure != nil {
+		return Result{}, failure
 	}
+	executable, version := prepared.Path, prepared.Version
 	state, err := os.MkdirTemp("", "slopguard-codex-state-")
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("create Codex state: %v", err), runtime.Environment(), nil)
@@ -440,7 +452,9 @@ func processFailure(operation string, class protocol.FailureClass, err error, re
 		message += fmt.Sprintf(" with exit code %d", result.ExitCode)
 	}
 	message += "; " + processRecovery(class, kind, authRecovery)
-	return newFailure(class, message, environment, attempt)
+	failure := newFailure(class, message, environment, attempt)
+	failure.ContextCaused = processErr.ContextCaused
+	return failure
 }
 
 func processRecovery(class protocol.FailureClass, kind processErrorKind, authRecovery string) string {
@@ -473,7 +487,7 @@ func probeFailure(operation string, err error, result processResult, environment
 
 func probeFailureWithAuthRecovery(operation string, err error, result processResult, environment []string, fallback protocol.FailureClass, authRecovery string) *Error {
 	class := classifyProcessFailure(err, result)
-	if class == protocol.FailureProvider {
+	if class == protocol.FailureProvider && isCapabilityProbeFailure(err) {
 		class = fallback
 	}
 	return processFailure(operation, class, err, result, environment, nil, authRecovery)

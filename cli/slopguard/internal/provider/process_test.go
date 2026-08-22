@@ -51,6 +51,46 @@ func TestRunProcessRejectsNegativeOutputLimits(t *testing.T) {
 	}
 }
 
+func TestCapabilityProbeFailureRequiresOutputBound(t *testing.T) {
+	t.Parallel()
+
+	if isCapabilityProbeFailure(&processError{Kind: processStart, Err: errors.New("resource exhausted")}) {
+		t.Fatal("process start failure permitted capability fallback")
+	}
+	if !isCapabilityProbeFailure(&processError{Kind: processOutputLimit, Err: errors.New("output exceeded")}) {
+		t.Fatal("bounded capability output did not permit fallback")
+	}
+}
+
+func TestProcessFailurePreservesContextCausality(t *testing.T) {
+	t.Parallel()
+
+	contextFailure := processFailure(
+		"provider review",
+		protocol.FailureCancelled,
+		&processError{Kind: processCancelled, Err: context.Canceled, ContextCaused: true},
+		processResult{ExitCode: -1},
+		nil,
+		nil,
+		"",
+	)
+	if !contextFailure.ContextCaused {
+		t.Fatal("context-caused process failure lost causality")
+	}
+	coincidentFailure := processFailure(
+		"provider review",
+		protocol.FailureCancelled,
+		&processError{Kind: processCancelled, Err: errors.New("exit status 7")},
+		processResult{ExitCode: 7},
+		nil,
+		nil,
+		"",
+	)
+	if coincidentFailure.ContextCaused {
+		t.Fatal("provider exit was marked context-caused")
+	}
+}
+
 func TestRunProcessEmptyEnvironmentDoesNotInheritParent(t *testing.T) {
 	t.Parallel()
 
@@ -160,6 +200,9 @@ func TestRunProcessCancellationKillsChildProcessGroup(t *testing.T) {
 	if !errors.As(err, &failure) || failure.Kind != processCancelled {
 		t.Fatalf("runProcess() error = %v", err)
 	}
+	if !failure.ContextCaused {
+		t.Fatal("cancelled process did not preserve context causality")
+	}
 	if time.Since(started) > 3*time.Second {
 		t.Fatalf("cancellation cleanup took %s", time.Since(started))
 	}
@@ -187,6 +230,22 @@ func TestRunProcessCancellationKillsChildProcessGroup(t *testing.T) {
 	}
 	if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("child process survived cancellation: %v", err)
+	}
+}
+
+func TestRunProcessPreStartCancellationPreservesCause(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	script := writeTestExecutable(t, "pre-start-cancel", "#!/bin/sh\nexit 0\n")
+	_, err := runProcess(ctx, processSpec{
+		Path: script, Directory: t.TempDir(), Environment: []string{"PATH=/usr/bin:/bin"},
+		Timeout: time.Second, StdoutLimit: 1024, StderrLimit: 1024,
+	})
+	var failure *processError
+	if !errors.As(err, &failure) || failure.Kind != processCancelled || !failure.ContextCaused {
+		t.Fatalf("runProcess() error = %v, failure = %+v", err, failure)
 	}
 }
 
@@ -239,6 +298,9 @@ func TestRunProcessTimeoutKillsDescendants(t *testing.T) {
 	var failure *processError
 	if !errors.As(err, &failure) || failure.Kind != processTimeout {
 		t.Fatalf("runProcess() error = %v", err)
+	}
+	if !failure.ContextCaused {
+		t.Fatal("timed out process did not preserve context causality")
 	}
 	assertMarkerNotWritten(t, marker)
 }

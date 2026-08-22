@@ -443,6 +443,8 @@ type fakeCursor struct {
 	prompt      string
 	environment string
 	permissions string
+	probes      string
+	directory   string
 }
 
 func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
@@ -452,6 +454,7 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 		path: filepath.Join(root, "cursor-agent"), arguments: filepath.Join(root, "arguments.txt"),
 		prompt: filepath.Join(root, "prompt.txt"), environment: filepath.Join(root, "environment.txt"),
 		permissions: filepath.Join(root, "permissions.json"),
+		probes:      filepath.Join(root, "probes.txt"), directory: filepath.Join(root, "directory.txt"),
 	}
 	if options.help == "" {
 		options.help = cursorHelp("text | json | stream-json", "plan, ask", "enabled, disabled")
@@ -500,8 +503,8 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 		"  [ -n \"${1:-}\" ] || return 1; case \"$1\" in -*) return 1 ;; esac; shift\n" +
 		"  [ \"$#\" -eq 0 ]\n" +
 		"}\n" +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' '2026.07.23-e383d2b'; exit 0; fi\n" +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--help\" ]; then printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' version >> " + shellQuote(fake.probes) + "; printf '%s\\n' '2026.07.23-e383d2b'; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--help\" ]; then printf '%s\\n' help >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
 		"if [ \"$#\" -eq 2 ] && [ \"$1\" = \"status\" ] && [ \"$2\" = \"--help\" ]; then printf '%s\\n' '--format <format> choices: text, json'; exit 0; fi\n" +
 		"if [ \"$#\" -eq 3 ] && [ \"$1\" = \"status\" ] && [ \"$2\" = \"--format\" ] && [ \"$3\" = \"json\" ]; then " + authBlock + "; fi\n" +
 		"validate_review \"$@\" || fail_contract\n" +
@@ -509,6 +512,7 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 		"cat > " + shellQuote(fake.prompt) + "\n" +
 		"[ -s " + shellQuote(fake.prompt) + " ] || fail_contract\n" +
 		"env > " + shellQuote(fake.environment) + "\n" +
+		"pwd >> " + shellQuote(fake.directory) + "\n" +
 		"if [ -n \"${CURSOR_CONFIG_DIR:-}\" ] && [ -f \"$CURSOR_CONFIG_DIR/cli-config.json\" ]; then cat \"$CURSOR_CONFIG_DIR/cli-config.json\" > " + shellQuote(fake.permissions) + "; fi\n" +
 		reviewFailure + delay +
 		"cat " + shellQuote(outputPath) + "\n" +

@@ -31,6 +31,7 @@ type Cursor struct {
 	repository  string
 	executable  string
 	environment []string
+	preparation preparationCache
 }
 
 func NewCursor(options CursorOptions) *Cursor {
@@ -78,13 +79,8 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("resolve reviewed repository: %v", err), nil, nil)
 	}
-	executable, err := discoverExecutable(cursor.executable, repository, cursor.environment)
-	if err != nil {
-		return Result{}, newFailure(protocol.FailureCapability, err.Error(), cursor.environment, nil)
-	}
-	if failure := strictCredentialFailure(request.Config, protocol.ProviderCursor, cursor.environment); failure != nil {
-		return Result{}, failure
-	}
+	key := effectivePreparationKey(request.Config)
+	prepared, cached := cursor.preparation.get(key)
 	runtime, err := config.PrepareRuntime(request.Config, cursor.environment)
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("prepare provider runtime: %v", err), cursor.environment, nil)
@@ -101,10 +97,26 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 			return Result{}, newFailure(protocol.FailureInternal, err.Error(), environment, nil)
 		}
 	}
-	version, err := cursor.preflight(reviewContext, executable, runtime.Workspace, environment, request.Config)
-	if err != nil {
-		return Result{}, err
+	if !cached {
+		prepared, err = cursor.preparation.resolve(reviewContext, key, func() (preparedExecutable, error) {
+			candidates, discoverErr := discoverExecutableCandidates(cursor.executable, repository, cursor.environment)
+			if discoverErr != nil {
+				return preparedExecutable{}, newFailure(protocol.FailureCapability, discoverErr.Error(), cursor.environment, nil)
+			}
+			if failure := strictCredentialFailure(request.Config, protocol.ProviderCursor, cursor.environment); failure != nil {
+				return preparedExecutable{}, failure
+			}
+			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
+				return cursor.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
+			})
+		})
+		if err != nil {
+			return Result{}, err
+		}
+	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderCursor, cursor.environment); failure != nil {
+		return Result{}, failure
 	}
+	executable, version := prepared.Path, prepared.Version
 	model := request.Config.Model.Value
 	if model == "" {
 		model = DefaultCursorModel

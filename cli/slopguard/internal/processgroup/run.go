@@ -12,8 +12,9 @@ import (
 )
 
 type Result struct {
-	CommandErr error
-	CleanupErr error
+	CommandErr    error
+	CleanupErr    error
+	ContextCaused bool
 }
 
 func (result Result) Err() error {
@@ -22,7 +23,7 @@ func (result Result) Err() error {
 
 func Run(ctx context.Context, command *exec.Cmd) Result {
 	if err := ctx.Err(); err != nil {
-		return Result{CommandErr: err}
+		return Result{CommandErr: err, ContextCaused: true}
 	}
 	configure(command)
 	command.WaitDelay = 2 * time.Second
@@ -33,7 +34,8 @@ func Run(ctx context.Context, command *exec.Cmd) Result {
 	// Observe exit without reaping so the leader PID cannot be reused before
 	// its process group is terminated.
 	watchErr := waitForExit(ctx, command.Process.Pid)
-	cleanupErr := terminate(command.Process.Pid)
+	contextWon := errors.Is(watchErr, context.Canceled) || errors.Is(watchErr, context.DeadlineExceeded)
+	terminated, cleanupErr := terminate(command.Process.Pid)
 	if watchErr == nil && ignoreCleanupErrorAfterExit(command.Process.Pid, cleanupErr) {
 		cleanupErr = nil
 	}
@@ -56,7 +58,8 @@ func Run(ctx context.Context, command *exec.Cmd) Result {
 		cleanupErr = fmt.Errorf("terminate process group: %w", cleanupErr)
 	}
 	return Result{
-		CommandErr: errors.Join(watchErr, waitErr),
-		CleanupErr: cleanupErr,
+		CommandErr:    errors.Join(watchErr, waitErr),
+		CleanupErr:    cleanupErr,
+		ContextCaused: contextWon && terminated && leaderKilledBySIGKILL(waitErr),
 	}
 }

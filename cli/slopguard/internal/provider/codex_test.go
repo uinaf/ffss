@@ -418,6 +418,7 @@ type fakeCodex struct {
 	prompt      string
 	environment string
 	directory   string
+	probes      string
 }
 
 func newFakeCodex(t *testing.T, options fakeCodexOptions) fakeCodex {
@@ -429,6 +430,7 @@ func newFakeCodex(t *testing.T, options fakeCodexOptions) fakeCodex {
 		prompt:      filepath.Join(root, "prompt.txt"),
 		environment: filepath.Join(root, "environment.txt"),
 		directory:   filepath.Join(root, "directory.txt"),
+		probes:      filepath.Join(root, "probes.txt"),
 	}
 	if options.topHelp == "" {
 		options.topHelp = "--ask-for-approval --strict-config --search"
@@ -528,16 +530,16 @@ func newFakeCodex(t *testing.T, options fakeCodexOptions) fakeCodex {
 		"  [ \"$#\" -eq 1 ] && [ \"$1\" = '-' ]\n" +
 		"}\n" +
 		probeDelay +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' 'codex-cli 0.146.0'; exit 0; fi\n" +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--help\" ]; then printf '%s\\n' " + shellQuote(options.topHelp) + "; exit 0; fi\n" +
-		"if [ \"$#\" -eq 2 ] && [ \"$1\" = \"exec\" ] && [ \"$2\" = \"--help\" ]; then printf '%s\\n' " + shellQuote(options.execHelp) + "; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' version >> " + shellQuote(fake.probes) + "; printf '%s\\n' 'codex-cli 0.146.0'; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--help\" ]; then printf '%s\\n' help >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.topHelp) + "; exit 0; fi\n" +
+		"if [ \"$#\" -eq 2 ] && [ \"$1\" = \"exec\" ] && [ \"$2\" = \"--help\" ]; then printf '%s\\n' exec-help >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.execHelp) + "; exit 0; fi\n" +
 		"if [ \"$#\" -eq 2 ] && [ \"$1\" = \"login\" ] && [ \"$2\" = \"status\" ]; then " + authBlock + "; fi\n" +
 		"validate_review \"$@\" || fail_contract\n" +
 		"printf '%s\\n' \"$@\" > " + shellQuote(fake.arguments) + "\n" +
 		"cat > " + shellQuote(fake.prompt) + "\n" +
 		"[ -s " + shellQuote(fake.prompt) + " ] || fail_contract\n" +
 		"env > " + shellQuote(fake.environment) + "\n" +
-		"pwd > " + shellQuote(fake.directory) + "\n" +
+		"pwd >> " + shellQuote(fake.directory) + "\n" +
 		reviewFailure +
 		delay +
 		"output=''\nprevious=''\nfor argument in \"$@\"; do\n  if [ \"$previous\" = \"--output-last-message\" ]; then output=\"$argument\"; fi\n  previous=\"$argument\"\ndone\n" +

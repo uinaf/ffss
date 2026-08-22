@@ -387,6 +387,8 @@ type fakeClaude struct {
 	arguments   string
 	prompt      string
 	environment string
+	probes      string
+	directory   string
 }
 
 func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
@@ -395,6 +397,7 @@ func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 	fake := fakeClaude{
 		path: filepath.Join(root, "claude"), arguments: filepath.Join(root, "arguments.txt"),
 		prompt: filepath.Join(root, "prompt.txt"), environment: filepath.Join(root, "environment.txt"),
+		probes: filepath.Join(root, "probes.txt"), directory: filepath.Join(root, "directory.txt"),
 	}
 	if options.help == "" {
 		options.help = "--safe-mode --setting-sources --strict-mcp-config --disallowedTools --print --no-session-persistence --output-format --json-schema --model --effort --tools --allowedTools --permission-mode --no-chrome"
@@ -449,13 +452,14 @@ func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 		"  case \"${1:-}\" in low|medium|high|xhigh|max) ;; *) return 1 ;; esac; shift\n" +
 		"  [ \"$#\" -eq 0 ]\n" +
 		"}\n" +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' '2.1.220 (Claude Code)'; exit 0; fi\n" +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--help\" ]; then printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' version >> " + shellQuote(fake.probes) + "; printf '%s\\n' '2.1.220 (Claude Code)'; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--help\" ]; then printf '%s\\n' help >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
 		"validate_review \"$@\" || fail_contract\n" +
 		"printf '%s\\n' \"$@\" > " + shellQuote(fake.arguments) + "\n" +
 		"cat > " + shellQuote(fake.prompt) + "\n" +
 		"[ -s " + shellQuote(fake.prompt) + " ] || fail_contract\n" +
 		"env > " + shellQuote(fake.environment) + "\n" +
+		"pwd >> " + shellQuote(fake.directory) + "\n" +
 		reviewFailure + delay +
 		"cat " + shellQuote(outputPath) + "\n"
 	writeTestExecutableAt(t, fake.path, script)

@@ -23,7 +23,10 @@ authentication from the preserved environment and user configuration.
   provider workspace and removed with that workspace after the run. The prompt
   never appears in process arguments.
 - Every run disables plan mode, subagents, memory, shell, edits, file reads,
-  grep, and Model Context Protocol (MCP) tools.
+  grep, and Model Context Protocol (MCP) tools. Grok 1.0.4 receives
+  `--no-memory`; 1.0.5 and newer receive the documented `GROK_MEMORY=0` and
+  `GROK_SUBAGENTS=0` environment controls because the per-run memory flag was
+  removed.
 - The `dontAsk` permission mode silently denies tools without an explicit
   allow rule and prevents interactive approval prompts.
 - Tool filtering uses Grok's documented internal IDs. With web off, the
@@ -75,11 +78,11 @@ and paths to one character. The provider-facing projection omits only that
 pattern for Grok. Canonical decoding still enforces non-blank text, length
 bounds, and safe relative paths before a result can succeed.
 
-The compatibility contract and live structured-output smoke were confirmed
-against Grok Build CLI v1.0.4. Capability discovery checks every trusted PATH
-candidate, skipping incompatible tool-manager targets before selecting a real
-Grok executable. It fails closed when no candidate preserves the required
-flags or enumerated values.
+The compatibility contract covers Grok Build CLI v1.0.4 and v1.0.5. Capability
+discovery checks every trusted PATH candidate, skipping incompatible
+tool-manager targets before selecting a real Grok executable. It fails closed
+when no candidate preserves the version-specific required flags or enumerated
+values.
 
 Each attempt invokes the selected xAI model and may consume plan or API quota.
 The one configured protocol retry invokes it again only after malformed output;

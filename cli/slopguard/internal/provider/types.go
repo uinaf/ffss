@@ -2,9 +2,11 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -73,16 +75,122 @@ type Reviewer interface {
 }
 
 type Error struct {
-	Class     protocol.FailureClass
-	Message   string
-	Attempt   *protocol.Attempt
-	Reason    protocol.ProtocolReason
-	Execution *Execution
+	Class         protocol.FailureClass
+	Message       string
+	Attempt       *protocol.Attempt
+	Reason        protocol.ProtocolReason
+	Execution     *Execution
+	ContextCaused bool
 }
 
 type reportedProviderError struct {
 	Class   protocol.FailureClass
 	Message string
+}
+
+type preparationKey struct {
+	Isolation protocol.Isolation
+	WebAccess bool
+}
+
+type preparedExecutable struct {
+	Path    string
+	Version string
+}
+
+type preparationCache struct {
+	mu       sync.Mutex
+	values   map[preparationKey]preparedExecutable
+	inFlight map[preparationKey]*preparationCall
+}
+
+type preparationCall struct {
+	done       chan struct{}
+	prepared   preparedExecutable
+	err        error
+	contextErr error
+}
+
+func (cache *preparationCache) get(key preparationKey) (preparedExecutable, bool) {
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	prepared, ok := cache.values[key]
+	return prepared, ok
+}
+
+func (cache *preparationCache) resolve(ctx context.Context, key preparationKey, prepare func() (preparedExecutable, error)) (preparedExecutable, error) {
+	for {
+		cache.mu.Lock()
+		if prepared, ok := cache.values[key]; ok {
+			cache.mu.Unlock()
+			return prepared, nil
+		}
+		if call, ok := cache.inFlight[key]; ok {
+			cache.mu.Unlock()
+			select {
+			case <-call.done:
+				if call.err != nil && ctx.Err() == nil && preparationFailureCausedByContext(call.err, call.contextErr) {
+					continue
+				}
+				return call.prepared, call.err
+			case <-ctx.Done():
+				return preparedExecutable{}, ctx.Err()
+			}
+		}
+		if cache.inFlight == nil {
+			cache.inFlight = make(map[preparationKey]*preparationCall)
+		}
+		call := &preparationCall{done: make(chan struct{})}
+		cache.inFlight[key] = call
+		cache.mu.Unlock()
+
+		call.prepared, call.err = prepare()
+		call.contextErr = ctx.Err()
+
+		cache.mu.Lock()
+		delete(cache.inFlight, key)
+		if call.err == nil {
+			if cache.values == nil {
+				cache.values = make(map[preparationKey]preparedExecutable)
+			}
+			cache.values[key] = call.prepared
+		}
+		close(call.done)
+		cache.mu.Unlock()
+
+		if call.err != nil {
+			return preparedExecutable{}, call.err
+		}
+		return call.prepared, nil
+	}
+}
+
+func preparationFailureCausedByContext(err, contextErr error) bool {
+	if err == nil || contextErr == nil {
+		return false
+	}
+	if errors.Is(err, contextErr) {
+		return true
+	}
+	var failure *Error
+	if !errors.As(err, &failure) {
+		return false
+	}
+	if !failure.ContextCaused {
+		return false
+	}
+	switch {
+	case errors.Is(contextErr, context.Canceled):
+		return failure.Class == protocol.FailureCancelled
+	case errors.Is(contextErr, context.DeadlineExceeded):
+		return failure.Class == protocol.FailureTimeout
+	default:
+		return false
+	}
+}
+
+func effectivePreparationKey(effective config.Effective) preparationKey {
+	return preparationKey{Isolation: effective.Isolation.Value, WebAccess: effective.WebAccess.Value}
 }
 
 func (failure *reportedProviderError) Error() string {

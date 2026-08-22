@@ -44,9 +44,10 @@ type processResult struct {
 }
 
 type processError struct {
-	Kind   processErrorKind
-	Result processResult
-	Err    error
+	Kind          processErrorKind
+	Result        processResult
+	Err           error
+	ContextCaused bool
 }
 
 func (failure *processError) Error() string {
@@ -117,12 +118,21 @@ func runProcess(ctx context.Context, spec processSpec) (processResult, error) {
 	case result.ExitCode == -1:
 		kind = processStart
 	}
-	return result, &processError{Kind: kind, Result: result, Err: err}
+	contextCaused := (kind == processTimeout || kind == processCancelled) && runResult.ContextCaused
+	return result, &processError{Kind: kind, Result: result, Err: err, ContextCaused: contextCaused}
 }
 
 func isOrdinaryProcessExit(err error) bool {
 	failure := new(processError)
 	return errors.As(err, &failure) && failure.Kind == processExit
+}
+
+func isCapabilityProbeFailure(err error) bool {
+	failure := new(processError)
+	if !errors.As(err, &failure) {
+		return false
+	}
+	return failure.Kind == processOutputLimit
 }
 
 type boundedBuffer struct {
