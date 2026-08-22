@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,44 +20,44 @@ func TestProviderPreparationIsCachedAcrossReviewAttempts(t *testing.T) {
 
 	for _, test := range []struct {
 		name       string
-		newFixture func(*testing.T) (Reviewer, string, config.Effective)
+		newFixture func(*testing.T) (Reviewer, string, string, config.Effective)
 		probes     int
 	}{
 		{
 			name: "Codex",
-			newFixture: func(t *testing.T) (Reviewer, string, config.Effective) {
+			newFixture: func(t *testing.T) (Reviewer, string, string, config.Effective) {
 				fake := newFakeCodex(t, fakeCodexOptions{})
-				return NewCodex(CodexOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "OPENAI_API_KEY=secret"}}), fake.probes, codexConfig(protocol.IsolationStrict, false, 5*time.Second)
+				return NewCodex(CodexOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "OPENAI_API_KEY=secret"}}), fake.probes, fake.directory, codexConfig(protocol.IsolationStrict, false, 5*time.Second)
 			},
 			probes: 3,
 		},
 		{
 			name: "Claude",
-			newFixture: func(t *testing.T) (Reviewer, string, config.Effective) {
+			newFixture: func(t *testing.T) (Reviewer, string, string, config.Effective) {
 				fake := newFakeClaude(t, fakeClaudeOptions{})
-				return NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}}), fake.probes, claudeConfig(protocol.IsolationStrict, false, 5*time.Second)
+				return NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}}), fake.probes, fake.directory, claudeConfig(protocol.IsolationStrict, false, 5*time.Second)
 			},
 			probes: 2,
 		},
 		{
 			name: "Cursor",
-			newFixture: func(t *testing.T) (Reviewer, string, config.Effective) {
+			newFixture: func(t *testing.T) (Reviewer, string, string, config.Effective) {
 				fake := newFakeCursor(t, fakeCursorOptions{})
-				return NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}}), fake.probes, cursorConfig(protocol.IsolationStrict, true, 5*time.Second)
+				return NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}}), fake.probes, fake.directory, cursorConfig(protocol.IsolationStrict, true, 5*time.Second)
 			},
 			probes: 2,
 		},
 		{
 			name: "Grok",
-			newFixture: func(t *testing.T) (Reviewer, string, config.Effective) {
+			newFixture: func(t *testing.T) (Reviewer, string, string, config.Effective) {
 				fake := newFakeGrok(t, fakeGrokOptions{})
-				return NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}}), fake.probes, grokConfig(protocol.IsolationStrict, false, 5*time.Second)
+				return NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}}), fake.probes, fake.directory, grokConfig(protocol.IsolationStrict, false, 5*time.Second)
 			},
 			probes: 2,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			reviewer, probePath, effective := test.newFixture(t)
+			reviewer, probePath, directoryPath, effective := test.newFixture(t)
 			for attempt := 1; attempt <= 2; attempt++ {
 				if _, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: effective}); err != nil {
 					t.Fatalf("Review() attempt %d: %v", attempt, err)
@@ -68,7 +70,102 @@ func TestProviderPreparationIsCachedAcrossReviewAttempts(t *testing.T) {
 			if got := len(strings.Fields(string(content))); got != test.probes {
 				t.Fatalf("provider probes = %d, want %d: %s", got, test.probes, content)
 			}
+			workspaces := strings.Fields(readTestFile(t, directoryPath))
+			if len(workspaces) != 2 || workspaces[0] == workspaces[1] {
+				t.Fatalf("provider workspaces = %v, want 2 distinct attempts", workspaces)
+			}
 		})
+	}
+}
+
+func TestPreparationCacheCoalescesMissesAndDoesNotCacheFailures(t *testing.T) {
+	t.Parallel()
+
+	cache := &preparationCache{}
+	key := preparationKey{Isolation: protocol.IsolationStrict}
+	var calls atomic.Int32
+	var wait sync.WaitGroup
+	results := make(chan preparedExecutable, 2)
+	for range 2 {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			prepared, err := cache.resolve(key, func() (preparedExecutable, error) {
+				calls.Add(1)
+				time.Sleep(25 * time.Millisecond)
+				return preparedExecutable{Path: "/provider", Version: "1.0.0"}, nil
+			})
+			if err != nil {
+				t.Errorf("resolve() error = %v", err)
+				return
+			}
+			results <- prepared
+		}()
+	}
+	wait.Wait()
+	close(results)
+	if calls.Load() != 1 {
+		t.Fatalf("concurrent preparation calls = %d, want 1", calls.Load())
+	}
+	for prepared := range results {
+		if prepared.Path != "/provider" {
+			t.Fatalf("prepared = %+v", prepared)
+		}
+	}
+
+	failureKey := preparationKey{Isolation: protocol.IsolationNative}
+	failedCalls := 0
+	if _, err := cache.resolve(failureKey, func() (preparedExecutable, error) {
+		failedCalls++
+		return preparedExecutable{}, errors.New("probe failed")
+	}); err == nil {
+		t.Fatal("failed preparation was accepted")
+	}
+	if _, err := cache.resolve(failureKey, func() (preparedExecutable, error) {
+		failedCalls++
+		return preparedExecutable{Path: "/native-provider", Version: "1.0.0"}, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if failedCalls != 2 {
+		t.Fatalf("failure preparation calls = %d, want 2", failedCalls)
+	}
+
+	policyCalls := 0
+	webKey := preparationKey{Isolation: protocol.IsolationNative, WebAccess: true}
+	if _, err := cache.resolve(webKey, func() (preparedExecutable, error) {
+		policyCalls++
+		return preparedExecutable{Path: "/web-provider", Version: "1.0.0"}, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if policyCalls != 1 {
+		t.Fatalf("policy preparation calls = %d, want 1", policyCalls)
+	}
+}
+
+func TestCompatibleSelectionPreservesCandidateOrderAndStopsOnNonCapabilityFailure(t *testing.T) {
+	t.Parallel()
+
+	var order []string
+	prepared, err := selectCompatibleExecutable([]string{"first", "second"}, func(candidate string) (string, error) {
+		order = append(order, candidate)
+		if candidate == "first" {
+			return "", &Error{Class: protocol.FailureCapability, Message: "incompatible"}
+		}
+		return "2.0.0", nil
+	})
+	if err != nil || prepared.Path != "second" || strings.Join(order, ",") != "first,second" {
+		t.Fatalf("selection = %+v, order = %v, error = %v", prepared, order, err)
+	}
+
+	order = nil
+	_, err = selectCompatibleExecutable([]string{"first", "second"}, func(candidate string) (string, error) {
+		order = append(order, candidate)
+		return "", &Error{Class: protocol.FailureAuth, Message: "authentication failed"}
+	})
+	if err == nil || strings.Join(order, ",") != "first" {
+		t.Fatalf("non-capability selection order = %v, error = %v", order, err)
 	}
 }
 

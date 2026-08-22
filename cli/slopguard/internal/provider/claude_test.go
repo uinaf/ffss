@@ -388,6 +388,7 @@ type fakeClaude struct {
 	prompt      string
 	environment string
 	probes      string
+	directory   string
 }
 
 func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
@@ -396,7 +397,7 @@ func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 	fake := fakeClaude{
 		path: filepath.Join(root, "claude"), arguments: filepath.Join(root, "arguments.txt"),
 		prompt: filepath.Join(root, "prompt.txt"), environment: filepath.Join(root, "environment.txt"),
-		probes: filepath.Join(root, "probes.txt"),
+		probes: filepath.Join(root, "probes.txt"), directory: filepath.Join(root, "directory.txt"),
 	}
 	if options.help == "" {
 		options.help = "--safe-mode --setting-sources --strict-mcp-config --disallowedTools --print --no-session-persistence --output-format --json-schema --model --effort --tools --allowedTools --permission-mode --no-chrome"
@@ -458,6 +459,7 @@ func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 		"cat > " + shellQuote(fake.prompt) + "\n" +
 		"[ -s " + shellQuote(fake.prompt) + " ] || fail_contract\n" +
 		"env > " + shellQuote(fake.environment) + "\n" +
+		"pwd >> " + shellQuote(fake.directory) + "\n" +
 		reviewFailure + delay +
 		"cat " + shellQuote(outputPath) + "\n"
 	writeTestExecutableAt(t, fake.path, script)

@@ -115,26 +115,52 @@ func TestGrokReviewNativeUsesSessionAuthAndExplicitWebPolicy(t *testing.T) {
 func TestGrokReviewUsesMemoryEnvironmentWhenFlagIsUnavailable(t *testing.T) {
 	t.Parallel()
 
-	help := strings.Replace(grokHelp(), "--no-memory\n", "", 1)
-	fake := newFakeGrok(t, fakeGrokOptions{version: "1.0.5", help: help})
-	reviewer := NewGrok(GrokOptions{
-		Repository: t.TempDir(), Executable: fake.path,
-		Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"},
-	})
-	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Provider.Version != "1.0.5" {
-		t.Fatalf("provider = %+v", result.Provider)
-	}
-	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
-	if contains(arguments, "--no-memory") {
-		t.Fatalf("Grok 1.0.5 arguments retained --no-memory: %v", arguments)
-	}
-	environment := readTestFile(t, fake.environment)
-	if !strings.Contains(environment, "GROK_MEMORY=0") || !strings.Contains(environment, "GROK_SUBAGENTS=0") {
-		t.Fatalf("Grok environment = %s", environment)
+	for _, test := range []struct {
+		name        string
+		isolation   protocol.Isolation
+		environment []string
+	}{
+		{
+			name:      "native overrides enabled host features",
+			isolation: protocol.IsolationNative,
+			environment: []string{
+				"PATH=/usr/bin:/bin", "HOME=/native/home", "GROK_HOME=/native/grok",
+				"XAI_API_KEY=secret", "GROK_MEMORY=1", "GROK_SUBAGENTS=1",
+			},
+		},
+		{
+			name:      "native clean host",
+			isolation: protocol.IsolationNative,
+			environment: []string{
+				"PATH=/usr/bin:/bin", "HOME=/native/home", "GROK_HOME=/native/grok", "XAI_API_KEY=secret",
+			},
+		},
+		{
+			name:        "strict key",
+			isolation:   protocol.IsolationStrict,
+			environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret", "GROK_MEMORY=1", "GROK_SUBAGENTS=1"},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			help := strings.Replace(grokHelp(), "--no-memory\n", "", 1)
+			fake := newFakeGrok(t, fakeGrokOptions{version: "1.0.5", help: help})
+			reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: test.environment})
+			result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(test.isolation, false, 5*time.Second)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.Provider.Version != "1.0.5" {
+				t.Fatalf("provider = %+v", result.Provider)
+			}
+			arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
+			if contains(arguments, "--no-memory") {
+				t.Fatalf("Grok 1.0.5 arguments retained --no-memory: %v", arguments)
+			}
+			environment := readTestFile(t, fake.environment)
+			if !strings.Contains(environment, "GROK_MEMORY=0") || !strings.Contains(environment, "GROK_SUBAGENTS=0") {
+				t.Fatalf("Grok environment = %s", environment)
+			}
+		})
 	}
 }
 
@@ -511,6 +537,7 @@ type fakeGrok struct {
 	prompt      string
 	environment string
 	probes      string
+	directory   string
 }
 
 func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
@@ -519,7 +546,7 @@ func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
 	fake := fakeGrok{
 		path: filepath.Join(root, "grok"), arguments: filepath.Join(root, "arguments.txt"),
 		prompt: filepath.Join(root, "prompt.txt"), environment: filepath.Join(root, "environment.txt"),
-		probes: filepath.Join(root, "probes.txt"),
+		probes: filepath.Join(root, "probes.txt"), directory: filepath.Join(root, "directory.txt"),
 	}
 	if options.help == "" {
 		options.help = grokHelp()
@@ -566,6 +593,7 @@ func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
 		"[ \"$#\" -eq 0 ] || fail_contract\n" +
 		"cat \"$prompt_path\" > " + shellQuote(fake.prompt) + "\n" +
 		"env > " + shellQuote(fake.environment) + "\n" +
+		"pwd >> " + shellQuote(fake.directory) + "\n" +
 		reviewFailure + delay +
 		"cat " + shellQuote(outputPath) + "\n"
 	writeTestExecutableAt(t, fake.path, script)

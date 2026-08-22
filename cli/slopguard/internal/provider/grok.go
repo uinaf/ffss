@@ -113,13 +113,14 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 	environment = setEnvironmentValue(environment, "GROK_MEMORY", "0")
 	environment = setEnvironmentValue(environment, "GROK_SUBAGENTS", "0")
 	if !cached {
-		prepared, err = selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
-			return grok.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
+		prepared, err = grok.preparation.resolve(key, func() (preparedExecutable, error) {
+			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
+				return grok.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
+			})
 		})
 		if err != nil {
 			return Result{}, err
 		}
-		grok.preparation.store(key, prepared)
 	}
 	executable, version := prepared.Path, prepared.Version
 	promptPath := filepath.Join(runtime.Workspace, "review.prompt")

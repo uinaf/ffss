@@ -108,13 +108,21 @@ func (cache *preparationCache) get(key preparationKey) (preparedExecutable, bool
 	return prepared, ok
 }
 
-func (cache *preparationCache) store(key preparationKey, prepared preparedExecutable) {
+func (cache *preparationCache) resolve(key preparationKey, prepare func() (preparedExecutable, error)) (preparedExecutable, error) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
+	if prepared, ok := cache.values[key]; ok {
+		return prepared, nil
+	}
+	prepared, err := prepare()
+	if err != nil {
+		return preparedExecutable{}, err
+	}
 	if cache.values == nil {
 		cache.values = make(map[preparationKey]preparedExecutable)
 	}
 	cache.values[key] = prepared
+	return prepared, nil
 }
 
 func effectivePreparationKey(effective config.Effective) preparationKey {

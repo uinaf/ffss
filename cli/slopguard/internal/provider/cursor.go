@@ -108,13 +108,14 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 		}
 	}
 	if !cached {
-		prepared, err = selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
-			return cursor.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
+		prepared, err = cursor.preparation.resolve(key, func() (preparedExecutable, error) {
+			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
+				return cursor.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
+			})
 		})
 		if err != nil {
 			return Result{}, err
 		}
-		cursor.preparation.store(key, prepared)
 	}
 	executable, version := prepared.Path, prepared.Version
 	model := request.Config.Model.Value

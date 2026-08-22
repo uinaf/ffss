@@ -104,13 +104,14 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		}
 	}()
 	if !cached {
-		prepared, err = selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
-			return codex.preflight(reviewContext, candidate, runtime, request.Config)
+		prepared, err = codex.preparation.resolve(key, func() (preparedExecutable, error) {
+			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
+				return codex.preflight(reviewContext, candidate, runtime, request.Config)
+			})
 		})
 		if err != nil {
 			return Result{}, err
 		}
-		codex.preparation.store(key, prepared)
 	}
 	executable, version := prepared.Path, prepared.Version
 	state, err := os.MkdirTemp("", "slopguard-codex-state-")

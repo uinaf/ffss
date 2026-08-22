@@ -444,6 +444,7 @@ type fakeCursor struct {
 	environment string
 	permissions string
 	probes      string
+	directory   string
 }
 
 func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
@@ -453,7 +454,7 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 		path: filepath.Join(root, "cursor-agent"), arguments: filepath.Join(root, "arguments.txt"),
 		prompt: filepath.Join(root, "prompt.txt"), environment: filepath.Join(root, "environment.txt"),
 		permissions: filepath.Join(root, "permissions.json"),
-		probes:      filepath.Join(root, "probes.txt"),
+		probes:      filepath.Join(root, "probes.txt"), directory: filepath.Join(root, "directory.txt"),
 	}
 	if options.help == "" {
 		options.help = cursorHelp("text | json | stream-json", "plan, ask", "enabled, disabled")
@@ -511,6 +512,7 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 		"cat > " + shellQuote(fake.prompt) + "\n" +
 		"[ -s " + shellQuote(fake.prompt) + " ] || fail_contract\n" +
 		"env > " + shellQuote(fake.environment) + "\n" +
+		"pwd >> " + shellQuote(fake.directory) + "\n" +
 		"if [ -n \"${CURSOR_CONFIG_DIR:-}\" ] && [ -f \"$CURSOR_CONFIG_DIR/cli-config.json\" ]; then cat \"$CURSOR_CONFIG_DIR/cli-config.json\" > " + shellQuote(fake.permissions) + "; fi\n" +
 		reviewFailure + delay +
 		"cat " + shellQuote(outputPath) + "\n" +

@@ -539,7 +539,7 @@ func newFakeCodex(t *testing.T, options fakeCodexOptions) fakeCodex {
 		"cat > " + shellQuote(fake.prompt) + "\n" +
 		"[ -s " + shellQuote(fake.prompt) + " ] || fail_contract\n" +
 		"env > " + shellQuote(fake.environment) + "\n" +
-		"pwd > " + shellQuote(fake.directory) + "\n" +
+		"pwd >> " + shellQuote(fake.directory) + "\n" +
 		reviewFailure +
 		delay +
 		"output=''\nprevious=''\nfor argument in \"$@\"; do\n  if [ \"$previous\" = \"--output-last-message\" ]; then output=\"$argument\"; fi\n  previous=\"$argument\"\ndone\n" +
