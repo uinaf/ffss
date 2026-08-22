@@ -221,7 +221,7 @@ func TestPreparationCacheRetriesAfterLeaderCancellation(t *testing.T) {
 		_, err := cache.resolve(leaderContext, key, func() (preparedExecutable, error) {
 			close(leaderStarted)
 			<-leaderContext.Done()
-			return preparedExecutable{}, leaderContext.Err()
+			return preparedExecutable{}, &Error{Class: protocol.FailureCancelled, Message: "preparation cancelled"}
 		})
 		leaderDone <- err
 	}()
@@ -240,8 +240,13 @@ func TestPreparationCacheRetriesAfterLeaderCancellation(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	cancelLeader()
 
-	if err := <-leaderDone; !errors.Is(err, context.Canceled) {
-		t.Fatalf("leader error = %v, want cancellation", err)
+	if err := <-leaderDone; err == nil {
+		t.Fatal("leader cancellation was accepted")
+	} else {
+		var failure *Error
+		if !errors.As(err, &failure) || failure.Class != protocol.FailureCancelled {
+			t.Fatalf("leader error = %v, want cancelled provider error", err)
+		}
 	}
 	if err := <-waiterDone; err != nil {
 		t.Fatalf("waiter error = %v", err)

@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -104,9 +103,10 @@ type preparationCache struct {
 }
 
 type preparationCall struct {
-	done     chan struct{}
-	prepared preparedExecutable
-	err      error
+	done       chan struct{}
+	prepared   preparedExecutable
+	err        error
+	contextErr error
 }
 
 func (cache *preparationCache) get(key preparationKey) (preparedExecutable, bool) {
@@ -127,7 +127,7 @@ func (cache *preparationCache) resolve(ctx context.Context, key preparationKey, 
 			cache.mu.Unlock()
 			select {
 			case <-call.done:
-				if call.err != nil && ctx.Err() == nil && (errors.Is(call.err, context.Canceled) || errors.Is(call.err, context.DeadlineExceeded)) {
+				if call.err != nil && ctx.Err() == nil && call.contextErr != nil {
 					continue
 				}
 				return call.prepared, call.err
@@ -143,6 +143,7 @@ func (cache *preparationCache) resolve(ctx context.Context, key preparationKey, 
 		cache.mu.Unlock()
 
 		call.prepared, call.err = prepare()
+		call.contextErr = ctx.Err()
 
 		cache.mu.Lock()
 		delete(cache.inFlight, key)
