@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -116,44 +117,49 @@ func (cache *preparationCache) get(key preparationKey) (preparedExecutable, bool
 }
 
 func (cache *preparationCache) resolve(ctx context.Context, key preparationKey, prepare func() (preparedExecutable, error)) (preparedExecutable, error) {
-	cache.mu.Lock()
-	if prepared, ok := cache.values[key]; ok {
-		cache.mu.Unlock()
-		return prepared, nil
-	}
-	if call, ok := cache.inFlight[key]; ok {
-		cache.mu.Unlock()
-		select {
-		case <-call.done:
-			return call.prepared, call.err
-		case <-ctx.Done():
-			return preparedExecutable{}, ctx.Err()
+	for {
+		cache.mu.Lock()
+		if prepared, ok := cache.values[key]; ok {
+			cache.mu.Unlock()
+			return prepared, nil
 		}
-	}
-	if cache.inFlight == nil {
-		cache.inFlight = make(map[preparationKey]*preparationCall)
-	}
-	call := &preparationCall{done: make(chan struct{})}
-	cache.inFlight[key] = call
-	cache.mu.Unlock()
-
-	call.prepared, call.err = prepare()
-
-	cache.mu.Lock()
-	delete(cache.inFlight, key)
-	if call.err == nil {
-		if cache.values == nil {
-			cache.values = make(map[preparationKey]preparedExecutable)
+		if call, ok := cache.inFlight[key]; ok {
+			cache.mu.Unlock()
+			select {
+			case <-call.done:
+				if call.err != nil && ctx.Err() == nil && (errors.Is(call.err, context.Canceled) || errors.Is(call.err, context.DeadlineExceeded)) {
+					continue
+				}
+				return call.prepared, call.err
+			case <-ctx.Done():
+				return preparedExecutable{}, ctx.Err()
+			}
 		}
-		cache.values[key] = call.prepared
-	}
-	close(call.done)
-	cache.mu.Unlock()
+		if cache.inFlight == nil {
+			cache.inFlight = make(map[preparationKey]*preparationCall)
+		}
+		call := &preparationCall{done: make(chan struct{})}
+		cache.inFlight[key] = call
+		cache.mu.Unlock()
 
-	if call.err != nil {
-		return preparedExecutable{}, call.err
+		call.prepared, call.err = prepare()
+
+		cache.mu.Lock()
+		delete(cache.inFlight, key)
+		if call.err == nil {
+			if cache.values == nil {
+				cache.values = make(map[preparationKey]preparedExecutable)
+			}
+			cache.values[key] = call.prepared
+		}
+		close(call.done)
+		cache.mu.Unlock()
+
+		if call.err != nil {
+			return preparedExecutable{}, call.err
+		}
+		return call.prepared, nil
 	}
-	return call.prepared, nil
 }
 
 func effectivePreparationKey(effective config.Effective) preparationKey {

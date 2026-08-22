@@ -209,6 +209,45 @@ func TestPreparationCacheScopesInflightCallsByPolicyAndHonorsWaiterContext(t *te
 	}
 }
 
+func TestPreparationCacheRetriesAfterLeaderCancellation(t *testing.T) {
+	t.Parallel()
+
+	cache := &preparationCache{}
+	key := preparationKey{Isolation: protocol.IsolationStrict}
+	leaderContext, cancelLeader := context.WithCancel(context.Background())
+	leaderStarted := make(chan struct{})
+	leaderDone := make(chan error, 1)
+	go func() {
+		_, err := cache.resolve(leaderContext, key, func() (preparedExecutable, error) {
+			close(leaderStarted)
+			<-leaderContext.Done()
+			return preparedExecutable{}, leaderContext.Err()
+		})
+		leaderDone <- err
+	}()
+	<-leaderStarted
+
+	waiterDone := make(chan error, 1)
+	go func() {
+		prepared, err := cache.resolve(context.Background(), key, func() (preparedExecutable, error) {
+			return preparedExecutable{Path: "/replacement", Version: "1.0.0"}, nil
+		})
+		if err == nil && prepared.Path != "/replacement" {
+			err = errors.New("waiter received the cancelled leader result")
+		}
+		waiterDone <- err
+	}()
+	time.Sleep(10 * time.Millisecond)
+	cancelLeader()
+
+	if err := <-leaderDone; !errors.Is(err, context.Canceled) {
+		t.Fatalf("leader error = %v, want cancellation", err)
+	}
+	if err := <-waiterDone; err != nil {
+		t.Fatalf("waiter error = %v", err)
+	}
+}
+
 func TestCodexClaudeAndCursorSkipImplicitIncompatibleCandidate(t *testing.T) {
 	t.Parallel()
 
