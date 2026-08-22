@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -125,6 +126,15 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 	})
 	attempt := protocol.Attempt{Number: 1, DurationMS: process.Duration.Milliseconds()}
 	if processErr != nil {
+		if isOrdinaryProcessExit(processErr) {
+			_, envelopeErr := decodeCursorEnvelope(process.Stdout)
+			var reported *reportedProviderError
+			if errors.As(envelopeErr, &reported) {
+				attempt.Outcome = protocol.AttemptFailed
+				attempt.ErrorClass = &reported.Class
+				return Result{}, newFailure(reported.Class, reported.Message, environment, &attempt).withExecution(resolvedExecution)
+			}
+		}
 		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
@@ -132,6 +142,12 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 	}
 	inner, err := decodeCursorEnvelope(process.Stdout)
 	if err != nil {
+		var reported *reportedProviderError
+		if errors.As(err, &reported) {
+			attempt.Outcome = protocol.AttemptFailed
+			attempt.ErrorClass = &reported.Class
+			return Result{}, newFailure(reported.Class, reported.Message, environment, &attempt).withExecution(resolvedExecution)
+		}
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
@@ -252,7 +268,13 @@ func decodeCursorEnvelope(output []byte) (string, error) {
 	if err := json.Unmarshal(output, &envelope); err != nil {
 		return "", err
 	}
-	if envelope.Type != "result" || envelope.Subtype != "success" || envelope.IsError == nil || *envelope.IsError {
+	if envelope.Type == "result" && envelope.IsError != nil && *envelope.IsError {
+		if envelope.Subtype != "error" || strings.TrimSpace(envelope.Result) == "" {
+			return "", fmt.Errorf("Cursor returned an invalid failure result")
+		}
+		return "", &reportedProviderError{Class: protocol.FailureProvider, Message: "Cursor reported a provider failure"}
+	}
+	if envelope.Type != "result" || envelope.Subtype != "success" || envelope.IsError == nil {
 		return "", fmt.Errorf("Cursor did not report a successful result")
 	}
 	if strings.TrimSpace(envelope.Result) == "" {

@@ -120,6 +120,11 @@ func runProcess(ctx context.Context, spec processSpec) (processResult, error) {
 	return result, &processError{Kind: kind, Result: result, Err: err}
 }
 
+func isOrdinaryProcessExit(err error) bool {
+	failure := new(processError)
+	return errors.As(err, &failure) && failure.Kind == processExit
+}
+
 type boundedBuffer struct {
 	mu       sync.Mutex
 	buffer   bytes.Buffer

@@ -37,6 +37,9 @@ omits the unsupported `not` path rule. The returned last-message file and JSON L
 then decoded against the complete canonical Go contract; schema projection does
 not make an invalid result acceptable.
 
+Documented `error` and `turn.failed` events are provider failures and do not
+consume the malformed-review retry. Their payloads remain private.
+
 ## Verify
 
 Default tests use a controlled fake executable. Run the optional authenticated

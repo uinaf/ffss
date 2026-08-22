@@ -295,7 +295,8 @@ func TestCursorReviewRejectsMalformedEnvelope(t *testing.T) {
 		output string
 	}{
 		{name: "not JSON", output: "not-json"},
-		{name: "failed result", output: `{"type":"result","subtype":"error","is_error":true,"result":"failed"}`},
+		{name: "unknown failure subtype", output: `{"type":"result","subtype":"unknown","is_error":true,"result":"failed"}`},
+		{name: "failure missing result", output: `{"type":"result","subtype":"error","is_error":true}`},
 		{name: "missing result", output: `{"type":"result","subtype":"success","is_error":false}`},
 		{name: "duplicate key", output: `{"type":"result","type":"result","subtype":"success","is_error":false,"result":"x"}`},
 		{name: "sentinel key", output: `{"` + providerOutputSentinel + `":1,"` + providerOutputSentinel + `":2}`},
@@ -312,6 +313,35 @@ func TestCursorReviewRejectsMalformedEnvelope(t *testing.T) {
 			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptMalformed {
 				t.Fatalf("attempt = %+v", failure.Attempt)
 			}
+		})
+	}
+}
+
+func TestCursorReviewClassifiesReportedProviderFailure(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name                 string
+		exitAfterOutputError string
+	}{
+		{name: "zero exit"},
+		{name: "non-zero exit beats stderr prose", exitAfterOutputError: "not authenticated"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fake := newFakeCursor(t, fakeCursorOptions{
+				output:               `{"type":"result","subtype":"error","is_error":true,"result":"` + providerOutputSentinel + `"}`,
+				exitAfterOutputError: test.exitAfterOutputError,
+			})
+			reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+			failure := assertProviderError(t, err, protocol.FailureProvider)
+			if strings.Contains(failure.Message, providerOutputSentinel) {
+				t.Fatalf("provider failure disclosed provider output: %q", failure.Message)
+			}
+			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
+				t.Fatalf("attempt = %+v", failure.Attempt)
+			}
+			assertExecutionMetadata(t, failure, protocol.ProviderCursor, "2026.07.23-e383d2b", protocol.IsolationStrict, true)
 		})
 	}
 }
@@ -398,12 +428,13 @@ func TestCursorReviewUsesExplicitDefaultModel(t *testing.T) {
 }
 
 type fakeCursorOptions struct {
-	help        string
-	loggedOut   bool
-	authError   string
-	output      string
-	reviewError string
-	delay       string
+	help                 string
+	loggedOut            bool
+	authError            string
+	output               string
+	reviewError          string
+	exitAfterOutputError string
+	delay                string
 }
 
 type fakeCursor struct {
@@ -444,6 +475,10 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 	if options.reviewError != "" {
 		reviewFailure = "printf '%b' " + shellQuote(options.reviewError) + " >&2\nexit 7\n"
 	}
+	afterOutputFailure := ""
+	if options.exitAfterOutputError != "" {
+		afterOutputFailure = "printf '%b' " + shellQuote(options.exitAfterOutputError) + " >&2\nexit 7\n"
+	}
 	delay := ""
 	if options.delay != "" {
 		delay = "sleep " + options.delay + "\n"
@@ -476,7 +511,8 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 		"env > " + shellQuote(fake.environment) + "\n" +
 		"if [ -n \"${CURSOR_CONFIG_DIR:-}\" ] && [ -f \"$CURSOR_CONFIG_DIR/cli-config.json\" ]; then cat \"$CURSOR_CONFIG_DIR/cli-config.json\" > " + shellQuote(fake.permissions) + "; fi\n" +
 		reviewFailure + delay +
-		"cat " + shellQuote(outputPath) + "\n"
+		"cat " + shellQuote(outputPath) + "\n" +
+		afterOutputFailure
 	writeTestExecutableAt(t, fake.path, script)
 	return fake
 }

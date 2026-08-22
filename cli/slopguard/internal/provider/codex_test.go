@@ -283,7 +283,9 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 		{name: "malformed review", options: fakeCodexOptions{result: `{"findings":[]}`}},
 		{name: "envelope mismatch", options: fakeCodexOptions{envelopeMessage: `{"findings":[],"overall_explanation":"Different.","overall_confidence":0.9}`}},
 		{name: "invalid envelope", options: fakeCodexOptions{rawEnvelope: "not-json\n"}},
-		{name: "provider error sentinel", options: fakeCodexOptions{rawEnvelope: `{"type":"error","message":"` + providerOutputSentinel + `"}` + "\n"}},
+		{name: "error missing message", options: fakeCodexOptions{rawEnvelope: `{"type":"error"}` + "\n"}},
+		{name: "turn failure missing error", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.failed"}` + "\n"}},
+		{name: "turn failure missing message", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.failed","error":{}}` + "\n"}},
 		{
 			name: "event after completion",
 			options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
@@ -308,6 +310,42 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 				t.Fatalf("protocol failure disclosed provider output: %q", failure.Message)
 			}
 			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptMalformed {
+				t.Fatalf("attempt = %+v", failure.Attempt)
+			}
+			assertExecutionMetadata(t, failure, protocol.ProviderCodex, "0.146.0", protocol.IsolationStrict, false)
+		})
+	}
+}
+
+func TestCodexReviewClassifiesReportedProviderEvent(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name                 string
+		rawEnvelope          string
+		exitAfterOutputError string
+	}{
+		{name: "error zero exit", rawEnvelope: `{"type":"error","message":"` + providerOutputSentinel + `"}` + "\n"},
+		{name: "error non-zero exit beats stderr prose", rawEnvelope: `{"type":"error","message":"` + providerOutputSentinel + `"}` + "\n", exitAfterOutputError: "not authenticated"},
+		{name: "turn failure zero exit", rawEnvelope: `{"type":"turn.failed","error":{"message":"` + providerOutputSentinel + `"}}` + "\n"},
+		{name: "turn failure non-zero exit beats stderr prose", rawEnvelope: `{"type":"turn.failed","error":{"message":"` + providerOutputSentinel + `"}}` + "\n", exitAfterOutputError: "not authenticated"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fake := newFakeCodex(t, fakeCodexOptions{
+				rawEnvelope:          test.rawEnvelope,
+				exitAfterOutputError: test.exitAfterOutputError,
+			})
+			reviewer := NewCodex(CodexOptions{
+				Repository:  t.TempDir(),
+				Executable:  fake.path,
+				Environment: []string{"PATH=/usr/bin:/bin", "OPENAI_API_KEY=test-provider-secret"},
+			})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: codexConfig(protocol.IsolationStrict, false, 5*time.Second)})
+			failure := assertProviderError(t, err, protocol.FailureProvider)
+			if strings.Contains(failure.Message, providerOutputSentinel) {
+				t.Fatalf("provider failure disclosed provider output: %q", failure.Message)
+			}
+			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 				t.Fatalf("attempt = %+v", failure.Attempt)
 			}
 			assertExecutionMetadata(t, failure, protocol.ProviderCodex, "0.146.0", protocol.IsolationStrict, false)
@@ -362,15 +400,16 @@ func TestCodexReviewEnforcesOutputBounds(t *testing.T) {
 }
 
 type fakeCodexOptions struct {
-	topHelp         string
-	execHelp        string
-	result          string
-	envelopeMessage string
-	rawEnvelope     string
-	authError       string
-	reviewError     string
-	delay           string
-	probeDelay      string
+	topHelp              string
+	execHelp             string
+	result               string
+	envelopeMessage      string
+	rawEnvelope          string
+	authError            string
+	reviewError          string
+	exitAfterOutputError string
+	delay                string
+	probeDelay           string
 }
 
 type fakeCodex struct {
@@ -436,6 +475,10 @@ func newFakeCodex(t *testing.T, options fakeCodexOptions) fakeCodex {
 	if options.reviewError != "" {
 		reviewFailure = "printf '%b' " + shellQuote(options.reviewError) + " >&2\nexit 7\n"
 	}
+	afterOutputFailure := ""
+	if options.exitAfterOutputError != "" {
+		afterOutputFailure = "printf '%b' " + shellQuote(options.exitAfterOutputError) + " >&2\nexit 7\n"
+	}
 	delay := ""
 	if options.delay != "" {
 		delay = "sleep " + options.delay + "\n"
@@ -500,7 +543,8 @@ func newFakeCodex(t *testing.T, options fakeCodexOptions) fakeCodex {
 		"output=''\nprevious=''\nfor argument in \"$@\"; do\n  if [ \"$previous\" = \"--output-last-message\" ]; then output=\"$argument\"; fi\n  previous=\"$argument\"\ndone\n" +
 		"test -n \"$output\"\n" +
 		"cat " + shellQuote(resultPath) + " > \"$output\"\n" +
-		"cat " + shellQuote(envelopePath) + "\n"
+		"cat " + shellQuote(envelopePath) + "\n" +
+		afterOutputFailure
 	writeTestExecutableAt(t, fake.path, script)
 	return fake
 }

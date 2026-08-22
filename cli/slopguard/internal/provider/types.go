@@ -80,6 +80,15 @@ type Error struct {
 	Execution *Execution
 }
 
+type reportedProviderError struct {
+	Class   protocol.FailureClass
+	Message string
+}
+
+func (failure *reportedProviderError) Error() string {
+	return failure.Message
+}
+
 func (failure *Error) withExecution(execution Execution) *Error {
 	failure.Execution = &execution
 	return failure

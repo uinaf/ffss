@@ -42,6 +42,14 @@ protocol recovery are not accepted. The shared orchestration retry adds a
 sanitized correction for the specific rejected rule without including the
 previous response or repository content.
 
+A valid outer result with `is_error: true` and a documented completion subtype
+is a provider-reported failure, not a malformed review. The accepted subtypes
+are `success`, `error_during_execution`, `error_max_turns`,
+`error_max_budget_usd`, and `error_max_structured_output_retries`. Typed `401`
+and `403` statuses become authentication; `429` remains a provider failure with
+a stable rate-limit diagnostic. Raw provider error text is never copied into
+the report.
+
 ## Verify
 
 Default tests use a controlled fake executable. Run the optional authenticated

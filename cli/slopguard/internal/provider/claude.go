@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -127,13 +128,28 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	})
 	attempt := protocol.Attempt{Number: 1, DurationMS: process.Duration.Milliseconds()}
 	if processErr != nil {
-		class := classifyClaudeProcessFailure(processErr, process)
+		if isOrdinaryProcessExit(processErr) {
+			_, envelopeErr := decodeClaudeEnvelope(process.Stdout)
+			var reported *reportedProviderError
+			if errors.As(envelopeErr, &reported) {
+				attempt.Outcome = protocol.AttemptFailed
+				attempt.ErrorClass = &reported.Class
+				return Result{}, newFailure(reported.Class, reported.Message, environment, &attempt).withExecution(resolvedExecution)
+			}
+		}
+		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
 		return Result{}, processFailure("Claude review", class, processErr, process, environment, &attempt, strictCredentialRecovery(request.Config, protocol.ProviderClaude)).withExecution(resolvedExecution)
 	}
 	reviewData, err := decodeClaudeEnvelope(process.Stdout)
 	if err != nil {
+		var reported *reportedProviderError
+		if errors.As(err, &reported) {
+			attempt.Outcome = protocol.AttemptFailed
+			attempt.ErrorClass = &reported.Class
+			return Result{}, newFailure(reported.Class, reported.Message, environment, &attempt).withExecution(resolvedExecution)
+		}
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
@@ -158,29 +174,6 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 			Applied: false,
 		},
 	}, nil
-}
-
-func classifyClaudeProcessFailure(err error, result processResult) protocol.FailureClass {
-	class := classifyProcessFailure(err, result)
-	if class == protocol.FailureProvider && claudeAuthenticationStatus(result.Stdout) == 401 {
-		return protocol.FailureAuth
-	}
-	return class
-}
-
-func claudeAuthenticationStatus(output []byte) int {
-	output = bytes.TrimSpace(output)
-	if len(output) == 0 || protocol.RejectDuplicateKeys(output) != nil {
-		return 0
-	}
-	var envelope struct {
-		IsError        *bool `json:"is_error"`
-		APIErrorStatus *int  `json:"api_error_status"`
-	}
-	if err := json.Unmarshal(output, &envelope); err != nil || envelope.IsError == nil || !*envelope.IsError || envelope.APIErrorStatus == nil {
-		return 0
-	}
-	return *envelope.APIErrorStatus
 }
 
 func (claude *Claude) preflight(ctx context.Context, executable, workspace string, environment []string, effective config.Effective) (string, error) {
@@ -266,12 +259,31 @@ func decodeClaudeEnvelope(output []byte) ([]byte, error) {
 		Type             string          `json:"type"`
 		Subtype          string          `json:"subtype"`
 		IsError          *bool           `json:"is_error"`
+		APIErrorStatus   *int            `json:"api_error_status"`
+		Result           string          `json:"result"`
 		StructuredOutput json.RawMessage `json:"structured_output"`
 	}
 	if err := json.Unmarshal(output, &envelope); err != nil {
 		return nil, err
 	}
-	if envelope.Type != "result" || envelope.Subtype != "success" || envelope.IsError == nil || *envelope.IsError {
+	if envelope.Type == "result" && envelope.IsError != nil && *envelope.IsError {
+		if !validClaudeFailureSubtype(envelope.Subtype) || strings.TrimSpace(envelope.Result) == "" {
+			return nil, fmt.Errorf("Claude returned an invalid failure result")
+		}
+		class := protocol.FailureProvider
+		message := "Claude reported a provider failure"
+		if envelope.APIErrorStatus != nil {
+			switch *envelope.APIErrorStatus {
+			case 401, 403:
+				class = protocol.FailureAuth
+				message = "Claude reported an authentication failure"
+			case 429:
+				message = "Claude reported a rate limit"
+			}
+		}
+		return nil, &reportedProviderError{Class: class, Message: message}
+	}
+	if envelope.Type != "result" || envelope.Subtype != "success" || envelope.IsError == nil {
 		return nil, fmt.Errorf("Claude did not report a successful result")
 	}
 	structured := bytes.TrimSpace(envelope.StructuredOutput)
@@ -279,6 +291,19 @@ func decodeClaudeEnvelope(output []byte) ([]byte, error) {
 		return nil, fmt.Errorf("Claude result is missing structured_output object")
 	}
 	return append([]byte(nil), structured...), nil
+}
+
+func validClaudeFailureSubtype(subtype string) bool {
+	switch subtype {
+	case "success",
+		"error_during_execution",
+		"error_max_turns",
+		"error_max_budget_usd",
+		"error_max_structured_output_retries":
+		return true
+	default:
+		return false
+	}
 }
 
 func setEnvironmentValue(environment []string, name, value string) []string {
