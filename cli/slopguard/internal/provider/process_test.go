@@ -51,6 +51,17 @@ func TestRunProcessRejectsNegativeOutputLimits(t *testing.T) {
 	}
 }
 
+func TestCapabilityProbeFailureRequiresOutputBound(t *testing.T) {
+	t.Parallel()
+
+	if isCapabilityProbeFailure(&processError{Kind: processStart, Err: errors.New("resource exhausted")}) {
+		t.Fatal("process start failure permitted capability fallback")
+	}
+	if !isCapabilityProbeFailure(&processError{Kind: processOutputLimit, Err: errors.New("output exceeded")}) {
+		t.Fatal("bounded capability output did not permit fallback")
+	}
+}
+
 func TestRunProcessEmptyEnvironmentDoesNotInheritParent(t *testing.T) {
 	t.Parallel()
 

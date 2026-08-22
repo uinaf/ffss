@@ -89,16 +89,6 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 	}
 	key := effectivePreparationKey(request.Config)
 	prepared, cached := grok.preparation.get(key)
-	var candidates []string
-	if !cached {
-		candidates, err = discoverExecutableCandidates(grok.executable, repository, grok.environment)
-		if err != nil {
-			return Result{}, newFailure(protocol.FailureCapability, err.Error(), grok.environment, nil)
-		}
-	}
-	if failure := strictCredentialFailure(request.Config, protocol.ProviderGrok, grok.environment); failure != nil {
-		return Result{}, failure
-	}
 	runtime, err := config.PrepareRuntime(request.Config, grok.environment)
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("prepare provider runtime: %v", err), grok.environment, nil)
@@ -114,6 +104,13 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 	environment = setEnvironmentValue(environment, "GROK_SUBAGENTS", "0")
 	if !cached {
 		prepared, err = grok.preparation.resolve(reviewContext, key, func() (preparedExecutable, error) {
+			candidates, discoverErr := discoverExecutableCandidates(grok.executable, repository, grok.environment)
+			if discoverErr != nil {
+				return preparedExecutable{}, newFailure(protocol.FailureCapability, discoverErr.Error(), grok.environment, nil)
+			}
+			if failure := strictCredentialFailure(request.Config, protocol.ProviderGrok, grok.environment); failure != nil {
+				return preparedExecutable{}, failure
+			}
 			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
 				return grok.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
 			})
@@ -121,6 +118,8 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		if err != nil {
 			return Result{}, err
 		}
+	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderGrok, grok.environment); failure != nil {
+		return Result{}, failure
 	}
 	executable, version := prepared.Path, prepared.Version
 	promptPath := filepath.Join(runtime.Workspace, "review.prompt")

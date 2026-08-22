@@ -83,16 +83,6 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 	}
 	key := effectivePreparationKey(request.Config)
 	prepared, cached := codex.preparation.get(key)
-	var candidates []string
-	if !cached {
-		candidates, err = discoverExecutableCandidates(codex.executable, repository, codex.environment)
-		if err != nil {
-			return Result{}, newFailure(protocol.FailureCapability, err.Error(), codex.environment, nil)
-		}
-	}
-	if failure := strictCredentialFailure(request.Config, protocol.ProviderCodex, codex.environment); failure != nil {
-		return Result{}, failure
-	}
 	runtime, err := config.PrepareRuntime(request.Config, codex.environment)
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("prepare provider runtime: %v", err), codex.environment, nil)
@@ -105,6 +95,13 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 	}()
 	if !cached {
 		prepared, err = codex.preparation.resolve(reviewContext, key, func() (preparedExecutable, error) {
+			candidates, discoverErr := discoverExecutableCandidates(codex.executable, repository, codex.environment)
+			if discoverErr != nil {
+				return preparedExecutable{}, newFailure(protocol.FailureCapability, discoverErr.Error(), codex.environment, nil)
+			}
+			if failure := strictCredentialFailure(request.Config, protocol.ProviderCodex, codex.environment); failure != nil {
+				return preparedExecutable{}, failure
+			}
 			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
 				return codex.preflight(reviewContext, candidate, runtime, request.Config)
 			})
@@ -112,6 +109,8 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		if err != nil {
 			return Result{}, err
 		}
+	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderCodex, codex.environment); failure != nil {
+		return Result{}, failure
 	}
 	executable, version := prepared.Path, prepared.Version
 	state, err := os.MkdirTemp("", "slopguard-codex-state-")

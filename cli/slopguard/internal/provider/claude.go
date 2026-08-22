@@ -81,16 +81,6 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	}
 	key := effectivePreparationKey(request.Config)
 	prepared, cached := claude.preparation.get(key)
-	var candidates []string
-	if !cached {
-		candidates, err = discoverExecutableCandidates(claude.executable, repository, claude.environment)
-		if err != nil {
-			return Result{}, newFailure(protocol.FailureCapability, err.Error(), claude.environment, nil)
-		}
-	}
-	if failure := strictCredentialFailure(request.Config, protocol.ProviderClaude, claude.environment); failure != nil {
-		return Result{}, failure
-	}
 	runtime, err := config.PrepareRuntime(request.Config, claude.environment)
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("prepare provider runtime: %v", err), claude.environment, nil)
@@ -107,6 +97,13 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	}
 	if !cached {
 		prepared, err = claude.preparation.resolve(reviewContext, key, func() (preparedExecutable, error) {
+			candidates, discoverErr := discoverExecutableCandidates(claude.executable, repository, claude.environment)
+			if discoverErr != nil {
+				return preparedExecutable{}, newFailure(protocol.FailureCapability, discoverErr.Error(), claude.environment, nil)
+			}
+			if failure := strictCredentialFailure(request.Config, protocol.ProviderClaude, claude.environment); failure != nil {
+				return preparedExecutable{}, failure
+			}
 			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
 				return claude.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
 			})
@@ -114,6 +111,8 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 		if err != nil {
 			return Result{}, err
 		}
+	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderClaude, claude.environment); failure != nil {
+		return Result{}, failure
 	}
 	executable, version := prepared.Path, prepared.Version
 	providerSchema, err := contractschema.ClaudeReviewV1()

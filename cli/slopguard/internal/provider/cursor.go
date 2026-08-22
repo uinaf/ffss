@@ -81,16 +81,6 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 	}
 	key := effectivePreparationKey(request.Config)
 	prepared, cached := cursor.preparation.get(key)
-	var candidates []string
-	if !cached {
-		candidates, err = discoverExecutableCandidates(cursor.executable, repository, cursor.environment)
-		if err != nil {
-			return Result{}, newFailure(protocol.FailureCapability, err.Error(), cursor.environment, nil)
-		}
-	}
-	if failure := strictCredentialFailure(request.Config, protocol.ProviderCursor, cursor.environment); failure != nil {
-		return Result{}, failure
-	}
 	runtime, err := config.PrepareRuntime(request.Config, cursor.environment)
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("prepare provider runtime: %v", err), cursor.environment, nil)
@@ -109,6 +99,13 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 	}
 	if !cached {
 		prepared, err = cursor.preparation.resolve(reviewContext, key, func() (preparedExecutable, error) {
+			candidates, discoverErr := discoverExecutableCandidates(cursor.executable, repository, cursor.environment)
+			if discoverErr != nil {
+				return preparedExecutable{}, newFailure(protocol.FailureCapability, discoverErr.Error(), cursor.environment, nil)
+			}
+			if failure := strictCredentialFailure(request.Config, protocol.ProviderCursor, cursor.environment); failure != nil {
+				return preparedExecutable{}, failure
+			}
 			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
 				return cursor.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
 			})
@@ -116,6 +113,8 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 		if err != nil {
 			return Result{}, err
 		}
+	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderCursor, cursor.environment); failure != nil {
+		return Result{}, failure
 	}
 	executable, version := prepared.Path, prepared.Version
 	model := request.Config.Model.Value

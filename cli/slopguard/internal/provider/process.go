@@ -130,7 +130,7 @@ func isCapabilityProbeFailure(err error) bool {
 	if !errors.As(err, &failure) {
 		return false
 	}
-	return failure.Kind == processStart || failure.Kind == processOutputLimit
+	return failure.Kind == processOutputLimit
 }
 
 type boundedBuffer struct {
