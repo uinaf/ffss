@@ -126,6 +126,7 @@ type Bundle struct {
 	request      Request
 	collector    *Collector
 	target       protocol.Target
+	stateHash    string
 	payload      string
 	contributors []Contributor
 }
@@ -152,6 +153,33 @@ func (bundle *Bundle) Contributors() []Contributor {
 }
 
 func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
+	if bundle.request.Mode != protocol.TargetLocal {
+		var sandbox *gitSandbox
+		if bundle.request.Mode == protocol.TargetBranch {
+			var err error
+			sandbox, err = bundle.collector.newGitSandbox(ctx, bundle.repository, false)
+			if err != nil {
+				if ctxErr := ctx.Err(); ctxErr != nil {
+					return ctxErr
+				}
+				return fmt.Errorf("%w: prepare immutable verification: %v", ErrSourceChanged, err)
+			}
+			defer func() { _ = sandbox.Close() }()
+		}
+		err := verifyStableImmutableState(ctx, bundle.stateHash, func(ctx context.Context) (string, error) {
+			return bundle.collector.immutableSourceStateHash(ctx, bundle.repository, bundle.request, sandbox)
+		})
+		if err != nil {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return ctxErr
+			}
+			if errors.Is(err, ErrSourceChanged) {
+				return err
+			}
+			return fmt.Errorf("%w: verify immutable target: %v", ErrSourceChanged, err)
+		}
+		return nil
+	}
 	current, err := bundle.collector.collect(ctx, bundle.repository, bundle.request, false)
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
@@ -163,6 +191,22 @@ func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
 		return ErrSourceChanged
 	}
 	return nil
+}
+
+func verifyStableImmutableState(ctx context.Context, expected string, snapshot func(context.Context) (string, error)) error {
+	for range 2 {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		current, err := snapshot(ctx)
+		if err != nil {
+			return err
+		}
+		if current != expected {
+			return ErrSourceChanged
+		}
+	}
+	return ctx.Err()
 }
 
 type SizeError struct {
