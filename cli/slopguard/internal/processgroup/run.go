@@ -12,8 +12,9 @@ import (
 )
 
 type Result struct {
-	CommandErr error
-	CleanupErr error
+	CommandErr        error
+	CleanupErr        error
+	ContextTerminated bool
 }
 
 func (result Result) Err() error {
@@ -33,6 +34,7 @@ func Run(ctx context.Context, command *exec.Cmd) Result {
 	// Observe exit without reaping so the leader PID cannot be reused before
 	// its process group is terminated.
 	watchErr := waitForExit(ctx, command.Process.Pid)
+	contextTerminated := errors.Is(watchErr, context.Canceled) || errors.Is(watchErr, context.DeadlineExceeded)
 	cleanupErr := terminate(command.Process.Pid)
 	if watchErr == nil && ignoreCleanupErrorAfterExit(command.Process.Pid, cleanupErr) {
 		cleanupErr = nil
@@ -56,7 +58,8 @@ func Run(ctx context.Context, command *exec.Cmd) Result {
 		cleanupErr = fmt.Errorf("terminate process group: %w", cleanupErr)
 	}
 	return Result{
-		CommandErr: errors.Join(watchErr, waitErr),
-		CleanupErr: cleanupErr,
+		CommandErr:        errors.Join(watchErr, waitErr),
+		CleanupErr:        cleanupErr,
+		ContextTerminated: contextTerminated,
 	}
 }

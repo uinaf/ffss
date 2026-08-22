@@ -200,6 +200,9 @@ func TestRunProcessCancellationKillsChildProcessGroup(t *testing.T) {
 	if !errors.As(err, &failure) || failure.Kind != processCancelled {
 		t.Fatalf("runProcess() error = %v", err)
 	}
+	if !failure.ContextCaused {
+		t.Fatal("cancelled process did not preserve context causality")
+	}
 	if time.Since(started) > 3*time.Second {
 		t.Fatalf("cancellation cleanup took %s", time.Since(started))
 	}
@@ -279,6 +282,9 @@ func TestRunProcessTimeoutKillsDescendants(t *testing.T) {
 	var failure *processError
 	if !errors.As(err, &failure) || failure.Kind != processTimeout {
 		t.Fatalf("runProcess() error = %v", err)
+	}
+	if !failure.ContextCaused {
+		t.Fatal("timed out process did not preserve context causality")
 	}
 	assertMarkerNotWritten(t, marker)
 }
