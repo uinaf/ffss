@@ -147,6 +147,15 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 	})
 	attempt := protocol.Attempt{Number: 1, DurationMS: process.Duration.Milliseconds()}
 	if processErr != nil {
+		if isOrdinaryProcessExit(processErr) {
+			_, envelopeErr := decodeCodexEnvelope(process.Stdout)
+			var reported *reportedProviderError
+			if errors.As(envelopeErr, &reported) {
+				attempt.Outcome = protocol.AttemptFailed
+				attempt.ErrorClass = &reported.Class
+				return Result{}, newFailure(reported.Class, reported.Message, runtime.Environment(), &attempt).withExecution(resolvedExecution)
+			}
+		}
 		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class

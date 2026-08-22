@@ -126,6 +126,15 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 	})
 	attempt := protocol.Attempt{Number: 1, DurationMS: process.Duration.Milliseconds()}
 	if processErr != nil {
+		if isOrdinaryProcessExit(processErr) {
+			_, envelopeErr := decodeCursorEnvelope(process.Stdout)
+			var reported *reportedProviderError
+			if errors.As(envelopeErr, &reported) {
+				attempt.Outcome = protocol.AttemptFailed
+				attempt.ErrorClass = &reported.Class
+				return Result{}, newFailure(reported.Class, reported.Message, environment, &attempt).withExecution(resolvedExecution)
+			}
+		}
 		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class

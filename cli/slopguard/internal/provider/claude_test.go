@@ -298,6 +298,22 @@ func TestClaudeReviewClassifiesReportedFailures(t *testing.T) {
 	}
 }
 
+func TestClaudeReviewPrefersReportedFailureOnNonZeroExit(t *testing.T) {
+	t.Parallel()
+
+	output := `{"type":"result","subtype":"error","is_error":true,"api_error_status":429,"result":"` + providerOutputSentinel + `"}`
+	fake := newFakeClaude(t, fakeClaudeOptions{reviewOutputError: output, reviewError: "not authenticated"})
+	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	failure := assertProviderError(t, err, protocol.FailureProvider)
+	if failure.Message != "Claude reported a rate limit" {
+		t.Fatalf("failure = %q", failure.Message)
+	}
+	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
+		t.Fatalf("attempt = %+v", failure.Attempt)
+	}
+}
+
 func TestClaudeReviewEnforcesOutputBounds(t *testing.T) {
 	t.Parallel()
 
@@ -355,9 +371,13 @@ func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 	}
 	reviewFailure := ""
 	if options.reviewOutputError != "" {
-		reviewFailure = "printf '%s' " + shellQuote(options.reviewOutputError) + "\nexit 7\n"
-	} else if options.reviewError != "" {
-		reviewFailure = "printf '%b' " + shellQuote(options.reviewError) + " >&2\nexit 7\n"
+		reviewFailure += "printf '%s' " + shellQuote(options.reviewOutputError) + "\n"
+	}
+	if options.reviewError != "" {
+		reviewFailure += "printf '%b' " + shellQuote(options.reviewError) + " >&2\n"
+	}
+	if reviewFailure != "" {
+		reviewFailure += "exit 7\n"
 	}
 	delay := ""
 	if options.delay != "" {
