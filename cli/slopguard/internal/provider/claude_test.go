@@ -240,7 +240,7 @@ func TestClaudeReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 	}{
 		{name: "not JSON", output: "not-json"},
 		{name: "unknown failure subtype", output: `{"type":"result","subtype":"unknown","is_error":true,"api_error_status":401,"result":"failed"}`},
-		{name: "failure missing result", output: `{"type":"result","subtype":"error","is_error":true,"api_error_status":401}`},
+		{name: "failure missing result", output: `{"type":"result","subtype":"error_during_execution","is_error":true,"api_error_status":401}`},
 		{name: "missing structured output", output: `{"type":"result","subtype":"success","is_error":false}`},
 		{name: "duplicate envelope key", output: `{"type":"result","type":"result","subtype":"success","is_error":false,"structured_output":{}}`},
 		{name: "sentinel envelope key", output: `{"` + providerOutputSentinel + `":1,"` + providerOutputSentinel + `":2}`},
@@ -284,7 +284,7 @@ func TestClaudeReviewClassifiesReportedFailures(t *testing.T) {
 		{name: "missing status stays generic", status: `null`, class: protocol.FailureProvider},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			output := `{"type":"result","subtype":"error","is_error":true,"api_error_status":` + test.status + `,"result":"` + providerOutputSentinel + `"}`
+			output := `{"type":"result","subtype":"error_during_execution","is_error":true,"api_error_status":` + test.status + `,"result":"` + providerOutputSentinel + `"}`
 			fake := newFakeClaude(t, fakeClaudeOptions{output: output})
 			reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
 			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
@@ -303,7 +303,7 @@ func TestClaudeReviewClassifiesReportedFailures(t *testing.T) {
 func TestClaudeReviewPrefersReportedFailureOnNonZeroExit(t *testing.T) {
 	t.Parallel()
 
-	output := `{"type":"result","subtype":"error","is_error":true,"api_error_status":429,"result":"` + providerOutputSentinel + `"}`
+	output := `{"type":"result","subtype":"error_max_structured_output_retries","is_error":true,"api_error_status":429,"result":"` + providerOutputSentinel + `"}`
 	fake := newFakeClaude(t, fakeClaudeOptions{reviewOutputError: output, reviewError: "not authenticated"})
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
 	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
@@ -329,6 +329,25 @@ func TestClaudeReviewRejectsMalformedTypedFailureOnNonZeroExit(t *testing.T) {
 	}
 	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 		t.Fatalf("attempt = %+v", failure.Attempt)
+	}
+}
+
+func TestValidClaudeFailureSubtype(t *testing.T) {
+	for _, subtype := range []string{
+		"success",
+		"error_during_execution",
+		"error_max_turns",
+		"error_max_budget_usd",
+		"error_max_structured_output_retries",
+	} {
+		if !validClaudeFailureSubtype(subtype) {
+			t.Errorf("validClaudeFailureSubtype(%q) = false", subtype)
+		}
+	}
+	for _, subtype := range []string{"", "error", "unknown"} {
+		if validClaudeFailureSubtype(subtype) {
+			t.Errorf("validClaudeFailureSubtype(%q) = true", subtype)
+		}
 	}
 }
 

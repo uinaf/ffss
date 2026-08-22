@@ -267,7 +267,7 @@ func decodeClaudeEnvelope(output []byte) ([]byte, error) {
 		return nil, err
 	}
 	if envelope.Type == "result" && envelope.IsError != nil && *envelope.IsError {
-		if (envelope.Subtype != "success" && envelope.Subtype != "error") || strings.TrimSpace(envelope.Result) == "" {
+		if !validClaudeFailureSubtype(envelope.Subtype) || strings.TrimSpace(envelope.Result) == "" {
 			return nil, fmt.Errorf("Claude returned an invalid failure result")
 		}
 		class := protocol.FailureProvider
@@ -291,6 +291,19 @@ func decodeClaudeEnvelope(output []byte) ([]byte, error) {
 		return nil, fmt.Errorf("Claude result is missing structured_output object")
 	}
 	return append([]byte(nil), structured...), nil
+}
+
+func validClaudeFailureSubtype(subtype string) bool {
+	switch subtype {
+	case "success",
+		"error_during_execution",
+		"error_max_turns",
+		"error_max_budget_usd",
+		"error_max_structured_output_retries":
+		return true
+	default:
+		return false
+	}
 }
 
 func setEnvironmentValue(environment []string, name, value string) []string {
