@@ -9,4 +9,4 @@ interface:
     shorten content the user asked to be exhaustive.
 
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false

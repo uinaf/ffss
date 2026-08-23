@@ -1,6 +1,7 @@
 ---
 name: wat
 description: "Whip a rambling response back into terse labeled deltas: outcome first, counts and identifiers over adjectives, at most six lines, one next action. Use when the user says /wat, wat, too long, tl;dr this, stop novelizing, or wall of text, and from then on whenever a drafted reply starts narrating process instead of reporting deltas. Do not use for cleaning committed artifacts, docs, or diffs (slopclean's lane), or for shortening content the user asked to be exhaustive."
+disable-model-invocation: true
 ---
 
 # Wat
