@@ -62,7 +62,7 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 		ctx,
 		"git",
 		options.GitPath,
-		requested,
+		absolute,
 		environment,
 		func(ctx context.Context, path string) error {
 			before, err := captureExecutableIdentity(ctx, path)
