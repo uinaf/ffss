@@ -4,4 +4,4 @@ interface:
   default_prompt: "Use $slopguard to review this completed change against its acceptance criteria and iterate until clean."
 
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true
