@@ -2,6 +2,7 @@ package trustedexec
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,26 @@ import (
 )
 
 type Check func(ctx context.Context, path string) error
+
+type abortCheckError struct {
+	cause error
+}
+
+func (failure *abortCheckError) Error() string {
+	return failure.cause.Error()
+}
+
+func (failure *abortCheckError) Unwrap() error {
+	return failure.cause
+}
+
+// AbortCheck stops candidate fallback when a caller-owned boundary changes.
+func AbortCheck(cause error) error {
+	if cause == nil {
+		return nil
+	}
+	return &abortCheckError{cause: cause}
+}
 
 type RepositoryBoundarySet struct {
 	roots []string
@@ -63,6 +84,10 @@ func ResolveWithBoundaries(ctx context.Context, name, configuredPath string, bou
 			return "", fmt.Errorf("trusted %s executable: %w", name, err)
 		}
 		if err := check(ctx, path); err != nil {
+			var abort *abortCheckError
+			if errors.As(err, &abort) {
+				return "", abort.cause
+			}
 			if isProbeCleanupError(err) {
 				return "", fmt.Errorf("trusted %s executable capability probe cleanup failed", name)
 			}
@@ -93,6 +118,10 @@ func ResolveWithBoundaries(ctx context.Context, name, configuredPath string, bou
 		}
 		foundTrustedCandidate = true
 		if err := check(ctx, resolved); err != nil {
+			var abort *abortCheckError
+			if errors.As(err, &abort) {
+				return "", abort.cause
+			}
 			if isProbeCleanupError(err) {
 				return "", fmt.Errorf("trusted %s executable capability probe cleanup failed", name)
 			}

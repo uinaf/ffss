@@ -82,6 +82,9 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 		trustedBoundaries,
 		environment,
 		func(ctx context.Context, path string) error {
+			if err := validateRepositoryIdentity(absolute, resolved, requestedInfo, expectedRoot, expectedRootInfo, gitMetadataPath, gitMetadata); err != nil {
+				return trustedexec.AbortCheck(err)
+			}
 			before, err := captureExecutableIdentity(ctx, path)
 			if err != nil {
 				return err
@@ -156,12 +159,10 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 }
 
 func queryRepositoryRoot(ctx context.Context, gitPath string, gitIdentity *executableIdentity, repository string) ([]byte, error) {
-	executable, cleanup, err := snapshotValidatedExecutable(ctx, gitPath, gitIdentity)
-	if err != nil {
+	if err := validateExecutableIdentity(ctx, gitPath, gitIdentity); err != nil {
 		return nil, fmt.Errorf("validate trusted Git executable before root discovery: %w", err)
 	}
-	defer cleanup()
-	return runRepositoryRootQuery(ctx, executable, repository)
+	return runRepositoryRootQuery(ctx, gitPath, repository)
 }
 
 func runRepositoryRootQuery(ctx context.Context, executable, repository string) ([]byte, error) {
@@ -229,55 +230,6 @@ func validateExecutableIdentity(ctx context.Context, path string, expected *exec
 		return fmt.Errorf("trusted Git executable changed after validation")
 	}
 	return nil
-}
-
-func snapshotValidatedExecutable(ctx context.Context, path string, expected *executableIdentity) (string, func(), error) {
-	source, err := os.Open(path)
-	if err != nil {
-		return "", nil, err
-	}
-	defer func() { _ = source.Close() }()
-	directory, err := os.MkdirTemp("", "slopguard-git-")
-	if err != nil {
-		return "", nil, err
-	}
-	cleanup := func() { _ = os.RemoveAll(directory) }
-	succeeded := false
-	defer func() {
-		if !succeeded {
-			cleanup()
-		}
-	}()
-	executable := filepath.Join(directory, "git")
-	snapshot, err := os.OpenFile(executable, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-	if err != nil {
-		return "", nil, err
-	}
-	open := true
-	defer func() {
-		if open {
-			_ = snapshot.Close()
-		}
-	}()
-	current, err := captureOpenExecutableIdentityTo(ctx, path, source, snapshot)
-	if err != nil {
-		return "", nil, err
-	}
-	if !sameExecutableIdentity(expected, current) {
-		return "", nil, fmt.Errorf("trusted Git executable changed after validation")
-	}
-	if err := snapshot.Sync(); err != nil {
-		return "", nil, err
-	}
-	if err := snapshot.Close(); err != nil {
-		return "", nil, err
-	}
-	open = false
-	if err := os.Chmod(executable, 0o500); err != nil {
-		return "", nil, err
-	}
-	succeeded = true
-	return executable, cleanup, nil
 }
 
 func sameExecutableIdentity(left, right *executableIdentity) bool {
@@ -580,10 +532,6 @@ func gitDirectoryTarget(path string, content []byte) (string, bool, error) {
 }
 
 func captureOpenExecutableIdentity(ctx context.Context, path string, file *os.File) (*executableIdentity, error) {
-	return captureOpenExecutableIdentityTo(ctx, path, file, nil)
-}
-
-func captureOpenExecutableIdentityTo(ctx context.Context, path string, file *os.File, destination io.Writer) (*executableIdentity, error) {
 	before, err := file.Stat()
 	if err != nil {
 		return nil, err
@@ -592,10 +540,6 @@ func captureOpenExecutableIdentityTo(ctx context.Context, path string, file *os.
 		return nil, fmt.Errorf("trusted Git executable is not an executable regular file")
 	}
 	hash := sha256.New()
-	writer := io.Writer(hash)
-	if destination != nil {
-		writer = io.MultiWriter(hash, destination)
-	}
 	buffer := make([]byte, 64<<10)
 	for {
 		if err := ctx.Err(); err != nil {
@@ -603,12 +547,8 @@ func captureOpenExecutableIdentityTo(ctx context.Context, path string, file *os.
 		}
 		read, readErr := file.Read(buffer)
 		if read > 0 {
-			written, err := writer.Write(buffer[:read])
-			if err != nil {
+			if _, err := hash.Write(buffer[:read]); err != nil {
 				return nil, err
-			}
-			if written != read {
-				return nil, io.ErrShortWrite
 			}
 		}
 		if readErr == io.EOF {

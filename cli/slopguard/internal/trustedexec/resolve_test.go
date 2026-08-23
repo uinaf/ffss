@@ -185,6 +185,27 @@ func TestResolveStopsWhenProbeCleanupFails(t *testing.T) {
 	}
 }
 
+func TestResolveStopsWhenCheckAborts(t *testing.T) {
+	t.Parallel()
+
+	repository := testRepository(t)
+	firstBin := t.TempDir()
+	secondBin := t.TempDir()
+	writeExecutable(t, filepath.Join(firstBin, "git"))
+	writeExecutable(t, filepath.Join(secondBin, "git"))
+	want := errors.New("repository identity changed")
+	checks := 0
+	check := func(context.Context, string) error {
+		checks++
+		return AbortCheck(want)
+	}
+	path := strings.Join([]string{firstBin, secondBin}, string(os.PathListSeparator))
+	_, err := Resolve(t.Context(), "git", "", repository, []string{"PATH=" + path}, check)
+	if !errors.Is(err, want) || checks != 1 {
+		t.Fatalf("Resolve() error=%v checks=%d", err, checks)
+	}
+}
+
 func TestResolvePreservesUsableStandaloneSymlink(t *testing.T) {
 	t.Parallel()
 

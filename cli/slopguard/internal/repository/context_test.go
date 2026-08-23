@@ -102,7 +102,7 @@ func TestValidateGitRejectsInPlaceExecutableReplacement(t *testing.T) {
 	}
 }
 
-func TestRepositoryRootQueryUsesValidatedExecutableSnapshot(t *testing.T) {
+func TestQueryRepositoryRootRejectsExecutableReplacement(t *testing.T) {
 	repository := testRepository(t)
 	gitPath, _, _ := testGitWrapper(t)
 	gitPath, err := filepath.EvalSymlinks(gitPath)
@@ -113,28 +113,46 @@ func TestRepositoryRootQueryUsesValidatedExecutableSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	executable, cleanup, err := snapshotValidatedExecutable(context.Background(), gitPath, identity)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cleanup()
-	marker := filepath.Join(filepath.Dir(gitPath), "replacement-ran")
 	replacement := filepath.Join(filepath.Dir(gitPath), "replacement")
-	if err := os.WriteFile(replacement, []byte(fmt.Sprintf("#!/bin/sh\n: > %q\nexit 0\n", marker)), 0o700); err != nil {
+	if err := os.WriteFile(replacement, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Rename(replacement, gitPath); err != nil {
 		t.Fatal(err)
 	}
-	output, err := runRepositoryRootQuery(context.Background(), executable, repository)
+	if _, err := queryRepositoryRoot(context.Background(), gitPath, identity, repository); err == nil || !strings.Contains(err.Error(), "changed after validation") {
+		t.Fatalf("queryRepositoryRoot() error = %v", err)
+	}
+}
+
+func TestQueryRepositoryRootPreservesExecutableDirectory(t *testing.T) {
+	repository := testRepository(t)
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	if err := os.Symlink(realGit, filepath.Join(directory, "real-git")); err != nil {
+		t.Fatal(err)
+	}
+	gitPath := filepath.Join(directory, "git")
+	if err := os.WriteFile(gitPath, []byte("#!/bin/sh\nexec \"$(dirname \"$0\")/real-git\" \"$@\"\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	gitPath, err = filepath.EvalSymlinks(gitPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, err := captureExecutableIdentity(context.Background(), gitPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := queryRepositoryRoot(context.Background(), gitPath, identity, repository)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if root := strings.TrimSpace(string(output)); root != repository {
 		t.Fatalf("repository root = %q, want %q", root, repository)
-	}
-	if _, err := os.Stat(marker); !os.IsNotExist(err) {
-		t.Fatalf("replacement executable ran: %v", err)
 	}
 }
 
