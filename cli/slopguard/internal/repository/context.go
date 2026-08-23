@@ -23,7 +23,9 @@ type Options struct {
 type Context struct {
 	requestedAbsolute string
 	requestedResolved string
+	requestedInfo     os.FileInfo
 	root              string
+	rootInfo          os.FileInfo
 	gitPath           string
 	gitIdentity       *executableIdentity
 }
@@ -82,10 +84,20 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if err := requireContained(root, resolved); err != nil {
 		return nil, err
 	}
+	requestedInfo, err := os.Stat(resolved)
+	if err != nil {
+		return nil, fmt.Errorf("inspect requested repository path: %w", err)
+	}
+	rootInfo, err := os.Stat(root)
+	if err != nil {
+		return nil, fmt.Errorf("inspect repository root: %w", err)
+	}
 	repository := &Context{
 		requestedAbsolute: absolute,
 		requestedResolved: resolved,
+		requestedInfo:     requestedInfo,
 		root:              root,
+		rootInfo:          rootInfo,
 		gitPath:           gitPath,
 		gitIdentity:       gitIdentity,
 	}
@@ -110,10 +122,24 @@ func (repository *Context) GitPath() string {
 }
 
 func (repository *Context) Validate() error {
-	if repository == nil || repository.requestedAbsolute == "" || repository.requestedResolved == "" || repository.root == "" || repository.gitPath == "" || repository.gitIdentity == nil {
+	if repository == nil || repository.requestedAbsolute == "" || repository.requestedResolved == "" || repository.requestedInfo == nil || repository.root == "" || repository.rootInfo == nil || repository.gitPath == "" || repository.gitIdentity == nil {
 		return fmt.Errorf("repository context is unavailable")
 	}
-	return requireContained(repository.root, repository.requestedResolved)
+	if err := requireContained(repository.root, repository.requestedResolved); err != nil {
+		return err
+	}
+	requestedInfo, err := os.Stat(repository.requestedResolved)
+	if err != nil {
+		return fmt.Errorf("inspect requested repository path: %w", err)
+	}
+	rootInfo, err := os.Stat(repository.root)
+	if err != nil {
+		return fmt.Errorf("inspect repository root: %w", err)
+	}
+	if !os.SameFile(repository.requestedInfo, requestedInfo) || !os.SameFile(repository.rootInfo, rootInfo) {
+		return fmt.Errorf("repository worktree changed after validation")
+	}
+	return nil
 }
 
 func (repository *Context) ValidateGit(ctx context.Context) error {

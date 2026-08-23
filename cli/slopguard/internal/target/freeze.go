@@ -99,6 +99,9 @@ func (collector *Collector) Freeze(ctx context.Context, repository string, reque
 	if err := collector.repository.ValidateRequested(repository); err != nil {
 		return nil, err
 	}
+	if err := collector.repository.ValidateGit(ctx); err != nil {
+		return nil, err
+	}
 	root := collector.repository.Root()
 	first, err := collector.collect(ctx, root, request, true)
 	if err != nil {
