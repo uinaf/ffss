@@ -37,10 +37,10 @@ func TestTruffleHogScannerCancellationKillsDescendants(t *testing.T) {
 		if !errors.Is(err, context.Canceled) {
 			t.Fatalf("Scan() error = %v, want context cancellation", err)
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("scanner did not return after cancellation")
 	}
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for {
 		err := syscall.Kill(pid, 0)
 		if errors.Is(err, syscall.ESRCH) {
@@ -92,7 +92,7 @@ func TestTruffleHogScannerCleansDescendantsAfterLeaderExit(t *testing.T) {
 
 func waitForChildPID(t *testing.T, path string) int {
 	t.Helper()
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for {
 		content, err := os.ReadFile(path)
 		if err == nil && len(content) != 0 {

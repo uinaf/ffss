@@ -3,10 +3,53 @@
 package processgroup
 
 import (
+	"context"
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
+
+func TestRunWaitsForSuccessfulLeader(t *testing.T) {
+	result := Run(t.Context(), exec.Command("/usr/bin/true"))
+	if err := result.Err(); err != nil || result.ContextCaused {
+		t.Fatalf("Run() result = %+v, error = %v", result, err)
+	}
+}
+
+func TestRunCancellationKillsProcessGroup(t *testing.T) {
+	marker := filepath.Join(t.TempDir(), "ready")
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	command := exec.Command("/bin/sh", "-c", `printf ready > "$1"; exec /bin/sleep 10`, "slopguard-processgroup-test", marker)
+	done := make(chan Result, 1)
+	go func() { done <- Run(ctx, command) }()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if _, err := os.Stat(marker); err == nil {
+			break
+		} else if !errors.Is(err, os.ErrNotExist) {
+			t.Fatal(err)
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("process group did not become ready")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	select {
+	case result := <-done:
+		if !errors.Is(result.CommandErr, context.Canceled) || result.CleanupErr != nil || !result.ContextCaused {
+			t.Fatalf("Run() result = %+v", result)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Run() did not return after cancellation")
+	}
+}
 
 func TestContainsOnlyZombieLeader(t *testing.T) {
 	t.Parallel()

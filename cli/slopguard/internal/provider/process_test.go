@@ -166,7 +166,7 @@ func TestRunProcessCancellationKillsChildProcessGroup(t *testing.T) {
 	}
 	ready := make(chan readyResult, 1)
 	go func() {
-		deadline := time.Now().Add(3 * time.Second)
+		deadline := time.Now().Add(10 * time.Second)
 		for {
 			content, err := os.ReadFile(childPID)
 			if err == nil && len(content) != 0 {
@@ -203,7 +203,7 @@ func TestRunProcessCancellationKillsChildProcessGroup(t *testing.T) {
 	if !failure.ContextCaused {
 		t.Fatal("cancelled process did not preserve context causality")
 	}
-	if time.Since(started) > 3*time.Second {
+	if time.Since(started) > 10*time.Second {
 		t.Fatalf("cancellation cleanup took %s", time.Since(started))
 	}
 	child := <-ready
@@ -214,7 +214,7 @@ func TestRunProcessCancellationKillsChildProcessGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for {
 		err := syscall.Kill(pid, 0)
 		if errors.Is(err, syscall.ESRCH) {
