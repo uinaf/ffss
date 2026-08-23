@@ -113,6 +113,7 @@ review to the installed CLI. It does not contain a second runtime.
 
 - [Configuration and isolation](docs/CONFIG.md)
 - [Review engines](docs/engines/README.md)
+- [Performance measurement](docs/PERFORMANCE.md)
 - [Local, branch, and commit targets](docs/TARGETS.md)
 - [Versioned result and exit contract](docs/RESULT_SCHEMA.md)
 - [Release artifacts and verification](docs/RELEASES.md)

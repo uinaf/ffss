@@ -49,7 +49,7 @@ func TestBinaryEndToEndWithFakeCodex(t *testing.T) {
 				test.output = "json"
 			}
 			repository := reviewRepository(t)
-			toolsDirectory, calls, providerPID := writeFakeReviewTools(t, test.scenario)
+			toolsDirectory, calls, providerPID, _ := writeFakeReviewTools(t, test.scenario)
 			xdg := t.TempDir()
 			arguments := []string{
 				"review", "--repository", repository, "--mode", "local", "--engine", "codex",
@@ -238,7 +238,7 @@ func runBinaryConfig(t *testing.T, binary, repository string, arguments ...strin
 	return effective
 }
 
-func writeFakeReviewTools(t *testing.T, scenario string) (string, string, string) {
+func writeFakeReviewTools(t testing.TB, scenario string) (string, string, string, string) {
 	t.Helper()
 	directory := t.TempDir()
 	realGit, err := exec.LookPath("git")
@@ -251,6 +251,7 @@ func writeFakeReviewTools(t *testing.T, scenario string) (string, string, string
 	}
 	calls := filepath.Join(directory, "calls")
 	providerPID := filepath.Join(directory, "provider-pid")
+	processLog := filepath.Join(directory, "processes.log")
 	clean := `{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`
 	findings := `{"findings":[{"title":"Defect","body":"Broken behavior.","priority":"P1","confidence":0.9,"category":"bug","location":{"file_path":"app.go","start_line":1,"end_line":1}}],"overall_explanation":"One defect.","overall_confidence":0.9}`
 	result := clean
@@ -259,7 +260,7 @@ func writeFakeReviewTools(t *testing.T, scenario string) (string, string, string
 	}
 	envelope := fakeCodexEnvelope(t, result)
 	malformedEnvelope := fakeCodexEnvelope(t, "not-json")
-	script := "#!/bin/sh\nset -eu\n" +
+	script := "#!/bin/sh\nset -eu\nprintf '%s\\n' codex >> " + shellLiteral(processLog) + "\n" +
 		"if [ \"${1:-}\" = \"--version\" ]; then printf '%s\\n' 'codex-cli 0.146.0'; exit 0; fi\n" +
 		"if [ \"${1:-}\" = \"--help\" ]; then printf '%s\\n' '--ask-for-approval --strict-config --search'; exit 0; fi\n" +
 		"if [ \"${1:-}\" = \"exec\" ] && [ \"${2:-}\" = \"--help\" ]; then printf '%s\\n' '--ephemeral --skip-git-repo-check --output-schema --output-last-message --json --cd --ignore-user-config --ignore-rules --sandbox'; exit 0; fi\n" +
@@ -281,19 +282,19 @@ func writeFakeReviewTools(t *testing.T, scenario string) (string, string, string
 	if err := os.WriteFile(filepath.Join(directory, "codex"), []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(directory, "trufflehog"), []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+	if err := os.WriteFile(filepath.Join(directory, "trufflehog"), []byte("#!/bin/sh\nprintf '%s\\n' trufflehog >> "+shellLiteral(processLog)+"\nexit 0\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	gitScript := "#!/bin/sh\nset -eu\n" +
+	gitScript := "#!/bin/sh\nset -eu\nprintf '%s\\n' git >> " + shellLiteral(processLog) + "\n" +
 		"if [ \"$#\" -eq 3 ] && [ \"$1\" = \"-C\" ] && [ \"$3\" = \"--version\" ]; then printf '%s\\n' 'git version 2.41.0'; exit 0; fi\n" +
 		"exec " + shellLiteral(realGit) + " \"$@\"\n"
 	if err := os.WriteFile(filepath.Join(directory, "git"), []byte(gitScript), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	return directory, calls, providerPID
+	return directory, calls, providerPID, processLog
 }
 
-func fakeCodexEnvelope(t *testing.T, message string) string {
+func fakeCodexEnvelope(t testing.TB, message string) string {
 	t.Helper()
 	item, err := json.Marshal(map[string]any{
 		"type": "item.completed",
