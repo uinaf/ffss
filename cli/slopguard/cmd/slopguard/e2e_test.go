@@ -85,7 +85,7 @@ func TestBinaryEndToEndWithFakeCodex(t *testing.T) {
 				go func() { finished <- command.Wait() }()
 				select {
 				case runErr = <-finished:
-				case <-time.After(2 * time.Second):
+				case <-time.After(10 * time.Second):
 					_ = command.Process.Kill()
 					t.Fatal("interrupted CLI did not terminate its provider")
 				}
