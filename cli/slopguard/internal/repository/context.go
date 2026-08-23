@@ -62,8 +62,11 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if err != nil {
 		return nil, err
 	}
-	trustedBoundaries, err := trustedexec.CaptureRepositoryBoundaries(absolute)
+	trustedBoundaries, err := trustedexec.CaptureRepositoryBoundariesForPaths(absolute, resolved)
 	if err != nil {
+		return nil, err
+	}
+	if err := validateRepositoryIdentity(absolute, resolved, requestedInfo, expectedRoot, expectedRootInfo, gitMetadataPath, gitMetadata); err != nil {
 		return nil, err
 	}
 	environment := options.Environment

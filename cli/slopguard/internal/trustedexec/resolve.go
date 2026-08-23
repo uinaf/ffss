@@ -36,6 +36,16 @@ func CaptureRepositoryBoundaries(repository string) (*RepositoryBoundarySet, err
 	return &RepositoryBoundarySet{roots: roots}, nil
 }
 
+// CaptureRepositoryBoundariesForPaths preserves both sides of an already-resolved
+// repository path so a later symlink retarget cannot omit the original worktree.
+func CaptureRepositoryBoundariesForPaths(lexical, resolved string) (*RepositoryBoundarySet, error) {
+	roots, err := repositoryBoundariesForPaths(lexical, resolved)
+	if err != nil {
+		return nil, err
+	}
+	return &RepositoryBoundarySet{roots: roots}, nil
+}
+
 func ResolveWithBoundaries(ctx context.Context, name, configuredPath string, boundaries *RepositoryBoundarySet, environment []string, check Check) (string, error) {
 	if check == nil {
 		return "", fmt.Errorf("trusted %s executable capability check is required", name)
@@ -128,6 +138,13 @@ func repositoryBoundaries(repository string) ([]string, error) {
 	resolved, err := filepath.EvalSymlinks(absolute)
 	if err != nil {
 		return nil, fmt.Errorf("resolve reviewed repository: %w", err)
+	}
+	return repositoryBoundariesForPaths(absolute, resolved)
+}
+
+func repositoryBoundariesForPaths(absolute, resolved string) ([]string, error) {
+	if !filepath.IsAbs(absolute) || !filepath.IsAbs(resolved) {
+		return nil, fmt.Errorf("reviewed repository boundaries must be absolute")
 	}
 	info, err := os.Stat(resolved)
 	if err != nil {
