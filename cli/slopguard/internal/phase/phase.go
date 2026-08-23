@@ -3,6 +3,7 @@ package phase
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -89,18 +90,19 @@ type Span struct {
 	recorder *Recorder
 	name     Name
 	started  time.Time
-	once     sync.Once
+	ended    atomic.Bool
 }
 
 func (span *Span) End() {
 	if span == nil {
 		return
 	}
-	span.once.Do(func() {
-		if span.recorder != nil {
-			span.recorder.record(span.name, span.started, span.recorder.Now())
-		}
-	})
+	if !span.ended.CompareAndSwap(false, true) {
+		return
+	}
+	if span.recorder != nil {
+		span.recorder.record(span.name, span.started, span.recorder.Now())
+	}
 }
 
 type contextKey struct{}

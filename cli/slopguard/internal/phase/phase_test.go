@@ -80,3 +80,33 @@ func TestObserverMayEndAnotherSpan(t *testing.T) {
 		t.Fatalf("measurements = %+v", measurements)
 	}
 }
+
+func TestObserverMayReenterSameSpan(t *testing.T) {
+	t.Parallel()
+
+	current := time.Unix(0, 0)
+	var span *Span
+	var measurements []Measurement
+	recorder := New(func() time.Time {
+		value := current
+		current = current.Add(10 * time.Millisecond)
+		return value
+	}, func(measurement Measurement) {
+		measurements = append(measurements, measurement)
+		span.End()
+	})
+	span = recorder.Start(Config)
+	done := make(chan struct{})
+	go func() {
+		span.End()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("same-span observer re-entry deadlocked")
+	}
+	if len(measurements) != 1 || measurements[0].Name != Config {
+		t.Fatalf("measurements = %+v", measurements)
+	}
+}
