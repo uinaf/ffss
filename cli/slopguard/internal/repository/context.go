@@ -44,20 +44,38 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if environment == nil {
 		environment = os.Environ()
 	}
+	gitProbe := trustedexec.GitProbe(os.TempDir())
+	var gitIdentity *executableIdentity
 	gitPath, err := trustedexec.Resolve(
 		ctx,
 		"git",
 		options.GitPath,
 		requested,
 		environment,
-		trustedexec.GitProbe(os.TempDir()),
+		func(ctx context.Context, path string) error {
+			before, err := captureExecutableIdentity(ctx, path)
+			if err != nil {
+				return err
+			}
+			if err := gitProbe(ctx, path); err != nil {
+				return err
+			}
+			after, err := captureExecutableIdentity(ctx, path)
+			if err != nil {
+				return err
+			}
+			if !sameExecutableIdentity(before, after) {
+				return fmt.Errorf("trusted Git executable changed during capability probe")
+			}
+			gitIdentity = after
+			return nil
+		},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("find git: %w", err)
 	}
-	gitIdentity, err := captureExecutableIdentity(ctx, gitPath)
-	if err != nil {
-		return nil, fmt.Errorf("capture trusted Git executable identity: %w", err)
+	if gitIdentity == nil {
+		return nil, fmt.Errorf("trusted Git executable identity is unavailable after capability probe")
 	}
 	absolute, resolved, err := resolveRequested(requested)
 	if err != nil {
@@ -175,10 +193,14 @@ func (repository *Context) ValidateGit(ctx context.Context) error {
 		return fmt.Errorf("validate trusted Git executable identity: %w", err)
 	}
 	expected := repository.gitIdentity
-	if !os.SameFile(expected.info, current.info) || expected.info.Mode() != current.info.Mode() || expected.info.Size() != current.info.Size() || !expected.info.ModTime().Equal(current.info.ModTime()) || expected.digest != current.digest {
+	if !sameExecutableIdentity(expected, current) {
 		return fmt.Errorf("trusted Git executable changed after validation")
 	}
 	return nil
+}
+
+func sameExecutableIdentity(left, right *executableIdentity) bool {
+	return left != nil && right != nil && os.SameFile(left.info, right.info) && left.info.Mode() == right.info.Mode() && left.info.Size() == right.info.Size() && left.info.ModTime().Equal(right.info.ModTime()) && left.digest == right.digest
 }
 
 func (repository *Context) ValidateRequested(path string) error {
@@ -299,6 +321,13 @@ func captureOpenExecutableIdentity(ctx context.Context, path string, file *os.Fi
 	pathInfo, err := os.Stat(path)
 	if err != nil {
 		return nil, err
+	}
+	resolvedPath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return nil, err
+	}
+	if resolvedPath != path {
+		return nil, fmt.Errorf("trusted Git executable path changed while reading identity")
 	}
 	if !os.SameFile(after, pathInfo) || after.Mode() != pathInfo.Mode() || after.Size() != pathInfo.Size() || !after.ModTime().Equal(pathInfo.ModTime()) {
 		return nil, fmt.Errorf("trusted Git executable path changed while reading identity")

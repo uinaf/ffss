@@ -134,50 +134,24 @@ func TestPreparedCollectorRejectsChangedRepositoryArgument(t *testing.T) {
 }
 
 func TestPreparedCollectorRevalidatesGitBeforeFreeze(t *testing.T) {
-	repository := committedRepository(t)
-	realGit, err := exec.LookPath("git")
-	if err != nil {
-		t.Fatal(err)
-	}
-	realGit, err = filepath.EvalSymlinks(realGit)
-	if err != nil {
-		t.Fatal(err)
-	}
-	directory := t.TempDir()
-	gitPath := filepath.Join(directory, "git")
-	writeFile(t, directory, "git", "#!/bin/sh\nexec "+quoteShellTest(realGit)+" \"$@\"\n")
-	if err := os.Chmod(gitPath, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: repository, GitPath: gitPath})
-	if err != nil {
-		t.Fatal(err)
-	}
-	collector, err := NewContext(context.Background(), Options{Context: repositoryContext, Scanner: &recordingScanner{}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	info, err := os.Stat(gitPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	content, err := os.ReadFile(gitPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	mutated := strings.Replace(string(content), "exec", "exfc", 1)
-	if len(mutated) != len(content) || mutated == string(content) {
-		t.Fatal("test mutation did not preserve executable size")
-	}
-	if err := os.WriteFile(gitPath, []byte(mutated), info.Mode().Perm()); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chtimes(gitPath, info.ModTime(), info.ModTime()); err != nil {
-		t.Fatal(err)
-	}
-	_, err = collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	collector, repository, gitPath := preparedCollectorWithGitWrapper(t)
+	mutateExecutablePreservingMetadata(t, gitPath)
+	_, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err == nil || !strings.Contains(err.Error(), "Git executable changed") {
 		t.Fatalf("Freeze() error = %v", err)
+	}
+}
+
+func TestBundleRevalidatesRepositoryContextBeforeUnchangedCheck(t *testing.T) {
+	collector, repository, gitPath := preparedCollectorWithGitWrapper(t)
+	writeFile(t, repository, "file.txt", "changed\n")
+	bundle, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutateExecutablePreservingMetadata(t, gitPath)
+	if err := bundle.VerifyUnchanged(context.Background()); !errors.Is(err, ErrSourceChanged) {
+		t.Fatalf("VerifyUnchanged() error = %v, want source changed", err)
 	}
 }
 
@@ -1599,6 +1573,56 @@ func newCollector(t *testing.T, scanner Scanner) *Collector {
 		t.Fatal(err)
 	}
 	return collector
+}
+
+func preparedCollectorWithGitWrapper(t *testing.T) (*Collector, string, string) {
+	t.Helper()
+	repository := committedRepository(t)
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	realGit, err = filepath.EvalSymlinks(realGit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	gitPath := filepath.Join(directory, "git")
+	writeFile(t, directory, "git", "#!/bin/sh\nexec "+quoteShellTest(realGit)+" \"$@\"\n")
+	if err := os.Chmod(gitPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: repository, GitPath: gitPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	collector, err := NewContext(context.Background(), Options{Context: repositoryContext, Scanner: &recordingScanner{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return collector, repository, gitPath
+}
+
+func mutateExecutablePreservingMetadata(t *testing.T, path string) {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutated := strings.Replace(string(content), "exec", "exfc", 1)
+	if len(mutated) != len(content) || mutated == string(content) {
+		t.Fatal("test mutation did not preserve executable size")
+	}
+	if err := os.WriteFile(path, []byte(mutated), info.Mode().Perm()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(path, info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func repositoryBoundaryFixture(t *testing.T) string {

@@ -125,6 +125,7 @@ func (budget *byteBudget) SizeError() error {
 
 type Bundle struct {
 	repository   string
+	requested    string
 	request      Request
 	collector    *Collector
 	target       protocol.Target
@@ -155,6 +156,12 @@ func (bundle *Bundle) Contributors() []Contributor {
 }
 
 func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
+	if err := bundle.collector.validateRepositoryContext(ctx, bundle.requested); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
+		return fmt.Errorf("%w: verify repository context: %v", ErrSourceChanged, err)
+	}
 	if bundle.request.Mode != protocol.TargetLocal {
 		var sandbox *gitSandbox
 		if bundle.request.Mode == protocol.TargetBranch {

@@ -96,10 +96,7 @@ func (collector *Collector) Freeze(ctx context.Context, repository string, reque
 	if collector.repository == nil {
 		return nil, fmt.Errorf("repository context is unavailable")
 	}
-	if err := collector.repository.ValidateRequested(repository); err != nil {
-		return nil, err
-	}
-	if err := collector.repository.ValidateGit(ctx); err != nil {
+	if err := collector.validateRepositoryContext(ctx, repository); err != nil {
 		return nil, err
 	}
 	root := collector.repository.Root()
@@ -130,6 +127,7 @@ func (collector *Collector) Freeze(ctx context.Context, repository string, reque
 	}
 	return &Bundle{
 		repository:   root,
+		requested:    repository,
 		request:      request,
 		collector:    collector,
 		target:       first.target,
@@ -137,6 +135,16 @@ func (collector *Collector) Freeze(ctx context.Context, repository string, reque
 		payload:      first.payload,
 		contributors: append([]Contributor(nil), first.contributors...),
 	}, nil
+}
+
+func (collector *Collector) validateRepositoryContext(ctx context.Context, requested string) error {
+	if collector == nil || collector.repository == nil {
+		return fmt.Errorf("repository context is unavailable")
+	}
+	if err := collector.repository.ValidateRequested(requested); err != nil {
+		return err
+	}
+	return collector.repository.ValidateGit(ctx)
 }
 
 func (collector *Collector) forRepository(ctx context.Context, repository string) (*Collector, error) {

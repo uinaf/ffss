@@ -186,6 +186,31 @@ func TestResolveRejectsWorktreeReplacementDuringRootDiscovery(t *testing.T) {
 	}
 }
 
+func TestResolveRejectsGitReplacementDuringCapabilityProbe(t *testing.T) {
+	repository := testRepository(t)
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	realGit, err = filepath.Abs(realGit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	wrapper := filepath.Join(directory, "git")
+	replacement := filepath.Join(directory, "replacement")
+	if err := os.WriteFile(replacement, []byte(fmt.Sprintf("#!/bin/sh\nexec %q \"$@\"\n", realGit)), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	script := fmt.Sprintf("#!/bin/sh\nset -eu\nlast=''\nfor argument in \"$@\"; do last=\"$argument\"; done\nif [ \"$last\" = '--version' ]; then %q \"$@\"; /bin/mv %q \"$0\"; exit 0; fi\nexec %q \"$@\"\n", realGit, replacement, realGit)
+	if err := os.WriteFile(wrapper, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Resolve(context.Background(), Options{Path: repository, GitPath: wrapper}); err == nil {
+		t.Fatal("expected Git replacement during capability probe to fail")
+	}
+}
+
 func testRepository(t *testing.T) string {
 	t.Helper()
 	repository := t.TempDir()
