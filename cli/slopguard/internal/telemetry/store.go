@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/user"
 	"path/filepath"
 	"sync"
 
@@ -26,6 +27,8 @@ type Store struct {
 
 var processStoreLock sync.Mutex
 
+var errStoreBusy = errors.New("telemetry store is busy")
+
 type Export struct {
 	SchemaVersion string  `json:"schema_version"`
 	Events        []Event `json:"events"`
@@ -35,7 +38,12 @@ func DefaultPath(homeDir func() (string, error)) (string, error) {
 	var home string
 	var err error
 	if homeDir == nil {
-		home, err = os.UserHomeDir()
+		account, accountErr := user.Current()
+		if accountErr != nil {
+			err = accountErr
+		} else {
+			home = account.HomeDir
+		}
 	} else {
 		home, err = homeDir()
 	}
@@ -52,7 +60,7 @@ func (store Store) Append(event Event) error {
 	if err := event.Validate(); err != nil {
 		return err
 	}
-	return store.withLock(func() error {
+	return store.withLock(false, func() error {
 		events, _, err := store.load()
 		if err != nil {
 			return err
@@ -61,8 +69,16 @@ func (store Store) Append(event Event) error {
 		if len(events) > maximumEvents {
 			events = events[len(events)-maximumEvents:]
 		}
-		return store.writeBounded(events)
+		return store.writeBounded(events, false)
 	})
+}
+
+func (store Store) AppendEncoded(payload []byte) error {
+	event, err := decodeEvent(payload)
+	if err != nil {
+		return err
+	}
+	return store.Append(event)
 }
 
 func (store Store) Export(output io.Writer) error {
@@ -70,13 +86,13 @@ func (store Store) Export(output io.Writer) error {
 		return fmt.Errorf("telemetry export output is unavailable")
 	}
 	var exported Export
-	if err := store.withLock(func() error {
+	if err := store.withLock(true, func() error {
 		events, corrupted, err := store.load()
 		if err != nil {
 			return err
 		}
 		if corrupted {
-			if err := store.writeBounded(events); err != nil {
+			if err := store.writeBounded(events, true); err != nil {
 				return err
 			}
 		}
@@ -90,8 +106,12 @@ func (store Store) Export(output io.Writer) error {
 	return encoder.Encode(exported)
 }
 
-func (store Store) withLock(operation func() error) error {
-	processStoreLock.Lock()
+func (store Store) withLock(wait bool, operation func() error) error {
+	if wait {
+		processStoreLock.Lock()
+	} else if !processStoreLock.TryLock() {
+		return errStoreBusy
+	}
 	defer processStoreLock.Unlock()
 	if !filepath.IsAbs(store.Path) {
 		return fmt.Errorf("telemetry store path must be absolute")
@@ -105,7 +125,14 @@ func (store Store) withLock(operation func() error) error {
 		return fmt.Errorf("open telemetry lock: %w", err)
 	}
 	defer func() { _ = lock.Close() }()
-	if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX); err != nil {
+	operationFlag := unix.LOCK_EX
+	if !wait {
+		operationFlag |= unix.LOCK_NB
+	}
+	if err := unix.Flock(int(lock.Fd()), operationFlag); err != nil {
+		if !wait && errors.Is(err, unix.EWOULDBLOCK) {
+			return errStoreBusy
+		}
 		return fmt.Errorf("lock telemetry store: %w", err)
 	}
 	defer func() { _ = unix.Flock(int(lock.Fd()), unix.LOCK_UN) }()
@@ -208,7 +235,7 @@ func (store Store) load() ([]Event, bool, error) {
 	return events, corrupted, nil
 }
 
-func (store Store) writeBounded(events []Event) error {
+func (store Store) writeBounded(events []Event, durable bool) error {
 	encoded := make([][]byte, 0, len(events))
 	total := int64(0)
 	for _, event := range events {
@@ -244,8 +271,10 @@ func (store Store) writeBounded(events []Event) error {
 			return fmt.Errorf("write telemetry store: %w", err)
 		}
 	}
-	if err := temporary.Sync(); err != nil {
-		return fmt.Errorf("sync telemetry store: %w", err)
+	if durable {
+		if err := temporary.Sync(); err != nil {
+			return fmt.Errorf("sync telemetry store: %w", err)
+		}
 	}
 	if err := temporary.Close(); err != nil {
 		return fmt.Errorf("close telemetry store: %w", err)

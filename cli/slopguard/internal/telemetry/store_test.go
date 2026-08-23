@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -30,14 +31,17 @@ func TestStoreBoundsConcurrentAppends(t *testing.T) {
 	}
 	wait.Wait()
 	close(errs)
+	succeeded := 0
 	for err := range errs {
-		if err != nil {
+		if err == nil {
+			succeeded++
+		} else if !errors.Is(err, errStoreBusy) {
 			t.Fatal(err)
 		}
 	}
 	exported := exportStore(t, store)
-	if len(exported.Events) != writers {
-		t.Fatalf("events = %d, want %d", len(exported.Events), writers)
+	if succeeded == 0 || len(exported.Events) != succeeded {
+		t.Fatalf("events = %d, succeeded = %d", len(exported.Events), succeeded)
 	}
 	info, err := os.Stat(store.Path)
 	if err != nil {
@@ -79,8 +83,8 @@ func TestStoreSerializesConcurrentProcesses(t *testing.T) {
 			t.Fatalf("helper %d: %v: %s", index, err, outputs[index].String())
 		}
 	}
-	if events := exportStore(t, store).Events; len(events) != processes {
-		t.Fatalf("events = %d, want %d", len(events), processes)
+	if events := exportStore(t, store).Events; len(events) == 0 || len(events) > processes {
+		t.Fatalf("events = %d, want 1..%d", len(events), processes)
 	}
 }
 
@@ -92,8 +96,30 @@ func TestStoreAppendHelperProcess(t *testing.T) {
 	if path == "" {
 		t.Fatal("helper path is missing")
 	}
-	if err := (Store{Path: path}).Append(validEvent()); err != nil {
+	if err := (Store{Path: path}).Append(validEvent()); err != nil && !errors.Is(err, errStoreBusy) {
 		t.Fatal(err)
+	}
+}
+
+func TestStoreAppendDoesNotWaitForAnotherProcess(t *testing.T) {
+	store := Store{Path: filepath.Join(t.TempDir(), "telemetry.jsonl")}
+	lock, err := os.OpenFile(store.Path+".lock", os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = lock.Close() }()
+	if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = unix.Flock(int(lock.Fd()), unix.LOCK_UN) }()
+
+	started := time.Now()
+	err = store.Append(validEvent())
+	if !errors.Is(err, errStoreBusy) {
+		t.Fatalf("error = %v, want store busy", err)
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("contended append took %s", elapsed)
 	}
 }
 
@@ -249,6 +275,22 @@ func TestStoreRecoversEmptyDirectoryWithoutDeletingContent(t *testing.T) {
 func TestDefaultPathRejectsRelativeHome(t *testing.T) {
 	if _, err := DefaultPath(func() (string, error) { return "relative", nil }); err == nil {
 		t.Fatal("expected relative home to fail")
+	}
+}
+
+func TestDefaultPathUsesAccountHomeInsteadOfEnvironment(t *testing.T) {
+	account, err := user.Current()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", filepath.Join(t.TempDir(), "overridden-home"))
+	path, err := DefaultPath(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(account.HomeDir, ".local", "state", "slopguard", "telemetry.jsonl")
+	if path != want {
+		t.Fatalf("path = %q, want %q", path, want)
 	}
 }
 

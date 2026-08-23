@@ -44,8 +44,23 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		telemetryEnabled.Store(true)
 	}
 	explicitTelemetryRequested := reviewTelemetryRequested(arguments)
+	telemetryDecisionMade := explicitTelemetryRequested
+	pendingMeasurements := make([]phase.Measurement, 0, 2)
 	if explicitTelemetryRequested {
 		enableTelemetry()
+	}
+	resolveTelemetry := func(enabled bool) {
+		if telemetryDecisionMade {
+			return
+		}
+		telemetryDecisionMade = true
+		if enabled {
+			enableTelemetry()
+			for _, measurement := range pendingMeasurements {
+				metrics.Observe(measurement)
+			}
+		}
+		pendingMeasurements = nil
 	}
 	recorder := phase.New(dependencies.now, func(measurement phase.Measurement) {
 		if dependencies.observePhase != nil {
@@ -53,6 +68,8 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		}
 		if telemetryEnabled.Load() {
 			metrics.Observe(measurement)
+		} else if !telemetryDecisionMade {
+			pendingMeasurements = append(pendingMeasurements, measurement)
 		}
 	})
 	ctx = phase.WithRecorder(ctx, recorder)
@@ -159,9 +176,7 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		configSpan.End()
 		return finish(failureWithElapsed(protocol.FailureConfig, fmt.Errorf("config: %w", err), started, recorder))
 	}
-	if effective.Telemetry.Value && (effective.Telemetry.Source != config.SourceFlag || explicitTelemetryRequested) {
-		enableTelemetry()
-	}
+	resolveTelemetry(effective.Telemetry.Value && (effective.Telemetry.Source != config.SourceFlag || explicitTelemetryRequested))
 	if int64(len(resolvedPrompt)) > effective.MaxBytes.Value {
 		configSpan.End()
 		return finish(failureWithElapsed(protocol.FailureTarget, fmt.Errorf("prompt exceeds max_bytes limit of %d", effective.MaxBytes.Value), started, recorder))
@@ -222,17 +237,11 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 }
 
 func recordReviewTelemetry(dependencies dependencies, metrics *telemetrypkg.Metrics, result protocol.Report) {
-	path, err := telemetryStorePath(dependencies)
-	if err != nil {
-		return
+	start := dependencies.startTelemetry
+	if start == nil {
+		start = startTelemetryRecorder
 	}
-	appendEvent := dependencies.appendTelemetry
-	if appendEvent == nil {
-		appendEvent = func(path string, event telemetrypkg.Event) error {
-			return (telemetrypkg.Store{Path: path}).Append(event)
-		}
-	}
-	_ = appendEvent(path, metrics.Event(buildinfo.TelemetryVersion(), result))
+	_ = start(metrics.Event(buildinfo.TelemetryVersion(), result))
 }
 
 func telemetryStorePath(dependencies dependencies) (string, error) {
@@ -260,9 +269,6 @@ func reviewTelemetryRequested(arguments []string) bool {
 			value, err := strconv.ParseBool(raw)
 			if err != nil {
 				return seen && selected
-			}
-			if seen && selected != value {
-				return false
 			}
 			seen = true
 			selected = value

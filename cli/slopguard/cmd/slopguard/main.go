@@ -22,15 +22,15 @@ import (
 )
 
 type dependencies struct {
-	stdin           io.Reader
-	lookupEnv       func(string) (string, bool)
-	homeDir         func() (string, error)
-	newCollector    func() (*target.Collector, error)
-	newReviewer     func(protocol.ProviderName, string) provider.Reviewer
-	now             func() time.Time
-	observePhase    phase.Observer
-	telemetryPath   func() (string, error)
-	appendTelemetry func(string, telemetry.Event) error
+	stdin          io.Reader
+	lookupEnv      func(string) (string, bool)
+	homeDir        func() (string, error)
+	newCollector   func() (*target.Collector, error)
+	newReviewer    func(protocol.ProviderName, string) provider.Reviewer
+	now            func() time.Time
+	observePhase   phase.Observer
+	telemetryPath  func() (string, error)
+	startTelemetry func(telemetry.Event) error
 }
 
 func main() {
