@@ -160,6 +160,9 @@ func (collector *Collector) forContext(ctx context.Context, repositoryContext *r
 			return nil, fmt.Errorf("%w: %w", ErrSecretScan, err)
 		}
 	}
+	if err := repositoryContext.ValidateGit(ctx); err != nil {
+		return nil, err
+	}
 	return &Collector{git: git, scanner: scanner, skipSecretScan: collector.skipSecretScan, repository: repositoryContext}, nil
 }
 

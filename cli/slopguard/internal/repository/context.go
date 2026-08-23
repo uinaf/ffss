@@ -2,7 +2,10 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,6 +25,12 @@ type Context struct {
 	requestedResolved string
 	root              string
 	gitPath           string
+	gitIdentity       *executableIdentity
+}
+
+type executableIdentity struct {
+	info   os.FileInfo
+	digest [sha256.Size]byte
 }
 
 func Resolve(ctx context.Context, options Options) (*Context, error) {
@@ -43,6 +52,10 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	)
 	if err != nil {
 		return nil, fmt.Errorf("find git: %w", err)
+	}
+	gitIdentity, err := captureExecutableIdentity(ctx, gitPath)
+	if err != nil {
+		return nil, fmt.Errorf("capture trusted Git executable identity: %w", err)
 	}
 	absolute, resolved, err := resolveRequested(requested)
 	if err != nil {
@@ -69,12 +82,17 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if err := requireContained(root, resolved); err != nil {
 		return nil, err
 	}
-	return &Context{
+	repository := &Context{
 		requestedAbsolute: absolute,
 		requestedResolved: resolved,
 		root:              root,
 		gitPath:           gitPath,
-	}, nil
+		gitIdentity:       gitIdentity,
+	}
+	if err := repository.ValidateGit(ctx); err != nil {
+		return nil, err
+	}
+	return repository, nil
 }
 
 func (repository *Context) Root() string {
@@ -92,10 +110,25 @@ func (repository *Context) GitPath() string {
 }
 
 func (repository *Context) Validate() error {
-	if repository == nil || repository.requestedAbsolute == "" || repository.requestedResolved == "" || repository.root == "" || repository.gitPath == "" {
+	if repository == nil || repository.requestedAbsolute == "" || repository.requestedResolved == "" || repository.root == "" || repository.gitPath == "" || repository.gitIdentity == nil {
 		return fmt.Errorf("repository context is unavailable")
 	}
 	return requireContained(repository.root, repository.requestedResolved)
+}
+
+func (repository *Context) ValidateGit(ctx context.Context) error {
+	if err := repository.Validate(); err != nil {
+		return err
+	}
+	current, err := captureExecutableIdentity(ctx, repository.gitPath)
+	if err != nil {
+		return fmt.Errorf("validate trusted Git executable identity: %w", err)
+	}
+	expected := repository.gitIdentity
+	if !os.SameFile(expected.info, current.info) || expected.info.Mode() != current.info.Mode() || expected.info.Size() != current.info.Size() || !expected.info.ModTime().Equal(current.info.ModTime()) || expected.digest != current.digest {
+		return fmt.Errorf("trusted Git executable changed after validation")
+	}
+	return nil
 }
 
 func (repository *Context) ValidateRequested(path string) error {
@@ -133,4 +166,52 @@ func requireContained(root, requested string) error {
 		return fmt.Errorf("git worktree does not contain requested repository path")
 	}
 	return nil
+}
+
+func captureExecutableIdentity(ctx context.Context, path string) (_ *executableIdentity, returnErr error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			returnErr = errors.Join(returnErr, closeErr)
+		}
+	}()
+	before, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !before.Mode().IsRegular() || before.Mode().Perm()&0o111 == 0 {
+		return nil, fmt.Errorf("trusted Git executable is not an executable regular file")
+	}
+	hash := sha256.New()
+	buffer := make([]byte, 64<<10)
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		read, readErr := file.Read(buffer)
+		if read > 0 {
+			if _, err := hash.Write(buffer[:read]); err != nil {
+				return nil, err
+			}
+		}
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			return nil, readErr
+		}
+	}
+	after, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !os.SameFile(before, after) || before.Mode() != after.Mode() || before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) {
+		return nil, fmt.Errorf("trusted Git executable changed while reading identity")
+	}
+	identity := &executableIdentity{info: after}
+	copy(identity.digest[:], hash.Sum(nil))
+	return identity, nil
 }

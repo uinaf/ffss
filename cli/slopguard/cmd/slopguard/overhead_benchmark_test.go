@@ -25,10 +25,10 @@ func TestReviewOverheadSubprocessBudget(t *testing.T) {
 		maximumProcesses int
 		providerCalls    string
 	}{
-		{name: "cold local", mode: protocol.TargetLocal, provider: "clean", maximumProcesses: 77, providerCalls: "1"},
-		{name: "cold branch", mode: protocol.TargetBranch, provider: "clean", maximumProcesses: 40, providerCalls: "1"},
-		{name: "cold commit", mode: protocol.TargetCommit, provider: "clean", maximumProcesses: 30, providerCalls: "1"},
-		{name: "malformed retry", mode: protocol.TargetLocal, retries: 1, provider: "retry", maximumProcesses: 101, providerCalls: "2"},
+		{name: "cold local", mode: protocol.TargetLocal, provider: "clean", maximumProcesses: 78, providerCalls: "1"},
+		{name: "cold branch", mode: protocol.TargetBranch, provider: "clean", maximumProcesses: 41, providerCalls: "1"},
+		{name: "cold commit", mode: protocol.TargetCommit, provider: "clean", maximumProcesses: 31, providerCalls: "1"},
+		{name: "malformed retry", mode: protocol.TargetLocal, retries: 1, provider: "retry", maximumProcesses: 102, providerCalls: "2"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

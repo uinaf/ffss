@@ -69,6 +69,36 @@ func TestValidateRequestedRejectsRetargetedSymlink(t *testing.T) {
 	}
 }
 
+func TestValidateGitRejectsInPlaceExecutableReplacement(t *testing.T) {
+	repository := testRepository(t)
+	gitPath, _, _ := testGitWrapper(t)
+	resolved, err := Resolve(context.Background(), Options{Path: repository, GitPath: gitPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(resolved.GitPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(resolved.GitPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutated := strings.Replace(string(content), "probe", "qrobe", 1)
+	if len(mutated) != len(content) || mutated == string(content) {
+		t.Fatal("test mutation did not preserve executable size")
+	}
+	if err := os.WriteFile(resolved.GitPath(), []byte(mutated), info.Mode().Perm()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(resolved.GitPath(), info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	if err := resolved.ValidateGit(context.Background()); err == nil || !strings.Contains(err.Error(), "changed after validation") {
+		t.Fatalf("ValidateGit() error = %v", err)
+	}
+}
+
 func testRepository(t *testing.T) string {
 	t.Helper()
 	repository := t.TempDir()
