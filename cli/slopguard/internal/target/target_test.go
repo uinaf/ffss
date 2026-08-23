@@ -1378,6 +1378,9 @@ func TestCollectorPreservesLexicalAndResolvedTruffleHogBoundaries(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Rename(filepath.Join(lexicalRepository, ".git"), filepath.Join(lexicalRepository, ".git-old")); err != nil {
+		t.Fatal(err)
+	}
 	var pathEntries []string
 	var markers []string
 	for _, repository := range []string{lexicalRepository, resolvedRepository} {

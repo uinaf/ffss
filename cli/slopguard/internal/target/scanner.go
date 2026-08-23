@@ -20,6 +20,14 @@ type truffleHogScanner struct {
 }
 
 func newTruffleHogScanner(ctx context.Context, path, repository string) (scanner *truffleHogScanner, returnErr error) {
+	boundaries, err := trustedexec.CaptureRepositoryBoundaries(repository)
+	if err != nil {
+		return nil, err
+	}
+	return newTruffleHogScannerWithBoundaries(ctx, path, boundaries)
+}
+
+func newTruffleHogScannerWithBoundaries(ctx context.Context, path string, boundaries *trustedexec.RepositoryBoundarySet) (scanner *truffleHogScanner, returnErr error) {
 	root, err := os.MkdirTemp("", "slopguard-scan-probe-")
 	if err != nil {
 		return nil, fmt.Errorf("create trufflehog probe directory: %w", err)
@@ -37,11 +45,11 @@ func newTruffleHogScanner(ctx context.Context, path, repository string) (scanner
 			return nil, fmt.Errorf("create trufflehog probe directory: %w", err)
 		}
 	}
-	absolute, err := trustedexec.Resolve(
+	absolute, err := trustedexec.ResolveWithBoundaries(
 		ctx,
 		"trufflehog",
 		path,
-		repository,
+		boundaries,
 		os.Environ(),
 		trustedexec.Probe(truffleHogArguments(input), root, hardenedScannerEnvironment(home)),
 	)

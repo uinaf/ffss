@@ -10,6 +10,10 @@ import (
 
 type Check func(ctx context.Context, path string) error
 
+type RepositoryBoundarySet struct {
+	roots []string
+}
+
 func Resolve(ctx context.Context, name, configuredPath, repository string, environment []string, check Check) (string, error) {
 	if check == nil {
 		return "", fmt.Errorf("trusted %s executable capability check is required", name)
@@ -17,12 +21,34 @@ func Resolve(ctx context.Context, name, configuredPath, repository string, envir
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
-	boundaries, err := repositoryBoundaries(repository)
+	boundaries, err := CaptureRepositoryBoundaries(repository)
 	if err != nil {
 		return "", err
 	}
+	return ResolveWithBoundaries(ctx, name, configuredPath, boundaries, environment, check)
+}
+
+func CaptureRepositoryBoundaries(repository string) (*RepositoryBoundarySet, error) {
+	roots, err := repositoryBoundaries(repository)
+	if err != nil {
+		return nil, err
+	}
+	return &RepositoryBoundarySet{roots: roots}, nil
+}
+
+func ResolveWithBoundaries(ctx context.Context, name, configuredPath string, boundaries *RepositoryBoundarySet, environment []string, check Check) (string, error) {
+	if check == nil {
+		return "", fmt.Errorf("trusted %s executable capability check is required", name)
+	}
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	if boundaries == nil || len(boundaries.roots) == 0 {
+		return "", fmt.Errorf("trusted %s executable repository boundaries are unavailable", name)
+	}
+	roots := boundaries.roots
 	if configuredPath != "" && strings.ContainsRune(configuredPath, filepath.Separator) {
-		path, err := validate(configuredPath, boundaries)
+		path, err := validate(configuredPath, roots)
 		if err != nil {
 			return "", fmt.Errorf("trusted %s executable: %w", name, err)
 		}
@@ -51,7 +77,7 @@ func Resolve(ctx context.Context, name, configuredPath, repository string, envir
 			continue
 		}
 		candidate := filepath.Join(directory, executable)
-		resolved, err := validate(candidate, boundaries)
+		resolved, err := validate(candidate, roots)
 		if err != nil {
 			continue
 		}

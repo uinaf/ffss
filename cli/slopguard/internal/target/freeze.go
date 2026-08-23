@@ -166,7 +166,7 @@ func (collector *Collector) forContext(ctx context.Context, repositoryContext *r
 	scanner := collector.scanner
 	if scanner == nil && !collector.skipSecretScan {
 		var err error
-		scanner, err = newTruffleHogScanner(ctx, collector.truffleHogPath, repositoryContext.RequestedPath())
+		scanner, err = newTruffleHogScannerWithBoundaries(ctx, collector.truffleHogPath, repositoryContext.TrustedBoundaries())
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil, err

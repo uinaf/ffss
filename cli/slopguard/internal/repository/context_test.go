@@ -419,6 +419,17 @@ func TestValidateRejectsSymlinkedGitDirectoryTargetReplacement(t *testing.T) {
 	}
 }
 
+func TestGitDirectoryTargetRejectsCycle(t *testing.T) {
+	directory := t.TempDir()
+	metadata := filepath.Join(directory, ".git")
+	if err := os.WriteFile(metadata, []byte("gitdir: .git\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := captureBoundaryIdentity(metadata); err == nil || !strings.Contains(err.Error(), "not a directory") {
+		t.Fatalf("captureBoundaryIdentity() error = %v", err)
+	}
+}
+
 func testRepository(t *testing.T) string {
 	t.Helper()
 	repository := t.TempDir()

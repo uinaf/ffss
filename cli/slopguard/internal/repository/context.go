@@ -28,6 +28,7 @@ type Context struct {
 	rootInfo          os.FileInfo
 	gitMetadataPath   string
 	gitMetadata       *boundaryIdentity
+	trustedBoundaries *trustedexec.RepositoryBoundarySet
 	gitPath           string
 	gitIdentity       *executableIdentity
 }
@@ -61,17 +62,21 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if err != nil {
 		return nil, err
 	}
+	trustedBoundaries, err := trustedexec.CaptureRepositoryBoundaries(absolute)
+	if err != nil {
+		return nil, err
+	}
 	environment := options.Environment
 	if environment == nil {
 		environment = os.Environ()
 	}
 	gitProbe := trustedexec.GitProbe(os.TempDir())
 	var gitIdentity *executableIdentity
-	gitPath, err := trustedexec.Resolve(
+	gitPath, err := trustedexec.ResolveWithBoundaries(
 		ctx,
 		"git",
 		options.GitPath,
-		absolute,
+		trustedBoundaries,
 		environment,
 		func(ctx context.Context, path string) error {
 			before, err := captureExecutableIdentity(ctx, path)
@@ -143,6 +148,7 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 		rootInfo:          expectedRootInfo,
 		gitMetadataPath:   gitMetadataPath,
 		gitMetadata:       gitMetadata,
+		trustedBoundaries: trustedBoundaries,
 		gitPath:           gitPath,
 		gitIdentity:       gitIdentity,
 	}
@@ -173,8 +179,15 @@ func (repository *Context) RequestedPath() string {
 	return repository.requestedAbsolute
 }
 
+func (repository *Context) TrustedBoundaries() *trustedexec.RepositoryBoundarySet {
+	if repository == nil {
+		return nil
+	}
+	return repository.trustedBoundaries
+}
+
 func (repository *Context) Validate() error {
-	if repository == nil || repository.requestedAbsolute == "" || repository.requestedResolved == "" || repository.requestedInfo == nil || repository.root == "" || repository.rootInfo == nil || repository.gitMetadataPath == "" || repository.gitMetadata == nil || repository.gitPath == "" || repository.gitIdentity == nil {
+	if repository == nil || repository.requestedAbsolute == "" || repository.requestedResolved == "" || repository.requestedInfo == nil || repository.root == "" || repository.rootInfo == nil || repository.gitMetadataPath == "" || repository.gitMetadata == nil || repository.trustedBoundaries == nil || repository.gitPath == "" || repository.gitIdentity == nil {
 		return fmt.Errorf("repository context is unavailable")
 	}
 	return validateRepositoryIdentity(repository.requestedAbsolute, repository.requestedResolved, repository.requestedInfo, repository.root, repository.rootInfo, repository.gitMetadataPath, repository.gitMetadata)
@@ -483,6 +496,13 @@ func gitDirectoryTarget(path string, content []byte) (string, bool, error) {
 	resolved, err := filepath.EvalSymlinks(target)
 	if err != nil {
 		return "", false, err
+	}
+	info, err := os.Stat(resolved)
+	if err != nil {
+		return "", false, err
+	}
+	if !info.IsDir() {
+		return "", false, fmt.Errorf("Git metadata gitdir target is not a directory")
 	}
 	return resolved, true, nil
 }
