@@ -60,6 +60,7 @@ changes:
 ```bash
 prompt="Review this completed change against its acceptance criteria."
 slopguard config --engine codex
+slopguard doctor --engine codex
 slopguard review --mode local --engine codex \
   --prompt "$prompt"
 ```
@@ -117,6 +118,7 @@ review to the installed CLI. It does not contain a second runtime.
 ## Documentation
 
 - [Configuration and isolation](docs/CONFIG.md)
+- [Provider doctor](docs/DOCTOR.md)
 - [Review engines](docs/engines/README.md)
 - [Performance measurement](docs/PERFORMANCE.md)
 - [Optional telemetry](docs/TELEMETRY.md)

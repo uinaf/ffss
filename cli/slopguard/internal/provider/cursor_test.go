@@ -429,6 +429,7 @@ func TestCursorReviewUsesExplicitDefaultModel(t *testing.T) {
 
 type fakeCursorOptions struct {
 	help                 string
+	version              string
 	loggedOut            bool
 	authError            string
 	output               string
@@ -458,6 +459,9 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 	}
 	if options.help == "" {
 		options.help = cursorHelp("text | json | stream-json", "plan, ask", "enabled, disabled")
+	}
+	if options.version == "" {
+		options.version = "2026.07.23-e383d2b"
 	}
 	if options.output == "" {
 		options.output = cursorEnvelope(`{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`)
@@ -503,7 +507,7 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 		"  [ -n \"${1:-}\" ] || return 1; case \"$1\" in -*) return 1 ;; esac; shift\n" +
 		"  [ \"$#\" -eq 0 ]\n" +
 		"}\n" +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' version >> " + shellQuote(fake.probes) + "; printf '%s\\n' '2026.07.23-e383d2b'; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' version >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.version) + "; exit 0; fi\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--help\" ]; then printf '%s\\n' help >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
 		"if [ \"$#\" -eq 2 ] && [ \"$1\" = \"status\" ] && [ \"$2\" = \"--help\" ]; then printf '%s\\n' '--format <format> choices: text, json'; exit 0; fi\n" +
 		"if [ \"$#\" -eq 3 ] && [ \"$1\" = \"status\" ] && [ \"$2\" = \"--format\" ] && [ \"$3\" = \"json\" ]; then " + authBlock + "; fi\n" +
