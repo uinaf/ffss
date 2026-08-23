@@ -86,6 +86,21 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		configSpan.End()
 		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, err, started, recorder)
 	}
+	resolvedPrompt := *prompt
+	if promptFileSet {
+		resolvedPrompt, err = readReviewPrompt(*promptFile, dependencies.stdin, target.MaximumMaxBytes)
+		if err != nil {
+			configSpan.End()
+			return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureTarget, err, started, recorder))
+		}
+	} else if err := target.ValidatePrompt(resolvedPrompt); err != nil {
+		configSpan.End()
+		return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureTarget, err, started, recorder))
+	}
+	if strings.TrimSpace(resolvedPrompt) == "" {
+		configSpan.End()
+		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, errors.New("prompt must not be blank"), started, recorder)
+	}
 	configSpan.End()
 	repositoryProbeSpan := recorder.Start(phase.DependencyProbes)
 	repositoryContext, err := repositorypkg.Resolve(ctx, repositorypkg.Options{Path: *repository})
@@ -104,13 +119,9 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		configSpan.End()
 		return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureConfig, fmt.Errorf("config: %w", err), started, recorder))
 	}
-	resolvedPrompt := *prompt
-	if promptFileSet {
-		resolvedPrompt, err = readReviewPrompt(*promptFile, dependencies.stdin, effective.MaxBytes.Value)
-		if err != nil {
-			configSpan.End()
-			return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureTarget, err, started, recorder))
-		}
+	if int64(len(resolvedPrompt)) > effective.MaxBytes.Value {
+		configSpan.End()
+		return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureTarget, fmt.Errorf("prompt exceeds max_bytes limit of %d", effective.MaxBytes.Value), started, recorder))
 	}
 	configSpan.End()
 
