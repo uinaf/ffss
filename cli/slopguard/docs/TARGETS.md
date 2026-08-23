@@ -55,6 +55,12 @@ boundary without first distilling and authorizing it.
 
 Target collection requires Git 2.41 or newer.
 
+- Git is selected outside the reviewed worktree, capability-probed once, and
+  revalidated by filesystem identity and content before each use boundary.
+- A coordinated same-user ABA mutation between the last validation and
+  pathname-based process launch is outside this boundary; Darwin does not
+  provide the `fexecve`-style launch used to pin an open executable descriptor.
+
 - The snapshot includes resolved Git identity plus the raw copied index,
   tracked working-tree, status, untracked target, prompt, and context state.
 - Source material is recollected before scanning to catch concurrent reads,

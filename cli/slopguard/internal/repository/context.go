@@ -67,6 +67,10 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if err != nil {
 		return nil, fmt.Errorf("inspect requested repository path: %w", err)
 	}
+	expectedRoot, expectedRootInfo, err := discoverWorktreeRoot(resolved)
+	if err != nil {
+		return nil, err
+	}
 	command := exec.CommandContext(ctx, gitPath, "-C", absolute, "-c", "core.hooksPath=/dev/null", "rev-parse", "--show-toplevel")
 	command.Dir = os.TempDir()
 	command.Env = trustedexec.GitEnvironment()
@@ -88,6 +92,9 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if err := requireContained(root, resolved); err != nil {
 		return nil, err
 	}
+	if root != expectedRoot {
+		return nil, fmt.Errorf("Git repository root changed during discovery")
+	}
 	currentRequestedInfo, err := os.Stat(resolved)
 	if err != nil {
 		return nil, fmt.Errorf("inspect requested repository path: %w", err)
@@ -98,6 +105,9 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	rootInfo, err := os.Stat(root)
 	if err != nil {
 		return nil, fmt.Errorf("inspect repository root: %w", err)
+	}
+	if !os.SameFile(expectedRootInfo, rootInfo) {
+		return nil, fmt.Errorf("repository root changed during discovery")
 	}
 	repository := &Context{
 		requestedAbsolute: absolute,
@@ -206,6 +216,37 @@ func requireContained(root, requested string) error {
 		return fmt.Errorf("git worktree does not contain requested repository path")
 	}
 	return nil
+}
+
+func discoverWorktreeRoot(requested string) (string, os.FileInfo, error) {
+	info, err := os.Stat(requested)
+	if err != nil {
+		return "", nil, fmt.Errorf("inspect requested repository path: %w", err)
+	}
+	directory := requested
+	if !info.IsDir() {
+		directory = filepath.Dir(directory)
+	}
+	for {
+		if _, err := os.Lstat(filepath.Join(directory, ".git")); err == nil {
+			root, err := filepath.EvalSymlinks(directory)
+			if err != nil {
+				return "", nil, fmt.Errorf("resolve repository root: %w", err)
+			}
+			rootInfo, err := os.Stat(root)
+			if err != nil {
+				return "", nil, fmt.Errorf("inspect repository root: %w", err)
+			}
+			return root, rootInfo, nil
+		} else if !os.IsNotExist(err) {
+			return "", nil, fmt.Errorf("inspect repository boundary: %w", err)
+		}
+		parent := filepath.Dir(directory)
+		if parent == directory {
+			return "", nil, fmt.Errorf("reviewed path is not inside a Git worktree")
+		}
+		directory = parent
+	}
 }
 
 func captureExecutableIdentity(ctx context.Context, path string) (_ *executableIdentity, returnErr error) {

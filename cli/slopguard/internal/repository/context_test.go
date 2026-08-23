@@ -162,6 +162,10 @@ func TestResolveRejectsWorktreeReplacementDuringRootDiscovery(t *testing.T) {
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, output)
 	}
+	nested := filepath.Join(repository, "nested")
+	if err := os.Mkdir(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	realGit, err := exec.LookPath("git")
 	if err != nil {
 		t.Fatal(err)
@@ -173,11 +177,11 @@ func TestResolveRejectsWorktreeReplacementDuringRootDiscovery(t *testing.T) {
 	wrapperDir := t.TempDir()
 	wrapper := filepath.Join(wrapperDir, "git")
 	backup := filepath.Join(parent, "original")
-	script := fmt.Sprintf("#!/bin/sh\nset -eu\ncase \" $* \" in *' rev-parse --show-toplevel '*) output=$(%q \"$@\"); /bin/mv %q %q; /bin/mkdir %q; printf '%%s\\n' \"$output\"; exit 0;; esac\nexec %q \"$@\"\n", realGit, repository, backup, repository, realGit)
+	script := fmt.Sprintf("#!/bin/sh\nset -eu\ncase \" $* \" in *' rev-parse --show-toplevel '*) output=$(%q \"$@\"); /bin/mv %q %q; /bin/mkdir %q; /bin/mv %q %q; printf '%%s\\n' \"$output\"; exit 0;; esac\nexec %q \"$@\"\n", realGit, repository, backup, repository, filepath.Join(backup, "nested"), nested, realGit)
 	if err := os.WriteFile(wrapper, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Resolve(context.Background(), Options{Path: repository, GitPath: wrapper}); err == nil || !strings.Contains(err.Error(), "changed during root discovery") {
+	if _, err := Resolve(context.Background(), Options{Path: nested, GitPath: wrapper}); err == nil || !strings.Contains(err.Error(), "changed during discovery") {
 		t.Fatalf("Resolve() error = %v", err)
 	}
 }
