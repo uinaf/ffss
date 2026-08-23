@@ -125,6 +125,9 @@ func (collector *Collector) Freeze(ctx context.Context, repository string, reque
 			return nil, fmt.Errorf("%w: %w", ErrSecretScan, err)
 		}
 	}
+	if err := collector.validateRepositoryContext(ctx, repository); err != nil {
+		return nil, err
+	}
 	return &Bundle{
 		repository:   root,
 		requested:    repository,

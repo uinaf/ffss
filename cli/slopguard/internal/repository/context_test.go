@@ -243,6 +243,46 @@ func TestResolveRejectsWorktreeReplacementDuringCapabilityProbe(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsLinkedWorktreeGitFileMutation(t *testing.T) {
+	repository := testRepository(t)
+	if err := os.WriteFile(filepath.Join(repository, "file.txt"), []byte("base\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runTestGit(t, repository, "config", "user.name", "Slopguard Test")
+	runTestGit(t, repository, "config", "user.email", "slopguard@example.invalid")
+	runTestGit(t, repository, "add", "file.txt")
+	runTestGit(t, repository, "commit", "-q", "-m", "base")
+	worktree := filepath.Join(t.TempDir(), "linked")
+	runTestGit(t, repository, "worktree", "add", "-q", "-b", "linked", worktree)
+	gitPath, _, _ := testGitWrapper(t)
+	resolved, err := Resolve(context.Background(), Options{Path: worktree, GitPath: gitPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata := filepath.Join(worktree, ".git")
+	info, err := os.Stat(metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutated := strings.Replace(string(content), "gitdir", "gitdix", 1)
+	if len(mutated) != len(content) || mutated == string(content) {
+		t.Fatal("test mutation did not preserve Git metadata size")
+	}
+	if err := os.WriteFile(metadata, []byte(mutated), info.Mode().Perm()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(metadata, info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	if err := resolved.Validate(); err == nil || !strings.Contains(err.Error(), "metadata boundary changed") {
+		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
 func testRepository(t *testing.T) string {
 	t.Helper()
 	repository := t.TempDir()
@@ -279,4 +319,14 @@ func testGitWrapper(t *testing.T) (string, string, string) {
 	}
 	t.Setenv("SSH_AUTH_SOCK", "/tmp/agent.sock")
 	return path, log, marker
+}
+
+func runTestGit(t *testing.T, repository string, arguments ...string) {
+	t.Helper()
+	command := exec.Command("git", arguments...)
+	command.Dir = repository
+	command.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v: %s", arguments, err, output)
+	}
 }

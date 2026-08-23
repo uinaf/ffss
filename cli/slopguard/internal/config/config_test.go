@@ -122,6 +122,32 @@ func TestLoadRevalidatesGitFromProvidedContext(t *testing.T) {
 	}
 }
 
+func TestLoadRevalidatesRepositoryAfterConfigReads(t *testing.T) {
+	repository := configRepository(t)
+	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: repository})
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine := protocol.ProviderCodex
+	_, err = Load(context.Background(), Options{
+		Context:   repositoryContext,
+		Overrides: Overrides{Engine: &engine},
+		LookupEnv: envLookup(map[string]string{}),
+		HomeDir: func() (string, error) {
+			if err := os.Rename(filepath.Join(repository, ".git"), filepath.Join(repository, ".git-old")); err != nil {
+				return "", err
+			}
+			if err := os.Mkdir(filepath.Join(repository, ".git"), 0o700); err != nil {
+				return "", err
+			}
+			return t.TempDir(), nil
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "metadata boundary changed") {
+		t.Fatalf("Load() error = %v", err)
+	}
+}
+
 func TestLoadDefaultsToNativeAndEnablesCursorWebImplicitly(t *testing.T) {
 	t.Parallel()
 

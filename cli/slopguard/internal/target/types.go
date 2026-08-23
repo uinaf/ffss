@@ -156,11 +156,8 @@ func (bundle *Bundle) Contributors() []Contributor {
 }
 
 func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
-	if err := bundle.collector.validateRepositoryContext(ctx, bundle.requested); err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return ctxErr
-		}
-		return fmt.Errorf("%w: verify repository context: %v", ErrSourceChanged, err)
+	if err := bundle.verifyRepositoryContext(ctx); err != nil {
+		return err
 	}
 	if bundle.request.Mode != protocol.TargetLocal {
 		var sandbox *gitSandbox
@@ -187,7 +184,7 @@ func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
 			}
 			return fmt.Errorf("%w: verify immutable target: %v", ErrSourceChanged, err)
 		}
-		return nil
+		return bundle.verifyRepositoryContext(ctx)
 	}
 	current, err := bundle.collector.collect(ctx, bundle.repository, bundle.request, false)
 	if err != nil {
@@ -198,6 +195,16 @@ func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
 	}
 	if current.target.SnapshotHash != bundle.target.SnapshotHash {
 		return ErrSourceChanged
+	}
+	return bundle.verifyRepositoryContext(ctx)
+}
+
+func (bundle *Bundle) verifyRepositoryContext(ctx context.Context) error {
+	if err := bundle.collector.validateRepositoryContext(ctx, bundle.requested); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
+		return fmt.Errorf("%w: verify repository context: %v", ErrSourceChanged, err)
 	}
 	return nil
 }

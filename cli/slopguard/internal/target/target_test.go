@@ -155,6 +155,24 @@ func TestBundleRevalidatesRepositoryContextBeforeUnchangedCheck(t *testing.T) {
 	}
 }
 
+func TestFreezeRevalidatesRepositoryAfterSecretScan(t *testing.T) {
+	repository := committedRepository(t)
+	writeFile(t, repository, "file.txt", "changed\n")
+	scanner := ScannerFunc(func(context.Context, string) error {
+		if err := os.Rename(filepath.Join(repository, ".git"), filepath.Join(repository, ".git-old")); err != nil {
+			return err
+		}
+		return os.Mkdir(filepath.Join(repository, ".git"), 0o700)
+	})
+	collector, err := New(Options{Repository: repository, Scanner: scanner})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err == nil || !strings.Contains(err.Error(), "metadata boundary changed") {
+		t.Fatalf("Freeze() error = %v", err)
+	}
+}
+
 func TestFreezeBatchesDeletedBlobReads(t *testing.T) {
 	t.Parallel()
 

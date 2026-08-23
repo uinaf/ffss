@@ -26,6 +26,8 @@ type Context struct {
 	requestedInfo     os.FileInfo
 	root              string
 	rootInfo          os.FileInfo
+	gitMetadataPath   string
+	gitMetadata       *boundaryIdentity
 	gitPath           string
 	gitIdentity       *executableIdentity
 }
@@ -33,6 +35,12 @@ type Context struct {
 type executableIdentity struct {
 	info   os.FileInfo
 	digest [sha256.Size]byte
+}
+
+type boundaryIdentity struct {
+	info      os.FileInfo
+	digest    [sha256.Size]byte
+	hasDigest bool
 }
 
 func Resolve(ctx context.Context, options Options) (*Context, error) {
@@ -48,7 +56,7 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if err != nil {
 		return nil, fmt.Errorf("inspect requested repository path: %w", err)
 	}
-	expectedRoot, expectedRootInfo, err := discoverWorktreeRoot(resolved)
+	expectedRoot, expectedRootInfo, gitMetadataPath, gitMetadata, err := discoverWorktreeRoot(resolved)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +97,7 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if gitIdentity == nil {
 		return nil, fmt.Errorf("trusted Git executable identity is unavailable after capability probe")
 	}
-	if err := validateRepositoryIdentity(absolute, resolved, requestedInfo, expectedRoot, expectedRootInfo); err != nil {
+	if err := validateRepositoryIdentity(absolute, resolved, requestedInfo, expectedRoot, expectedRootInfo, gitMetadataPath, gitMetadata); err != nil {
 		return nil, err
 	}
 	command := exec.CommandContext(ctx, gitPath, "-C", absolute, "-c", "core.hooksPath=/dev/null", "rev-parse", "--show-toplevel")
@@ -123,7 +131,7 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if !os.SameFile(expectedRootInfo, rootInfo) {
 		return nil, fmt.Errorf("repository root changed during discovery")
 	}
-	if err := validateRepositoryIdentity(absolute, resolved, requestedInfo, expectedRoot, expectedRootInfo); err != nil {
+	if err := validateRepositoryIdentity(absolute, resolved, requestedInfo, expectedRoot, expectedRootInfo, gitMetadataPath, gitMetadata); err != nil {
 		return nil, err
 	}
 	repository := &Context{
@@ -132,6 +140,8 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 		requestedInfo:     requestedInfo,
 		root:              root,
 		rootInfo:          expectedRootInfo,
+		gitMetadataPath:   gitMetadataPath,
+		gitMetadata:       gitMetadata,
 		gitPath:           gitPath,
 		gitIdentity:       gitIdentity,
 	}
@@ -156,10 +166,10 @@ func (repository *Context) GitPath() string {
 }
 
 func (repository *Context) Validate() error {
-	if repository == nil || repository.requestedAbsolute == "" || repository.requestedResolved == "" || repository.requestedInfo == nil || repository.root == "" || repository.rootInfo == nil || repository.gitPath == "" || repository.gitIdentity == nil {
+	if repository == nil || repository.requestedAbsolute == "" || repository.requestedResolved == "" || repository.requestedInfo == nil || repository.root == "" || repository.rootInfo == nil || repository.gitMetadataPath == "" || repository.gitMetadata == nil || repository.gitPath == "" || repository.gitIdentity == nil {
 		return fmt.Errorf("repository context is unavailable")
 	}
-	return validateRepositoryIdentity(repository.requestedAbsolute, repository.requestedResolved, repository.requestedInfo, repository.root, repository.rootInfo)
+	return validateRepositoryIdentity(repository.requestedAbsolute, repository.requestedResolved, repository.requestedInfo, repository.root, repository.rootInfo, repository.gitMetadataPath, repository.gitMetadata)
 }
 
 func (repository *Context) ValidateGit(ctx context.Context) error {
@@ -179,6 +189,16 @@ func (repository *Context) ValidateGit(ctx context.Context) error {
 
 func sameExecutableIdentity(left, right *executableIdentity) bool {
 	return left != nil && right != nil && os.SameFile(left.info, right.info) && left.info.Mode() == right.info.Mode() && left.info.Size() == right.info.Size() && left.info.ModTime().Equal(right.info.ModTime()) && left.digest == right.digest
+}
+
+func sameBoundaryIdentity(left, right *boundaryIdentity) bool {
+	if left == nil || right == nil || !os.SameFile(left.info, right.info) || left.info.Mode() != right.info.Mode() || left.hasDigest != right.hasDigest {
+		return false
+	}
+	if !left.hasDigest {
+		return true
+	}
+	return left.info.Size() == right.info.Size() && left.info.ModTime().Equal(right.info.ModTime()) && left.digest == right.digest
 }
 
 func (repository *Context) ValidateRequested(path string) error {
@@ -218,7 +238,7 @@ func requireContained(root, requested string) error {
 	return nil
 }
 
-func validateRepositoryIdentity(requestedAbsolute, requestedResolved string, requestedInfo os.FileInfo, root string, rootInfo os.FileInfo) error {
+func validateRepositoryIdentity(requestedAbsolute, requestedResolved string, requestedInfo os.FileInfo, root string, rootInfo os.FileInfo, gitMetadataPath string, gitMetadata *boundaryIdentity) error {
 	if err := requireContained(root, requestedResolved); err != nil {
 		return err
 	}
@@ -240,35 +260,47 @@ func validateRepositoryIdentity(requestedAbsolute, requestedResolved string, req
 	if !os.SameFile(requestedInfo, currentRequestedInfo) || !os.SameFile(rootInfo, currentRootInfo) {
 		return fmt.Errorf("repository worktree changed after validation")
 	}
+	currentGitMetadata, err := captureBoundaryIdentity(gitMetadataPath)
+	if err != nil {
+		return fmt.Errorf("inspect Git metadata boundary: %w", err)
+	}
+	if !sameBoundaryIdentity(gitMetadata, currentGitMetadata) {
+		return fmt.Errorf("Git metadata boundary changed after validation")
+	}
 	return nil
 }
 
-func discoverWorktreeRoot(requested string) (string, os.FileInfo, error) {
+func discoverWorktreeRoot(requested string) (string, os.FileInfo, string, *boundaryIdentity, error) {
 	info, err := os.Stat(requested)
 	if err != nil {
-		return "", nil, fmt.Errorf("inspect requested repository path: %w", err)
+		return "", nil, "", nil, fmt.Errorf("inspect requested repository path: %w", err)
 	}
 	directory := requested
 	if !info.IsDir() {
 		directory = filepath.Dir(directory)
 	}
 	for {
-		if _, err := os.Lstat(filepath.Join(directory, ".git")); err == nil {
+		gitMetadataPath := filepath.Join(directory, ".git")
+		if _, err := os.Lstat(gitMetadataPath); err == nil {
 			root, err := filepath.EvalSymlinks(directory)
 			if err != nil {
-				return "", nil, fmt.Errorf("resolve repository root: %w", err)
+				return "", nil, "", nil, fmt.Errorf("resolve repository root: %w", err)
 			}
 			rootInfo, err := os.Stat(root)
 			if err != nil {
-				return "", nil, fmt.Errorf("inspect repository root: %w", err)
+				return "", nil, "", nil, fmt.Errorf("inspect repository root: %w", err)
 			}
-			return root, rootInfo, nil
+			gitMetadata, err := captureBoundaryIdentity(gitMetadataPath)
+			if err != nil {
+				return "", nil, "", nil, fmt.Errorf("inspect Git metadata boundary: %w", err)
+			}
+			return root, rootInfo, gitMetadataPath, gitMetadata, nil
 		} else if !os.IsNotExist(err) {
-			return "", nil, fmt.Errorf("inspect repository boundary: %w", err)
+			return "", nil, "", nil, fmt.Errorf("inspect repository boundary: %w", err)
 		}
 		parent := filepath.Dir(directory)
 		if parent == directory {
-			return "", nil, fmt.Errorf("reviewed path is not inside a Git worktree")
+			return "", nil, "", nil, fmt.Errorf("reviewed path is not inside a Git worktree")
 		}
 		directory = parent
 	}
@@ -285,6 +317,45 @@ func captureExecutableIdentity(ctx context.Context, path string) (_ *executableI
 		}
 	}()
 	return captureOpenExecutableIdentity(ctx, path, file)
+}
+
+func captureBoundaryIdentity(path string) (*boundaryIdentity, error) {
+	before, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	identity := &boundaryIdentity{info: before}
+	var content []byte
+	switch {
+	case before.Mode().IsRegular():
+		if before.Size() > 64<<10 {
+			return nil, fmt.Errorf("Git metadata file exceeds safe identity limit")
+		}
+		content, err = os.ReadFile(path)
+	case before.Mode()&os.ModeSymlink != 0:
+		var target string
+		target, err = os.Readlink(path)
+		content = []byte(target)
+	case before.IsDir():
+	default:
+		return nil, fmt.Errorf("Git metadata boundary is not a file, symlink, or directory")
+	}
+	if err != nil {
+		return nil, err
+	}
+	after, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !os.SameFile(before, after) || before.Mode() != after.Mode() {
+		return nil, fmt.Errorf("Git metadata boundary changed while reading identity")
+	}
+	identity.info = after
+	if !after.IsDir() {
+		identity.hasDigest = true
+		identity.digest = sha256.Sum256(content)
+	}
+	return identity, nil
 }
 
 func captureOpenExecutableIdentity(ctx context.Context, path string, file *os.File) (*executableIdentity, error) {

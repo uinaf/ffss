@@ -138,6 +138,9 @@ func Load(ctx context.Context, options Options) (Effective, error) {
 	if err := effective.Validate(); err != nil {
 		return Effective{}, err
 	}
+	if err := repositoryContext.ValidateGit(ctx); err != nil {
+		return Effective{}, err
+	}
 	return effective, nil
 }
 
