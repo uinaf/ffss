@@ -10,9 +10,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/buildinfo"
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
@@ -24,6 +26,8 @@ type dependencies struct {
 	homeDir      func() (string, error)
 	newCollector func() (*target.Collector, error)
 	newReviewer  func(protocol.ProviderName, string) provider.Reviewer
+	now          func() time.Time
+	observePhase phase.Observer
 }
 
 func main() {

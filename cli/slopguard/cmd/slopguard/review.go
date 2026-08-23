@@ -8,9 +8,11 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
 	"github.com/uinaf/ffss/cli/slopguard/internal/orchestrator"
+	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
 	reportwriter "github.com/uinaf/ffss/cli/slopguard/internal/report"
@@ -27,9 +29,15 @@ func (values *stringList) Set(value string) error {
 }
 
 func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer, dependencies dependencies) int {
+	recorder := phase.New(dependencies.now, dependencies.observePhase)
+	ctx = phase.WithRecorder(ctx, recorder)
+	started := recorder.Now()
+	configSpan := recorder.Start(phase.Config)
+	defer configSpan.End()
 	jsonRequested, outputErr := reviewJSONRequested(arguments)
 	if outputErr != nil {
-		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, outputErr)
+		configSpan.End()
+		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, outputErr, started, recorder)
 	}
 	flags := flag.NewFlagSet("slopguard review", flag.ContinueOnError)
 	repository := flags.String("repository", ".", "Git repository or path within it")
@@ -51,13 +59,16 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
 		}
-		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, err)
+		configSpan.End()
+		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, err, started, recorder)
 	}
 	if flags.NArg() != 0 {
-		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, errors.New("slopguard review does not accept positional arguments"))
+		configSpan.End()
+		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, errors.New("slopguard review does not accept positional arguments"), started, recorder)
 	}
 	if *output != "terminal" && *output != "json" {
-		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, errors.New("flag output must be terminal or json"))
+		configSpan.End()
+		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, errors.New("flag output must be terminal or json"), started, recorder)
 	}
 	promptSet := false
 	promptFileSet := false
@@ -66,11 +77,13 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		promptFileSet = promptFileSet || item.Name == "prompt-file"
 	})
 	if promptSet && promptFileSet {
-		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, errors.New("flags prompt and prompt-file are mutually exclusive"))
+		configSpan.End()
+		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, errors.New("flags prompt and prompt-file are mutually exclusive"), started, recorder)
 	}
 	overrides, err := configFlags.overrides(flags)
 	if err != nil {
-		return writeReviewArgumentFailure(stdout, stderr, jsonRequested, err)
+		configSpan.End()
+		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, err, started, recorder)
 	}
 	effective, err := config.Load(ctx, config.Options{
 		Repository: *repository,
@@ -79,15 +92,18 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		HomeDir:    dependencies.homeDir,
 	})
 	if err != nil {
-		return writeReviewResult(stdout, stderr, *output, orchestrator.Failure(protocol.FailureConfig, fmt.Errorf("config: %w", err)))
+		configSpan.End()
+		return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureConfig, fmt.Errorf("config: %w", err), started, recorder))
 	}
 	resolvedPrompt := *prompt
 	if promptFileSet {
 		resolvedPrompt, err = readReviewPrompt(*promptFile, dependencies.stdin, effective.MaxBytes.Value)
 		if err != nil {
-			return writeReviewResult(stdout, stderr, *output, orchestrator.Failure(protocol.FailureTarget, err))
+			configSpan.End()
+			return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureTarget, err, started, recorder))
 		}
 	}
+	configSpan.End()
 
 	newCollector := dependencies.newCollector
 	if newCollector == nil {
@@ -95,7 +111,9 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 			return target.NewContext(ctx, target.Options{Repository: *repository, SkipSecretScan: *skipSecretScan})
 		}
 	}
+	probeSpan := recorder.Start(phase.DependencyProbes)
 	collector, err := newCollector()
+	probeSpan.End()
 	if err != nil {
 		class := protocol.FailureCapability
 		switch {
@@ -106,7 +124,7 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		case errors.Is(err, target.ErrSecretScan):
 			class = protocol.FailureSecretScan
 		}
-		return writeReviewResult(stdout, stderr, *output, orchestrator.Failure(class, fmt.Errorf("initialize target collector: %w", err)))
+		return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(class, fmt.Errorf("initialize target collector: %w", err), started, recorder))
 	}
 	newReviewer := dependencies.newReviewer
 	if newReviewer == nil {
@@ -129,8 +147,10 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		Progress: func(message string) {
 			report(stderr, "%s\n", message)
 		},
+		Now:     recorder.Now,
+		Started: started,
 	})
-	return writeReviewResult(stdout, stderr, *output, result)
+	return writeReviewResult(ctx, stdout, stderr, *output, result)
 }
 
 func reviewJSONRequested(arguments []string) (bool, error) {
@@ -243,10 +263,12 @@ func safePromptFileError(err error) error {
 	}
 }
 
-func writeReviewArgumentFailure(stdout, stderr io.Writer, jsonRequested bool, err error) int {
+func writeReviewArgumentFailure(ctx context.Context, stdout, stderr io.Writer, jsonRequested bool, err error, started time.Time, recorder *phase.Recorder) int {
 	if jsonRequested {
-		return writeReviewResult(stdout, stderr, "json", orchestrator.Failure(protocol.FailureConfig, err))
+		return writeReviewResult(ctx, stdout, stderr, "json", failureWithElapsed(protocol.FailureConfig, err, started, recorder))
 	}
+	span := phase.Start(ctx, phase.ReportWrite)
+	defer span.End()
 	report(stderr, "%v\n", err)
 	return 2
 }
@@ -266,7 +288,9 @@ func defaultReviewer(name protocol.ProviderName, repository string) provider.Rev
 	}
 }
 
-func writeReviewResult(stdout, stderr io.Writer, output string, result protocol.Report) int {
+func writeReviewResult(ctx context.Context, stdout, stderr io.Writer, output string, result protocol.Report) int {
+	span := phase.Start(ctx, phase.ReportWrite)
+	defer span.End()
 	var err error
 	if output == "json" {
 		err = reportwriter.WriteJSON(stdout, result)
@@ -285,4 +309,10 @@ func writeReviewResult(stdout, stderr io.Writer, output string, result protocol.
 	default:
 		return 2
 	}
+}
+
+func failureWithElapsed(class protocol.FailureClass, err error, started time.Time, recorder *phase.Recorder) protocol.Report {
+	result := orchestrator.Failure(class, err)
+	result.Metadata.DurationMS = phase.ElapsedMilliseconds(started, recorder.Now())
+	return result
 }

@@ -17,6 +17,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
@@ -76,6 +77,8 @@ func (collector *Collector) Freeze(ctx context.Context, repository string, reque
 		}
 		return prepared.Freeze(ctx, repository, request)
 	}
+	freezeSpan := phase.Start(ctx, phase.TargetFreeze)
+	defer freezeSpan.End()
 	request.ContextFiles = append([]string(nil), request.ContextFiles...)
 	if err := validateRequest(&request); err != nil {
 		return nil, err
@@ -96,6 +99,9 @@ func (collector *Collector) Freeze(ctx context.Context, repository string, reque
 		return nil, fmt.Errorf("target changed while freezing: %w", ErrSourceChanged)
 	}
 	if !request.SkipSecretScan {
+		freezeSpan.End()
+		scanSpan := phase.Start(ctx, phase.SecretScan)
+		defer scanSpan.End()
 		if collector.scanner == nil {
 			return nil, fmt.Errorf("%w: secret scanner is unavailable", ErrSecretScan)
 		}
