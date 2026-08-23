@@ -325,6 +325,36 @@ func TestResolveRejectsGitInsideRootForNestedRequest(t *testing.T) {
 	}
 }
 
+func TestResolvePreservesLexicalAndResolvedWorktreeBoundaries(t *testing.T) {
+	lexicalRepository := testRepository(t)
+	resolvedRepository := testRepository(t)
+	alias := filepath.Join(lexicalRepository, "linked")
+	if err := os.Symlink(resolvedRepository, alias); err != nil {
+		t.Fatal(err)
+	}
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	realGit, err = filepath.Abs(realGit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, repository := range []string{lexicalRepository, resolvedRepository} {
+		bin := filepath.Join(repository, "bin")
+		if err := os.Mkdir(bin, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		gitPath := filepath.Join(bin, "git")
+		if err := os.WriteFile(gitPath, []byte(fmt.Sprintf("#!/bin/sh\nexec %q \"$@\"\n", realGit)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Resolve(context.Background(), Options{Path: alias, GitPath: gitPath}); err == nil || !strings.Contains(err.Error(), "inside the reviewed repository") {
+			t.Fatalf("repository Git %q error = %v", gitPath, err)
+		}
+	}
+}
+
 func TestValidateRejectsSymlinkedGitDirectoryTargetReplacement(t *testing.T) {
 	repository := testRepository(t)
 	metadata := filepath.Join(repository, ".git")
