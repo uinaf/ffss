@@ -166,6 +166,13 @@ func (repository *Context) GitPath() string {
 	return repository.gitPath
 }
 
+func (repository *Context) RequestedPath() string {
+	if repository == nil {
+		return ""
+	}
+	return repository.requestedAbsolute
+}
+
 func (repository *Context) Validate() error {
 	if repository == nil || repository.requestedAbsolute == "" || repository.requestedResolved == "" || repository.requestedInfo == nil || repository.root == "" || repository.rootInfo == nil || repository.gitMetadataPath == "" || repository.gitMetadata == nil || repository.gitPath == "" || repository.gitIdentity == nil {
 		return fmt.Errorf("repository context is unavailable")
@@ -440,7 +447,44 @@ func captureRegularBoundaryIdentity(path string) (_ *boundaryIdentity, returnErr
 	if !os.SameFile(before, after) || !os.SameFile(after, pathInfo) || before.Mode() != after.Mode() || after.Mode() != pathInfo.Mode() || before.Size() != after.Size() || after.Size() != pathInfo.Size() || !before.ModTime().Equal(after.ModTime()) || !after.ModTime().Equal(pathInfo.ModTime()) {
 		return nil, fmt.Errorf("Git metadata file changed while reading identity")
 	}
-	return &boundaryIdentity{info: after, digest: sha256.Sum256(content), hasDigest: true}, nil
+	identity := &boundaryIdentity{info: after, digest: sha256.Sum256(content), hasDigest: true}
+	if target, ok, err := gitDirectoryTarget(path, content); err != nil {
+		return nil, err
+	} else if ok {
+		firstTarget, err := captureBoundaryIdentity(target)
+		if err != nil {
+			return nil, err
+		}
+		secondTarget, err := captureBoundaryIdentity(target)
+		if err != nil {
+			return nil, err
+		}
+		if !sameBoundaryIdentity(firstTarget, secondTarget) {
+			return nil, fmt.Errorf("Git metadata target changed while reading identity")
+		}
+		identity.target = secondTarget
+	}
+	return identity, nil
+}
+
+func gitDirectoryTarget(path string, content []byte) (string, bool, error) {
+	value := strings.TrimSpace(string(content))
+	const prefix = "gitdir:"
+	if !strings.HasPrefix(value, prefix) {
+		return "", false, nil
+	}
+	target := strings.TrimSpace(strings.TrimPrefix(value, prefix))
+	if target == "" {
+		return "", false, fmt.Errorf("Git metadata file has an empty gitdir target")
+	}
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(filepath.Dir(path), target)
+	}
+	resolved, err := filepath.EvalSymlinks(target)
+	if err != nil {
+		return "", false, err
+	}
+	return resolved, true, nil
 }
 
 func captureOpenExecutableIdentity(ctx context.Context, path string, file *os.File) (*executableIdentity, error) {

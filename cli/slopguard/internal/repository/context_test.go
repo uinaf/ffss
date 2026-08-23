@@ -283,6 +283,43 @@ func TestValidateRejectsLinkedWorktreeGitFileMutation(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsLinkedWorktreeGitDirectoryReplacement(t *testing.T) {
+	repository := testRepository(t)
+	if err := os.WriteFile(filepath.Join(repository, "file.txt"), []byte("base\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runTestGit(t, repository, "config", "user.name", "Slopguard Test")
+	runTestGit(t, repository, "config", "user.email", "slopguard@example.invalid")
+	runTestGit(t, repository, "add", "file.txt")
+	runTestGit(t, repository, "commit", "-q", "-m", "base")
+	worktree := filepath.Join(t.TempDir(), "linked")
+	runTestGit(t, repository, "worktree", "add", "-q", "-b", "linked-target", worktree)
+	gitPath, _, _ := testGitWrapper(t)
+	resolved, err := Resolve(context.Background(), Options{Path: worktree, GitPath: gitPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata := filepath.Join(worktree, ".git")
+	content, err := os.ReadFile(metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, ok, err := gitDirectoryTarget(metadata, content)
+	if err != nil || !ok {
+		t.Fatalf("gitDirectoryTarget() target=%q ok=%t error=%v", target, ok, err)
+	}
+	oldTarget := target + "-old"
+	if err := os.Rename(target, oldTarget); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(target, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := resolved.Validate(); err == nil || !strings.Contains(err.Error(), "metadata boundary changed") {
+		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
 func TestResolveRejectsGitInsideRootForNestedRequest(t *testing.T) {
 	repository := testRepository(t)
 	nested := filepath.Join(repository, "src")

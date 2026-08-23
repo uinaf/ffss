@@ -1367,6 +1367,59 @@ func TestCollectorNeverExecutesRepositoryLocalTruffleHog(t *testing.T) {
 	}
 }
 
+func TestCollectorPreservesLexicalAndResolvedTruffleHogBoundaries(t *testing.T) {
+	lexicalRepository := committedRepository(t)
+	resolvedRepository := committedRepository(t)
+	alias := filepath.Join(lexicalRepository, "linked")
+	if err := os.Symlink(resolvedRepository, alias); err != nil {
+		t.Fatal(err)
+	}
+	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: alias})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pathEntries []string
+	var markers []string
+	for _, repository := range []string{lexicalRepository, resolvedRepository} {
+		bin := filepath.Join(repository, "bin")
+		marker := filepath.Join(t.TempDir(), "executed")
+		writeFile(t, bin, "trufflehog", "#!/bin/sh\n: > "+quoteShellTest(marker)+"\nexit 99\n")
+		if err := os.Chmod(filepath.Join(bin, "trufflehog"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		pathEntries = append(pathEntries, bin)
+		markers = append(markers, marker)
+	}
+	externalBin := t.TempDir()
+	external := filepath.Join(externalBin, "trufflehog")
+	writeFile(t, externalBin, "trufflehog", "#!/bin/sh\nexit 0\n")
+	if err := os.Chmod(external, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	pathEntries = append(pathEntries, externalBin, "/usr/bin", "/bin")
+	t.Setenv("PATH", strings.Join(pathEntries, string(os.PathListSeparator)))
+	collector, err := NewContext(context.Background(), Options{Context: repositoryContext})
+	if err != nil {
+		t.Fatal(err)
+	}
+	scanner, ok := collector.scanner.(*truffleHogScanner)
+	if !ok {
+		t.Fatalf("scanner = %T", collector.scanner)
+	}
+	want, err := filepath.EvalSymlinks(external)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scanner.path != want {
+		t.Fatalf("scanner path = %q, want %q", scanner.path, want)
+	}
+	for _, marker := range markers {
+		if _, err := os.Stat(marker); !os.IsNotExist(err) {
+			t.Fatalf("repository TruffleHog executed: %v", err)
+		}
+	}
+}
+
 func TestCollectorSkipsUnusablePathShim(t *testing.T) {
 	repository := committedRepository(t)
 	shimBin := t.TempDir()
