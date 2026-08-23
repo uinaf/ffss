@@ -15,7 +15,48 @@ import (
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
 )
+
+func TestBinaryDoctorWithFakeCodexDoesNotInvokeModelOrScanner(t *testing.T) {
+	binary := buildSlopguardBinary(t)
+	repository := reviewRepository(t)
+	tools, calls, providerPID, processLog, _ := writeFakeReviewTools(t, "clean")
+	command := exec.Command(binary,
+		"doctor", "--repository", repository, "--engine", "codex", "--isolation", "strict", "--output", "json",
+	)
+	command.Env = replaceEnvironment(os.Environ(), map[string]string{
+		"PATH":            tools + ":/usr/bin:/bin",
+		"OPENAI_API_KEY":  "fake-provider-credential",
+		"XDG_CONFIG_HOME": t.TempDir(),
+	})
+	var stderr bytes.Buffer
+	command.Stderr = &stderr
+	output, err := command.Output()
+	if err != nil {
+		processes, _ := os.ReadFile(processLog)
+		t.Fatalf("doctor: %v, stdout=%s stderr=%s processes=%s", err, output, stderr.String(), processes)
+	}
+	var diagnostic provider.Diagnostic
+	if err := json.Unmarshal(output, &diagnostic); err != nil {
+		t.Fatal(err)
+	}
+	if diagnostic.Status != provider.DoctorReady || !diagnostic.Compatible || diagnostic.Authentication != provider.AuthenticationReady {
+		t.Fatalf("diagnostic = %+v", diagnostic)
+	}
+	for _, path := range []string{calls, providerPID} {
+		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("model call artifact %q exists: %v", path, err)
+		}
+	}
+	processes, err := os.ReadFile(processLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(processes), "trufflehog") || strings.Count(string(processes), "codex\n") != 3 {
+		t.Fatalf("doctor processes = %q", processes)
+	}
+}
 
 const providerOutputSentinel = "AR_REVIEW_SOURCE_SENTINEL_7f8e9d"
 

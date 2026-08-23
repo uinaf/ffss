@@ -38,3 +38,6 @@ control characters, and remain bounded.
 
 See [Configuration and isolation](../CONFIG.md) for configuration precedence,
 strict authentication, and web-access policy.
+
+Use [`slopguard doctor`](../DOCTOR.md) to run only this executable and policy
+preflight. Doctor never freezes a target or invokes the model.

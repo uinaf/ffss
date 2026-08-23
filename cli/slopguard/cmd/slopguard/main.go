@@ -28,6 +28,7 @@ type dependencies struct {
 	newReviewer  func(protocol.ProviderName, string) provider.Reviewer
 	now          func() time.Time
 	observePhase phase.Observer
+	doctor       func(context.Context, provider.DoctorOptions) provider.Diagnostic
 }
 
 func main() {
@@ -50,6 +51,9 @@ func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, depe
 	if len(arguments) > 0 && arguments[0] == "config" {
 		return runConfig(ctx, arguments[1:], stdout, stderr, dependencies)
 	}
+	if len(arguments) > 0 && arguments[0] == "doctor" {
+		return runDoctor(ctx, arguments[1:], stdout, stderr, dependencies)
+	}
 	if len(arguments) > 0 && arguments[0] == "review" {
 		return runReview(ctx, arguments[1:], stdout, stderr, dependencies)
 	}
@@ -60,10 +64,10 @@ func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, depe
 		return runSelfupdate(ctx, arguments[1:], stdout, stderr)
 	}
 	if len(arguments) == 1 && (arguments[0] == "--help" || arguments[0] == "-h" || arguments[0] == "help") {
-		report(stdout, "usage: slopguard <review|config|schema|selfupdate|version> [options]\n\nreview     review a frozen local, branch, or commit target\nconfig     print the effective configuration and its sources\nschema     print the canonical review or result JSON Schema\nselfupdate replace this binary with a published release\nversion    print the binary version\n")
+		report(stdout, "usage: slopguard <review|config|doctor|schema|selfupdate|version> [options]\n\nreview     review a frozen local, branch, or commit target\nconfig     print the effective configuration and its sources\ndoctor     check provider readiness without a model call\nschema     print the canonical review or result JSON Schema\nselfupdate replace this binary with a published release\nversion    print the binary version\n")
 		return 0
 	}
-	report(stderr, "usage: slopguard <review|config|schema|selfupdate|version> [options]\n")
+	report(stderr, "usage: slopguard <review|config|doctor|schema|selfupdate|version> [options]\n")
 	return 2
 }
 
