@@ -41,6 +41,7 @@ type boundaryIdentity struct {
 	info      os.FileInfo
 	digest    [sha256.Size]byte
 	hasDigest bool
+	target    *boundaryIdentity
 }
 
 func Resolve(ctx context.Context, options Options) (*Context, error) {
@@ -70,7 +71,7 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 		ctx,
 		"git",
 		options.GitPath,
-		absolute,
+		expectedRoot,
 		environment,
 		func(ctx context.Context, path string) error {
 			before, err := captureExecutableIdentity(ctx, path)
@@ -196,9 +197,16 @@ func sameBoundaryIdentity(left, right *boundaryIdentity) bool {
 		return false
 	}
 	if !left.hasDigest {
-		return true
+		return sameOptionalBoundaryIdentity(left.target, right.target)
 	}
-	return left.info.Size() == right.info.Size() && left.info.ModTime().Equal(right.info.ModTime()) && left.digest == right.digest
+	return left.info.Size() == right.info.Size() && left.info.ModTime().Equal(right.info.ModTime()) && left.digest == right.digest && sameOptionalBoundaryIdentity(left.target, right.target)
+}
+
+func sameOptionalBoundaryIdentity(left, right *boundaryIdentity) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return sameBoundaryIdentity(left, right)
 }
 
 func (repository *Context) ValidateRequested(path string) error {
@@ -336,6 +344,16 @@ func captureBoundaryIdentity(path string) (*boundaryIdentity, error) {
 		var target string
 		target, err = os.Readlink(path)
 		content = []byte(target)
+		if err == nil {
+			if !filepath.IsAbs(target) {
+				target = filepath.Join(filepath.Dir(path), target)
+			}
+			var resolvedTarget string
+			resolvedTarget, err = filepath.EvalSymlinks(target)
+			if err == nil {
+				identity.target, err = captureBoundaryIdentity(resolvedTarget)
+			}
+		}
 	case before.IsDir():
 	default:
 		return nil, fmt.Errorf("Git metadata boundary is not a file, symlink, or directory")

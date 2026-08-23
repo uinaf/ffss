@@ -283,6 +283,75 @@ func TestValidateRejectsLinkedWorktreeGitFileMutation(t *testing.T) {
 	}
 }
 
+func TestResolveRejectsGitInsideRootForNestedRequest(t *testing.T) {
+	repository := testRepository(t)
+	nested := filepath.Join(repository, "src")
+	if err := os.Mkdir(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	realGit, err = filepath.Abs(realGit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	repositoryBin := filepath.Join(repository, "bin")
+	if err := os.Mkdir(repositoryBin, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	insideGit := filepath.Join(repositoryBin, "git")
+	if err := os.WriteFile(insideGit, []byte(fmt.Sprintf("#!/bin/sh\nexec %q \"$@\"\n", realGit)), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Resolve(context.Background(), Options{Path: nested, GitPath: insideGit}); err == nil || !strings.Contains(err.Error(), "inside the reviewed repository") {
+		t.Fatalf("explicit repository Git error = %v", err)
+	}
+	externalBin := t.TempDir()
+	if err := os.Symlink(realGit, filepath.Join(externalBin, "git")); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := Resolve(context.Background(), Options{Path: nested, Environment: []string{"PATH=" + repositoryBin + string(os.PathListSeparator) + externalBin}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantGit, err := filepath.EvalSymlinks(realGit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.GitPath() != wantGit {
+		t.Fatalf("Git path = %q, want %q", resolved.GitPath(), wantGit)
+	}
+}
+
+func TestValidateRejectsSymlinkedGitDirectoryTargetReplacement(t *testing.T) {
+	repository := testRepository(t)
+	metadata := filepath.Join(repository, ".git")
+	target := filepath.Join(repository, ".git-target")
+	if err := os.Rename(metadata, target); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Base(target), metadata); err != nil {
+		t.Fatal(err)
+	}
+	gitPath, _, _ := testGitWrapper(t)
+	resolved, err := Resolve(context.Background(), Options{Path: repository, GitPath: gitPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldTarget := filepath.Join(repository, ".git-old")
+	if err := os.Rename(target, oldTarget); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(target, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := resolved.Validate(); err == nil || !strings.Contains(err.Error(), "metadata boundary changed") {
+		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
 func testRepository(t *testing.T) string {
 	t.Helper()
 	repository := t.TempDir()
