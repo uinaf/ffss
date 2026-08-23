@@ -63,6 +63,10 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if err != nil {
 		return nil, err
 	}
+	requestedInfo, err := os.Stat(resolved)
+	if err != nil {
+		return nil, fmt.Errorf("inspect requested repository path: %w", err)
+	}
 	command := exec.CommandContext(ctx, gitPath, "-C", absolute, "-c", "core.hooksPath=/dev/null", "rev-parse", "--show-toplevel")
 	command.Dir = os.TempDir()
 	command.Env = trustedexec.GitEnvironment()
@@ -84,9 +88,12 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if err := requireContained(root, resolved); err != nil {
 		return nil, err
 	}
-	requestedInfo, err := os.Stat(resolved)
+	currentRequestedInfo, err := os.Stat(resolved)
 	if err != nil {
 		return nil, fmt.Errorf("inspect requested repository path: %w", err)
+	}
+	if !os.SameFile(requestedInfo, currentRequestedInfo) {
+		return nil, fmt.Errorf("requested repository path changed during root discovery")
 	}
 	rootInfo, err := os.Stat(root)
 	if err != nil {
@@ -127,6 +134,13 @@ func (repository *Context) Validate() error {
 	}
 	if err := requireContained(repository.root, repository.requestedResolved); err != nil {
 		return err
+	}
+	resolved, err := filepath.EvalSymlinks(repository.requestedAbsolute)
+	if err != nil {
+		return fmt.Errorf("resolve requested repository path: %w", err)
+	}
+	if resolved != repository.requestedResolved {
+		return fmt.Errorf("repository argument changed; resolve a new repository context")
 	}
 	requestedInfo, err := os.Stat(repository.requestedResolved)
 	if err != nil {
@@ -204,6 +218,10 @@ func captureExecutableIdentity(ctx context.Context, path string) (_ *executableI
 			returnErr = errors.Join(returnErr, closeErr)
 		}
 	}()
+	return captureOpenExecutableIdentity(ctx, path, file)
+}
+
+func captureOpenExecutableIdentity(ctx context.Context, path string, file *os.File) (*executableIdentity, error) {
 	before, err := file.Stat()
 	if err != nil {
 		return nil, err
@@ -236,6 +254,13 @@ func captureExecutableIdentity(ctx context.Context, path string) (_ *executableI
 	}
 	if !os.SameFile(before, after) || before.Mode() != after.Mode() || before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) {
 		return nil, fmt.Errorf("trusted Git executable changed while reading identity")
+	}
+	pathInfo, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !os.SameFile(after, pathInfo) || after.Mode() != pathInfo.Mode() || after.Size() != pathInfo.Size() || !after.ModTime().Equal(pathInfo.ModTime()) {
+		return nil, fmt.Errorf("trusted Git executable path changed while reading identity")
 	}
 	identity := &executableIdentity{info: after}
 	copy(identity.digest[:], hash.Sum(nil))

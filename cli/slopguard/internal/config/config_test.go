@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -78,6 +79,45 @@ func TestLoadRejectsRepositoryArgumentOutsideProvidedContext(t *testing.T) {
 	}
 	_, err = Load(context.Background(), Options{Context: repositoryContext, Repository: second})
 	if err == nil || !strings.Contains(err.Error(), "argument changed") {
+		t.Fatalf("Load() error = %v", err)
+	}
+}
+
+func TestLoadRevalidatesGitFromProvidedContext(t *testing.T) {
+	repository := configRepository(t)
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	realGit, err = filepath.Abs(realGit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	gitPath := filepath.Join(directory, "git")
+	if err := os.WriteFile(gitPath, []byte(fmt.Sprintf("#!/bin/sh\nexec %q \"$@\"\n", realGit)), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: repository, GitPath: gitPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(gitPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(gitPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutated := strings.Replace(string(content), "exec", "exfc", 1)
+	if err := os.WriteFile(gitPath, []byte(mutated), info.Mode().Perm()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(gitPath, info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(context.Background(), Options{Context: repositoryContext}); err == nil || !strings.Contains(err.Error(), "Git executable changed") {
 		t.Fatalf("Load() error = %v", err)
 	}
 }
