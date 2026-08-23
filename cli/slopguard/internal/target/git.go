@@ -47,21 +47,6 @@ func (sandbox *gitSandbox) Close() error {
 	return os.RemoveAll(sandbox.directory)
 }
 
-func newGitClient(ctx context.Context, path, repository string) (*gitClient, error) {
-	absolute, err := trustedexec.Resolve(
-		ctx,
-		"git",
-		path,
-		repository,
-		os.Environ(),
-		trustedexec.GitProbe(os.TempDir()),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("find git: %w", err)
-	}
-	return &gitClient{path: absolute}, nil
-}
-
 func (git *gitClient) run(ctx context.Context, directory string, input []byte, outputLimit int64, arguments ...string) ([]byte, error) {
 	return git.runConfigured(ctx, directory, input, outputLimit, "", nil, arguments...)
 }

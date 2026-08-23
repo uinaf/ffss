@@ -2,6 +2,7 @@ package trustedexec
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,30 @@ import (
 
 type Check func(ctx context.Context, path string) error
 
+type abortCheckError struct {
+	cause error
+}
+
+func (failure *abortCheckError) Error() string {
+	return failure.cause.Error()
+}
+
+func (failure *abortCheckError) Unwrap() error {
+	return failure.cause
+}
+
+// AbortCheck stops candidate fallback when a caller-owned boundary changes.
+func AbortCheck(cause error) error {
+	if cause == nil {
+		return nil
+	}
+	return &abortCheckError{cause: cause}
+}
+
+type RepositoryBoundarySet struct {
+	roots []string
+}
+
 func Resolve(ctx context.Context, name, configuredPath, repository string, environment []string, check Check) (string, error) {
 	if check == nil {
 		return "", fmt.Errorf("trusted %s executable capability check is required", name)
@@ -17,16 +42,52 @@ func Resolve(ctx context.Context, name, configuredPath, repository string, envir
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
-	boundaries, err := repositoryBoundaries(repository)
+	boundaries, err := CaptureRepositoryBoundaries(repository)
 	if err != nil {
 		return "", err
 	}
+	return ResolveWithBoundaries(ctx, name, configuredPath, boundaries, environment, check)
+}
+
+func CaptureRepositoryBoundaries(repository string) (*RepositoryBoundarySet, error) {
+	roots, err := repositoryBoundaries(repository)
+	if err != nil {
+		return nil, err
+	}
+	return &RepositoryBoundarySet{roots: roots}, nil
+}
+
+// CaptureRepositoryBoundariesForPaths preserves both sides of an already-resolved
+// repository path so a later symlink retarget cannot omit the original worktree.
+func CaptureRepositoryBoundariesForPaths(lexical, resolved string) (*RepositoryBoundarySet, error) {
+	roots, err := repositoryBoundariesForPaths(lexical, resolved)
+	if err != nil {
+		return nil, err
+	}
+	return &RepositoryBoundarySet{roots: roots}, nil
+}
+
+func ResolveWithBoundaries(ctx context.Context, name, configuredPath string, boundaries *RepositoryBoundarySet, environment []string, check Check) (string, error) {
+	if check == nil {
+		return "", fmt.Errorf("trusted %s executable capability check is required", name)
+	}
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	if boundaries == nil || len(boundaries.roots) == 0 {
+		return "", fmt.Errorf("trusted %s executable repository boundaries are unavailable", name)
+	}
+	roots := boundaries.roots
 	if configuredPath != "" && strings.ContainsRune(configuredPath, filepath.Separator) {
-		path, err := validate(configuredPath, boundaries)
+		path, err := validate(configuredPath, roots)
 		if err != nil {
 			return "", fmt.Errorf("trusted %s executable: %w", name, err)
 		}
 		if err := check(ctx, path); err != nil {
+			var abort *abortCheckError
+			if errors.As(err, &abort) {
+				return "", abort.cause
+			}
 			if isProbeCleanupError(err) {
 				return "", fmt.Errorf("trusted %s executable capability probe cleanup failed", name)
 			}
@@ -51,12 +112,16 @@ func Resolve(ctx context.Context, name, configuredPath, repository string, envir
 			continue
 		}
 		candidate := filepath.Join(directory, executable)
-		resolved, err := validate(candidate, boundaries)
+		resolved, err := validate(candidate, roots)
 		if err != nil {
 			continue
 		}
 		foundTrustedCandidate = true
 		if err := check(ctx, resolved); err != nil {
+			var abort *abortCheckError
+			if errors.As(err, &abort) {
+				return "", abort.cause
+			}
 			if isProbeCleanupError(err) {
 				return "", fmt.Errorf("trusted %s executable capability probe cleanup failed", name)
 			}
@@ -102,6 +167,13 @@ func repositoryBoundaries(repository string) ([]string, error) {
 	resolved, err := filepath.EvalSymlinks(absolute)
 	if err != nil {
 		return nil, fmt.Errorf("resolve reviewed repository: %w", err)
+	}
+	return repositoryBoundariesForPaths(absolute, resolved)
+}
+
+func repositoryBoundariesForPaths(absolute, resolved string) ([]string, error) {
+	if !filepath.IsAbs(absolute) || !filepath.IsAbs(resolved) {
+		return nil, fmt.Errorf("reviewed repository boundaries must be absolute")
 	}
 	info, err := os.Stat(resolved)
 	if err != nil {

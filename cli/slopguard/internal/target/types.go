@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/repository"
 )
 
 var (
@@ -32,6 +33,7 @@ type Scanner interface {
 
 type Options struct {
 	Repository     string
+	Context        *repository.Context
 	GitPath        string
 	TruffleHogPath string
 	Scanner        Scanner
@@ -123,6 +125,7 @@ func (budget *byteBudget) SizeError() error {
 
 type Bundle struct {
 	repository   string
+	requested    string
 	request      Request
 	collector    *Collector
 	target       protocol.Target
@@ -153,6 +156,9 @@ func (bundle *Bundle) Contributors() []Contributor {
 }
 
 func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
+	if err := bundle.verifyRepositoryContext(ctx); err != nil {
+		return err
+	}
 	if bundle.request.Mode != protocol.TargetLocal {
 		var sandbox *gitSandbox
 		if bundle.request.Mode == protocol.TargetBranch {
@@ -178,7 +184,7 @@ func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
 			}
 			return fmt.Errorf("%w: verify immutable target: %v", ErrSourceChanged, err)
 		}
-		return nil
+		return bundle.verifyRepositoryContext(ctx)
 	}
 	current, err := bundle.collector.collect(ctx, bundle.repository, bundle.request, false)
 	if err != nil {
@@ -189,6 +195,16 @@ func (bundle *Bundle) VerifyUnchanged(ctx context.Context) error {
 	}
 	if current.target.SnapshotHash != bundle.target.SnapshotHash {
 		return ErrSourceChanged
+	}
+	return bundle.verifyRepositoryContext(ctx)
+}
+
+func (bundle *Bundle) verifyRepositoryContext(ctx context.Context) error {
+	if err := bundle.collector.validateRepositoryContext(ctx, bundle.requested); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
+		return fmt.Errorf("%w: verify repository context: %v", ErrSourceChanged, err)
 	}
 	return nil
 }

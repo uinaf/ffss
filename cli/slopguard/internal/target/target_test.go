@@ -18,6 +18,7 @@ import (
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	repositorypkg "github.com/uinaf/ffss/cli/slopguard/internal/repository"
 	"golang.org/x/sys/unix"
 )
 
@@ -110,6 +111,65 @@ func TestLazyCollectorRecordsOneTargetFreeze(t *testing.T) {
 	}
 	if counts[phase.TargetFreeze] != 1 || counts[phase.SecretScan] != 1 {
 		t.Fatalf("phase counts = %+v", counts)
+	}
+}
+
+func TestPreparedCollectorRejectsChangedRepositoryArgument(t *testing.T) {
+	t.Parallel()
+
+	first := committedRepository(t)
+	second := committedRepository(t)
+	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: first})
+	if err != nil {
+		t.Fatal(err)
+	}
+	collector, err := NewContext(context.Background(), Options{Context: repositoryContext, Scanner: &recordingScanner{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = collector.Freeze(context.Background(), second, Request{Mode: protocol.TargetLocal})
+	if err == nil || !strings.Contains(err.Error(), "argument changed") {
+		t.Fatalf("Freeze() error = %v", err)
+	}
+}
+
+func TestPreparedCollectorRevalidatesGitBeforeFreeze(t *testing.T) {
+	collector, repository, gitPath := preparedCollectorWithGitWrapper(t)
+	mutateExecutablePreservingMetadata(t, gitPath)
+	_, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	if err == nil || !strings.Contains(err.Error(), "Git executable changed") {
+		t.Fatalf("Freeze() error = %v", err)
+	}
+}
+
+func TestBundleRevalidatesRepositoryContextBeforeUnchangedCheck(t *testing.T) {
+	collector, repository, gitPath := preparedCollectorWithGitWrapper(t)
+	writeFile(t, repository, "file.txt", "changed\n")
+	bundle, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutateExecutablePreservingMetadata(t, gitPath)
+	if err := bundle.VerifyUnchanged(context.Background()); !errors.Is(err, ErrSourceChanged) {
+		t.Fatalf("VerifyUnchanged() error = %v, want source changed", err)
+	}
+}
+
+func TestFreezeRevalidatesRepositoryAfterSecretScan(t *testing.T) {
+	repository := committedRepository(t)
+	writeFile(t, repository, "file.txt", "changed\n")
+	scanner := ScannerFunc(func(context.Context, string) error {
+		if err := os.Rename(filepath.Join(repository, ".git"), filepath.Join(repository, ".git-old")); err != nil {
+			return err
+		}
+		return os.Mkdir(filepath.Join(repository, ".git"), 0o700)
+	})
+	collector, err := New(Options{Repository: repository, Scanner: scanner})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err == nil || !strings.Contains(err.Error(), "metadata boundary changed") {
+		t.Fatalf("Freeze() error = %v", err)
 	}
 }
 
@@ -273,10 +333,7 @@ func TestGitSandboxPreservesIndexModTime(t *testing.T) {
 	if err != nil {
 		t.Fatalf("forRepository() error = %v", err)
 	}
-	root, err := prepared.repositoryRoot(context.Background(), repository)
-	if err != nil {
-		t.Fatalf("repositoryRoot() error = %v", err)
-	}
+	root := prepared.repository.Root()
 	sandbox, err := prepared.newGitSandbox(context.Background(), root, true)
 	if err != nil {
 		t.Fatalf("newGitSandbox() error = %v", err)
@@ -1241,46 +1298,13 @@ func TestHardenedEnvironmentDropsDynamicLoaderVariables(t *testing.T) {
 func TestGitClientRejectsEmptyCommand(t *testing.T) {
 	t.Parallel()
 
-	client, err := newGitClient(t.Context(), "", committedRepository(t))
+	gitPath, err := exec.LookPath("git")
 	if err != nil {
 		t.Fatal(err)
 	}
+	client := &gitClient{path: gitPath}
 	if err := client.runConfiguredTo(context.Background(), t.TempDir(), nil, io.Discard, "", nil); err == nil || !strings.Contains(err.Error(), "requires a subcommand") {
 		t.Fatalf("runConfiguredTo() error = %v", err)
-	}
-}
-
-func TestGitClientSkipsUnusablePathShim(t *testing.T) {
-	repository := committedRepository(t)
-	realGit, err := exec.LookPath("git")
-	if err != nil {
-		t.Fatal(err)
-	}
-	realGit, err = filepath.EvalSymlinks(realGit)
-	if err != nil {
-		t.Fatal(err)
-	}
-	shimBin := t.TempDir()
-	manager := filepath.Join(shimBin, "manager")
-	writeFile(t, shimBin, "manager", "#!/bin/sh\nprintf 'raw dependency output' >&2\nexit 9\n")
-	if err := os.Chmod(manager, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(manager, filepath.Join(shimBin, "git")); err != nil {
-		t.Fatal(err)
-	}
-	healthyBin := t.TempDir()
-	if err := os.Symlink(realGit, filepath.Join(healthyBin, "git")); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", strings.Join([]string{shimBin, healthyBin}, string(os.PathListSeparator)))
-
-	client, err := newGitClient(t.Context(), "", repository)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.run(context.Background(), t.TempDir(), nil, 4<<10, "--version"); err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -1340,6 +1364,62 @@ func TestCollectorNeverExecutesRepositoryLocalTruffleHog(t *testing.T) {
 	}
 	if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("repository-local trufflehog was executed: %v", err)
+	}
+}
+
+func TestCollectorPreservesLexicalAndResolvedTruffleHogBoundaries(t *testing.T) {
+	lexicalRepository := committedRepository(t)
+	resolvedRepository := committedRepository(t)
+	alias := filepath.Join(lexicalRepository, "linked")
+	if err := os.Symlink(resolvedRepository, alias); err != nil {
+		t.Fatal(err)
+	}
+	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: alias})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(filepath.Join(lexicalRepository, ".git"), filepath.Join(lexicalRepository, ".git-old")); err != nil {
+		t.Fatal(err)
+	}
+	var pathEntries []string
+	var markers []string
+	for _, repository := range []string{lexicalRepository, resolvedRepository} {
+		bin := filepath.Join(repository, "bin")
+		marker := filepath.Join(t.TempDir(), "executed")
+		writeFile(t, bin, "trufflehog", "#!/bin/sh\n: > "+quoteShellTest(marker)+"\nexit 99\n")
+		if err := os.Chmod(filepath.Join(bin, "trufflehog"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		pathEntries = append(pathEntries, bin)
+		markers = append(markers, marker)
+	}
+	externalBin := t.TempDir()
+	external := filepath.Join(externalBin, "trufflehog")
+	writeFile(t, externalBin, "trufflehog", "#!/bin/sh\nexit 0\n")
+	if err := os.Chmod(external, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	pathEntries = append(pathEntries, externalBin, "/usr/bin", "/bin")
+	t.Setenv("PATH", strings.Join(pathEntries, string(os.PathListSeparator)))
+	collector, err := NewContext(context.Background(), Options{Context: repositoryContext})
+	if err != nil {
+		t.Fatal(err)
+	}
+	scanner, ok := collector.scanner.(*truffleHogScanner)
+	if !ok {
+		t.Fatalf("scanner = %T", collector.scanner)
+	}
+	want, err := filepath.EvalSymlinks(external)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scanner.path != want {
+		t.Fatalf("scanner path = %q, want %q", scanner.path, want)
+	}
+	for _, marker := range markers {
+		if _, err := os.Stat(marker); !os.IsNotExist(err) {
+			t.Fatalf("repository TruffleHog executed: %v", err)
+		}
 	}
 }
 
@@ -1567,6 +1647,56 @@ func newCollector(t *testing.T, scanner Scanner) *Collector {
 		t.Fatal(err)
 	}
 	return collector
+}
+
+func preparedCollectorWithGitWrapper(t *testing.T) (*Collector, string, string) {
+	t.Helper()
+	repository := committedRepository(t)
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	realGit, err = filepath.EvalSymlinks(realGit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	gitPath := filepath.Join(directory, "git")
+	writeFile(t, directory, "git", "#!/bin/sh\nexec "+quoteShellTest(realGit)+" \"$@\"\n")
+	if err := os.Chmod(gitPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: repository, GitPath: gitPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	collector, err := NewContext(context.Background(), Options{Context: repositoryContext, Scanner: &recordingScanner{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return collector, repository, gitPath
+}
+
+func mutateExecutablePreservingMetadata(t *testing.T, path string) {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutated := strings.Replace(string(content), "exec", "exfc", 1)
+	if len(mutated) != len(content) || mutated == string(content) {
+		t.Fatal("test mutation did not preserve executable size")
+	}
+	if err := os.WriteFile(path, []byte(mutated), info.Mode().Perm()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(path, info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func repositoryBoundaryFixture(t *testing.T) string {

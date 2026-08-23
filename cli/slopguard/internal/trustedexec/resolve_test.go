@@ -66,6 +66,36 @@ func TestResolveRejectsSymlinkAcrossRepositoryBoundary(t *testing.T) {
 	}
 }
 
+func TestCaptureRepositoryBoundariesKeepsPinnedResolvedTree(t *testing.T) {
+	lexicalRepository := testRepository(t)
+	resolvedRepository := testRepository(t)
+	replacementRepository := testRepository(t)
+	alias := filepath.Join(lexicalRepository, "linked")
+	if err := os.Symlink(resolvedRepository, alias); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := filepath.EvalSymlinks(alias)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(alias); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(replacementRepository, alias); err != nil {
+		t.Fatal(err)
+	}
+	boundaries, err := CaptureRepositoryBoundariesForPaths(alias, resolved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, repository := range []string{lexicalRepository, resolvedRepository} {
+		executable := writeExecutable(t, filepath.Join(repository, "bin", "git"))
+		if _, err := ResolveWithBoundaries(t.Context(), "git", executable, boundaries, nil, successfulCheck); err == nil || !strings.Contains(err.Error(), "inside the reviewed repository") {
+			t.Fatalf("ResolveWithBoundaries() repository=%q error=%v", repository, err)
+		}
+	}
+}
+
 func TestResolveRejectsCaseAliasOnCaseInsensitiveFilesystem(t *testing.T) {
 	t.Parallel()
 
@@ -152,6 +182,27 @@ func TestResolveStopsWhenProbeCleanupFails(t *testing.T) {
 	}
 	if checks != 1 || strings.Contains(err.Error(), "raw cleanup detail") {
 		t.Fatalf("Resolve() checks = %d, error = %v", checks, err)
+	}
+}
+
+func TestResolveStopsWhenCheckAborts(t *testing.T) {
+	t.Parallel()
+
+	repository := testRepository(t)
+	firstBin := t.TempDir()
+	secondBin := t.TempDir()
+	writeExecutable(t, filepath.Join(firstBin, "git"))
+	writeExecutable(t, filepath.Join(secondBin, "git"))
+	want := errors.New("repository identity changed")
+	checks := 0
+	check := func(context.Context, string) error {
+		checks++
+		return AbortCheck(want)
+	}
+	path := strings.Join([]string{firstBin, secondBin}, string(os.PathListSeparator))
+	_, err := Resolve(t.Context(), "git", "", repository, []string{"PATH=" + path}, check)
+	if !errors.Is(err, want) || checks != 1 {
+		t.Fatalf("Resolve() error=%v checks=%d", err, checks)
 	}
 }
 

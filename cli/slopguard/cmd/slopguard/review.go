@@ -16,6 +16,7 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
 	reportwriter "github.com/uinaf/ffss/cli/slopguard/internal/report"
+	repositorypkg "github.com/uinaf/ffss/cli/slopguard/internal/repository"
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
 )
 
@@ -85,11 +86,19 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		configSpan.End()
 		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, err, started, recorder)
 	}
+	configSpan.End()
+	repositoryProbeSpan := recorder.Start(phase.DependencyProbes)
+	repositoryContext, err := repositorypkg.Resolve(ctx, repositorypkg.Options{Path: *repository})
+	repositoryProbeSpan.End()
+	if err != nil {
+		return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureConfig, err, started, recorder))
+	}
+	configSpan = recorder.Start(phase.Config)
 	effective, err := config.Load(ctx, config.Options{
-		Repository: *repository,
-		Overrides:  overrides,
-		LookupEnv:  dependencies.lookupEnv,
-		HomeDir:    dependencies.homeDir,
+		Context:   repositoryContext,
+		Overrides: overrides,
+		LookupEnv: dependencies.lookupEnv,
+		HomeDir:   dependencies.homeDir,
 	})
 	if err != nil {
 		configSpan.End()
@@ -108,7 +117,7 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	newCollector := dependencies.newCollector
 	if newCollector == nil {
 		newCollector = func() (*target.Collector, error) {
-			return target.NewContext(ctx, target.Options{Repository: *repository, SkipSecretScan: *skipSecretScan})
+			return target.NewContext(ctx, target.Options{Context: repositoryContext, SkipSecretScan: *skipSecretScan})
 		}
 	}
 	probeSpan := recorder.Start(phase.DependencyProbes)

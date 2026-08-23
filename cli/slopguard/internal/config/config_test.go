@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	repositorypkg "github.com/uinaf/ffss/cli/slopguard/internal/repository"
 )
 
 func TestLoadUsesDocumentedPrecedenceAndSources(t *testing.T) {
@@ -63,6 +65,86 @@ func TestLoadUsesDocumentedPrecedenceAndSources(t *testing.T) {
 	}
 	if !effective.WebAccess.Value || effective.WebAccess.Source != SourceFlag {
 		t.Fatalf("web_access = %+v", effective.WebAccess)
+	}
+}
+
+func TestLoadRejectsRepositoryArgumentOutsideProvidedContext(t *testing.T) {
+	t.Parallel()
+
+	first := configRepository(t)
+	second := configRepository(t)
+	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: first})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = Load(context.Background(), Options{Context: repositoryContext, Repository: second})
+	if err == nil || !strings.Contains(err.Error(), "argument changed") {
+		t.Fatalf("Load() error = %v", err)
+	}
+}
+
+func TestLoadRevalidatesGitFromProvidedContext(t *testing.T) {
+	repository := configRepository(t)
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	realGit, err = filepath.Abs(realGit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	gitPath := filepath.Join(directory, "git")
+	if err := os.WriteFile(gitPath, []byte(fmt.Sprintf("#!/bin/sh\nexec %q \"$@\"\n", realGit)), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: repository, GitPath: gitPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(gitPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(gitPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutated := strings.Replace(string(content), "exec", "exfc", 1)
+	if err := os.WriteFile(gitPath, []byte(mutated), info.Mode().Perm()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(gitPath, info.ModTime(), info.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(context.Background(), Options{Context: repositoryContext}); err == nil || !strings.Contains(err.Error(), "Git executable changed") {
+		t.Fatalf("Load() error = %v", err)
+	}
+}
+
+func TestLoadRevalidatesRepositoryAfterConfigReads(t *testing.T) {
+	repository := configRepository(t)
+	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: repository})
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine := protocol.ProviderCodex
+	_, err = Load(context.Background(), Options{
+		Context:   repositoryContext,
+		Overrides: Overrides{Engine: &engine},
+		LookupEnv: envLookup(map[string]string{}),
+		HomeDir: func() (string, error) {
+			if err := os.Rename(filepath.Join(repository, ".git"), filepath.Join(repository, ".git-old")); err != nil {
+				return "", err
+			}
+			if err := os.Mkdir(filepath.Join(repository, ".git"), 0o700); err != nil {
+				return "", err
+			}
+			return t.TempDir(), nil
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "metadata boundary changed") {
+		t.Fatalf("Load() error = %v", err)
 	}
 }
 
@@ -298,18 +380,6 @@ func TestEnvironmentSelectedXDGStillSuppliesNonCapabilityValues(t *testing.T) {
 	}
 	if effective.Engine.Source != SourceXDG || effective.Model.Value != "xdg-model" || effective.Model.Source != SourceXDG {
 		t.Fatalf("effective config = %+v", effective)
-	}
-}
-
-func TestConfigGitEnvironmentDoesNotForwardCredentials(t *testing.T) {
-	t.Setenv("SLOPGUARD_CREDENTIAL_SENTINEL", "must-not-cross-process-boundary")
-	t.Setenv("SSH_AUTH_SOCK", "/tmp/agent.sock")
-
-	for _, entry := range configGitEnvironment() {
-		name, _, _ := strings.Cut(entry, "=")
-		if name == "SLOPGUARD_CREDENTIAL_SENTINEL" || name == "SSH_AUTH_SOCK" {
-			t.Fatalf("configGitEnvironment retained %q", name)
-		}
 	}
 }
 

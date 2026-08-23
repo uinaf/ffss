@@ -7,16 +7,14 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/repository"
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
-	"github.com/uinaf/ffss/cli/slopguard/internal/trustedexec"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -24,6 +22,7 @@ const maximumConfigBytes = int64(64 << 10)
 
 type Options struct {
 	Repository string
+	Context    *repository.Context
 	GitPath    string
 	Overrides  Overrides
 	LookupEnv  func(string) (string, bool)
@@ -100,14 +99,24 @@ func Load(ctx context.Context, options Options) (Effective, error) {
 	if homeDir == nil {
 		homeDir = accountHomeDir
 	}
-	repository := options.Repository
-	if repository == "" {
-		repository = "."
+	repositoryContext := options.Context
+	if repositoryContext == nil {
+		var err error
+		repositoryContext, err = repository.Resolve(ctx, repository.Options{Path: options.Repository, GitPath: options.GitPath})
+		if err != nil {
+			return Effective{}, err
+		}
+	} else {
+		if err := repositoryContext.ValidateGit(ctx); err != nil {
+			return Effective{}, err
+		}
+		if options.Repository != "" {
+			if err := repositoryContext.ValidateRequested(options.Repository); err != nil {
+				return Effective{}, err
+			}
+		}
 	}
-	root, err := repositoryRoot(ctx, repository, options.GitPath)
-	if err != nil {
-		return Effective{}, err
-	}
+	root := repositoryContext.Root()
 	effective := defaults()
 	xdgPath, trustedRoot, trustedCapabilities, err := resolveXDGPath(lookup, homeDir)
 	if err != nil {
@@ -127,6 +136,9 @@ func Load(ctx context.Context, options Options) (Effective, error) {
 	}
 	applyProviderDefaults(&effective)
 	if err := effective.Validate(); err != nil {
+		return Effective{}, err
+	}
+	if err := repositoryContext.ValidateGit(ctx); err != nil {
 		return Effective{}, err
 	}
 	return effective, nil
@@ -396,53 +408,4 @@ func validateRaw(raw rawConfig, source Source) error {
 		}
 	}
 	return nil
-}
-
-func repositoryRoot(ctx context.Context, repository, gitPath string) (string, error) {
-	gitPath, err := trustedexec.Resolve(
-		ctx,
-		"git",
-		gitPath,
-		repository,
-		os.Environ(),
-		trustedexec.GitProbe(os.TempDir()),
-	)
-	if err != nil {
-		return "", fmt.Errorf("find git: %w", err)
-	}
-	absolute, err := filepath.Abs(repository)
-	if err != nil {
-		return "", fmt.Errorf("resolve repository path: %w", err)
-	}
-	command := exec.CommandContext(ctx, gitPath, "-C", absolute, "-c", "core.hooksPath=/dev/null", "rev-parse", "--show-toplevel")
-	command.Dir = os.TempDir()
-	command.Env = configGitEnvironment()
-	output, err := command.Output()
-	if ctxErr := ctx.Err(); ctxErr != nil {
-		return "", ctxErr
-	}
-	if err != nil {
-		return "", fmt.Errorf("find repository root: %w", err)
-	}
-	root := strings.TrimSpace(string(output))
-	if root == "" || !filepath.IsAbs(root) {
-		return "", fmt.Errorf("git returned an invalid repository root")
-	}
-	resolved, err := filepath.EvalSymlinks(root)
-	if err != nil {
-		return "", fmt.Errorf("resolve repository root: %w", err)
-	}
-	requested, err := filepath.EvalSymlinks(absolute)
-	if err != nil {
-		return "", fmt.Errorf("resolve requested repository path: %w", err)
-	}
-	relative, err := filepath.Rel(resolved, requested)
-	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
-		return "", fmt.Errorf("git worktree does not contain requested repository path")
-	}
-	return resolved, nil
-}
-
-func configGitEnvironment() []string {
-	return trustedexec.GitEnvironment()
 }
