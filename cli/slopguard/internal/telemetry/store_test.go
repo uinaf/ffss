@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -19,17 +20,17 @@ func TestStoreBoundsConcurrentAppends(t *testing.T) {
 	store := Store{Path: filepath.Join(t.TempDir(), "state", "telemetry.jsonl")}
 	const writers = 64
 	var wait sync.WaitGroup
-	errors := make(chan error, writers)
+	errs := make(chan error, writers)
 	for range writers {
 		wait.Add(1)
 		go func() {
 			defer wait.Done()
-			errors <- store.Append(validEvent())
+			errs <- store.Append(validEvent())
 		}()
 	}
 	wait.Wait()
-	close(errors)
-	for err := range errors {
+	close(errs)
+	for err := range errs {
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -49,12 +50,23 @@ func TestStoreBoundsConcurrentAppends(t *testing.T) {
 
 func TestStoreSerializesConcurrentProcesses(t *testing.T) {
 	store := Store{Path: filepath.Join(t.TempDir(), "telemetry.jsonl")}
+	t.Setenv("SLOPGUARD_TEST_TELEMETRY_HELPER", "ambient")
+	t.Setenv("SLOPGUARD_TEST_TELEMETRY_PATH", filepath.Join(t.TempDir(), "ambient.jsonl"))
 	const processes = 12
 	commands := make([]*exec.Cmd, 0, processes)
 	outputs := make([]bytes.Buffer, processes)
 	for index := range processes {
 		command := exec.Command(os.Args[0], "-test.run=^TestStoreAppendHelperProcess$", "-test.count=1")
-		command.Env = append(os.Environ(), "SLOPGUARD_TEST_TELEMETRY_PATH="+store.Path)
+		command.Env = []string{
+			"SLOPGUARD_TEST_TELEMETRY_HELPER=1",
+			"SLOPGUARD_TEST_TELEMETRY_PATH=" + store.Path,
+		}
+		for _, entry := range os.Environ() {
+			if !strings.HasPrefix(entry, "SLOPGUARD_TEST_TELEMETRY_HELPER=") &&
+				!strings.HasPrefix(entry, "SLOPGUARD_TEST_TELEMETRY_PATH=") {
+				command.Env = append(command.Env, entry)
+			}
+		}
 		command.Stdout = &outputs[index]
 		command.Stderr = &outputs[index]
 		if err := command.Start(); err != nil {
@@ -73,9 +85,12 @@ func TestStoreSerializesConcurrentProcesses(t *testing.T) {
 }
 
 func TestStoreAppendHelperProcess(t *testing.T) {
+	if os.Getenv("SLOPGUARD_TEST_TELEMETRY_HELPER") != "1" {
+		return
+	}
 	path := os.Getenv("SLOPGUARD_TEST_TELEMETRY_PATH")
 	if path == "" {
-		return
+		t.Fatal("helper path is missing")
 	}
 	if err := (Store{Path: path}).Append(validEvent()); err != nil {
 		t.Fatal(err)
