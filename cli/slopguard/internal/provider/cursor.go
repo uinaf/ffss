@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/reviewpolicy"
 )
@@ -52,6 +53,8 @@ func NewCursor(options CursorOptions) *Cursor {
 
 func (cursor *Cursor) Review(ctx context.Context, request Request) (result Result, returnError error) {
 	started := time.Now()
+	preparationSpan := phase.Start(ctx, phase.ProviderPreparation)
+	defer func() { preparationSpan.End() }()
 	if err := request.Config.Validate(); err != nil {
 		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("invalid provider config: %v", err), nil, nil)
 	}
@@ -98,6 +101,8 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 		}
 	}
 	if !cached {
+		preparationSpan.End()
+		probeSpan := phase.Start(reviewContext, phase.DependencyProbes)
 		prepared, err = cursor.preparation.resolve(reviewContext, key, func() (preparedExecutable, error) {
 			candidates, discoverErr := discoverExecutableCandidates(cursor.executable, repository, cursor.environment)
 			if discoverErr != nil {
@@ -110,9 +115,11 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 				return cursor.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
 			})
 		})
+		probeSpan.End()
 		if err != nil {
 			return Result{}, err
 		}
+		preparationSpan = phase.Start(reviewContext, phase.ProviderPreparation)
 	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderCursor, cursor.environment); failure != nil {
 		return Result{}, failure
 	}
@@ -126,6 +133,8 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 		Isolation: request.Config.Isolation.Value,
 		WebAccess: request.Config.WebAccess.Value,
 	}
+	preparationSpan.End()
+	processSpan := phase.Start(reviewContext, phase.ProviderProcess)
 	process, processErr := runProcess(reviewContext, processSpec{
 		Path:        executable,
 		Arguments:   cursorArguments(request.Config, runtime.Workspace, model),
@@ -136,6 +145,9 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 		StdoutLimit: providerStdoutLimit,
 		StderrLimit: providerStderrLimit,
 	})
+	processSpan.End()
+	decodeSpan := phase.Start(reviewContext, phase.ProtocolDecode)
+	defer decodeSpan.End()
 	attempt := protocol.Attempt{Number: 1, DurationMS: process.Duration.Milliseconds()}
 	if processErr != nil {
 		if isOrdinaryProcessExit(processErr) {

@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
@@ -27,6 +28,7 @@ type Options struct {
 	Config      config.Effective
 	Progress    func(string)
 	Now         func() time.Time
+	Started     time.Time
 }
 
 func protocolRetryInstruction(reason protocol.ProtocolReason) string {
@@ -67,7 +69,10 @@ func Run(ctx context.Context, options Options) protocol.Report {
 	if now == nil {
 		now = time.Now
 	}
-	started := now()
+	started := options.Started
+	if started.IsZero() {
+		started = now()
+	}
 	var resolvedExecution *provider.Execution
 	var retryReason protocol.ProtocolReason
 	progress := options.Progress
@@ -124,7 +129,7 @@ func Run(ctx context.Context, options Options) protocol.Report {
 			if attempt != nil {
 				attempts = append(attempts, *attempt)
 			}
-			if unchangedErr := bundle.VerifyUnchanged(ctx); unchangedErr != nil {
+			if unchangedErr := verifyUnchanged(ctx, bundle); unchangedErr != nil {
 				return failure(classify(unchangedErr), unchangedErr, &reviewedTarget, attempts)
 			}
 			if class == protocol.FailureProtocol && attemptNumber <= options.Config.Retries.Value {
@@ -144,7 +149,7 @@ func Run(ctx context.Context, options Options) protocol.Report {
 			execution := mergeExecution(resolvedExecution, result.ResolvedExecution())
 			resolvedExecution = &execution
 		}
-		if unchangedErr := bundle.VerifyUnchanged(ctx); unchangedErr != nil {
+		if unchangedErr := verifyUnchanged(ctx, bundle); unchangedErr != nil {
 			return failure(classify(unchangedErr), unchangedErr, &reviewedTarget, attempts)
 		}
 		if !metadataMatches {
@@ -171,6 +176,12 @@ func Run(ctx context.Context, options Options) protocol.Report {
 	}
 
 	return failure(protocol.FailureInternal, errors.New("review attempt loop ended unexpectedly"), &reviewedTarget, attempts)
+}
+
+func verifyUnchanged(ctx context.Context, bundle *target.Bundle) error {
+	span := phase.Start(ctx, phase.SourceRevalidation)
+	defer span.End()
+	return bundle.VerifyUnchanged(ctx)
 }
 
 func successReport(reviewedTarget protocol.Target, result provider.Result, attempts []protocol.Attempt, durationMS int64) protocol.Report {

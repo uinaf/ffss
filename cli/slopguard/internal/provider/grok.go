@@ -18,6 +18,7 @@ import (
 	"golang.org/x/mod/semver"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/reviewpolicy"
 	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
@@ -66,6 +67,8 @@ func NewGrok(options GrokOptions) *Grok {
 
 func (grok *Grok) Review(ctx context.Context, request Request) (result Result, returnError error) {
 	started := time.Now()
+	preparationSpan := phase.Start(ctx, phase.ProviderPreparation)
+	defer func() { preparationSpan.End() }()
 	if err := request.Config.Validate(); err != nil {
 		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("invalid provider config: %v", err), nil, nil)
 	}
@@ -103,6 +106,8 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 	environment = setEnvironmentValue(environment, "GROK_MEMORY", "0")
 	environment = setEnvironmentValue(environment, "GROK_SUBAGENTS", "0")
 	if !cached {
+		preparationSpan.End()
+		probeSpan := phase.Start(reviewContext, phase.DependencyProbes)
 		prepared, err = grok.preparation.resolve(reviewContext, key, func() (preparedExecutable, error) {
 			candidates, discoverErr := discoverExecutableCandidates(grok.executable, repository, grok.environment)
 			if discoverErr != nil {
@@ -115,9 +120,11 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 				return grok.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
 			})
 		})
+		probeSpan.End()
 		if err != nil {
 			return Result{}, err
 		}
+		preparationSpan = phase.Start(reviewContext, phase.ProviderPreparation)
 	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderGrok, grok.environment); failure != nil {
 		return Result{}, failure
 	}
@@ -147,6 +154,8 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		Isolation: request.Config.Isolation.Value,
 		WebAccess: request.Config.WebAccess.Value,
 	}
+	preparationSpan.End()
+	processSpan := phase.Start(reviewContext, phase.ProviderProcess)
 	process, processErr := runProcess(reviewContext, processSpec{
 		Path:        executable,
 		Arguments:   grokArguments(request.Config, runtime.Workspace, promptPath, string(providerSchema), model, version),
@@ -156,6 +165,9 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		StdoutLimit: providerStdoutLimit,
 		StderrLimit: providerStderrLimit,
 	})
+	processSpan.End()
+	decodeSpan := phase.Start(reviewContext, phase.ProtocolDecode)
+	defer decodeSpan.End()
 	attempt := protocol.Attempt{Number: 1, DurationMS: process.Duration.Milliseconds()}
 	if processErr != nil {
 		class := classifyProcessFailure(processErr, process)

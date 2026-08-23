@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
@@ -50,6 +51,92 @@ func TestReviewCommandCleanJSON(t *testing.T) {
 	}
 	if strings.Contains(stdout.String(), "collecting frozen target") || !strings.Contains(stderr.String(), "reviewing with codex") {
 		t.Fatalf("stdout/stderr separation failed: stdout=%q stderr=%q", stdout.String(), stderr.String())
+	}
+}
+
+func TestReviewCommandRecordsEndToEndPhases(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepository(t)
+	reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
+	clock := &steppingClock{current: time.Unix(0, 0), step: 5 * time.Millisecond}
+	var measurements []phase.Measurement
+	dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+	dependencies.now = clock.Now
+	dependencies.observePhase = func(measurement phase.Measurement) {
+		measurements = append(measurements, measurement)
+	}
+	dependencies.newCollector = func() (*target.Collector, error) {
+		return target.New(target.Options{Repository: repository, Scanner: cleanScanner{}})
+	}
+	var stdout bytes.Buffer
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--output", "json"}, &stdout, io.Discard, dependencies)
+	if exit != 0 {
+		t.Fatalf("run() exit = %d, output = %s", exit, stdout.String())
+	}
+	var result protocol.Report
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Metadata.DurationMS <= 0 {
+		t.Fatalf("duration_ms = %d", result.Metadata.DurationMS)
+	}
+	assertMeasuredPhases(t, measurements,
+		phase.Config,
+		phase.DependencyProbes,
+		phase.TargetFreeze,
+		phase.SecretScan,
+		phase.SourceRevalidation,
+		phase.ReportWrite,
+	)
+}
+
+func TestReviewCommandFailuresRetainElapsedTime(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		arguments    []string
+		dependencies func(*testing.T, *steppingClock, *[]phase.Measurement) dependencies
+	}{
+		{
+			name:      "config",
+			arguments: []string{"review", "--mode", "local", "--engine", "invalid", "--output", "json"},
+			dependencies: func(t *testing.T, clock *steppingClock, measurements *[]phase.Measurement) dependencies {
+				return dependencies{now: clock.Now, observePhase: func(measurement phase.Measurement) { *measurements = append(*measurements, measurement) }}
+			},
+		},
+		{
+			name:      "collector",
+			arguments: []string{"review", "--mode", "local", "--engine", "codex", "--output", "json"},
+			dependencies: func(t *testing.T, clock *steppingClock, measurements *[]phase.Measurement) dependencies {
+				return dependencies{
+					now:          clock.Now,
+					observePhase: func(measurement phase.Measurement) { *measurements = append(*measurements, measurement) },
+					newCollector: func() (*target.Collector, error) { return nil, errors.New("injected collector failure") },
+				}
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			clock := &steppingClock{current: time.Unix(0, 0), step: 5 * time.Millisecond}
+			var measurements []phase.Measurement
+			var stdout bytes.Buffer
+			exit := run(t.Context(), test.arguments, &stdout, io.Discard, test.dependencies(t, clock, &measurements))
+			if exit != 2 {
+				t.Fatalf("run() exit = %d, output = %s", exit, stdout.String())
+			}
+			var result protocol.Report
+			if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Metadata.DurationMS <= 0 {
+				t.Fatalf("duration_ms = %d", result.Metadata.DurationMS)
+			}
+			assertMeasuredPhases(t, measurements, phase.Config, phase.ReportWrite)
+		})
 	}
 }
 
@@ -1072,5 +1159,32 @@ func gitCommand(t *testing.T, repository string, arguments ...string) {
 	command.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v: %s", arguments, err, output)
+	}
+}
+
+type steppingClock struct {
+	current time.Time
+	step    time.Duration
+}
+
+func (clock *steppingClock) Now() time.Time {
+	current := clock.current
+	clock.current = clock.current.Add(clock.step)
+	return current
+}
+
+func assertMeasuredPhases(t *testing.T, measurements []phase.Measurement, expected ...phase.Name) {
+	t.Helper()
+	seen := make(map[phase.Name]bool, len(measurements))
+	for _, measurement := range measurements {
+		if measurement.Duration <= 0 {
+			t.Fatalf("phase %s duration = %s", measurement.Name, measurement.Duration)
+		}
+		seen[measurement.Name] = true
+	}
+	for _, name := range expected {
+		if !seen[name] {
+			t.Fatalf("phase %s missing from %+v", name, measurements)
+		}
 	}
 }

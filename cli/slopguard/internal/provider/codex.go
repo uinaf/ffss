@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
+	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 )
@@ -61,6 +62,8 @@ func NewCodex(options CodexOptions) *Codex {
 
 func (codex *Codex) Review(ctx context.Context, request Request) (result Result, returnError error) {
 	started := time.Now()
+	preparationSpan := phase.Start(ctx, phase.ProviderPreparation)
+	defer func() { preparationSpan.End() }()
 	if err := request.Config.Validate(); err != nil {
 		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("invalid provider config: %v", err), nil, nil)
 	}
@@ -94,6 +97,8 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		}
 	}()
 	if !cached {
+		preparationSpan.End()
+		probeSpan := phase.Start(reviewContext, phase.DependencyProbes)
 		prepared, err = codex.preparation.resolve(reviewContext, key, func() (preparedExecutable, error) {
 			candidates, discoverErr := discoverExecutableCandidates(codex.executable, repository, codex.environment)
 			if discoverErr != nil {
@@ -106,9 +111,11 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 				return codex.preflight(reviewContext, candidate, runtime, request.Config)
 			})
 		})
+		probeSpan.End()
 		if err != nil {
 			return Result{}, err
 		}
+		preparationSpan = phase.Start(reviewContext, phase.ProviderPreparation)
 	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderCodex, codex.environment); failure != nil {
 		return Result{}, failure
 	}
@@ -147,6 +154,8 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		WebAccess: request.Config.WebAccess.Value,
 	}
 	arguments := codexArguments(request.Config, runtime.Workspace, schemaPath, outputPath, model)
+	preparationSpan.End()
+	processSpan := phase.Start(reviewContext, phase.ProviderProcess)
 	process, processErr := runProcess(reviewContext, processSpec{
 		Path:        executable,
 		Arguments:   arguments,
@@ -157,6 +166,9 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		StdoutLimit: providerStdoutLimit,
 		StderrLimit: providerStderrLimit,
 	})
+	processSpan.End()
+	decodeSpan := phase.Start(reviewContext, phase.ProtocolDecode)
+	defer decodeSpan.End()
 	attempt := protocol.Attempt{Number: 1, DurationMS: process.Duration.Milliseconds()}
 	if processErr != nil {
 		if isOrdinaryProcessExit(processErr) {
