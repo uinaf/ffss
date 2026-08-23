@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/repository"
 )
 
 var (
@@ -32,6 +33,7 @@ type Scanner interface {
 
 type Options struct {
 	Repository     string
+	Context        *repository.Context
 	GitPath        string
 	TruffleHogPath string
 	Scanner        Scanner

@@ -18,6 +18,7 @@ import (
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	repositorypkg "github.com/uinaf/ffss/cli/slopguard/internal/repository"
 	"golang.org/x/sys/unix"
 )
 
@@ -110,6 +111,25 @@ func TestLazyCollectorRecordsOneTargetFreeze(t *testing.T) {
 	}
 	if counts[phase.TargetFreeze] != 1 || counts[phase.SecretScan] != 1 {
 		t.Fatalf("phase counts = %+v", counts)
+	}
+}
+
+func TestPreparedCollectorRejectsChangedRepositoryArgument(t *testing.T) {
+	t.Parallel()
+
+	first := committedRepository(t)
+	second := committedRepository(t)
+	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: first})
+	if err != nil {
+		t.Fatal(err)
+	}
+	collector, err := NewContext(context.Background(), Options{Context: repositoryContext, Scanner: &recordingScanner{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = collector.Freeze(context.Background(), second, Request{Mode: protocol.TargetLocal})
+	if err == nil || !strings.Contains(err.Error(), "argument changed") {
+		t.Fatalf("Freeze() error = %v", err)
 	}
 }
 
@@ -273,10 +293,7 @@ func TestGitSandboxPreservesIndexModTime(t *testing.T) {
 	if err != nil {
 		t.Fatalf("forRepository() error = %v", err)
 	}
-	root, err := prepared.repositoryRoot(context.Background(), repository)
-	if err != nil {
-		t.Fatalf("repositoryRoot() error = %v", err)
-	}
+	root := prepared.repository.Root()
 	sandbox, err := prepared.newGitSandbox(context.Background(), root, true)
 	if err != nil {
 		t.Fatalf("newGitSandbox() error = %v", err)
@@ -1241,46 +1258,13 @@ func TestHardenedEnvironmentDropsDynamicLoaderVariables(t *testing.T) {
 func TestGitClientRejectsEmptyCommand(t *testing.T) {
 	t.Parallel()
 
-	client, err := newGitClient(t.Context(), "", committedRepository(t))
+	gitPath, err := exec.LookPath("git")
 	if err != nil {
 		t.Fatal(err)
 	}
+	client := &gitClient{path: gitPath}
 	if err := client.runConfiguredTo(context.Background(), t.TempDir(), nil, io.Discard, "", nil); err == nil || !strings.Contains(err.Error(), "requires a subcommand") {
 		t.Fatalf("runConfiguredTo() error = %v", err)
-	}
-}
-
-func TestGitClientSkipsUnusablePathShim(t *testing.T) {
-	repository := committedRepository(t)
-	realGit, err := exec.LookPath("git")
-	if err != nil {
-		t.Fatal(err)
-	}
-	realGit, err = filepath.EvalSymlinks(realGit)
-	if err != nil {
-		t.Fatal(err)
-	}
-	shimBin := t.TempDir()
-	manager := filepath.Join(shimBin, "manager")
-	writeFile(t, shimBin, "manager", "#!/bin/sh\nprintf 'raw dependency output' >&2\nexit 9\n")
-	if err := os.Chmod(manager, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(manager, filepath.Join(shimBin, "git")); err != nil {
-		t.Fatal(err)
-	}
-	healthyBin := t.TempDir()
-	if err := os.Symlink(realGit, filepath.Join(healthyBin, "git")); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", strings.Join([]string{shimBin, healthyBin}, string(os.PathListSeparator)))
-
-	client, err := newGitClient(t.Context(), "", repository)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.run(context.Background(), t.TempDir(), nil, 4<<10, "--version"); err != nil {
-		t.Fatal(err)
 	}
 }
 

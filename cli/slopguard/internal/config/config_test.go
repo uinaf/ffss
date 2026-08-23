@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	repositorypkg "github.com/uinaf/ffss/cli/slopguard/internal/repository"
 )
 
 func TestLoadUsesDocumentedPrecedenceAndSources(t *testing.T) {
@@ -63,6 +64,21 @@ func TestLoadUsesDocumentedPrecedenceAndSources(t *testing.T) {
 	}
 	if !effective.WebAccess.Value || effective.WebAccess.Source != SourceFlag {
 		t.Fatalf("web_access = %+v", effective.WebAccess)
+	}
+}
+
+func TestLoadRejectsRepositoryArgumentOutsideProvidedContext(t *testing.T) {
+	t.Parallel()
+
+	first := configRepository(t)
+	second := configRepository(t)
+	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: first})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = Load(context.Background(), Options{Context: repositoryContext, Repository: second})
+	if err == nil || !strings.Contains(err.Error(), "argument changed") {
+		t.Fatalf("Load() error = %v", err)
 	}
 }
 
@@ -298,18 +314,6 @@ func TestEnvironmentSelectedXDGStillSuppliesNonCapabilityValues(t *testing.T) {
 	}
 	if effective.Engine.Source != SourceXDG || effective.Model.Value != "xdg-model" || effective.Model.Source != SourceXDG {
 		t.Fatalf("effective config = %+v", effective)
-	}
-}
-
-func TestConfigGitEnvironmentDoesNotForwardCredentials(t *testing.T) {
-	t.Setenv("SLOPGUARD_CREDENTIAL_SENTINEL", "must-not-cross-process-boundary")
-	t.Setenv("SSH_AUTH_SOCK", "/tmp/agent.sock")
-
-	for _, entry := range configGitEnvironment() {
-		name, _, _ := strings.Cut(entry, "=")
-		if name == "SLOPGUARD_CREDENTIAL_SENTINEL" || name == "SSH_AUTH_SOCK" {
-			t.Fatalf("configGitEnvironment retained %q", name)
-		}
 	}
 }
 

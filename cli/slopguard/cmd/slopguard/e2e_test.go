@@ -49,7 +49,7 @@ func TestBinaryEndToEndWithFakeCodex(t *testing.T) {
 				test.output = "json"
 			}
 			repository := reviewRepository(t)
-			toolsDirectory, calls, providerPID, _ := writeFakeReviewTools(t, test.scenario)
+			toolsDirectory, calls, providerPID, _, _ := writeFakeReviewTools(t, test.scenario)
 			xdg := t.TempDir()
 			arguments := []string{
 				"review", "--repository", repository, "--mode", "local", "--engine", "codex",
@@ -238,7 +238,7 @@ func runBinaryConfig(t *testing.T, binary, repository string, arguments ...strin
 	return effective
 }
 
-func writeFakeReviewTools(t testing.TB, scenario string) (string, string, string, string) {
+func writeFakeReviewTools(t testing.TB, scenario string) (string, string, string, string, string) {
 	t.Helper()
 	directory := t.TempDir()
 	realGit, err := exec.LookPath("git")
@@ -252,6 +252,7 @@ func writeFakeReviewTools(t testing.TB, scenario string) (string, string, string
 	calls := filepath.Join(directory, "calls")
 	providerPID := filepath.Join(directory, "provider-pid")
 	processLog := filepath.Join(directory, "processes.log")
+	contextLog := filepath.Join(directory, "repository-context.log")
 	clean := `{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`
 	findings := `{"findings":[{"title":"Defect","body":"Broken behavior.","priority":"P1","confidence":0.9,"category":"bug","location":{"file_path":"app.go","start_line":1,"end_line":1}}],"overall_explanation":"One defect.","overall_confidence":0.9}`
 	result := clean
@@ -286,12 +287,15 @@ func writeFakeReviewTools(t testing.TB, scenario string) (string, string, string
 		t.Fatal(err)
 	}
 	gitScript := "#!/bin/sh\nset -eu\nprintf '%s\\n' git >> " + shellLiteral(processLog) + "\n" +
+		"last=''\nfor argument in \"$@\"; do last=\"$argument\"; done\n" +
+		"if [ \"$last\" = '--version' ]; then printf '%s\\n' probe >> " + shellLiteral(contextLog) + "; fi\n" +
+		"case \" $* \" in *' rev-parse --show-toplevel '*) printf '%s\\n' root >> " + shellLiteral(contextLog) + ";; esac\n" +
 		"if [ \"$#\" -eq 3 ] && [ \"$1\" = \"-C\" ] && [ \"$3\" = \"--version\" ]; then printf '%s\\n' 'git version 2.41.0'; exit 0; fi\n" +
 		"exec " + shellLiteral(realGit) + " \"$@\"\n"
 	if err := os.WriteFile(filepath.Join(directory, "git"), []byte(gitScript), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	return directory, calls, providerPID, processLog
+	return directory, calls, providerPID, processLog, contextLog
 }
 
 func fakeCodexEnvelope(t testing.TB, message string) string {

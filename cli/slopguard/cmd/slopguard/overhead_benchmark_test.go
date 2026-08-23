@@ -25,14 +25,14 @@ func TestReviewOverheadSubprocessBudget(t *testing.T) {
 		maximumProcesses int
 		providerCalls    string
 	}{
-		{name: "cold local", mode: protocol.TargetLocal, provider: "clean", maximumProcesses: 80, providerCalls: "1"},
-		{name: "cold branch", mode: protocol.TargetBranch, provider: "clean", maximumProcesses: 43, providerCalls: "1"},
-		{name: "cold commit", mode: protocol.TargetCommit, provider: "clean", maximumProcesses: 33, providerCalls: "1"},
-		{name: "malformed retry", mode: protocol.TargetLocal, retries: 1, provider: "retry", maximumProcesses: 104, providerCalls: "2"},
+		{name: "cold local", mode: protocol.TargetLocal, provider: "clean", maximumProcesses: 77, providerCalls: "1"},
+		{name: "cold branch", mode: protocol.TargetBranch, provider: "clean", maximumProcesses: 40, providerCalls: "1"},
+		{name: "cold commit", mode: protocol.TargetCommit, provider: "clean", maximumProcesses: 30, providerCalls: "1"},
+		{name: "malformed retry", mode: protocol.TargetLocal, retries: 1, provider: "retry", maximumProcesses: 101, providerCalls: "2"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			tools, calls, _, processLog := writeFakeReviewTools(t, test.provider)
+			tools, calls, _, processLog, contextLog := writeFakeReviewTools(t, test.provider)
 			t.Setenv("PATH", tools+string(os.PathListSeparator)+"/usr/bin:/bin")
 			t.Setenv("OPENAI_API_KEY", "fake-provider-credential")
 			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
@@ -70,6 +70,13 @@ func TestReviewOverheadSubprocessBudget(t *testing.T) {
 			}
 			if count := len(strings.Fields(string(processes))); count > test.maximumProcesses {
 				t.Fatalf("subprocesses = %d, budget = %d", count, test.maximumProcesses)
+			}
+			contextCalls, err := os.ReadFile(contextLog)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if calls := strings.Fields(string(contextCalls)); len(calls) != 2 || calls[0] != "probe" || calls[1] != "root" {
+				t.Fatalf("repository context calls = %q", contextCalls)
 			}
 			providerCalls, err := os.ReadFile(calls)
 			if err != nil || strings.TrimSpace(string(providerCalls)) != test.providerCalls {
@@ -114,7 +121,7 @@ func BenchmarkReviewOverhead(b *testing.B) {
 	}
 	for _, scenario := range scenarios {
 		b.Run(scenario.name, func(b *testing.B) {
-			tools, calls, _, processLog := writeFakeReviewTools(b, scenario.provider)
+			tools, calls, _, processLog, _ := writeFakeReviewTools(b, scenario.provider)
 			b.Setenv("PATH", tools+string(os.PathListSeparator)+"/usr/bin:/bin")
 			b.Setenv("OPENAI_API_KEY", "fake-provider-credential")
 			b.Setenv("XDG_CONFIG_HOME", b.TempDir())

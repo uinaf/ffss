@@ -19,6 +19,7 @@ import (
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	repositorypkg "github.com/uinaf/ffss/cli/slopguard/internal/repository"
 )
 
 const (
@@ -33,6 +34,7 @@ type Collector struct {
 	gitPath        string
 	truffleHogPath string
 	skipSecretScan bool
+	repository     *repositorypkg.Context
 }
 
 type collected struct {
@@ -63,6 +65,14 @@ func NewContext(ctx context.Context, options Options) (*Collector, error) {
 		truffleHogPath: options.TruffleHogPath,
 		skipSecretScan: options.SkipSecretScan,
 	}
+	if options.Context != nil {
+		if options.Repository != "" {
+			if err := options.Context.ValidateRequested(options.Repository); err != nil {
+				return nil, err
+			}
+		}
+		return collector.forContext(ctx, options.Context)
+	}
 	if options.Repository == "" {
 		return collector, nil
 	}
@@ -83,10 +93,13 @@ func (collector *Collector) Freeze(ctx context.Context, repository string, reque
 	if err := validateRequest(&request); err != nil {
 		return nil, err
 	}
-	root, err := collector.repositoryRoot(ctx, repository)
-	if err != nil {
+	if collector.repository == nil {
+		return nil, fmt.Errorf("repository context is unavailable")
+	}
+	if err := collector.repository.ValidateRequested(repository); err != nil {
 		return nil, err
 	}
+	root := collector.repository.Root()
 	first, err := collector.collect(ctx, root, request, true)
 	if err != nil {
 		return nil, err
@@ -124,13 +137,22 @@ func (collector *Collector) Freeze(ctx context.Context, repository string, reque
 }
 
 func (collector *Collector) forRepository(ctx context.Context, repository string) (*Collector, error) {
-	git, err := newGitClient(ctx, collector.gitPath, repository)
+	repositoryContext, err := repositorypkg.Resolve(ctx, repositorypkg.Options{Path: repository, GitPath: collector.gitPath})
 	if err != nil {
 		return nil, err
 	}
+	return collector.forContext(ctx, repositoryContext)
+}
+
+func (collector *Collector) forContext(ctx context.Context, repositoryContext *repositorypkg.Context) (*Collector, error) {
+	if err := repositoryContext.Validate(); err != nil {
+		return nil, err
+	}
+	git := &gitClient{path: repositoryContext.GitPath()}
 	scanner := collector.scanner
 	if scanner == nil && !collector.skipSecretScan {
-		scanner, err = newTruffleHogScanner(ctx, collector.truffleHogPath, repository)
+		var err error
+		scanner, err = newTruffleHogScanner(ctx, collector.truffleHogPath, repositoryContext.Root())
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil, err
@@ -138,7 +160,7 @@ func (collector *Collector) forRepository(ctx context.Context, repository string
 			return nil, fmt.Errorf("%w: %w", ErrSecretScan, err)
 		}
 	}
-	return &Collector{git: git, scanner: scanner, skipSecretScan: collector.skipSecretScan}, nil
+	return &Collector{git: git, scanner: scanner, skipSecretScan: collector.skipSecretScan, repository: repositoryContext}, nil
 }
 
 func validateRequest(request *Request) error {
@@ -210,31 +232,6 @@ func validRevision(value string) error {
 		}
 	}
 	return nil
-}
-
-func (collector *Collector) repositoryRoot(ctx context.Context, repository string) (string, error) {
-	absolute, err := filepath.Abs(repository)
-	if err != nil {
-		return "", fmt.Errorf("resolve repository path: %w", err)
-	}
-	output, err := collector.git.run(ctx, absolute, nil, 32<<10, "rev-parse", "--show-toplevel")
-	if err != nil {
-		return "", fmt.Errorf("find repository root: %w", err)
-	}
-	root := strings.TrimSpace(string(output))
-	resolved, err := filepath.EvalSymlinks(root)
-	if err != nil {
-		return "", fmt.Errorf("resolve repository root: %w", err)
-	}
-	requested, err := filepath.EvalSymlinks(absolute)
-	if err != nil {
-		return "", fmt.Errorf("resolve requested repository path: %w", err)
-	}
-	relative, err := filepath.Rel(resolved, requested)
-	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
-		return "", fmt.Errorf("git worktree does not contain requested repository path")
-	}
-	return resolved, nil
 }
 
 func (collector *Collector) collect(ctx context.Context, root string, request Request, materialize bool) (*collected, error) {
