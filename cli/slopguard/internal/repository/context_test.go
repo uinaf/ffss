@@ -102,6 +102,42 @@ func TestValidateGitRejectsInPlaceExecutableReplacement(t *testing.T) {
 	}
 }
 
+func TestRepositoryRootQueryUsesValidatedExecutableSnapshot(t *testing.T) {
+	repository := testRepository(t)
+	gitPath, _, _ := testGitWrapper(t)
+	gitPath, err := filepath.EvalSymlinks(gitPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, err := captureExecutableIdentity(context.Background(), gitPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	executable, cleanup, err := snapshotValidatedExecutable(context.Background(), gitPath, identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+	marker := filepath.Join(filepath.Dir(gitPath), "replacement-ran")
+	replacement := filepath.Join(filepath.Dir(gitPath), "replacement")
+	if err := os.WriteFile(replacement, []byte(fmt.Sprintf("#!/bin/sh\n: > %q\nexit 0\n", marker)), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(replacement, gitPath); err != nil {
+		t.Fatal(err)
+	}
+	output, err := runRepositoryRootQuery(context.Background(), executable, repository)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if root := strings.TrimSpace(string(output)); root != repository {
+		t.Fatalf("repository root = %q, want %q", root, repository)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("replacement executable ran: %v", err)
+	}
+}
+
 func TestValidateRequestedRejectsSamePathWorktreeReplacement(t *testing.T) {
 	parent := t.TempDir()
 	repository := filepath.Join(parent, "repository")
