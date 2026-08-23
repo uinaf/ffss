@@ -40,6 +40,18 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if requested == "" {
 		requested = "."
 	}
+	absolute, resolved, err := resolveRequested(requested)
+	if err != nil {
+		return nil, err
+	}
+	requestedInfo, err := os.Stat(resolved)
+	if err != nil {
+		return nil, fmt.Errorf("inspect requested repository path: %w", err)
+	}
+	expectedRoot, expectedRootInfo, err := discoverWorktreeRoot(resolved)
+	if err != nil {
+		return nil, err
+	}
 	environment := options.Environment
 	if environment == nil {
 		environment = os.Environ()
@@ -77,16 +89,7 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if gitIdentity == nil {
 		return nil, fmt.Errorf("trusted Git executable identity is unavailable after capability probe")
 	}
-	absolute, resolved, err := resolveRequested(requested)
-	if err != nil {
-		return nil, err
-	}
-	requestedInfo, err := os.Stat(resolved)
-	if err != nil {
-		return nil, fmt.Errorf("inspect requested repository path: %w", err)
-	}
-	expectedRoot, expectedRootInfo, err := discoverWorktreeRoot(resolved)
-	if err != nil {
+	if err := validateRepositoryIdentity(absolute, resolved, requestedInfo, expectedRoot, expectedRootInfo); err != nil {
 		return nil, err
 	}
 	command := exec.CommandContext(ctx, gitPath, "-C", absolute, "-c", "core.hooksPath=/dev/null", "rev-parse", "--show-toplevel")
@@ -113,13 +116,6 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if root != expectedRoot {
 		return nil, fmt.Errorf("Git repository root changed during discovery")
 	}
-	currentRequestedInfo, err := os.Stat(resolved)
-	if err != nil {
-		return nil, fmt.Errorf("inspect requested repository path: %w", err)
-	}
-	if !os.SameFile(requestedInfo, currentRequestedInfo) {
-		return nil, fmt.Errorf("requested repository path changed during root discovery")
-	}
 	rootInfo, err := os.Stat(root)
 	if err != nil {
 		return nil, fmt.Errorf("inspect repository root: %w", err)
@@ -127,12 +123,15 @@ func Resolve(ctx context.Context, options Options) (*Context, error) {
 	if !os.SameFile(expectedRootInfo, rootInfo) {
 		return nil, fmt.Errorf("repository root changed during discovery")
 	}
+	if err := validateRepositoryIdentity(absolute, resolved, requestedInfo, expectedRoot, expectedRootInfo); err != nil {
+		return nil, err
+	}
 	repository := &Context{
 		requestedAbsolute: absolute,
 		requestedResolved: resolved,
 		requestedInfo:     requestedInfo,
 		root:              root,
-		rootInfo:          rootInfo,
+		rootInfo:          expectedRootInfo,
 		gitPath:           gitPath,
 		gitIdentity:       gitIdentity,
 	}
@@ -160,28 +159,7 @@ func (repository *Context) Validate() error {
 	if repository == nil || repository.requestedAbsolute == "" || repository.requestedResolved == "" || repository.requestedInfo == nil || repository.root == "" || repository.rootInfo == nil || repository.gitPath == "" || repository.gitIdentity == nil {
 		return fmt.Errorf("repository context is unavailable")
 	}
-	if err := requireContained(repository.root, repository.requestedResolved); err != nil {
-		return err
-	}
-	resolved, err := filepath.EvalSymlinks(repository.requestedAbsolute)
-	if err != nil {
-		return fmt.Errorf("resolve requested repository path: %w", err)
-	}
-	if resolved != repository.requestedResolved {
-		return fmt.Errorf("repository argument changed; resolve a new repository context")
-	}
-	requestedInfo, err := os.Stat(repository.requestedResolved)
-	if err != nil {
-		return fmt.Errorf("inspect requested repository path: %w", err)
-	}
-	rootInfo, err := os.Stat(repository.root)
-	if err != nil {
-		return fmt.Errorf("inspect repository root: %w", err)
-	}
-	if !os.SameFile(repository.requestedInfo, requestedInfo) || !os.SameFile(repository.rootInfo, rootInfo) {
-		return fmt.Errorf("repository worktree changed after validation")
-	}
-	return nil
+	return validateRepositoryIdentity(repository.requestedAbsolute, repository.requestedResolved, repository.requestedInfo, repository.root, repository.rootInfo)
 }
 
 func (repository *Context) ValidateGit(ctx context.Context) error {
@@ -236,6 +214,31 @@ func requireContained(root, requested string) error {
 	relative, err := filepath.Rel(root, requested)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
 		return fmt.Errorf("git worktree does not contain requested repository path")
+	}
+	return nil
+}
+
+func validateRepositoryIdentity(requestedAbsolute, requestedResolved string, requestedInfo os.FileInfo, root string, rootInfo os.FileInfo) error {
+	if err := requireContained(root, requestedResolved); err != nil {
+		return err
+	}
+	resolved, err := filepath.EvalSymlinks(requestedAbsolute)
+	if err != nil {
+		return fmt.Errorf("resolve requested repository path: %w", err)
+	}
+	if resolved != requestedResolved {
+		return fmt.Errorf("repository argument changed; resolve a new repository context")
+	}
+	currentRequestedInfo, err := os.Stat(requestedResolved)
+	if err != nil {
+		return fmt.Errorf("inspect requested repository path: %w", err)
+	}
+	currentRootInfo, err := os.Stat(root)
+	if err != nil {
+		return fmt.Errorf("inspect repository root: %w", err)
+	}
+	if !os.SameFile(requestedInfo, currentRequestedInfo) || !os.SameFile(rootInfo, currentRootInfo) {
+		return fmt.Errorf("repository worktree changed after validation")
 	}
 	return nil
 }

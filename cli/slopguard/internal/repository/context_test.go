@@ -211,6 +211,38 @@ func TestResolveRejectsGitReplacementDuringCapabilityProbe(t *testing.T) {
 	}
 }
 
+func TestResolveRejectsWorktreeReplacementDuringCapabilityProbe(t *testing.T) {
+	parent := t.TempDir()
+	repository := filepath.Join(parent, "repository")
+	if err := os.Mkdir(repository, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("git", "init", "-q", "-b", "main")
+	command.Dir = repository
+	command.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, output)
+	}
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	realGit, err = filepath.Abs(realGit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	wrapper := filepath.Join(directory, "git")
+	backup := filepath.Join(parent, "original")
+	script := fmt.Sprintf("#!/bin/sh\nset -eu\nlast=''\nfor argument in \"$@\"; do last=\"$argument\"; done\nif [ \"$last\" = '--version' ]; then %q \"$@\"; /bin/mv %q %q; /bin/mkdir %q; exit 0; fi\nexec %q \"$@\"\n", realGit, repository, backup, repository, realGit)
+	if err := os.WriteFile(wrapper, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Resolve(context.Background(), Options{Path: repository, GitPath: wrapper}); err == nil || !strings.Contains(err.Error(), "worktree changed") {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+}
+
 func testRepository(t *testing.T) string {
 	t.Helper()
 	repository := t.TempDir()
