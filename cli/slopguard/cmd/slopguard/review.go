@@ -255,7 +255,6 @@ func reviewTelemetryRequested(arguments []string) bool {
 	selected := false
 	seen := false
 	selectedOutput := ""
-	promptKind := ""
 	for index := 0; index < len(arguments); index++ {
 		argument := arguments[index]
 		if argument == "--" || !strings.HasPrefix(argument, "-") {
@@ -292,7 +291,7 @@ func reviewTelemetryRequested(arguments []string) bool {
 				index++
 				value = arguments[index]
 			}
-			if !validReviewFlagPrefix(name, value, &selectedOutput, &promptKind) {
+			if !validReviewFlagSyntax(name, value, &selectedOutput) {
 				return seen && selected
 			}
 			continue
@@ -309,65 +308,19 @@ func reviewTelemetryRequested(arguments []string) bool {
 	return seen && selected
 }
 
-func validReviewFlagPrefix(name, value string, selectedOutput, promptKind *string) bool {
+func validReviewFlagSyntax(name, value string, selectedOutput *string) bool {
 	switch name {
 	case "--output", "-output":
-		if value != "terminal" && value != "json" {
-			return false
-		}
 		if *selectedOutput != "" && *selectedOutput != value {
 			return false
 		}
 		*selectedOutput = value
-	case "--prompt", "-prompt":
-		if *promptKind == "file" || strings.TrimSpace(value) == "" || target.ValidatePrompt(value) != nil {
-			return false
-		}
-		*promptKind = "flag"
-	case "--prompt-file", "-prompt-file":
-		if *promptKind == "flag" {
-			return false
-		}
-		*promptKind = "file"
-	case "--model", "-model":
-		if config.ValidateModel(value) != nil {
-			return false
-		}
-	case "--engine", "-engine":
-		switch protocol.ProviderName(value) {
-		case protocol.ProviderCodex, protocol.ProviderClaude, protocol.ProviderCursor, protocol.ProviderGrok:
-		default:
-			return false
-		}
-	case "--mode", "-mode":
-		switch protocol.TargetMode(value) {
-		case protocol.TargetLocal, protocol.TargetBranch, protocol.TargetCommit:
-		default:
-			return false
-		}
-	case "--reasoning-effort", "-reasoning-effort":
-		switch config.ReasoningEffort(value) {
-		case config.ReasoningMinimal, config.ReasoningLow, config.ReasoningMedium, config.ReasoningHigh, config.ReasoningXHigh, config.ReasoningMax, config.ReasoningUltra:
-		default:
-			return false
-		}
-	case "--timeout", "-timeout":
-		parsed, err := time.ParseDuration(value)
-		if err != nil || parsed <= 0 || parsed > 24*time.Hour {
-			return false
-		}
 	case "--retries", "-retries":
-		parsed, err := strconv.Atoi(value)
-		if err != nil || parsed < 0 || parsed > 1 {
+		if _, err := strconv.ParseInt(value, 0, strconv.IntSize); err != nil {
 			return false
 		}
 	case "--max-bytes", "-max-bytes":
-		parsed, err := strconv.ParseInt(value, 10, 64)
-		if err != nil || parsed < 1 || parsed > target.MaximumMaxBytes {
-			return false
-		}
-	case "--isolation", "-isolation":
-		if protocol.Isolation(value) != protocol.IsolationNative && protocol.Isolation(value) != protocol.IsolationStrict {
+		if _, err := strconv.ParseInt(value, 0, 64); err != nil {
 			return false
 		}
 	}

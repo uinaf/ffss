@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -265,10 +266,15 @@ func TestReviewTelemetryPreScan(t *testing.T) {
 		{name: "invalid telemetry after opt in", arguments: []string{"--telemetry", "--telemetry=invalid"}, want: true},
 		{name: "output conflict before telemetry", arguments: []string{"--output=json", "--output=terminal", "--telemetry"}},
 		{name: "output conflict after telemetry", arguments: []string{"--telemetry", "--output=json", "--output=terminal"}, want: true},
-		{name: "prompt conflict before telemetry", arguments: []string{"--prompt", "task", "--prompt-file", "task.md", "--telemetry"}},
+		{name: "invalid output before telemetry", arguments: []string{"--output", "yaml", "--telemetry"}, want: true},
+		{name: "prompt conflict before telemetry", arguments: []string{"--prompt", "task", "--prompt-file", "task.md", "--telemetry"}, want: true},
 		{name: "prompt conflict after telemetry", arguments: []string{"--telemetry", "--prompt", "task", "--prompt-file", "task.md"}, want: true},
-		{name: "invalid model before telemetry", arguments: []string{"--model", " bad", "--telemetry"}},
+		{name: "invalid model before telemetry", arguments: []string{"--model", " bad", "--telemetry"}, want: true},
 		{name: "invalid model after telemetry", arguments: []string{"--telemetry", "--model", " bad"}, want: true},
+		{name: "invalid retries syntax before telemetry", arguments: []string{"--retries", "many", "--telemetry"}},
+		{name: "invalid retries value before telemetry", arguments: []string{"--retries", "2", "--telemetry"}, want: true},
+		{name: "invalid max bytes syntax before telemetry", arguments: []string{"--max-bytes", "many", "--telemetry"}},
+		{name: "invalid max bytes value before telemetry", arguments: []string{"--max-bytes", "-1", "--telemetry"}, want: true},
 		{name: "after terminator", arguments: []string{"--", "--telemetry"}},
 		{name: "help before telemetry", arguments: []string{"--help", "--telemetry"}},
 		{name: "help after telemetry", arguments: []string{"--telemetry", "--help"}, want: true},
@@ -277,6 +283,35 @@ func TestReviewTelemetryPreScan(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			if got := reviewTelemetryRequested(test.arguments); got != test.want {
 				t.Fatalf("reviewTelemetryRequested(%v) = %t, want %t", test.arguments, got, test.want)
+			}
+		})
+	}
+}
+
+func TestExplicitTelemetryRecordsSemanticFlagFailureRegardlessOfOrder(t *testing.T) {
+	for _, flags := range [][]string{
+		{"--model", " bad", "--telemetry"},
+		{"--telemetry", "--model", " bad"},
+	} {
+		t.Run(strings.Join(flags, "_"), func(t *testing.T) {
+			repository := reviewRepository(t)
+			dependencies := reviewDependencies(t, cleanScanner{}, &scriptedReviewer{})
+			startCalls := 0
+			var event telemetrypkg.Event
+			dependencies.startTelemetry = func(value telemetrypkg.Event) error {
+				startCalls++
+				event = value
+				return nil
+			}
+			arguments := []string{
+				"review", "--repository", repository, "--mode", "local", "--engine", "codex",
+				"--prompt", "Review the target.", "--output", "json",
+			}
+			arguments = append(arguments, flags...)
+			var stdout bytes.Buffer
+			exit := run(t.Context(), arguments, &stdout, io.Discard, dependencies)
+			if exit != 2 || startCalls != 1 || event.Outcome != string(protocol.StatusFailure) || event.FailureClass != string(protocol.FailureConfig) {
+				t.Fatalf("exit=%d start_calls=%d event=%+v output=%s", exit, startCalls, event, stdout.String())
 			}
 		})
 	}
