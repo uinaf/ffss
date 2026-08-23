@@ -26,6 +26,7 @@ retries: 1
 max_bytes: 1048576
 isolation: native
 web_access: false
+telemetry: false
 ```
 
 - Unknown keys, multiple YAML documents, invalid types, and retry counts above
@@ -48,6 +49,11 @@ The corresponding environment variables are `SLOPGUARD_ENGINE`,
 `SLOPGUARD_MODEL`, `SLOPGUARD_REASONING_EFFORT`, `SLOPGUARD_TIMEOUT`,
 `SLOPGUARD_RETRIES`, `SLOPGUARD_MAX_BYTES`, `SLOPGUARD_ISOLATION`, and
 `SLOPGUARD_WEB_ACCESS`.
+
+Telemetry has no environment-variable source. It defaults off and can be
+enabled only with `--telemetry` or `telemetry: true` in the ownership-checked
+account-home XDG file. Repository configuration and an XDG path selected by
+`XDG_CONFIG_HOME` cannot enable it. See [Optional telemetry](TELEMETRY.md).
 
 ## Security controls
 
@@ -101,4 +107,5 @@ slopguard config --engine codex --json
 
 The diagnostic supports the same typed overrides: `--model`,
 `--reasoning-effort`, `--timeout`, `--retries`, `--max-bytes`, `--isolation`, and
-`--web-access`. Use `--repository` to inspect another checkout.
+`--web-access`, and `--telemetry`. Use `--repository` to inspect another
+checkout.

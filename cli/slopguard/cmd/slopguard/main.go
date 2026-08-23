@@ -18,16 +18,19 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
+	"github.com/uinaf/ffss/cli/slopguard/internal/telemetry"
 )
 
 type dependencies struct {
-	stdin        io.Reader
-	lookupEnv    func(string) (string, bool)
-	homeDir      func() (string, error)
-	newCollector func() (*target.Collector, error)
-	newReviewer  func(protocol.ProviderName, string) provider.Reviewer
-	now          func() time.Time
-	observePhase phase.Observer
+	stdin           io.Reader
+	lookupEnv       func(string) (string, bool)
+	homeDir         func() (string, error)
+	newCollector    func() (*target.Collector, error)
+	newReviewer     func(protocol.ProviderName, string) provider.Reviewer
+	now             func() time.Time
+	observePhase    phase.Observer
+	telemetryPath   func() (string, error)
+	appendTelemetry func(string, telemetry.Event) error
 }
 
 func main() {
@@ -59,11 +62,14 @@ func run(ctx context.Context, arguments []string, stdout, stderr io.Writer, depe
 	if len(arguments) > 0 && arguments[0] == "selfupdate" {
 		return runSelfupdate(ctx, arguments[1:], stdout, stderr)
 	}
+	if len(arguments) > 0 && arguments[0] == "telemetry" {
+		return runTelemetry(arguments[1:], stdout, stderr, dependencies)
+	}
 	if len(arguments) == 1 && (arguments[0] == "--help" || arguments[0] == "-h" || arguments[0] == "help") {
-		report(stdout, "usage: slopguard <review|config|schema|selfupdate|version> [options]\n\nreview     review a frozen local, branch, or commit target\nconfig     print the effective configuration and its sources\nschema     print the canonical review or result JSON Schema\nselfupdate replace this binary with a published release\nversion    print the binary version\n")
+		report(stdout, "usage: slopguard <review|config|schema|selfupdate|telemetry|version> [options]\n\nreview     review a frozen local, branch, or commit target\nconfig     print the effective configuration and its sources\nschema     print the canonical review or result JSON Schema\nselfupdate replace this binary with a published release\ntelemetry  export explicitly enabled local metric events\nversion    print the binary version\n")
 		return 0
 	}
-	report(stderr, "usage: slopguard <review|config|schema|selfupdate|version> [options]\n")
+	report(stderr, "usage: slopguard <review|config|schema|selfupdate|telemetry|version> [options]\n")
 	return 2
 }
 
@@ -119,6 +125,7 @@ func runConfig(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		{name: "max_bytes", value: formatInt64(effective.MaxBytes.Value), source: effective.MaxBytes.Source},
 		{name: "isolation", value: string(effective.Isolation.Value), source: effective.Isolation.Source},
 		{name: "web_access", value: formatBool(effective.WebAccess.Value), source: effective.WebAccess.Source},
+		{name: "telemetry", value: formatBool(effective.Telemetry.Value), source: effective.Telemetry.Source},
 	}
 	for _, value := range values {
 		if err := writeConfigValue(stdout, value.name, value.value, value.source); err != nil {

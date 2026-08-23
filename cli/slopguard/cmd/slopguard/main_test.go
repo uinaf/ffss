@@ -586,7 +586,7 @@ func TestTopLevelAndCommandHelp(t *testing.T) {
 	t.Parallel()
 
 	var stdout bytes.Buffer
-	if exit := run(t.Context(), []string{"--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "slopguard <review|config|schema|selfupdate|version>") || !strings.Contains(stdout.String(), "canonical review or result JSON Schema") {
+	if exit := run(t.Context(), []string{"--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "slopguard <review|config|schema|selfupdate|telemetry|version>") || !strings.Contains(stdout.String(), "canonical review or result JSON Schema") {
 		t.Fatalf("top-level help exit=%d output=%q", exit, stdout.String())
 	}
 	stdout.Reset()
@@ -596,6 +596,10 @@ func TestTopLevelAndCommandHelp(t *testing.T) {
 	stdout.Reset()
 	if exit := run(t.Context(), []string{"schema", "--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "schema <review|result>") {
 		t.Fatalf("schema help exit=%d output=%q", exit, stdout.String())
+	}
+	stdout.Reset()
+	if exit := run(t.Context(), []string{"telemetry", "--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "telemetry export") {
+		t.Fatalf("telemetry help exit=%d output=%q", exit, stdout.String())
 	}
 }
 

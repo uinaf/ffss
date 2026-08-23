@@ -38,6 +38,7 @@ type configFlagValues struct {
 	maxBytes  *int64
 	isolation *string
 	webAccess *bool
+	telemetry *bool
 }
 
 func bindConfigFlags(flags *flag.FlagSet) configFlagValues {
@@ -50,6 +51,7 @@ func bindConfigFlags(flags *flag.FlagSet) configFlagValues {
 		maxBytes:  flags.Int64("max-bytes", 0, "maximum frozen bundle bytes"),
 		isolation: flags.String("isolation", "", "provider isolation: strict or native"),
 		webAccess: flags.Bool("web-access", false, "allow provider web access"),
+		telemetry: flags.Bool("telemetry", false, "record privacy-minimized local telemetry"),
 	}
 }
 
@@ -87,6 +89,9 @@ func (values configFlagValues) overrides(flags *flag.FlagSet) (config.Overrides,
 	}
 	if visited["web-access"] {
 		overrides.WebAccess = values.webAccess
+	}
+	if visited["telemetry"] {
+		overrides.Telemetry = values.telemetry
 	}
 	return overrides, nil
 }

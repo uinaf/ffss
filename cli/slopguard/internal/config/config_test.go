@@ -337,6 +337,76 @@ func TestTrustedXDGCanEnableNativeIsolationAndWeb(t *testing.T) {
 	}
 }
 
+func TestTelemetryEnablementTrustBoundary(t *testing.T) {
+	t.Run("flag", func(t *testing.T) {
+		repository := configRepository(t)
+		enabled := true
+		engine := protocol.ProviderCodex
+		effective, err := Load(t.Context(), Options{
+			Repository: repository,
+			LookupEnv:  envLookup(map[string]string{"XDG_CONFIG_HOME": t.TempDir()}),
+			HomeDir:    func() (string, error) { return t.TempDir(), nil },
+			Overrides:  Overrides{Engine: &engine, Telemetry: &enabled},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !effective.Telemetry.Value || effective.Telemetry.Source != SourceFlag {
+			t.Fatalf("telemetry = %+v", effective.Telemetry)
+		}
+	})
+
+	t.Run("trusted account XDG", func(t *testing.T) {
+		repository := configRepository(t)
+		home := t.TempDir()
+		writeConfig(t, filepath.Join(home, ".config", "slopguard", "config.yaml"), "engine: codex\ntelemetry: true\n")
+		effective, err := Load(t.Context(), Options{Repository: repository, LookupEnv: envLookup(nil), HomeDir: func() (string, error) { return home, nil }})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !effective.Telemetry.Value || effective.Telemetry.Source != SourceXDG {
+			t.Fatalf("telemetry = %+v", effective.Telemetry)
+		}
+	})
+
+	t.Run("repository rejected", func(t *testing.T) {
+		repository := configRepository(t)
+		writeConfig(t, filepath.Join(repository, ".slopguard.yaml"), "engine: codex\ntelemetry: true\n")
+		if _, err := loadWithoutUserConfig(t, repository, nil); err == nil || !strings.Contains(err.Error(), "repository config cannot enable telemetry") {
+			t.Fatalf("Load() error = %v", err)
+		}
+	})
+
+	t.Run("environment selected XDG rejected", func(t *testing.T) {
+		repository := configRepository(t)
+		xdg := t.TempDir()
+		writeConfig(t, filepath.Join(xdg, "slopguard", "config.yaml"), "engine: codex\ntelemetry: true\n")
+		_, err := Load(t.Context(), Options{Repository: repository, LookupEnv: envLookup(map[string]string{"XDG_CONFIG_HOME": xdg}), HomeDir: func() (string, error) { return t.TempDir(), nil }})
+		if err == nil || !strings.Contains(err.Error(), "xdg config cannot enable telemetry") {
+			t.Fatalf("Load() error = %v", err)
+		}
+	})
+
+	t.Run("environment variable ignored", func(t *testing.T) {
+		repository := configRepository(t)
+		effective, err := Load(t.Context(), Options{
+			Repository: repository,
+			LookupEnv: envLookup(map[string]string{
+				"XDG_CONFIG_HOME":     t.TempDir(),
+				"SLOPGUARD_ENGINE":    "codex",
+				"SLOPGUARD_TELEMETRY": "true",
+			}),
+			HomeDir: func() (string, error) { return t.TempDir(), nil },
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if effective.Telemetry.Value || effective.Telemetry.Source != SourceDefault {
+			t.Fatalf("telemetry = %+v", effective.Telemetry)
+		}
+	})
+}
+
 func TestEnvironmentSelectedXDGCanRepeatNativeDefaultButCannotEnableWeb(t *testing.T) {
 	t.Parallel()
 

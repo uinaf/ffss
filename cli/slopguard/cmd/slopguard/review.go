@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
+	"github.com/uinaf/ffss/cli/slopguard/internal/buildinfo"
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
 	"github.com/uinaf/ffss/cli/slopguard/internal/orchestrator"
 	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
@@ -18,6 +21,7 @@ import (
 	reportwriter "github.com/uinaf/ffss/cli/slopguard/internal/report"
 	repositorypkg "github.com/uinaf/ffss/cli/slopguard/internal/repository"
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
+	telemetrypkg "github.com/uinaf/ffss/cli/slopguard/internal/telemetry"
 )
 
 type stringList []string
@@ -30,15 +34,46 @@ func (values *stringList) Set(value string) error {
 }
 
 func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer, dependencies dependencies) int {
-	recorder := phase.New(dependencies.now, dependencies.observePhase)
+	var metrics *telemetrypkg.Metrics
+	var telemetryEnabled atomic.Bool
+	enableTelemetry := func() {
+		if telemetryEnabled.Load() {
+			return
+		}
+		metrics = telemetrypkg.NewMetrics()
+		telemetryEnabled.Store(true)
+	}
+	explicitTelemetryRequested := reviewTelemetryRequested(arguments)
+	if explicitTelemetryRequested {
+		enableTelemetry()
+	}
+	recorder := phase.New(dependencies.now, func(measurement phase.Measurement) {
+		if dependencies.observePhase != nil {
+			dependencies.observePhase(measurement)
+		}
+		if telemetryEnabled.Load() {
+			metrics.Observe(measurement)
+		}
+	})
 	ctx = phase.WithRecorder(ctx, recorder)
 	started := recorder.Now()
 	configSpan := recorder.Start(phase.Config)
 	defer configSpan.End()
+	recordTelemetry := func(result protocol.Report) {
+		if telemetryEnabled.Load() {
+			recordReviewTelemetry(dependencies, metrics, result)
+		}
+	}
+	finishArgumentFailure := func(jsonRequested bool, err error) int {
+		result := failureWithElapsed(protocol.FailureConfig, err, started, recorder)
+		exit := writeReviewArgumentFailureReport(ctx, stdout, stderr, jsonRequested, err, result)
+		recordTelemetry(result)
+		return exit
+	}
 	jsonRequested, outputErr := reviewJSONRequested(arguments)
 	if outputErr != nil {
 		configSpan.End()
-		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, outputErr, started, recorder)
+		return finishArgumentFailure(jsonRequested, outputErr)
 	}
 	flags := flag.NewFlagSet("slopguard review", flag.ContinueOnError)
 	repository := flags.String("repository", ".", "Git repository or path within it")
@@ -61,15 +96,12 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 			return 0
 		}
 		configSpan.End()
-		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, err, started, recorder)
+		return finishArgumentFailure(jsonRequested, err)
 	}
-	if flags.NArg() != 0 {
-		configSpan.End()
-		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, errors.New("slopguard review does not accept positional arguments"), started, recorder)
-	}
-	if *output != "terminal" && *output != "json" {
-		configSpan.End()
-		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, errors.New("flag output must be terminal or json"), started, recorder)
+	finish := func(result protocol.Report) int {
+		exit := writeReviewResult(ctx, stdout, stderr, *output, result)
+		recordTelemetry(result)
+		return exit
 	}
 	promptSet := false
 	promptFileSet := false
@@ -77,36 +109,44 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		promptSet = promptSet || item.Name == "prompt"
 		promptFileSet = promptFileSet || item.Name == "prompt-file"
 	})
+	if flags.NArg() != 0 {
+		configSpan.End()
+		return finishArgumentFailure(jsonRequested, errors.New("slopguard review does not accept positional arguments"))
+	}
+	if *output != "terminal" && *output != "json" {
+		configSpan.End()
+		return finishArgumentFailure(jsonRequested, errors.New("flag output must be terminal or json"))
+	}
 	if promptSet && promptFileSet {
 		configSpan.End()
-		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, errors.New("flags prompt and prompt-file are mutually exclusive"), started, recorder)
+		return finishArgumentFailure(jsonRequested, errors.New("flags prompt and prompt-file are mutually exclusive"))
 	}
 	overrides, err := configFlags.overrides(flags)
 	if err != nil {
 		configSpan.End()
-		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, err, started, recorder)
+		return finishArgumentFailure(jsonRequested, err)
 	}
 	resolvedPrompt := *prompt
 	if promptFileSet {
 		resolvedPrompt, err = readReviewPrompt(*promptFile, dependencies.stdin, target.MaximumMaxBytes)
 		if err != nil {
 			configSpan.End()
-			return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureTarget, err, started, recorder))
+			return finish(failureWithElapsed(protocol.FailureTarget, err, started, recorder))
 		}
 	} else if err := target.ValidatePrompt(resolvedPrompt); err != nil {
 		configSpan.End()
-		return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureTarget, err, started, recorder))
+		return finish(failureWithElapsed(protocol.FailureTarget, err, started, recorder))
 	}
 	if strings.TrimSpace(resolvedPrompt) == "" {
 		configSpan.End()
-		return writeReviewArgumentFailure(ctx, stdout, stderr, jsonRequested, errors.New("prompt must not be blank"), started, recorder)
+		return finishArgumentFailure(jsonRequested, errors.New("prompt must not be blank"))
 	}
 	configSpan.End()
 	repositoryProbeSpan := recorder.Start(phase.DependencyProbes)
 	repositoryContext, err := repositorypkg.Resolve(ctx, repositorypkg.Options{Path: *repository})
 	repositoryProbeSpan.End()
 	if err != nil {
-		return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureConfig, err, started, recorder))
+		return finish(failureWithElapsed(protocol.FailureConfig, err, started, recorder))
 	}
 	configSpan = recorder.Start(phase.Config)
 	effective, err := config.Load(ctx, config.Options{
@@ -117,11 +157,14 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	})
 	if err != nil {
 		configSpan.End()
-		return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureConfig, fmt.Errorf("config: %w", err), started, recorder))
+		return finish(failureWithElapsed(protocol.FailureConfig, fmt.Errorf("config: %w", err), started, recorder))
+	}
+	if effective.Telemetry.Value && (effective.Telemetry.Source != config.SourceFlag || explicitTelemetryRequested) {
+		enableTelemetry()
 	}
 	if int64(len(resolvedPrompt)) > effective.MaxBytes.Value {
 		configSpan.End()
-		return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(protocol.FailureTarget, fmt.Errorf("prompt exceeds max_bytes limit of %d", effective.MaxBytes.Value), started, recorder))
+		return finish(failureWithElapsed(protocol.FailureTarget, fmt.Errorf("prompt exceeds max_bytes limit of %d", effective.MaxBytes.Value), started, recorder))
 	}
 	configSpan.End()
 
@@ -144,7 +187,7 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		case errors.Is(err, target.ErrSecretScan):
 			class = protocol.FailureSecretScan
 		}
-		return writeReviewResult(ctx, stdout, stderr, *output, failureWithElapsed(class, fmt.Errorf("initialize target collector: %w", err), started, recorder))
+		return finish(failureWithElapsed(class, fmt.Errorf("initialize target collector: %w", err), started, recorder))
 	}
 	newReviewer := dependencies.newReviewer
 	if newReviewer == nil {
@@ -169,8 +212,160 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		},
 		Now:     recorder.Now,
 		Started: started,
+		ObserveBundleBytes: func(value int64) {
+			if telemetryEnabled.Load() {
+				metrics.SetBundleBytes(value)
+			}
+		},
 	})
-	return writeReviewResult(ctx, stdout, stderr, *output, result)
+	return finish(result)
+}
+
+func recordReviewTelemetry(dependencies dependencies, metrics *telemetrypkg.Metrics, result protocol.Report) {
+	path, err := telemetryStorePath(dependencies)
+	if err != nil {
+		return
+	}
+	appendEvent := dependencies.appendTelemetry
+	if appendEvent == nil {
+		appendEvent = func(path string, event telemetrypkg.Event) error {
+			return (telemetrypkg.Store{Path: path}).Append(event)
+		}
+	}
+	_ = appendEvent(path, metrics.Event(buildinfo.TelemetryVersion(), result))
+}
+
+func telemetryStorePath(dependencies dependencies) (string, error) {
+	if dependencies.telemetryPath != nil {
+		return dependencies.telemetryPath()
+	}
+	return telemetrypkg.DefaultPath(dependencies.homeDir)
+}
+
+func reviewTelemetryRequested(arguments []string) bool {
+	selected := false
+	seen := false
+	selectedOutput := ""
+	promptKind := ""
+	for index := 0; index < len(arguments); index++ {
+		argument := arguments[index]
+		if argument == "--" || !strings.HasPrefix(argument, "-") {
+			break
+		}
+		name, raw, inline := strings.Cut(argument, "=")
+		if name == "--telemetry" || name == "-telemetry" {
+			if !inline {
+				raw = "true"
+			}
+			value, err := strconv.ParseBool(raw)
+			if err != nil {
+				return seen && selected
+			}
+			if seen && selected != value {
+				return false
+			}
+			seen = true
+			selected = value
+			continue
+		}
+		if inline {
+			switch name {
+			case "--skip-secret-scan", "-skip-secret-scan", "--web-access", "-web-access":
+				if _, err := strconv.ParseBool(raw); err != nil {
+					return seen && selected
+				}
+				continue
+			}
+		}
+		if reviewFlagConsumesNext(name) {
+			value := raw
+			if !inline {
+				if index+1 >= len(arguments) {
+					return seen && selected
+				}
+				index++
+				value = arguments[index]
+			}
+			if !validReviewFlagPrefix(name, value, &selectedOutput, &promptKind) {
+				return seen && selected
+			}
+			continue
+		}
+		switch argument {
+		case "--help", "-h":
+			return seen && selected
+		case "--skip-secret-scan", "-skip-secret-scan", "--web-access", "-web-access":
+			continue
+		default:
+			return seen && selected
+		}
+	}
+	return seen && selected
+}
+
+func validReviewFlagPrefix(name, value string, selectedOutput, promptKind *string) bool {
+	switch name {
+	case "--output", "-output":
+		if value != "terminal" && value != "json" {
+			return false
+		}
+		if *selectedOutput != "" && *selectedOutput != value {
+			return false
+		}
+		*selectedOutput = value
+	case "--prompt", "-prompt":
+		if *promptKind == "file" || strings.TrimSpace(value) == "" || target.ValidatePrompt(value) != nil {
+			return false
+		}
+		*promptKind = "flag"
+	case "--prompt-file", "-prompt-file":
+		if *promptKind == "flag" {
+			return false
+		}
+		*promptKind = "file"
+	case "--model", "-model":
+		if config.ValidateModel(value) != nil {
+			return false
+		}
+	case "--engine", "-engine":
+		switch protocol.ProviderName(value) {
+		case protocol.ProviderCodex, protocol.ProviderClaude, protocol.ProviderCursor, protocol.ProviderGrok:
+		default:
+			return false
+		}
+	case "--mode", "-mode":
+		switch protocol.TargetMode(value) {
+		case protocol.TargetLocal, protocol.TargetBranch, protocol.TargetCommit:
+		default:
+			return false
+		}
+	case "--reasoning-effort", "-reasoning-effort":
+		switch config.ReasoningEffort(value) {
+		case config.ReasoningMinimal, config.ReasoningLow, config.ReasoningMedium, config.ReasoningHigh, config.ReasoningXHigh, config.ReasoningMax, config.ReasoningUltra:
+		default:
+			return false
+		}
+	case "--timeout", "-timeout":
+		parsed, err := time.ParseDuration(value)
+		if err != nil || parsed <= 0 || parsed > 24*time.Hour {
+			return false
+		}
+	case "--retries", "-retries":
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 0 || parsed > 1 {
+			return false
+		}
+	case "--max-bytes", "-max-bytes":
+		parsed, err := strconv.ParseInt(value, 10, 64)
+		if err != nil || parsed < 1 || parsed > target.MaximumMaxBytes {
+			return false
+		}
+	case "--isolation", "-isolation":
+		if protocol.Isolation(value) != protocol.IsolationNative && protocol.Isolation(value) != protocol.IsolationStrict {
+			return false
+		}
+	}
+	return true
 }
 
 func reviewJSONRequested(arguments []string) (bool, error) {
@@ -220,6 +415,7 @@ func reviewFlagConsumesNext(argument string) bool {
 		"--prompt", "-prompt",
 		"--prompt-file", "-prompt-file",
 		"--context-file", "-context-file",
+		"--output", "-output",
 		"--engine", "-engine",
 		"--model", "-model",
 		"--reasoning-effort", "-reasoning-effort",
@@ -284,8 +480,12 @@ func safePromptFileError(err error) error {
 }
 
 func writeReviewArgumentFailure(ctx context.Context, stdout, stderr io.Writer, jsonRequested bool, err error, started time.Time, recorder *phase.Recorder) int {
+	return writeReviewArgumentFailureReport(ctx, stdout, stderr, jsonRequested, err, failureWithElapsed(protocol.FailureConfig, err, started, recorder))
+}
+
+func writeReviewArgumentFailureReport(ctx context.Context, stdout, stderr io.Writer, jsonRequested bool, err error, result protocol.Report) int {
 	if jsonRequested {
-		return writeReviewResult(ctx, stdout, stderr, "json", failureWithElapsed(protocol.FailureConfig, err, started, recorder))
+		return writeReviewResult(ctx, stdout, stderr, "json", result)
 	}
 	span := phase.Start(ctx, phase.ReportWrite)
 	defer span.End()

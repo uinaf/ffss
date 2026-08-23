@@ -71,6 +71,7 @@ type Effective struct {
 	MaxBytes        Value[int64]                 `json:"max_bytes"`
 	Isolation       Value[protocol.Isolation]    `json:"isolation"`
 	WebAccess       Value[bool]                  `json:"web_access"`
+	Telemetry       Value[bool]                  `json:"telemetry"`
 }
 
 type Overrides struct {
@@ -82,6 +83,7 @@ type Overrides struct {
 	MaxBytes        *int64
 	Isolation       *protocol.Isolation
 	WebAccess       *bool
+	Telemetry       *bool
 }
 
 func defaults() Effective {
@@ -94,6 +96,7 @@ func defaults() Effective {
 		MaxBytes:        Value[int64]{Value: target.DefaultMaxBytes, Source: SourceDefault},
 		Isolation:       Value[protocol.Isolation]{Value: protocol.IsolationNative, Source: SourceDefault},
 		WebAccess:       Value[bool]{Value: false, Source: SourceDefault},
+		Telemetry:       Value[bool]{Value: false, Source: SourceDefault},
 	}
 }
 
@@ -129,6 +132,10 @@ func (effective Effective) Validate() error {
 		return fmt.Errorf("%s isolation: invalid value %q", effective.Isolation.Source, effective.Isolation.Value)
 	}
 	return nil
+}
+
+func ValidateModel(value string) error {
+	return optionalText("model", value, 200)
 }
 
 func optionalText(name, value string, maximum int) error {

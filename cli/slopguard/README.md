@@ -79,6 +79,11 @@ slopguard review --mode commit --commit HEAD --engine codex \
 Slopguard never edits source, runs tests, commits, pushes, chooses a provider,
 or falls back to another model. Builder verification happens before review.
 
+Optional telemetry is disabled by default. Enable one run with `--telemetry`
+and export the bounded local metric spool explicitly with
+`slopguard telemetry export`. Reviews never upload telemetry. See
+[Optional telemetry](docs/TELEMETRY.md).
+
 ## Machine output
 
 Use `--output json` for the versioned result contract. The JSON document is the
@@ -114,6 +119,7 @@ review to the installed CLI. It does not contain a second runtime.
 - [Configuration and isolation](docs/CONFIG.md)
 - [Review engines](docs/engines/README.md)
 - [Performance measurement](docs/PERFORMANCE.md)
+- [Optional telemetry](docs/TELEMETRY.md)
 - [Local, branch, and commit targets](docs/TARGETS.md)
 - [Versioned result and exit contract](docs/RESULT_SCHEMA.md)
 - [Release artifacts and verification](docs/RELEASES.md)

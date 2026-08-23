@@ -37,6 +37,14 @@ func Release() string {
 	return resolvedVersion
 }
 
+// TelemetryVersion omits source revisions and custom build identifiers.
+func TelemetryVersion() string {
+	if release := Release(); release != "" {
+		return release
+	}
+	return "development"
+}
+
 // vcsModified reports a build stamped from a dirty checkout; a release
 // version string on modified sources is not a release.
 func vcsModified(build *debug.BuildInfo) bool {
