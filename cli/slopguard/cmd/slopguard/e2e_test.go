@@ -57,6 +57,8 @@ func TestBinaryEndToEndWithFakeCodex(t *testing.T) {
 			}
 			if test.stdin != "" {
 				arguments = append(arguments, "--prompt-file", "-")
+			} else {
+				arguments = append(arguments, "--prompt", "Review the target.")
 			}
 			command := exec.Command(binary, arguments...)
 			if test.stdin != "" {
