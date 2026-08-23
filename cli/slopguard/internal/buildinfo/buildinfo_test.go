@@ -2,8 +2,19 @@ package buildinfo
 
 import (
 	"runtime/debug"
+	"strings"
 	"testing"
 )
+
+func TestTelemetryVersionOmitsRevision(t *testing.T) {
+	version := TelemetryVersion()
+	if version != "development" && !releaseTagPattern.MatchString(version) {
+		t.Fatalf("TelemetryVersion() = %q", version)
+	}
+	if strings.ContainsAny(version, "() ") {
+		t.Fatalf("TelemetryVersion() exposed build identity: %q", version)
+	}
+}
 
 func TestResolveWithoutBuildInfo(t *testing.T) {
 	gotVersion, gotCommit := resolve("dev", "unknown", nil, false)

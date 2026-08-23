@@ -38,6 +38,7 @@ type rawConfig struct {
 	MaxBytes        yamlInt    `yaml:"max_bytes"`
 	Isolation       yamlString `yaml:"isolation"`
 	WebAccess       yamlBool   `yaml:"web_access"`
+	Telemetry       yamlBool   `yaml:"telemetry"`
 }
 
 type yamlString struct {
@@ -215,7 +216,7 @@ func validateYAMLDocument(content []byte) error {
 	}
 	expected := map[string]string{
 		"engine": "!!str", "model": "!!str", "reasoning_effort": "!!str", "timeout": "!!str",
-		"retries": "!!int", "max_bytes": "!!int", "isolation": "!!str", "web_access": "!!bool",
+		"retries": "!!int", "max_bytes": "!!int", "isolation": "!!str", "web_access": "!!bool", "telemetry": "!!bool",
 	}
 	seen := map[string]struct{}{}
 	mapping := document.Content[0]
@@ -314,6 +315,9 @@ func applyOverrides(effective *Effective, overrides Overrides) error {
 	if overrides.WebAccess != nil {
 		raw.WebAccess = yamlBool{value: *overrides.WebAccess, set: true}
 	}
+	if overrides.Telemetry != nil {
+		raw.Telemetry = yamlBool{value: *overrides.Telemetry, set: true}
+	}
 	return applyRaw(effective, raw, SourceFlag, true)
 }
 
@@ -326,6 +330,9 @@ func applyRaw(effective *Effective, raw rawConfig, source Source, allowCapabilit
 	}
 	if raw.WebAccess.set && raw.WebAccess.value && !allowCapabilities {
 		return fmt.Errorf("%s config cannot enable web access", source)
+	}
+	if raw.Telemetry.set && raw.Telemetry.value && !allowCapabilities {
+		return fmt.Errorf("%s config cannot enable telemetry", source)
 	}
 	if raw.Engine.set {
 		effective.Engine = Value[protocol.ProviderName]{Value: protocol.ProviderName(raw.Engine.value), Source: source}
@@ -356,6 +363,9 @@ func applyRaw(effective *Effective, raw rawConfig, source Source, allowCapabilit
 	if raw.WebAccess.set {
 		effective.WebAccess = Value[bool]{Value: raw.WebAccess.value, Source: source}
 	}
+	if raw.Telemetry.set {
+		effective.Telemetry = Value[bool]{Value: raw.Telemetry.value, Source: source}
+	}
 	return nil
 }
 
@@ -375,7 +385,7 @@ func validateRaw(raw rawConfig, source Source) error {
 		}
 	}
 	if raw.Model.set {
-		if err := optionalText("model", raw.Model.value, 200); err != nil {
+		if err := ValidateModel(raw.Model.value); err != nil {
 			return fmt.Errorf("%s model: %w", source, err)
 		}
 	}

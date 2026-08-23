@@ -21,14 +21,15 @@ const retryHeader = "\nSLOPGUARD-TRUSTED-PROTOCOL-RETRY-V1\nThe previous respons
 type ReviewerFactory func(protocol.ProviderName, string) provider.Reviewer
 
 type Options struct {
-	Collector   *target.Collector
-	NewReviewer ReviewerFactory
-	Repository  string
-	Target      target.Request
-	Config      config.Effective
-	Progress    func(string)
-	Now         func() time.Time
-	Started     time.Time
+	Collector          *target.Collector
+	NewReviewer        ReviewerFactory
+	Repository         string
+	Target             target.Request
+	Config             config.Effective
+	Progress           func(string)
+	Now                func() time.Time
+	Started            time.Time
+	ObserveBundleBytes func(int64)
 }
 
 func protocolRetryInstruction(reason protocol.ProtocolReason) string {
@@ -97,6 +98,9 @@ func Run(ctx context.Context, options Options) protocol.Report {
 	bundle, err := options.Collector.Freeze(ctx, options.Repository, options.Target)
 	if err != nil {
 		return failure(classify(err), err, nil, []protocol.Attempt{})
+	}
+	if options.ObserveBundleBytes != nil {
+		options.ObserveBundleBytes(int64(len(bundle.Payload())))
 	}
 	reviewedTarget := bundle.Target()
 	reviewer := options.NewReviewer(options.Config.Engine.Value, bundle.Repository())
