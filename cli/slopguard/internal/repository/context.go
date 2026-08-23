@@ -332,14 +332,13 @@ func captureBoundaryIdentity(path string) (*boundaryIdentity, error) {
 	if err != nil {
 		return nil, err
 	}
+	if before.Mode().IsRegular() {
+		return captureStableRegularBoundaryIdentity(path)
+	}
 	identity := &boundaryIdentity{info: before}
 	var content []byte
+	var resolvedTarget string
 	switch {
-	case before.Mode().IsRegular():
-		if before.Size() > 64<<10 {
-			return nil, fmt.Errorf("Git metadata file exceeds safe identity limit")
-		}
-		content, err = os.ReadFile(path)
 	case before.Mode()&os.ModeSymlink != 0:
 		var target string
 		target, err = os.Readlink(path)
@@ -348,7 +347,6 @@ func captureBoundaryIdentity(path string) (*boundaryIdentity, error) {
 			if !filepath.IsAbs(target) {
 				target = filepath.Join(filepath.Dir(path), target)
 			}
-			var resolvedTarget string
 			resolvedTarget, err = filepath.EvalSymlinks(target)
 			if err == nil {
 				identity.target, err = captureBoundaryIdentity(resolvedTarget)
@@ -373,7 +371,76 @@ func captureBoundaryIdentity(path string) (*boundaryIdentity, error) {
 		identity.hasDigest = true
 		identity.digest = sha256.Sum256(content)
 	}
+	if identity.target != nil {
+		currentResolvedTarget, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			return nil, err
+		}
+		if currentResolvedTarget != resolvedTarget {
+			return nil, fmt.Errorf("Git metadata symlink target changed while reading identity")
+		}
+		currentTarget, err := captureBoundaryIdentity(currentResolvedTarget)
+		if err != nil {
+			return nil, err
+		}
+		if !sameBoundaryIdentity(identity.target, currentTarget) {
+			return nil, fmt.Errorf("Git metadata symlink target changed while reading identity")
+		}
+	}
 	return identity, nil
+}
+
+func captureStableRegularBoundaryIdentity(path string) (*boundaryIdentity, error) {
+	first, err := captureRegularBoundaryIdentity(path)
+	if err != nil {
+		return nil, err
+	}
+	second, err := captureRegularBoundaryIdentity(path)
+	if err != nil {
+		return nil, err
+	}
+	if !sameBoundaryIdentity(first, second) {
+		return nil, fmt.Errorf("Git metadata file changed between identity reads")
+	}
+	return second, nil
+}
+
+func captureRegularBoundaryIdentity(path string) (_ *boundaryIdentity, returnErr error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			returnErr = errors.Join(returnErr, closeErr)
+		}
+	}()
+	before, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !before.Mode().IsRegular() || before.Size() > 64<<10 {
+		return nil, fmt.Errorf("Git metadata file exceeds safe identity limit")
+	}
+	content, err := io.ReadAll(io.LimitReader(file, (64<<10)+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) != before.Size() {
+		return nil, fmt.Errorf("Git metadata file changed while reading identity")
+	}
+	after, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	pathInfo, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !os.SameFile(before, after) || !os.SameFile(after, pathInfo) || before.Mode() != after.Mode() || after.Mode() != pathInfo.Mode() || before.Size() != after.Size() || after.Size() != pathInfo.Size() || !before.ModTime().Equal(after.ModTime()) || !after.ModTime().Equal(pathInfo.ModTime()) {
+		return nil, fmt.Errorf("Git metadata file changed while reading identity")
+	}
+	return &boundaryIdentity{info: after, digest: sha256.Sum256(content), hasDigest: true}, nil
 }
 
 func captureOpenExecutableIdentity(ctx context.Context, path string, file *os.File) (*executableIdentity, error) {
