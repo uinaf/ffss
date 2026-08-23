@@ -97,6 +97,9 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("prepare provider runtime: %v", err), grok.environment, nil)
 	}
 	defer func() {
+		preparationSpan.End()
+		cleanupSpan := phase.Start(ctx, phase.ProviderPreparation)
+		defer cleanupSpan.End()
 		if err := runtime.Close(); err != nil && returnError == nil {
 			result = Result{}
 			returnError = newFailure(protocol.FailureInternal, err.Error(), runtime.Environment(), nil)

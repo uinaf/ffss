@@ -47,3 +47,36 @@ func TestContextRecorderClampsClockRegression(t *testing.T) {
 		t.Fatalf("measurement = %+v", measurement)
 	}
 }
+
+func TestObserverMayEndAnotherSpan(t *testing.T) {
+	t.Parallel()
+
+	current := time.Unix(0, 0)
+	var nested *Span
+	var measurements []Measurement
+	recorder := New(func() time.Time {
+		value := current
+		current = current.Add(10 * time.Millisecond)
+		return value
+	}, func(measurement Measurement) {
+		measurements = append(measurements, measurement)
+		if measurement.Name == Config {
+			nested.End()
+		}
+	})
+	outer := recorder.Start(Config)
+	nested = recorder.Start(ReportWrite)
+	done := make(chan struct{})
+	go func() {
+		outer.End()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("re-entrant observer deadlocked")
+	}
+	if len(measurements) != 2 || measurements[0].Name != Config || measurements[1].Name != ReportWrite {
+		t.Fatalf("measurements = %+v", measurements)
+	}
+}

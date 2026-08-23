@@ -267,6 +267,8 @@ func writeReviewArgumentFailure(ctx context.Context, stdout, stderr io.Writer, j
 	if jsonRequested {
 		return writeReviewResult(ctx, stdout, stderr, "json", failureWithElapsed(protocol.FailureConfig, err, started, recorder))
 	}
+	span := phase.Start(ctx, phase.ReportWrite)
+	defer span.End()
 	report(stderr, "%v\n", err)
 	return 2
 }

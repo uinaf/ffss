@@ -140,6 +140,24 @@ func TestReviewCommandFailuresRetainElapsedTime(t *testing.T) {
 	}
 }
 
+func TestReviewCommandRecordsTerminalArgumentWritePhase(t *testing.T) {
+	t.Parallel()
+
+	clock := &steppingClock{current: time.Unix(0, 0), step: 5 * time.Millisecond}
+	var measurements []phase.Measurement
+	var stderr bytes.Buffer
+	exit := run(t.Context(), []string{"review", "--unknown"}, io.Discard, &stderr, dependencies{
+		now: clock.Now,
+		observePhase: func(measurement phase.Measurement) {
+			measurements = append(measurements, measurement)
+		},
+	})
+	if exit != 2 || !strings.Contains(stderr.String(), "flag provided but not defined") {
+		t.Fatalf("exit=%d stderr=%q", exit, stderr.String())
+	}
+	assertMeasuredPhases(t, measurements, phase.Config, phase.ReportWrite)
+}
+
 func TestReviewCommandPrintsEveryFindingAndExitsOne(t *testing.T) {
 	t.Parallel()
 

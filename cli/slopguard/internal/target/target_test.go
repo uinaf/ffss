@@ -16,6 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"golang.org/x/sys/unix"
 )
@@ -82,6 +83,33 @@ func TestFreezeLocalCapturesCompleteImmutableTarget(t *testing.T) {
 	writeFile(t, repository, "tracked.txt", "changed after freeze\n")
 	if err := bundle.VerifyUnchanged(context.Background()); !errors.Is(err, ErrSourceChanged) {
 		t.Fatalf("VerifyUnchanged() error = %v, want ErrSourceChanged", err)
+	}
+}
+
+func TestLazyCollectorRecordsOneTargetFreeze(t *testing.T) {
+	t.Parallel()
+
+	repository := committedRepository(t)
+	writeFile(t, repository, "file.txt", "changed\n")
+	collector := newCollector(t, &recordingScanner{})
+	current := time.Unix(0, 0)
+	var measurements []phase.Measurement
+	recorder := phase.New(func() time.Time {
+		value := current
+		current = current.Add(5 * time.Millisecond)
+		return value
+	}, func(measurement phase.Measurement) {
+		measurements = append(measurements, measurement)
+	})
+	if _, err := collector.Freeze(phase.WithRecorder(context.Background(), recorder), repository, Request{Mode: protocol.TargetLocal}); err != nil {
+		t.Fatal(err)
+	}
+	counts := make(map[phase.Name]int)
+	for _, measurement := range measurements {
+		counts[measurement.Name]++
+	}
+	if counts[phase.TargetFreeze] != 1 || counts[phase.SecretScan] != 1 {
+		t.Fatalf("phase counts = %+v", counts)
 	}
 }
 

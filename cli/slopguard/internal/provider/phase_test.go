@@ -60,16 +60,21 @@ func TestProviderPhaseCoverage(t *testing.T) {
 				t.Fatal(err)
 			}
 			seen := make(map[phase.Name]bool, len(measurements))
+			counts := make(map[phase.Name]int, len(measurements))
 			for _, measurement := range measurements {
 				if measurement.Duration <= 0 {
 					t.Fatalf("phase %s duration = %s", measurement.Name, measurement.Duration)
 				}
 				seen[measurement.Name] = true
+				counts[measurement.Name]++
 			}
 			for _, expected := range []phase.Name{phase.DependencyProbes, phase.ProviderPreparation, phase.ProviderProcess, phase.ProtocolDecode} {
 				if !seen[expected] {
 					t.Fatalf("phase %s missing from %+v", expected, measurements)
 				}
+			}
+			if counts[phase.ProviderPreparation] < 3 {
+				t.Fatalf("provider cleanup was not attributed: %+v", measurements)
 			}
 		})
 	}

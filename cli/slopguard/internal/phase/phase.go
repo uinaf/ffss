@@ -30,9 +30,11 @@ type Observer func(Measurement)
 type Clock func() time.Time
 
 type Recorder struct {
-	now      Clock
-	observe  Observer
-	observeM sync.Mutex
+	now        Clock
+	observe    Observer
+	deliveryM  sync.Mutex
+	delivering bool
+	pending    []Measurement
 }
 
 func New(now Clock, observe Observer) *Recorder {
@@ -64,9 +66,23 @@ func (recorder *Recorder) record(name Name, started, ended time.Time) {
 	if ended.Before(started) {
 		duration = 0
 	}
-	recorder.observeM.Lock()
-	recorder.observe(Measurement{Name: name, Duration: duration})
-	recorder.observeM.Unlock()
+	measurement := Measurement{Name: name, Duration: duration}
+	recorder.deliveryM.Lock()
+	recorder.pending = append(recorder.pending, measurement)
+	if recorder.delivering {
+		recorder.deliveryM.Unlock()
+		return
+	}
+	recorder.delivering = true
+	for len(recorder.pending) > 0 {
+		measurement = recorder.pending[0]
+		recorder.pending = recorder.pending[1:]
+		recorder.deliveryM.Unlock()
+		recorder.observe(measurement)
+		recorder.deliveryM.Lock()
+	}
+	recorder.delivering = false
+	recorder.deliveryM.Unlock()
 }
 
 type Span struct {

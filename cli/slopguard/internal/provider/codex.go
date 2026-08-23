@@ -91,6 +91,9 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("prepare provider runtime: %v", err), codex.environment, nil)
 	}
 	defer func() {
+		preparationSpan.End()
+		cleanupSpan := phase.Start(ctx, phase.ProviderPreparation)
+		defer cleanupSpan.End()
 		if err := runtime.Close(); err != nil && returnError == nil {
 			result = Result{}
 			returnError = newFailure(protocol.FailureInternal, err.Error(), runtime.Environment(), nil)
@@ -125,6 +128,9 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("create Codex state: %v", err), runtime.Environment(), nil)
 	}
 	defer func() {
+		preparationSpan.End()
+		cleanupSpan := phase.Start(ctx, phase.ProviderPreparation)
+		defer cleanupSpan.End()
 		if err := os.RemoveAll(state); err != nil && returnError == nil {
 			result = Result{}
 			returnError = newFailure(protocol.FailureInternal, fmt.Sprintf("remove Codex state: %v", err), runtime.Environment(), nil)
@@ -143,7 +149,12 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("create Codex output: %v", err), runtime.Environment(), nil)
 	}
-	defer func() { _ = outputFile.Close() }()
+	defer func() {
+		preparationSpan.End()
+		cleanupSpan := phase.Start(ctx, phase.ProviderPreparation)
+		defer cleanupSpan.End()
+		_ = outputFile.Close()
+	}()
 	model := request.Config.Model.Value
 	if model == "" {
 		model = DefaultCodexModel
