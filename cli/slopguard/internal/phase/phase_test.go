@@ -110,3 +110,39 @@ func TestObserverMayReenterSameSpan(t *testing.T) {
 		t.Fatalf("measurements = %+v", measurements)
 	}
 }
+
+func TestObserverPanicDoesNotPoisonLaterDelivery(t *testing.T) {
+	t.Parallel()
+
+	current := time.Unix(0, 0)
+	first := true
+	var nested *Span
+	var measurements []Measurement
+	recorder := New(func() time.Time {
+		value := current
+		current = current.Add(10 * time.Millisecond)
+		return value
+	}, func(measurement Measurement) {
+		measurements = append(measurements, measurement)
+		if first {
+			first = false
+			nested.End()
+			panic("observer panic")
+		}
+	})
+	outer := recorder.Start(Config)
+	nested = recorder.Start(SourceRevalidation)
+	func() {
+		defer func() {
+			if recovered := recover(); recovered != "observer panic" {
+				t.Fatalf("recovered = %v", recovered)
+			}
+		}()
+		outer.End()
+	}()
+	later := recorder.Start(ReportWrite)
+	later.End()
+	if len(measurements) != 3 || measurements[0].Name != Config || measurements[1].Name != SourceRevalidation || measurements[2].Name != ReportWrite {
+		t.Fatalf("measurements = %+v", measurements)
+	}
+}

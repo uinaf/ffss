@@ -75,15 +75,31 @@ func (recorder *Recorder) record(name Name, started, ended time.Time) {
 		return
 	}
 	recorder.delivering = true
-	for len(recorder.pending) > 0 {
-		measurement = recorder.pending[0]
+	recorder.deliveryM.Unlock()
+	recorder.deliver()
+}
+
+func (recorder *Recorder) deliver() {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			recorder.deliveryM.Lock()
+			recorder.delivering = false
+			recorder.deliveryM.Unlock()
+			panic(recovered)
+		}
+	}()
+	for {
+		recorder.deliveryM.Lock()
+		if len(recorder.pending) == 0 {
+			recorder.delivering = false
+			recorder.deliveryM.Unlock()
+			return
+		}
+		measurement := recorder.pending[0]
 		recorder.pending = recorder.pending[1:]
 		recorder.deliveryM.Unlock()
 		recorder.observe(measurement)
-		recorder.deliveryM.Lock()
 	}
-	recorder.delivering = false
-	recorder.deliveryM.Unlock()
 }
 
 type Span struct {
