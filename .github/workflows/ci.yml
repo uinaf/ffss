@@ -14,6 +14,7 @@ jobs:
     name: classify changes
     runs-on: blacksmith-2vcpu-ubuntu-2404
     outputs:
+      clilib: ${{ steps.filter.outputs.clilib }}
       slopmachine: ${{ steps.filter.outputs.slopmachine }}
       slopguard: ${{ steps.filter.outputs.slopguard }}
       skills: ${{ steps.filter.outputs.skills }}
@@ -25,17 +26,46 @@ jobs:
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           filters: |
+            clilib:
+              - 'cli/lib/**'
             slopmachine:
               - 'cli/slopmachine/**'
+              - 'cli/lib/**'
               - 'skills/slopmachine/**'
             slopguard:
               - 'cli/slopguard/**'
+              - 'cli/lib/**'
               - '.github/workflows/ci.yml'
               - '.github/workflows/release-slopguard.yml'
             skills:
               - 'skills/**'
               - 'cli/*/skills/**'
               - 'tools/skill-evals/**'
+
+  clilib:
+    name: cli/lib verify
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.clilib == 'true'
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    defaults:
+      run:
+        working-directory: cli/lib
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+        with:
+          working_directory: cli/lib
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-clilib-${{ runner.os }}-${{ hashFiles('cli/lib/go.sum', 'cli/lib/mise.toml') }}
+          restore-keys: |
+            go-clilib-${{ runner.os }}-
+      - run: mise run verify
 
   slopmachine:
     name: slopmachine verify
