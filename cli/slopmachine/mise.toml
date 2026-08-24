@@ -23,7 +23,7 @@ description = "Run unit tests"
 run = "go test -p 4 -parallel 4 ./..."
 
 [tasks."test:coverage"]
-description = "Enforce package and CLI integration coverage floors"
+description = "Run tests once with race detection and enforce coverage floors"
 run = "bash scripts/test-coverage.sh"
 
 [tasks."test:race"]
@@ -105,4 +105,4 @@ run = "go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./..."
 
 [tasks.verify]
 description = "Run deterministic repository verification"
-depends = ["fmt:check", "test", "test:coverage", "test:race", "vet", "build", "conformance", "installer:check", "release:check"]
+depends = ["fmt:check", "test:coverage", "vet", "build", "conformance", "installer:check", "release:check"]
