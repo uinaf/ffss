@@ -83,7 +83,8 @@ func newCLIHarness(t *testing.T) *cliHarness {
 	t.Helper()
 	bin := filepath.Join(t.TempDir(), "slopmachine")
 	buildArgs := []string{"build", "-o", bin, "."}
-	if os.Getenv("SLOPMACHINE_COVERAGE_DIR") != "" {
+	coverageDir := os.Getenv("SLOPMACHINE_COVERAGE_DIR")
+	if coverageDir != "" {
 		buildArgs = []string{"build", "-cover", "-covermode=atomic", "-coverpkg=github.com/uinaf/ffss/cli/slopmachine/...", "-o", bin, "."}
 	}
 	build := exec.Command("go", buildArgs...)
@@ -103,12 +104,23 @@ func newCLIHarness(t *testing.T) *cliHarness {
 	runGit(t, repoDir, "add", ".")
 	runGit(t, repoDir, "commit", "-m", "init")
 
+	env := make([]string, 0, len(os.Environ())+2)
+	for _, variable := range os.Environ() {
+		if coverageDir != "" && strings.HasPrefix(variable, "GOCOVERDIR=") {
+			continue
+		}
+		env = append(env, variable)
+	}
+	env = append(env, "SLOPMACHINE_DB="+db)
+	if coverageDir != "" {
+		env = append(env, "GOCOVERDIR="+coverageDir)
+	}
 	return &cliHarness{
 		t:       t,
 		bin:     bin,
 		db:      db,
 		repoDir: repoDir,
-		env:     append(os.Environ(), "SLOPMACHINE_DB="+db),
+		env:     env,
 	}
 }
 

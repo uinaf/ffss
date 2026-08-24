@@ -34,8 +34,9 @@ mise run verify
 - Coverage is enforced per production package: 80% minimum, with the state
   machine and status contract held to 90%. The CLI child-process integration
   surface has a separate floor.
-- The gate also runs the race detector, installer fixtures, release
-  configuration checks, and the repo-local build.
+- One instrumented test pass supplies ordinary test, race, package-coverage,
+  and CLI child-process coverage proof. The gate also runs installer fixtures,
+  release configuration checks, and the repo-local build.
 
 ## Pull requests
 
