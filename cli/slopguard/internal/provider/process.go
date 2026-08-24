@@ -123,12 +123,12 @@ func runProcess(ctx context.Context, spec processSpec) (processResult, error) {
 }
 
 func isOrdinaryProcessExit(err error) bool {
-	failure := new(processError)
+	var failure *processError
 	return errors.As(err, &failure) && failure.Kind == processExit
 }
 
 func isCapabilityProbeFailure(err error) bool {
-	failure := new(processError)
+	var failure *processError
 	if !errors.As(err, &failure) {
 		return false
 	}

@@ -62,7 +62,7 @@ jobs:
           path: |
             ~/go/pkg/mod
             ~/.cache/go-build
-          key: go-clilib-${{ runner.os }}-${{ hashFiles('cli/lib/go.sum', 'cli/lib/mise.toml') }}
+          key: go-clilib-${{ runner.os }}-${{ hashFiles('cli/lib/go.mod', 'cli/lib/go.sum', 'cli/lib/mise.toml') }}
           restore-keys: |
             go-clilib-${{ runner.os }}-
       - run: mise run verify

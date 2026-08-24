@@ -160,9 +160,18 @@ func TestPinnedVersionSkipsReleaseResolution(t *testing.T) {
 
 func TestRefusalsPreserveSentinels(t *testing.T) {
 	forEachMember(t, func(t *testing.T, member string) {
-		t.Run("non-release", func(t *testing.T) {
-			opts := options(t, member, "", true)
-			if _, err := Run(t.Context(), opts); !errors.Is(err, ErrNotRelease) {
+		for _, current := range []string{"", "dev", "v1.2.3-dirty"} {
+			t.Run("non-release-"+current, func(t *testing.T) {
+				opts := options(t, member, current, true)
+				if _, err := Run(t.Context(), opts); !errors.Is(err, ErrNotRelease) {
+					t.Fatalf("error = %v", err)
+				}
+			})
+		}
+		t.Run("invalid-member", func(t *testing.T) {
+			opts := options(t, member, "v1.0.0", true)
+			opts.Member = "slopguard/header\r\n"
+			if _, err := Run(t.Context(), opts); err == nil || !strings.Contains(err.Error(), "invalid member name") {
 				t.Fatalf("error = %v", err)
 			}
 		})
@@ -252,6 +261,22 @@ func TestTransportRails(t *testing.T) {
 	opts.DownloadBase = server.URL
 	if _, err := Run(t.Context(), opts); err == nil || !strings.Contains(err.Error(), "must use HTTPS") {
 		t.Fatalf("redirect error = %v", err)
+	}
+
+	opts = options(t, "slopguard", "v1.0.0", false)
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://mirror.example/releases", http.StatusFound)
+	}))
+	t.Cleanup(server.Close)
+	customClient := &http.Client{}
+	opts.Client = customClient
+	opts.APIBase = server.URL + "/releases-api"
+	opts.DownloadBase = server.URL
+	if _, err := Run(t.Context(), opts); err == nil || !strings.Contains(err.Error(), "must use HTTPS") {
+		t.Fatalf("custom-client redirect error = %v", err)
+	}
+	if customClient.CheckRedirect != nil {
+		t.Fatal("caller-owned HTTP client was mutated")
 	}
 }
 
