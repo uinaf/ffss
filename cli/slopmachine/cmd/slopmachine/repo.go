@@ -11,18 +11,19 @@ import (
 )
 
 type repoProfileDocument struct {
-	SchemaVersion    int                 `json:"schema_version"`
-	RepoKey          string              `json:"repo_key"`
-	Registered       bool                `json:"registered"`
-	ForgeKind        string              `json:"forge_kind,omitempty"`
-	TrustTier        string              `json:"trust_tier,omitempty"`
-	VerifyCommand    string              `json:"verify_command,omitempty"`
-	DeliveryMode     string              `json:"delivery_mode,omitempty"`
-	Readiness        string              `json:"readiness,omitempty"`
-	Bindings         map[string][]string `json:"bindings,omitempty"`
-	ForgeReviewers   map[string]string   `json:"forge_reviewers,omitempty"`
-	DryRun           bool                `json:"dry_run,omitempty"`
-	ValidatedCommand string              `json:"validated_command,omitempty"`
+	SchemaVersion    int                     `json:"schema_version"`
+	RepoKey          string                  `json:"repo_key"`
+	Registered       bool                    `json:"registered"`
+	ForgeKind        string                  `json:"forge_kind,omitempty"`
+	TrustTier        string                  `json:"trust_tier,omitempty"`
+	VerifyCommand    string                  `json:"verify_command,omitempty"`
+	DeliveryMode     string                  `json:"delivery_mode,omitempty"`
+	Readiness        string                  `json:"readiness,omitempty"`
+	Bindings         map[string][]string     `json:"bindings,omitempty"`
+	ForgeReviewers   map[string]string       `json:"forge_reviewers,omitempty"`
+	Routing          *machine.RoutingProfile `json:"routing,omitempty"`
+	DryRun           bool                    `json:"dry_run,omitempty"`
+	ValidatedCommand string                  `json:"validated_command,omitempty"`
 }
 
 func cmdRepo(st *store.Store, args []string, opts runOptions) int {
@@ -97,7 +98,7 @@ func cmdRepo(st *store.Store, args []string, opts runOptions) int {
 	profile.RepoKey = key
 	// Explicitly empty policy flags are rejected rather than treated as a
 	// silent clear; only --bind documents empty-as-clear (replacement set).
-	for _, name := range []string{"forge", "trust", "verify-cmd", "delivery", "readiness"} {
+	for _, name := range []string{"forge", "trust", "verify-cmd", "delivery", "readiness", "routing"} {
 		if value, ok := fs[name]; ok && value == "" {
 			return writeFailure(opts, 2, fmt.Errorf("--%s requires a non-empty value; re-register the profile to drop a policy field", name))
 		}
@@ -130,6 +131,13 @@ func cmdRepo(st *store.Store, args []string, opts runOptions) int {
 			return writeFailure(opts, 2, err)
 		}
 		profile.ForgeReviewers = reviewers
+	}
+	if value, ok := fs["routing"]; ok {
+		routing := &machine.RoutingProfile{}
+		if err := readJSON(value, routing); err != nil {
+			return writeFailure(opts, 2, fmt.Errorf("invalid routing policy: %w", err))
+		}
+		profile.Routing = routing
 	}
 	if err := machine.ValidateProfile(&profile); err != nil {
 		return mapErr(err, opts)
@@ -255,6 +263,9 @@ func profileDocument(key string, profile machine.RepoProfile, registered bool) r
 			doc.ForgeReviewers[identity] = login
 		}
 	}
+	if profile.Routing != nil {
+		doc.Routing = profile.Routing
+	}
 	return doc
 }
 
@@ -316,6 +327,9 @@ func writeRepoProfile(doc repoProfileDocument, opts runOptions) int {
 			pairs = append(pairs, identity+"="+doc.ForgeReviewers[identity])
 		}
 		parts = append(parts, "forge-reviewers="+strings.Join(pairs, ";"))
+	}
+	if doc.Routing != nil {
+		parts = append(parts, fmt.Sprintf("routing=v%d", doc.Routing.Version))
 	}
 	fmt.Fprintf(os.Stdout, "%s %s\n", prefix, strings.Join(parts, " "))
 	return 0

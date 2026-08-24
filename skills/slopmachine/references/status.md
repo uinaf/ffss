@@ -3,7 +3,7 @@
 Use a field mask as the agent leash:
 
 ```bash
-slopmachine status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification
+slopmachine status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification,route_ready,routing_policy_version
 ```
 
 Prefer these fields:
@@ -19,6 +19,7 @@ Prefer these fields:
 | `units` | Per-unit `{id, phase, attempt}`; phases: pending, active, rework, delivered, done |
 | `delivered_units` | Units awaiting external signals; targets for `observe --unit` |
 | `risk_tier`, `budget_tokens`, `budget_minutes` | Recorded contract signals for routing policy |
+| `route_ready`, `routing_policy_version` | Whether the repo profile can resolve a versioned route |
 | `blocker` | Human-facing blocker reason when present |
 | `decision_question` | Pending ask; answer via `slopmachine decide` |
 

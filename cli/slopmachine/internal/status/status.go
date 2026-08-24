@@ -13,7 +13,7 @@ import (
 const (
 	schemaVersion      = 3
 	stateUninitialized = "UNINITIALIZED"
-	AgentFieldMask     = "state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification"
+	AgentFieldMask     = "state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification,route_ready,routing_policy_version"
 )
 
 // UnitStatus is the compact per-unit projection inside status.
@@ -57,6 +57,8 @@ type Document struct {
 	VerifyCommand        string       `json:"verify_command,omitempty"`
 	RepoRegistered       bool         `json:"repo_registered,omitempty"`
 	EvidenceVerification string       `json:"evidence_verification,omitempty"`
+	RouteReady           bool         `json:"route_ready"`
+	RoutingPolicyVersion int          `json:"routing_policy_version,omitempty"`
 	TotalDurationMS      int64        `json:"total_duration_ms"`
 	TotalTokens          int          `json:"total_tokens"`
 	TotalCostCents       int          `json:"total_cost_cents"`
@@ -74,6 +76,10 @@ type Context struct {
 	// checked against the forge ("observed") or trusted as recorded input
 	// ("recorded").
 	EvidenceVerification string
+	// RouteReady and RoutingPolicyVersion summarize whether the repo profile
+	// can resolve routes without putting the policy table in every status read.
+	RouteReady           bool
+	RoutingPolicyVersion int
 	// Telemetry totals aggregated from the run's recorded events.
 	TotalDurationMS int64
 	TotalTokens     int
@@ -131,6 +137,8 @@ func FromContext(run machine.Run, units []machine.Unit, ctx Context) Document {
 		VerifyCommand:        ctx.VerifyCommand,
 		RepoRegistered:       ctx.RepoRegistered,
 		EvidenceVerification: ctx.EvidenceVerification,
+		RouteReady:           ctx.RouteReady,
+		RoutingPolicyVersion: ctx.RoutingPolicyVersion,
 		TotalDurationMS:      ctx.TotalDurationMS,
 		TotalTokens:          ctx.TotalTokens,
 		TotalCostCents:       ctx.TotalCostCents,

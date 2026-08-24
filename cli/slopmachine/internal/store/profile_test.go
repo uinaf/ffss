@@ -89,6 +89,107 @@ func TestRepoProfileRoundTrip(t *testing.T) {
 	}
 }
 
+func TestRepoProfilePersistsRouting(t *testing.T) {
+	s, err := store.Open(filepath.Join(t.TempDir(), "routing.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	profile := testProfile("repo")
+	profile.Routing = &machine.RoutingProfile{
+		Version: 1,
+		Venues:  map[string]machine.VenueDefinition{"local": {Kind: "local-worktree"}},
+		Executors: map[string]machine.ExecutorDefinition{
+			"codex": {Harness: "codex", Models: map[string]string{"build": "gpt-5.6-sol"}},
+		},
+		Rules: []machine.RouteRule{{
+			RiskTier: machine.RiskLow, Complexity: machine.ComplexityLow,
+			Venue: "local", Executor: "codex", Parallelism: 1, ReviewDepth: 1,
+			Budget: machine.Budget{Tokens: 100, Minutes: 10},
+		}},
+	}
+	if err := s.RegisterRepoProfile(profile); err != nil {
+		t.Fatal(err)
+	}
+	got, found, err := s.GetRepoProfile("repo")
+	if err != nil || !found || got.Routing == nil {
+		t.Fatalf("routing profile = %+v found=%t err=%v", got.Routing, found, err)
+	}
+	if got.Routing.Version != 1 || got.Routing.Executors["codex"].Harness != "codex" {
+		t.Fatalf("routing profile = %+v", got.Routing)
+	}
+}
+
+func TestRepoProfileRejectsCorruptRoutingState(t *testing.T) {
+	tests := []struct {
+		name    string
+		routing string
+		want    string
+	}{
+		{name: "malformed JSON", routing: `{`, want: "decode repo profile routing"},
+		{name: "invalid profile", routing: `{"version":0}`, want: "validate repo profile routing"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "routing.sqlite")
+			s, err := store.Open(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := s.RegisterRepoProfile(testProfile("repo")); err != nil {
+				t.Fatal(err)
+			}
+			db := openSQLite(t, path)
+			if _, err := db.Exec(`UPDATE repos SET routing_json = ? WHERE repo_key = 'repo'`, tt.routing); err != nil {
+				t.Fatal(err)
+			}
+			if err := db.Close(); err != nil {
+				t.Fatal(err)
+			}
+			_, _, err = s.GetRepoProfile("repo")
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("GetRepoProfile error = %v, want %q", err, tt.want)
+			}
+			if err := s.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestMigratesVersionNineAddsRouting(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v9.sqlite")
+	s, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RegisterRepoProfile(testProfile("repo")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db := openSQLite(t, path)
+	if _, err := db.Exec(`ALTER TABLE repos DROP COLUMN routing_json`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE meta SET value = '9' WHERE key = 'schema_version'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s, err = store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	got, found, err := s.GetRepoProfile("repo")
+	if err != nil || !found || got.Routing != nil {
+		t.Fatalf("migrated profile = %+v found=%t err=%v", got.Routing, found, err)
+	}
+}
+
 func TestSaveApplyReenforcesProfileBindingsTransactionally(t *testing.T) {
 	s, err := store.Open(filepath.Join(t.TempDir(), "t.sqlite"))
 	if err != nil {

@@ -165,6 +165,8 @@ func runWithOptions(args []string, opts runOptions) int {
 		return cmdWatch(st, rest, opts)
 	case "repo":
 		return cmdRepo(st, rest, opts)
+	case "route":
+		return cmdRoute(st, rest, opts)
 	case "serve":
 		return cmdServe(st, rest, opts)
 	default:
@@ -202,6 +204,7 @@ Usage:
   slopmachine reviewers [--add NAME | --remove NAME] [--json]
   slopmachine watch [--once | --interval SECONDS [--iterations N]] [--run ID]
   slopmachine repo [show|register|update|unregister] [flags] [--json]
+  slopmachine route [--run ID] [--unit ID] [--json]
   slopmachine schema [--command NAME] [--json]
   slopmachine storage [--json]
   slopmachine selfupdate [--check] [--release vX.Y.Z] [--json]
@@ -338,9 +341,15 @@ Flags for register and update:
   --forge-reviewer 'identity=login,...'   replace forge-resident reviewer
                             mappings; a mapped reviewer's evidence is
                             corroborated against the forge (requires --forge)
+  --routing PATH|-          replace the strict versioned routing policy
 A registered repo fails closed: releases require every required reviewer
 to hold a review binding; a forge-bound profile verifies deliver evidence
 and corroborates mapped reviewers. unregister restores profile-less behavior.
+	`,
+		"route": `Usage: slopmachine route [--run ID] [--unit ID] [--json]
+
+Resolve one route from a released task contract and the repository routing
+policy. This command is read-only and never launches a worker.
 `,
 		"storage": `Usage: slopmachine storage [--json]
 
@@ -1342,6 +1351,10 @@ func statusContext(st *store.Store, repoKey, runID string) (status.Context, erro
 	if found {
 		ctx.RepoRegistered = true
 		ctx.VerifyCommand = profile.VerifyCommand
+		if profile.Routing != nil {
+			ctx.RouteReady = true
+			ctx.RoutingPolicyVersion = profile.Routing.Version
+		}
 	}
 	// Stated plainly either way: a forge-bound profile makes deliver/review
 	// evidence observed; everything else is trusted recorded input.
@@ -1411,7 +1424,8 @@ var commandFlags = map[string]map[string]bool{
 	"status":     {"json": true, "run": true, "fields": true},
 	"reviewers":  {"add": true, "remove": true, "json": true},
 	"watch":      {"once": true, "interval": true, "iterations": true, "run": true, "json": true},
-	"repo":       {"forge": true, "trust": true, "verify-cmd": true, "delivery": true, "readiness": true, "bind": true, "forge-reviewer": true, "json": true},
+	"repo":       {"forge": true, "trust": true, "verify-cmd": true, "delivery": true, "readiness": true, "bind": true, "forge-reviewer": true, "routing": true, "json": true},
+	"route":      {"run": true, "unit": true, "json": true},
 	"schema":     {"json": true, "command": true},
 	"storage":    {"json": true},
 	"selfupdate": {"check": true, "release": true, "json": true},

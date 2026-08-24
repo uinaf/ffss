@@ -48,7 +48,7 @@ slopmachine repo register --forge github --trust low \
 ## Bootstrap the run
 
 ```bash
-slopmachine status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification
+slopmachine status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification,route_ready,routing_policy_version
 ```
 
 - `UNINITIALIZED` → obey its `slopmachine init` next action.
@@ -118,6 +118,11 @@ then run the exact `slopmachine release --revision N` command printed by
 
 After the human releases: build → verify → review → deliver, always driven by
 status.
+
+When status reports `route_ready: true`, `slopmachine route --json --run ID`
+previews the deterministic route for the current or sole ready unit. Treat it
+as declared execution guidance only: the command never launches a worker, and
+missing policy or budget coverage is a real fail-closed blocker.
 
 ```bash
 # after verify succeeds and status asks for review

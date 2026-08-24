@@ -198,7 +198,7 @@ func applyBuild(run *Run, units *[]Unit) error {
 
 	// Rework-phase units re-enter the pipeline before fresh frontier claims;
 	// their earlier delivery no longer counts toward the series bound.
-	if next := firstReworkUnit(*units); next != nil {
+	if next := NextReworkUnit(*units); next != nil {
 		claimUnit(run, next)
 		return nil
 	}
@@ -301,7 +301,7 @@ func applyDeliver(run *Run, units *[]Unit, in ApplyInput) error {
 // authoritative unit phases once no unit is active in the pipeline.
 func projectResting(run *Run, units []Unit) {
 	run.CompletedUnits = settledCount(units)
-	if firstReworkUnit(units) != nil {
+	if NextReworkUnit(units) != nil {
 		// Park on released INTAKE: build re-claims the rework unit next.
 		run.State = StateIntake
 		return
@@ -415,9 +415,9 @@ func anyDelivered(units []Unit) bool {
 	return false
 }
 
-// firstReworkUnit returns the first rework-phase unit whose blockers are
-// all settled, so a dependent never rebuilds on a churning prerequisite.
-func firstReworkUnit(units []Unit) *Unit {
+// NextReworkUnit returns the first rework-phase unit whose blockers are all
+// settled. Build claims and read-only route previews share this ordering.
+func NextReworkUnit(units []Unit) *Unit {
 	settled := map[string]bool{}
 	for i := range units {
 		if units[i].Settled() {
@@ -511,7 +511,7 @@ func AllowedCommands(run Run, units []Unit) []Command {
 	case StateIntake:
 		out := []Command{CmdIntake, CmdAsk}
 		if run.Released() {
-			buildable := firstReworkUnit(units) != nil
+			buildable := NextReworkUnit(units) != nil
 			if !buildable {
 				if u, _ := frontierUnit(units); u != nil && settledCount(units) < run.SeriesBound {
 					buildable = true
