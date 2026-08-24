@@ -29,10 +29,10 @@ import (
 // Options configures one selfupdate pass. Zero-value fields take the
 // production defaults.
 type Options struct {
-	// Member is the released product name, for example "slopmachine".
+	// Member is the lowercase released product name, for example "slopmachine".
 	Member string
 	// CurrentVersion is the running binary's release version (vX.Y.Z);
-	// empty means a non-release build, which selfupdate refuses.
+	// anything else is a non-release build, which selfupdate refuses.
 	CurrentVersion string
 	// RequestVersion pins the target release (vX.Y.Z); empty resolves the
 	// member's newest published release.
@@ -44,7 +44,7 @@ type Options struct {
 	// ExecutablePath is the binary to replace; empty resolves the running
 	// executable through its symlinks.
 	ExecutablePath string
-	// Client performs HTTP requests; nil uses http.DefaultClient.
+	// Client performs HTTP requests; nil uses a bounded default client.
 	Client *http.Client
 	// OS and Arch identify the platform archive; empty uses the runtime's.
 	OS, Arch string
@@ -68,7 +68,10 @@ var ErrBrewManaged = errors.New("this binary is managed by Homebrew; run: brew u
 // failed update precondition.
 var ErrInvalidVersion = errors.New("invalid release version")
 
-var releaseTag = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
+var (
+	memberName = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+	releaseTag = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
+)
 
 // Check resolves the target version without touching the binary.
 func Check(ctx context.Context, opts Options) (Result, error) {
@@ -116,10 +119,10 @@ func Run(ctx context.Context, opts Options) (Result, error) {
 }
 
 func withDefaults(opts Options) (Options, error) {
-	if opts.Member == "" {
-		return opts, fmt.Errorf("member name required")
+	if !memberName.MatchString(opts.Member) {
+		return opts, fmt.Errorf("invalid member name %q (want lowercase letters, digits, and single dashes)", opts.Member)
 	}
-	if opts.CurrentVersion == "" {
+	if !releaseTag.MatchString(opts.CurrentVersion) {
 		return opts, ErrNotRelease
 	}
 	if opts.APIBase == "" {
@@ -128,25 +131,34 @@ func withDefaults(opts Options) (Options, error) {
 	if opts.DownloadBase == "" {
 		opts.DownloadBase = "https://github.com/uinaf/ffss"
 	}
-	if opts.Client == nil {
+	client := opts.Client
+	if client == nil {
 		// Bounded end to end: a stalled server must fail the update, not
 		// hang automation. Archives are a few megabytes; ten minutes is
 		// generous for the slowest links.
-		opts.Client = &http.Client{
-			Timeout: 10 * time.Minute,
-			// The transport rail survives redirects: an HTTPS endpoint must
-			// not bounce the release list, checksums, or archive onto
-			// cleartext HTTP.
-			CheckRedirect: func(request *http.Request, via []*http.Request) error {
-				// Keep Go's default hop bound; the rail alone would follow
-				// a redirect cycle until the client timeout.
-				if len(via) >= 10 {
-					return fmt.Errorf("stopped after 10 redirects")
-				}
-				return requireHTTPS(request.URL.String())
-			},
-		}
+		client = &http.Client{Timeout: 10 * time.Minute}
+	} else {
+		// Do not mutate a caller-owned client when installing the redirect rail.
+		clone := *client
+		client = &clone
 	}
+	checkRedirect := client.CheckRedirect
+	client.CheckRedirect = func(request *http.Request, via []*http.Request) error {
+		// The transport rail survives redirects: an HTTPS endpoint must not
+		// bounce the release list, checksums, or archive onto cleartext HTTP.
+		if err := requireHTTPS(request.URL.String()); err != nil {
+			return err
+		}
+		if checkRedirect != nil {
+			return checkRedirect(request, via)
+		}
+		// Preserve net/http's default hop bound when no custom policy exists.
+		if len(via) >= 10 {
+			return fmt.Errorf("stopped after 10 redirects")
+		}
+		return nil
+	}
+	opts.Client = client
 	if opts.OS == "" {
 		opts.OS = runtime.GOOS
 	}
@@ -203,8 +215,8 @@ func targetVersion(ctx context.Context, opts Options) (string, error) {
 	}
 	prefix := opts.Member + "/"
 	for page := 1; page <= 10; page++ {
-		url := fmt.Sprintf("%s?per_page=100&page=%d", opts.APIBase, page)
-		request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		releasesURL := fmt.Sprintf("%s?per_page=100&page=%d", opts.APIBase, page)
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, releasesURL, nil)
 		if err != nil {
 			return "", err
 		}
@@ -265,8 +277,8 @@ func fetchVerifiedBinary(ctx context.Context, opts Options, version string) ([]b
 	return extractBinary(payload, opts.Member)
 }
 
-func fetch(ctx context.Context, opts Options, url string) ([]byte, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func fetch(ctx context.Context, opts Options, endpoint string) ([]byte, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}

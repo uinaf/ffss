@@ -90,6 +90,24 @@ func TestTruffleHogScannerCleansDescendantsAfterLeaderExit(t *testing.T) {
 	}
 }
 
+func TestTruffleHogScannerPreservesFailureWhenOutputIsMalformed(t *testing.T) {
+	script := filepath.Join(t.TempDir(), "trufflehog")
+	writeFile(t, filepath.Dir(script), filepath.Base(script), "#!/bin/sh\nfor last in \"$@\"; do :; done\nif [ ! -e \"$last/frozen-review.txt\" ]; then exit 0; fi\nprintf 'not json\\n'\nprintf 'scanner exploded\\n' >&2\nexit 7\n")
+	if err := os.Chmod(script, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	scanner, err := newTruffleHogScanner(t.Context(), script, repositoryBoundaryFixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = scanner.Scan(t.Context(), "benign")
+	for _, want := range []string{"parse trufflehog findings", "trufflehog scan failed", "scanner exploded", "exit status 7"} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Fatalf("Scan() error = %v, want %q", err, want)
+		}
+	}
+}
+
 func waitForChildPID(t *testing.T, path string) int {
 	t.Helper()
 	deadline := time.Now().Add(10 * time.Second)

@@ -126,19 +126,23 @@ func (scanner *truffleHogScanner) Scan(ctx context.Context, payload string) (ret
 	if stderr.exceeded {
 		return errors.Join(fmt.Errorf("trufflehog diagnostic output exceeded safe limit"), runResult.CleanupErr)
 	}
-	secret, err := truffleHogFindingsContainSecret(stdout.Bytes(), payload)
-	if err != nil {
-		return errors.Join(fmt.Errorf("parse trufflehog findings: %w", err), runResult.CleanupErr)
-	}
-	if secret {
-		return errors.Join(ErrSecretFound, runResult.CleanupErr)
-	}
+	var scanErr error
 	if runResult.CommandErr != nil {
 		diagnostic := sanitizeDiagnostic(strings.TrimSpace(stderr.String()))
 		if diagnostic == "" {
 			diagnostic = "no diagnostic output"
 		}
-		return errors.Join(fmt.Errorf("trufflehog scan failed: %s: %w", diagnostic, runResult.CommandErr), runResult.CleanupErr)
+		scanErr = fmt.Errorf("trufflehog scan failed: %s: %w", diagnostic, runResult.CommandErr)
+	}
+	secret, err := truffleHogFindingsContainSecret(stdout.Bytes(), payload)
+	if err != nil {
+		return errors.Join(fmt.Errorf("parse trufflehog findings: %w", err), scanErr, runResult.CleanupErr)
+	}
+	if secret {
+		return errors.Join(ErrSecretFound, runResult.CleanupErr)
+	}
+	if scanErr != nil {
+		return errors.Join(scanErr, runResult.CleanupErr)
 	}
 	if runResult.CleanupErr != nil {
 		return fmt.Errorf("trufflehog process cleanup failed: %w", runResult.CleanupErr)
