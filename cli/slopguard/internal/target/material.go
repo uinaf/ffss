@@ -539,12 +539,15 @@ func (collector *Collector) untrackedFiles(ctx context.Context, root string, pla
 		if err := protocolPath(path); err != nil {
 			return fmt.Errorf("untracked path %q: %w", path, err)
 		}
-		if sensitivePath(path) {
+		if sensitivePath(path) && !environmentTemplatePath(path) {
 			return fmt.Errorf("sensitive path %q is not reviewable", path)
 		}
 		content, size, err := budget.Read(root, path, "untracked:"+path)
 		if err != nil {
 			return fmt.Errorf("read untracked file %q: %w", path, err)
+		}
+		if environmentTemplatePath(path) && !environmentTemplateContentSafe(content) {
+			return unsafeEnvironmentTemplate(path)
 		}
 		budget.AddFraming(sectionFramingBytes("UNTRUSTED-UNTRACKED-FILE", path, size))
 		if !budget.Exceeded() {
@@ -569,7 +572,7 @@ func (collector *Collector) deletedFiles(ctx context.Context, root string, plan 
 		if err := protocolPath(blob.path); err != nil {
 			return nil, fmt.Errorf("deleted path %q: %w", blob.path, err)
 		}
-		if sensitivePath(blob.path) {
+		if sensitivePath(blob.path) && !environmentTemplatePath(blob.path) {
 			return nil, fmt.Errorf("sensitive path %q is not reviewable", blob.path)
 		}
 		if !validObjectID(blob.oid) {
@@ -628,6 +631,11 @@ func (collector *Collector) deletedFiles(ctx context.Context, root string, plan 
 	}
 	if err := content.Err(); err != nil {
 		return nil, err
+	}
+	for path, material := range files {
+		if environmentTemplatePath(path) && !environmentTemplateContentSafe(material) {
+			return nil, unsafeEnvironmentTemplate(path)
+		}
 	}
 	return files, nil
 }
@@ -948,6 +956,86 @@ func sensitivePath(value string) bool {
 	default:
 		return false
 	}
+}
+
+func environmentTemplatePath(value string) bool {
+	base := strings.ToLower(path.Base(value))
+	if !strings.HasPrefix(base, ".env.") {
+		return false
+	}
+	return strings.HasSuffix(base, ".example") || strings.HasSuffix(base, ".sample") || strings.HasSuffix(base, ".template")
+}
+
+func environmentTemplateContentSafe(content []byte) bool {
+	for _, line := range bytes.Split(content, []byte{'\n'}) {
+		if !environmentTemplateLineSafe(line) {
+			return false
+		}
+	}
+	return true
+}
+
+func environmentTemplateLineSafe(line []byte) bool {
+	line = bytes.TrimSpace(line)
+	if len(line) == 0 {
+		return true
+	}
+	if bytes.HasPrefix(line, []byte("export ")) {
+		line = bytes.TrimSpace(line[len("export "):])
+	}
+	equals := bytes.IndexByte(line, '=')
+	if equals < 1 || !environmentTemplateNameSafe(line[:equals]) {
+		return false
+	}
+	value := bytes.TrimSpace(line[equals+1:])
+	if len(value) == 0 {
+		return true
+	}
+	if len(value) >= 2 && ((value[0] == '\'' && value[len(value)-1] == '\'') || (value[0] == '"' && value[len(value)-1] == '"')) {
+		value = value[1 : len(value)-1]
+	}
+	if len(value) == 0 {
+		return true
+	}
+	if value[0] == '<' && value[len(value)-1] == '>' {
+		return environmentTemplatePlaceholderSafe(value[1 : len(value)-1])
+	}
+	if value[0] == '$' {
+		name := value[1:]
+		if len(name) >= 2 && name[0] == '{' && name[len(name)-1] == '}' {
+			name = name[1 : len(name)-1]
+		}
+		return environmentTemplateNameSafe(name)
+	}
+	return false
+}
+
+func environmentTemplateNameSafe(value []byte) bool {
+	if len(value) == 0 || !(value[0] == '_' || value[0] >= 'A' && value[0] <= 'Z' || value[0] >= 'a' && value[0] <= 'z') {
+		return false
+	}
+	for _, character := range value[1:] {
+		if character != '_' && !(character >= 'A' && character <= 'Z') && !(character >= 'a' && character <= 'z') && !(character >= '0' && character <= '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func environmentTemplatePlaceholderSafe(value []byte) bool {
+	if len(value) == 0 || len(value) > 128 {
+		return false
+	}
+	for _, character := range value {
+		if character != ' ' && character != '-' && character != '_' && character != '.' && character != '/' && !(character >= 'A' && character <= 'Z') && !(character >= 'a' && character <= 'z') && !(character >= '0' && character <= '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func unsafeEnvironmentTemplate(value string) error {
+	return fmt.Errorf("sensitive path %q contains non-placeholder environment template content", value)
 }
 
 func lineCount(content []byte) (int, error) {

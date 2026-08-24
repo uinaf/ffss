@@ -170,6 +170,48 @@ func parseDiffRanges(diff []byte, paths []string) (map[string][]protocol.LineRan
 	return ranges, nil
 }
 
+func validateEnvironmentTemplateDiff(diff []byte, paths []string) error {
+	section := -1
+	inHunk := false
+	for start := 0; start <= len(diff); {
+		end := bytes.IndexByte(diff[start:], '\n')
+		if end < 0 {
+			end = len(diff)
+		} else {
+			end += start
+		}
+		line := diff[start:end]
+		if start == len(diff) {
+			break
+		}
+		switch {
+		case bytes.HasPrefix(line, []byte("diff --git ")):
+			section++
+			inHunk = false
+			if section >= len(paths) {
+				return fmt.Errorf("diff has more file sections than path inventory")
+			}
+		case section >= 0 && bytes.HasPrefix(line, []byte("@@ ")):
+			inHunk = true
+		case section >= 0 && inHunk && environmentTemplatePath(paths[section]):
+			if bytes.Equal(line, []byte("\\ No newline at end of file")) {
+				break
+			}
+			if len(line) == 0 || (line[0] != '+' && line[0] != '-' && line[0] != ' ') || !environmentTemplateLineSafe(line[1:]) {
+				return unsafeEnvironmentTemplate(paths[section])
+			}
+		}
+		if end == len(diff) {
+			break
+		}
+		start = end + 1
+	}
+	if section+1 != len(paths) {
+		return fmt.Errorf("diff file sections do not match path inventory")
+	}
+	return nil
+}
+
 func mergeLineRanges(fileRanges []protocol.LineRange) []protocol.LineRange {
 	sort.Slice(fileRanges, func(i, j int) bool { return fileRanges[i].StartLine < fileRanges[j].StartLine })
 	merged := fileRanges[:0]
