@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/uinaf/ffss/cli/slopmachine/internal/selfupdate"
+	"github.com/uinaf/ffss/cli/lib/selfupdate"
 )
 
 func TestSelfupdateRefusesDevBuild(t *testing.T) {
