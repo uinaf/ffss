@@ -93,6 +93,10 @@ review fan-out above that limit.
 
 - The installed `trufflehog` executable scans the complete frozen payload,
   including deleted bytes and appended context.
+- Cloudflare-token findings are ignored only when the reported value and line
+  match a Git-generated `index <old>..<new>` object ID inside the frozen diff.
+  Identical text in prompts, file content, deleted bytes, or context still
+  fails the scan.
 - It runs offline with verification disabled, no update check, one worker, no
   inherited environment, and `--fail-on-scan-errors`.
 - Any detection, scan error, missing executable, or output overflow is a
