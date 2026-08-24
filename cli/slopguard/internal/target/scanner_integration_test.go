@@ -49,6 +49,41 @@ func TestTruffleHogScannerDetectsCredential(t *testing.T) {
 	}
 }
 
+func TestTruffleHogScannerIgnoresGitObjectIDs(t *testing.T) {
+	if os.Getenv("SLOPGUARD_REAL_TRUFFLEHOG") != "1" {
+		t.Skip("set SLOPGUARD_REAL_TRUFFLEHOG=1 to exercise the installed scanner")
+	}
+	repository := newRepository(t)
+	writeFile(t, repository, testCloudflarePath, "def old_value():\n    return \"old\"\n")
+	gitCommand(t, repository, "add", ".")
+	gitCommand(t, repository, "commit", "-m", "cloudflare fixture")
+	writeFile(t, repository, testCloudflarePath, "def new_value():\n    return \"new\"\n")
+
+	collector, err := New(Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
+		t.Fatalf("Freeze() error = %v, want Git object IDs ignored", err)
+	}
+}
+
+func TestTruffleHogScannerKeepsCloudflareMatchInSource(t *testing.T) {
+	if os.Getenv("SLOPGUARD_REAL_TRUFFLEHOG") != "1" {
+		t.Skip("set SLOPGUARD_REAL_TRUFFLEHOG=1 to exercise the installed scanner")
+	}
+	repository := newRepository(t)
+	writeFile(t, repository, testCloudflarePath, "token = \""+testOldObjectID+"\"\n")
+
+	collector, err := New(Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); !errors.Is(err, ErrSecretFound) {
+		t.Fatalf("Freeze() error = %v, want source match preserved", err)
+	}
+}
+
 func TestCollectorRealRepositorySmoke(t *testing.T) {
 	if os.Getenv("SLOPGUARD_REAL_REPOSITORY") != "1" {
 		t.Skip("set SLOPGUARD_REAL_REPOSITORY=1 to freeze the current checkout")
