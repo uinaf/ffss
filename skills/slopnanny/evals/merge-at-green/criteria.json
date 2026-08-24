@@ -15,7 +15,7 @@
     {
       "name": "Green verified on latest head",
       "max_score": 18,
-      "description": "The evidence cited is tied to head e4f5a6b: all checks pass, review approved, zero unresolved threads"
+      "description": "The evidence cited is tied to head e4f5a6b: all checks pass, review approved, no pending review requests, and zero unresolved threads"
     },
     {
       "name": "Merged result reported",

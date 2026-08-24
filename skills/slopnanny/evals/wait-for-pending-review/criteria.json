@@ -1,0 +1,31 @@
+{
+  "context": "Tests the pending-review race: checks pass and no thread exists yet, but Copilot is still an outstanding requested reviewer, so the agent must keep watching instead of merging during the review window.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Does not merge",
+      "max_score": 32,
+      "description": "No merge command or auto-merge action is taken while Copilot remains an outstanding requested reviewer"
+    },
+    {
+      "name": "Pending review identified",
+      "max_score": 24,
+      "description": "The status identifies Copilot's pending review request as the blocker despite green checks and zero current threads"
+    },
+    {
+      "name": "No false settled claim",
+      "max_score": 16,
+      "description": "The PR is not called ready, green, or settled merely because checks pass and the current thread list is empty"
+    },
+    {
+      "name": "No forge noise",
+      "max_score": 14,
+      "description": "No filler comment, review reply, or other forge mutation is made while waiting for the requested review"
+    },
+    {
+      "name": "Keeps watching",
+      "max_score": 14,
+      "description": "The next action is to continue observing, then re-read verdicts, comments, and threads after Copilot submits"
+    }
+  ]
+}

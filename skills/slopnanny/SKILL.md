@@ -17,9 +17,13 @@ widens the change.
   `head_moved` return it to the build loop with the cause recorded, and act on
   that cause.
 - Without a run, poll through the forge CLI the delivery dispatched to
-  (`gh` / `glab`): checks state, review verdicts (a `CHANGES_REQUESTED`
-  review may carry no inline thread), unresolved review threads, and
-  top-level comments; bots often report findings as ordinary comments.
+  (`gh` / `glab`): checks state, pending review requests, review verdicts (a
+  `CHANGES_REQUESTED` review may carry no inline thread), unresolved review
+  threads, and top-level comments; bots often report findings as ordinary
+  comments.
+- Green checks and an empty thread list are not settled while a requested
+  reviewer is still pending, including an automated reviewer still working.
+  After it submits, re-read verdicts, comments, and threads before deciding.
 - Act only on checks, reviews, and comments newer than the latest push;
   everything older was already answered by that push.
 
@@ -50,11 +54,11 @@ Replies post under the authenticated account and are that identity speaking:
 ## Quiet discipline
 
 - Nothing changed → say nothing. No filler comments, no status noise.
-- When required checks and reviewers are green on the latest commit, merge
-  with the repository's merge method and report the merged commit; the
-  babysit request carries merge authority. Hold at green only when the
-  request says to, and never merge past a blocking human review or an
-  unresolved thread.
+- When required checks are green on the latest commit, no review request is
+  pending, and reviewers and threads are green, merge with the repository's
+  merge method and report the merged commit; the babysit request carries merge
+  authority. Hold at green only when the request says to, and never merge past
+  a blocking human review or an unresolved thread.
 - On a slopmachine run, keep driving status: rework causes route through
   `slopmachine` commands, and settlement comes from `watch` observing the
   merge, never from narrating it.

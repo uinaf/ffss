@@ -28,6 +28,9 @@ lint     pass  22s
 $ gh api graphql (reviewThreads for #42)
 {"reviewThreads": {"nodes": []}}
 
+$ gh api graphql (reviewRequests for #42)
+{"reviewRequests": {"nodes": []}}
+
 $ gh api repos/example/api --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge}'
 {"allow_squash_merge": true, "allow_merge_commit": false, "allow_rebase_merge": false}
 =============== END FILE ===============
