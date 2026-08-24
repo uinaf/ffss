@@ -455,6 +455,157 @@ func TestFreezeRejectsUnsafeInputs(t *testing.T) {
 	})
 }
 
+func TestFreezeAllowsPlaceholderOnlyEnvironmentTemplates(t *testing.T) {
+	t.Parallel()
+
+	t.Run("commit", func(t *testing.T) {
+		repository := newRepository(t)
+		writeFile(t, repository, ".env.example", "EXAMPLE_KEY=\n")
+		gitCommand(t, repository, "add", ".")
+		gitCommand(t, repository, "commit", "-m", "template")
+
+		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD", SkipSecretScan: true})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		if !strings.Contains(bundle.Payload(), "EXAMPLE_KEY=") {
+			t.Fatal("payload omitted committed environment template material")
+		}
+	})
+
+	t.Run("tracked", func(t *testing.T) {
+		repository := newRepository(t)
+		writeFile(t, repository, ".env.example", "API_KEY=\n")
+		gitCommand(t, repository, "add", ".")
+		gitCommand(t, repository, "commit", "-m", "template")
+		writeFile(t, repository, ".env.example", "API_KEY=<your-api-key>\n")
+
+		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, SkipSecretScan: true})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		if !strings.Contains(bundle.Payload(), "API_KEY=<your-api-key>") {
+			t.Fatal("payload omitted tracked environment template material")
+		}
+	})
+
+	t.Run("untracked", func(t *testing.T) {
+		repository := committedRepository(t)
+		writeFile(t, repository, ".env.production.sample", "export API_KEY=${API_KEY}\nEMPTY=\"\"\n")
+
+		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, SkipSecretScan: true})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		if !strings.Contains(bundle.Payload(), "export API_KEY=${API_KEY}") {
+			t.Fatal("payload omitted untracked environment template material")
+		}
+	})
+
+	t.Run("deleted", func(t *testing.T) {
+		repository := newRepository(t)
+		writeFile(t, repository, ".env.template", "API_KEY='${API_KEY}'\n")
+		gitCommand(t, repository, "add", ".")
+		gitCommand(t, repository, "commit", "-m", "template")
+		if err := os.Remove(filepath.Join(repository, ".env.template")); err != nil {
+			t.Fatal(err)
+		}
+
+		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, SkipSecretScan: true})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		if !strings.Contains(bundle.Payload(), "API_KEY='${API_KEY}'") {
+			t.Fatal("payload omitted deleted environment template material")
+		}
+	})
+}
+
+func TestFreezeRejectsEnvironmentTemplateValuesWithoutSecretScan(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name  string
+		setup func(*testing.T) string
+	}{
+		{
+			name: "tracked",
+			setup: func(t *testing.T) string {
+				repository := committedRepository(t)
+				writeFile(t, repository, ".env.example", "API_KEY=live-credential-value\n")
+				return repository
+			},
+		},
+		{
+			name: "untracked",
+			setup: func(t *testing.T) string {
+				repository := committedRepository(t)
+				writeFile(t, repository, ".env.sample", "API_KEY=live-credential-value\n")
+				return repository
+			},
+		},
+		{
+			name: "deleted",
+			setup: func(t *testing.T) string {
+				repository := newRepository(t)
+				writeFile(t, repository, ".env.template", "API_KEY=live-credential-value\n")
+				gitCommand(t, repository, "add", ".")
+				gitCommand(t, repository, "commit", "-m", "template")
+				if err := os.Remove(filepath.Join(repository, ".env.template")); err != nil {
+					t.Fatal(err)
+				}
+				return repository
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repository := test.setup(t)
+			scanner := &recordingScanner{}
+			_, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, SkipSecretScan: true})
+			if err == nil || !strings.Contains(err.Error(), "non-placeholder environment template content") {
+				t.Fatalf("Freeze() error = %v", err)
+			}
+			if scanner.calls != 0 {
+				t.Fatalf("scanner calls = %d, want 0", scanner.calls)
+			}
+		})
+	}
+
+	t.Run("commit", func(t *testing.T) {
+		repository := newRepository(t)
+		writeFile(t, repository, ".env.example", "API_KEY=live-credential-value\n")
+		gitCommand(t, repository, "add", ".")
+		gitCommand(t, repository, "commit", "-m", "template")
+		scanner := &recordingScanner{}
+
+		_, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD", SkipSecretScan: true})
+		if err == nil || !strings.Contains(err.Error(), "non-placeholder environment template content") {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		if scanner.calls != 0 {
+			t.Fatalf("scanner calls = %d, want 0", scanner.calls)
+		}
+	})
+
+	t.Run("explicit context", func(t *testing.T) {
+		repository := newRepository(t)
+		writeFile(t, repository, ".env.example", "API_KEY=\n")
+		writeFile(t, repository, "file.txt", "base\n")
+		gitCommand(t, repository, "add", ".")
+		gitCommand(t, repository, "commit", "-m", "base")
+		writeFile(t, repository, "file.txt", "changed\n")
+		scanner := &recordingScanner{}
+
+		_, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, ContextFiles: []string{".env.example"}, SkipSecretScan: true})
+		if err == nil || !strings.Contains(err.Error(), "sensitive context path") {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		if scanner.calls != 0 {
+			t.Fatalf("scanner calls = %d, want 0", scanner.calls)
+		}
+	})
+}
+
 func TestFreezeReportsOversizedContributors(t *testing.T) {
 	t.Parallel()
 
@@ -1259,6 +1410,21 @@ func TestSensitivePathCoversCredentialSiblings(t *testing.T) {
 	for _, value := range []string{".envrc", ".pgpass", ".ssh/id_ecdsa", ".ssh/id_dsa"} {
 		if !sensitivePath(value) {
 			t.Errorf("sensitivePath(%q) = false", value)
+		}
+	}
+}
+
+func TestEnvironmentTemplatePathIsNarrow(t *testing.T) {
+	t.Parallel()
+
+	for _, value := range []string{".env.example", ".env.production.sample", "config/.ENV.template"} {
+		if !environmentTemplatePath(value) {
+			t.Errorf("environmentTemplatePath(%q) = false", value)
+		}
+	}
+	for _, value := range []string{".env", ".env.production", "env.example", ".env.example.local", ".npmrc.example"} {
+		if environmentTemplatePath(value) {
+			t.Errorf("environmentTemplatePath(%q) = true", value)
 		}
 	}
 }

@@ -46,7 +46,12 @@ boundary without first distilling and authorizing it.
 - Binary data, invalid UTF-8, sensitive paths, gitlinks (mode 160000 /
   submodules), symlink escapes, merge commits, unsafe revisions, FIFOs and
   other special files, context-path symlinks, and incomplete file reads fail
-  closed.
+  closed. Environment templates ending in `.example`, `.sample`, or
+  `.template` are the narrow exception: only empty assignments or explicit
+  `<placeholder>` and shell-variable values may enter the review bundle.
+  Non-placeholder values fail before provider execution even when secret
+  scanning is skipped. Explicit context files remain subject to the ordinary
+  sensitive-path rejection.
 - Tracked symlink changes are included as Git's text representation of the
   link target; collectors never follow those links when reading worktree,
   untracked, or context bytes.
