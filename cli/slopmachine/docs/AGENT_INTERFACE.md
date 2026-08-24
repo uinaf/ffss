@@ -38,7 +38,7 @@ Use a field mask to keep the control loop compact:
 
 ```bash
 slopmachine status --json \
-  --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification
+  --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification,route_ready,routing_policy_version
 ```
 
 Run only a command named in `allowed_commands`, satisfy
@@ -166,6 +166,22 @@ Transitions accept optional recorded telemetry (`--telemetry PATH|-` or a
 numbers only; omit what was not measured. `verify --cmd` measures its own
 wall clock. Totals appear in status as `total_duration_ms`,
 `total_tokens`, `total_cost_cents`, and `telemetry_events`.
+
+## Resolve declared routes
+
+When status reports `route_ready: true`, preview the route for a released unit:
+
+```bash
+slopmachine route --json --run demo
+slopmachine route --json --run demo --unit u2
+```
+
+The resolver reads only the released task contract and the repository profile.
+It selects an exact first-attempt or rework rule and fails closed when the rule,
+registry entry, complexity, risk tier, or budget is missing or incompatible.
+The command never starts an executor. Repository owners replace the policy with
+`slopmachine repo update --routing PATH|-`; the JSON shape is demonstrated in
+[`examples/routing.example.json`](../examples/routing.example.json).
 
 ## Treat SQLite as canonical state
 

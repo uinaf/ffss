@@ -16,7 +16,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 9
+const schemaVersion = 10
 
 // timestampNow returns a fixed-width UTC timestamp. RFC3339Nano trims
 // trailing zeros, which breaks the lexicographic ordering the run queries
@@ -366,6 +366,17 @@ func (s *Store) migrate() error {
 				return fmt.Errorf("migrate schema 8 to 9: %w", err)
 			}
 			version = 9
+		case 9:
+			var hasRouting int
+			if err := tx.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('repos') WHERE name = 'routing_json'`).Scan(&hasRouting); err != nil {
+				return fmt.Errorf("inspect schema 9 routing column: %w", err)
+			}
+			if hasRouting == 0 {
+				if _, err := tx.Exec(`ALTER TABLE repos ADD COLUMN routing_json TEXT NOT NULL DEFAULT '{}'`); err != nil {
+					return fmt.Errorf("migrate schema 9 to 10: %w", err)
+				}
+			}
+			version = 10
 		default:
 			return fmt.Errorf("unsupported schema version %d", version)
 		}
@@ -457,6 +468,7 @@ const createReposTable = `CREATE TABLE IF NOT EXISTS repos (
 	readiness TEXT NOT NULL DEFAULT '',
 	bindings_json TEXT NOT NULL DEFAULT '{}',
 	forge_reviewers_json TEXT NOT NULL DEFAULT '{}',
+	routing_json TEXT NOT NULL DEFAULT '{}',
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
 )`
@@ -877,10 +889,10 @@ type profileQuerier interface {
 
 func repoProfileTx(q profileQuerier, repoKey string) (machine.RepoProfile, bool, error) {
 	profile := machine.RepoProfile{RepoKey: repoKey}
-	var forgeKind, trustTier, deliveryMode, readiness, bindings, forgeReviewers string
-	err := q.QueryRow(`SELECT forge_kind, trust_tier, verify_command, delivery_mode, readiness, bindings_json, forge_reviewers_json
+	var forgeKind, trustTier, deliveryMode, readiness, bindings, forgeReviewers, routing string
+	err := q.QueryRow(`SELECT forge_kind, trust_tier, verify_command, delivery_mode, readiness, bindings_json, forge_reviewers_json, routing_json
 		FROM repos WHERE repo_key = ?`, repoKey).
-		Scan(&forgeKind, &trustTier, &profile.VerifyCommand, &deliveryMode, &readiness, &bindings, &forgeReviewers)
+		Scan(&forgeKind, &trustTier, &profile.VerifyCommand, &deliveryMode, &readiness, &bindings, &forgeReviewers, &routing)
 	if errors.Is(err, sql.ErrNoRows) {
 		return machine.RepoProfile{}, false, nil
 	}
@@ -896,6 +908,15 @@ func repoProfileTx(q profileQuerier, repoKey string) (machine.RepoProfile, bool,
 	}
 	if err := json.Unmarshal([]byte(forgeReviewers), &profile.ForgeReviewers); err != nil {
 		return machine.RepoProfile{}, false, fmt.Errorf("decode repo profile forge reviewers: %w", err)
+	}
+	if routing != "{}" {
+		profile.Routing = &machine.RoutingProfile{}
+		if err := json.Unmarshal([]byte(routing), profile.Routing); err != nil {
+			return machine.RepoProfile{}, false, fmt.Errorf("decode repo profile routing: %w", err)
+		}
+		if err := machine.ValidateRoutingProfile(profile.Routing); err != nil {
+			return machine.RepoProfile{}, false, fmt.Errorf("validate repo profile routing: %w", err)
+		}
 	}
 	return profile, true, nil
 }
@@ -968,18 +989,25 @@ func (s *Store) writeRepoProfile(profile machine.RepoProfile, mustExist bool) er
 	if err != nil {
 		return err
 	}
-	now := timestampNow()
-	if exists {
-		if _, err := tx.Exec(`UPDATE repos SET forge_kind=?, trust_tier=?, verify_command=?, delivery_mode=?, readiness=?, bindings_json=?, forge_reviewers_json=?, updated_at=?
-			WHERE repo_key=?`,
-			string(profile.ForgeKind), string(profile.TrustTier), profile.VerifyCommand,
-			string(profile.DeliveryMode), string(profile.Readiness), string(encoded), string(encodedForgeReviewers), now, profile.RepoKey); err != nil {
+	routing := []byte("{}")
+	if profile.Routing != nil {
+		routing, err = json.Marshal(profile.Routing)
+		if err != nil {
 			return err
 		}
-	} else if _, err := tx.Exec(`INSERT INTO repos(repo_key, forge_kind, trust_tier, verify_command, delivery_mode, readiness, bindings_json, forge_reviewers_json, created_at, updated_at)
-		VALUES (?,?,?,?,?,?,?,?,?,?)`,
+	}
+	now := timestampNow()
+	if exists {
+		if _, err := tx.Exec(`UPDATE repos SET forge_kind=?, trust_tier=?, verify_command=?, delivery_mode=?, readiness=?, bindings_json=?, forge_reviewers_json=?, routing_json=?, updated_at=?
+			WHERE repo_key=?`,
+			string(profile.ForgeKind), string(profile.TrustTier), profile.VerifyCommand,
+			string(profile.DeliveryMode), string(profile.Readiness), string(encoded), string(encodedForgeReviewers), string(routing), now, profile.RepoKey); err != nil {
+			return err
+		}
+	} else if _, err := tx.Exec(`INSERT INTO repos(repo_key, forge_kind, trust_tier, verify_command, delivery_mode, readiness, bindings_json, forge_reviewers_json, routing_json, created_at, updated_at)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
 		profile.RepoKey, string(profile.ForgeKind), string(profile.TrustTier), profile.VerifyCommand,
-		string(profile.DeliveryMode), string(profile.Readiness), string(encoded), string(encodedForgeReviewers), now, now); err != nil {
+		string(profile.DeliveryMode), string(profile.Readiness), string(encoded), string(encodedForgeReviewers), string(routing), now, now); err != nil {
 		return err
 	}
 	return tx.Commit()

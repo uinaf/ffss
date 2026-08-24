@@ -184,7 +184,8 @@ func allCommandSchemas() []commandSchema {
 		{Name: "status", Description: "Return compact state and the next allowed action.", Flags: flags("json", "run", "fields"), Output: "status"},
 		{Name: "watch", Description: "Observe delivered units on the forge and record signals as observe events; --once runs one pass, --interval polls bounded.", Mutating: true, Flags: flags("once", "interval", "iterations", "run", "json"), Output: "watch"},
 		{Name: "reviewers", Description: "List the reviewer registry, or register/unregister a custom identity.", Mutating: true, Flags: flags("add", "remove", "json"), Output: "reviewers"},
-		{Name: "repo", Description: "Show or declare the repo profile: role bindings (review, qa, venue, memory) and policy (forge kind, trust tier, verify command, delivery mode, readiness). Subcommands: show, register, update, unregister.", Mutating: true, Flags: flags("forge", "trust", "verify-cmd", "delivery", "readiness", "bind", "forge-reviewer", "json"), Output: "repo"},
+		{Name: "repo", Description: "Show or declare the repo profile: role bindings and policy, including the versioned routing registry and table. Subcommands: show, register, update, unregister.", Mutating: true, Flags: flags("forge", "trust", "verify-cmd", "delivery", "readiness", "bind", "forge-reviewer", "routing", "json"), Output: "repo"},
+		{Name: "route", Description: "Resolve one deterministic route for a released unit without launching a worker.", Flags: flags("run", "unit", "json"), Output: "route"},
 		{Name: "schema", Description: "Describe commands, flags, raw inputs, enums, and outputs as JSON.", Flags: flags("json", "command"), Output: "schema"},
 		{Name: "storage", Description: "Inspect database path resolution and Git safety without mutation.", Flags: flags("json"), Output: "storage"},
 		{Name: "selfupdate", Description: "Replace this binary with a published release after checksum verification.", Mutating: true, Flags: flags("check", "release", "json"), Output: "selfupdate"},
@@ -232,7 +233,7 @@ func flags(names ...string) []flagSchema {
 		case "signal":
 			description = "Observed signal: merged, checks_failed, review_feedback, or head_moved."
 		case "unit":
-			description = "Delivered unit identifier; optional when unambiguous."
+			description = "Unit identifier; optional when the command target is unambiguous."
 		case "reference":
 			description = "Optional link or check name backing the signal."
 		case "add":
@@ -263,6 +264,8 @@ func flags(names ...string) []flagSchema {
 			description = "Replace role bindings as comma-separated role=name pairs; roles: review, qa, venue, memory."
 		case "forge-reviewer":
 			description = "Replace forge-resident reviewer mappings as comma-separated identity=login pairs; their review evidence is corroborated against the forge."
+		case "routing":
+			description = "Strict versioned routing-policy JSON path; use - for stdin. Replaces the repository routing registry and table."
 		case "unverified":
 			typeName, description = "boolean", "Bypass forge verification of this evidence explicitly; requires --reason."
 		case "reason":

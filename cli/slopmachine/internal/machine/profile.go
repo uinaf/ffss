@@ -62,6 +62,9 @@ type RepoProfile struct {
 	// forge-resident: its review evidence is corroborated against the live
 	// change request instead of trusted as recorded input.
 	ForgeReviewers map[string]string
+	// Routing declares venue/executor registries and the deterministic route
+	// policy for this repository. Nil preserves profile behavior from M0-M2.
+	Routing *RoutingProfile
 }
 
 const maxVerifyCommandBytes = 500
@@ -124,6 +127,9 @@ func ValidateProfile(p *RepoProfile) error {
 		if err := validForgeLogin(identity, login); err != nil {
 			return err
 		}
+	}
+	if err := ValidateRoutingProfile(p.Routing); err != nil {
+		return err
 	}
 	return nil
 }

@@ -149,6 +149,7 @@ Every command also has focused help, such as `slopmachine review --help`.
 | Record a forge signal for a delivered unit | `slopmachine observe --signal merged\|checks_failed\|review_feedback\|head_moved` |
 | Observe delivered units on the forge automatically | `slopmachine watch [--once \| --interval SECONDS]` |
 | Inspect or declare the repo profile | `slopmachine repo [show\|register\|update\|unregister]` |
+| Resolve a declared route without dispatch | `slopmachine route --json [--run ID] [--unit ID]` |
 | Record transition telemetry | `slopmachine COMMAND --telemetry tel.json` |
 | Inspect all runs in a browser | `slopmachine serve` |
 
@@ -188,6 +189,23 @@ states the mode in `evidence_verification`):
   change request.
 - When the forge is unreachable the command exits 7 rather than trusting the
   claim; `--unverified --reason TEXT` records an explicit, audited bypass.
+
+### Routing policy
+
+Repository profiles may also declare a versioned venue and executor registry
+plus an exact route table:
+
+```bash
+slopmachine repo update --routing examples/routing.example.json
+slopmachine route --json --run demo
+```
+
+`route` resolves from the released risk tier, unit complexity, and whether the
+unit is on its first or a later attempt. The returned tuple includes venue,
+harness, role-to-model bindings, parallelism, review depth, and its budget.
+Missing rules, unknown registry entries, and routes above the released budget
+fail closed. Resolution is read-only. It never launches a worker or reads model
+credentials.
 
 ## Telemetry
 
