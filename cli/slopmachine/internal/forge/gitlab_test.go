@@ -170,7 +170,7 @@ func TestGitLabChecksAndMergeability(t *testing.T) {
 	}{
 		{"merged", "conflict", "cannot_be_merged", MergeableMerged},
 		{"closed", "mergeable", "can_be_merged", MergeableClosed},
-		{"locked", "mergeable", "can_be_merged", MergeableClosed},
+		{"locked", "mergeable", "can_be_merged", MergeableUnknown},
 		{"", "mergeable", "can_be_merged", MergeableUnknown},
 		{"opened", "mergeable", "", MergeableClean},
 		{"opened", "conflict", "", MergeableConflicting},
@@ -204,14 +204,14 @@ func TestGitLabHeadAndReviews(t *testing.T) {
 	}
 }
 
-func TestGitLabHeadFailsClosedForNonOpenStates(t *testing.T) {
+func TestGitLabHeadDistinguishesClosedAndLockedStates(t *testing.T) {
 	ref := ChangeRequestRef{Host: "gitlab.com", Owner: "o", Repo: "r", Number: 3}
-	for _, state := range []string{"closed", "locked"} {
+	for state, wantClosed := range map[string]bool{"closed": true, "locked": false} {
 		g := NewGitLab(gitLabRunner(ref,
 			fmt.Sprintf(`{"sha":"abc1234","state":%q}`, state),
 			`[]`, `{}`, `[]`, nil))
 		head, err := g.Head(context.Background(), ref)
-		if err != nil || head.Merged || !head.Closed {
+		if err != nil || head.Merged || head.Closed != wantClosed {
 			t.Errorf("state %q: head=%+v err=%v", state, head, err)
 		}
 	}

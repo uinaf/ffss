@@ -189,7 +189,7 @@ func (g *GitLab) Head(ctx context.Context, ref ChangeRequestRef) (HeadState, err
 		return HeadState{}, err
 	}
 	switch strings.ToLower(mr.State) {
-	case "opened":
+	case "opened", "locked":
 		return HeadState{SHA: mr.SHA}, nil
 	case "merged":
 		return HeadState{SHA: mr.SHA, Merged: true}, nil
@@ -436,7 +436,7 @@ func gitLabMergeability(state, detailed, fallback string) Mergeability {
 	switch strings.ToLower(state) {
 	case "merged":
 		return MergeableMerged
-	case "closed", "locked":
+	case "closed":
 		return MergeableClosed
 	case "opened":
 		// Continue to GitLab's detailed and legacy mergeability fields.
