@@ -61,6 +61,9 @@ func (g *GitLab) ParseChangeRequestURL(raw string) (ChangeRequestRef, error) {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("not a GitLab merge request URL: %q", raw)}
 	}
 	project := segments[:len(segments)-3]
+	if !validGitLabProjectPath(project) {
+		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("invalid GitLab project path in %q", raw)}
+	}
 	for index, segment := range project {
 		if !validGitLabPathSegment(segment, index < len(project)-1) {
 			return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("invalid GitLab project path in %q", raw)}
@@ -84,8 +87,54 @@ func (g *GitLab) ParseChangeRequestURL(raw string) (ChangeRequestRef, error) {
 	}, nil
 }
 
+const (
+	maxGitLabPathSegmentBytes  = 255
+	maxGitLabNamespaceSegments = 21
+)
+
+// Keep these route constraints aligned with Gitlab::PathRegex and Namespace.
+var reservedTopLevelRoutes = map[string]struct{}{
+	"-": {}, ".well-known": {}, "404.html": {}, "422.html": {}, "500.html": {}, "502.html": {}, "503.html": {},
+	"admin": {}, "api": {}, "apple-touch-icon.png": {}, "assets": {}, "dashboard": {}, "deploy.html": {},
+	"explore": {}, "favicon.ico": {}, "favicon.png": {}, "groups": {}, "health_check": {}, "help": {},
+	"import": {}, "jwt": {}, "login": {}, "o": {}, "oauth": {}, "profile": {}, "projects": {}, "public": {},
+	"robots.txt": {}, "s": {}, "search": {}, "sitemap": {}, "sitemap.xml": {}, "sitemap.xml.gz": {},
+	"slash-command-logo.png": {}, "snippets": {}, "unsubscribes": {}, "uploads": {}, "users": {}, "v2": {},
+}
+
+var reservedProjectWildcardRoutes = map[string]struct{}{
+	"-": {}, "badges": {}, "blame": {}, "blob": {}, "builds": {}, "commits": {}, "create": {},
+	"create_dir": {}, "edit": {}, "files": {}, "find_file": {}, "new": {}, "preview": {}, "raw": {},
+	"refs": {}, "tree": {}, "update": {}, "wikis": {},
+}
+
+func validGitLabProjectPath(project []string) bool {
+	if len(project) < 2 || len(project)-1 > maxGitLabNamespaceSegments {
+		return false
+	}
+	if _, reserved := reservedTopLevelRoutes[strings.ToLower(project[0])]; reserved {
+		return false
+	}
+	for _, segment := range project[1:] {
+		if _, reserved := reservedProjectWildcardRoutes[strings.ToLower(segment)]; reserved {
+			return false
+		}
+	}
+	lower := make([]string, len(project))
+	for i, segment := range project {
+		lower[i] = strings.ToLower(segment)
+	}
+	joined := strings.Join(lower, "/")
+	for _, reservedSuffix := range []string{"/environments/folders", "/gitlab-lfs/objects", "/info/lfs/objects"} {
+		if strings.HasSuffix(joined, reservedSuffix) {
+			return false
+		}
+	}
+	return true
+}
+
 func validGitLabPathSegment(segment string, namespace bool) bool {
-	if segment == "" || segment == "." || segment == ".." || strings.HasPrefix(segment, "-") {
+	if segment == "" || len(segment) > maxGitLabPathSegmentBytes || segment == "." || segment == ".." || strings.HasPrefix(segment, "-") {
 		return false
 	}
 	lower := strings.ToLower(segment)
@@ -222,9 +271,9 @@ type gitLabNote struct {
 	Body       string `json:"body"`
 	CreatedAt  string `json:"created_at"`
 	UpdatedAt  string `json:"updated_at"`
-	System     bool   `json:"system"`
-	Resolvable bool   `json:"resolvable"`
-	Resolved   bool   `json:"resolved"`
+	System     *bool  `json:"system"`
+	Resolvable *bool  `json:"resolvable"`
+	Resolved   *bool  `json:"resolved"`
 	Author     struct {
 		Username string `json:"username"`
 	} `json:"author"`
@@ -257,6 +306,11 @@ func (g *GitLab) reviewThreads(ctx context.Context, ref ChangeRequestRef) ([]Rev
 			return nil, 0, "", &Error{Kind: ErrorTransient, Err: fmt.Errorf("decode discussions for %s: %w", ref, err)}
 		}
 		for _, discussion := range discussions {
+			for _, note := range discussion.Notes {
+				if note.Resolvable == nil || (*note.Resolvable && note.Resolved == nil) {
+					return nil, 0, "", &Error{Kind: ErrorTransient, Err: fmt.Errorf("discussion %q for %s has incomplete resolution state", discussion.ID, ref)}
+				}
+			}
 			thread, open := gitLabThread(discussion)
 			if !open {
 				continue
@@ -277,7 +331,7 @@ func (g *GitLab) reviewThreads(ctx context.Context, ref ChangeRequestRef) ([]Rev
 func gitLabThread(discussion gitLabDiscussion) (ReviewThread, bool) {
 	open := false
 	for _, note := range discussion.Notes {
-		if note.Resolvable && !note.Resolved {
+		if *note.Resolvable && !*note.Resolved {
 			open = true
 			break
 		}
@@ -321,7 +375,10 @@ func (g *GitLab) reviewNotes(ctx context.Context, ref ChangeRequestRef) ([]Revie
 			return nil, &Error{Kind: ErrorTransient, Err: fmt.Errorf("decode notes for %s: %w", ref, err)}
 		}
 		for _, note := range notes {
-			if !note.System && note.Author.Username != "" {
+			if note.System == nil {
+				return nil, &Error{Kind: ErrorTransient, Err: fmt.Errorf("note %d for %s has no system status", note.ID, ref)}
+			}
+			if !*note.System && note.Author.Username != "" {
 				reviews = append(reviews, Review{Author: note.Author.Username, State: "COMMENTED", SubmittedAt: note.CreatedAt})
 			}
 		}

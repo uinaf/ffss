@@ -158,8 +158,11 @@ func validForgeLogin(kind ForgeKind, identity, login string) error {
 	if base == "" || strings.HasPrefix(base, "-") || (kind == ForgeGitHub && strings.HasSuffix(base, "-")) {
 		return fmt.Errorf("%w: forge login for %q is not a valid %s username", ErrBadArgs, identity, kind)
 	}
-	if kind == ForgeGitLab && strings.HasSuffix(base, ".") {
-		return fmt.Errorf("%w: forge login for %q is not a valid %s username", ErrBadArgs, identity, kind)
+	if kind == ForgeGitLab {
+		lower := strings.ToLower(base)
+		if strings.HasSuffix(base, ".") || strings.HasSuffix(lower, ".git") || strings.HasSuffix(lower, ".atom") {
+			return fmt.Errorf("%w: forge login for %q is not a valid %s username", ErrBadArgs, identity, kind)
+		}
 	}
 	for _, r := range base {
 		valid := (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '-'

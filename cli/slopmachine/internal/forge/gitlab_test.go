@@ -24,7 +24,7 @@ func TestGitLabParseChangeRequestURL(t *testing.T) {
 	if err != nil || upper.Host != "gitlab.com" {
 		t.Fatalf("uppercase authority: ref=%+v err=%v", upper, err)
 	}
-	for _, invalid := range []string{
+	invalidURLs := []string{
 		"",
 		"http://gitlab.com/o/r/-/merge_requests/1",
 		"https://gitlab.com/o/r/merge_requests/1",
@@ -44,9 +44,17 @@ func TestGitLabParseChangeRequestURL(t *testing.T) {
 		"https://gitlab.com/group.atom/repo/-/merge_requests/1",
 		"https://gitlab.com/group/repo.git/-/merge_requests/1",
 		"https://gitlab.com/group/repo.atom/-/merge_requests/1",
+		"https://gitlab.com/api/repo/-/merge_requests/1",
+		"https://gitlab.com/group/tree/-/merge_requests/1",
+		"https://gitlab.com/group/environments/folders/-/merge_requests/1",
 		"https://gitlab.com/o/r/-/merge_requests/1/diffs",
 		"https://gitlab.com/o/r/-/merge_requests/1?view=parallel",
-	} {
+	}
+	invalidURLs = append(invalidURLs,
+		"https://gitlab.com/"+strings.Repeat("a", 256)+"/repo/-/merge_requests/1",
+		"https://gitlab.com/"+strings.Repeat("a/", maxGitLabNamespaceSegments+1)+"repo/-/merge_requests/1",
+	)
+	for _, invalid := range invalidURLs {
 		var forgeErr *Error
 		if _, err := g.ParseChangeRequestURL(invalid); err == nil || !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorNotFound {
 			t.Errorf("accepted %q: %v", invalid, err)
@@ -126,7 +134,7 @@ func TestGitLabObserveMapsPipelineMergeabilityAndDiscussions(t *testing.T) {
 		{"id":"resolved","notes":[{"id":1,"resolvable":true,"resolved":true}]},
 		{"id":"open","notes":[
 			{"id":2,"body":"finding","author":{"username":"review_bot"},"resolvable":true,"resolved":false,"position":{"new_path":"cmd/main.go","new_line":42}},
-			{"id":3,"body":"latest line\nmore","author":{"username":"human"},"updated_at":"2026-08-25T10:00:00Z"}
+			{"id":3,"body":"latest line\nmore","author":{"username":"human"},"updated_at":"2026-08-25T10:00:00Z","resolvable":false,"resolved":null}
 		]}
 	]`
 	ref := ChangeRequestRef{Host: "gitlab.example", Owner: "group/sub", Repo: "repo", Number: 7}
@@ -182,7 +190,7 @@ func TestGitLabHeadAndReviews(t *testing.T) {
 		`{"sha":"abc1234","state":"merged"}`,
 		`[]`,
 		`{"approved_by":[{"user":{"username":"approve_bot"}}]}`,
-		`[{"id":9,"author":{"username":"comment.bot"},"body":"reviewed","created_at":"2026-08-25T09:00:00Z"},{"id":10,"system":true,"author":{"username":"system"}}]`, nil))
+		`[{"id":9,"system":false,"author":{"username":"comment.bot"},"body":"reviewed","created_at":"2026-08-25T09:00:00Z"},{"id":10,"system":true,"author":{"username":"system"}}]`, nil))
 	head, err := g.Head(context.Background(), ref)
 	if err != nil || head.SHA != "abc1234" || !head.Merged || head.Closed {
 		t.Fatalf("head=%+v err=%v", head, err)
@@ -350,5 +358,13 @@ func TestGitLabRejectsMalformedPayloads(t *testing.T) {
 		if _, err := g.Head(context.Background(), ref); !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorTransient {
 			t.Fatalf("incomplete merge request %s: %v", payload, err)
 		}
+	}
+	g = NewGitLab(gitLabRunner(ref, `{"sha":"abc1234","state":"opened"}`, `[{"id":"open","notes":[{"id":1,"resolvable":true}]}]`, `{}`, `[]`, nil))
+	if _, err := g.Observe(context.Background(), ref); !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorTransient {
+		t.Fatalf("discussion with incomplete resolution state: %v", err)
+	}
+	g = NewGitLab(gitLabRunner(ref, `{"sha":"abc1234","state":"opened"}`, `[]`, `{}`, `[{"id":1,"author":{"username":"reviewer"}}]`, nil))
+	if _, err := g.Reviews(context.Background(), ref); !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorTransient {
+		t.Fatalf("note with missing system status: %v", err)
 	}
 }
