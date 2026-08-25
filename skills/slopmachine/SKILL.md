@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Slopmachine
 
-Deterministic and structured approach to slop cannoning.
+Slop cannoning, but deterministic and structured.
 
 ```text
 plan → /slopmachine → clarify → human releases → machine runs
@@ -39,8 +39,8 @@ slopmachine repo register --forge github --trust low \
 ```
 
 - Map forge-resident reviewers (bots that review on the change request) with
-  `--forge-reviewer identity=login` so their evidence is corroborated against
-  the live change request.
+  `--forge-reviewer identity=login` so the machine corroborates their evidence
+  against the live change request.
 - At low trust the machine only accepts machine-executed verification
   (`verify --cmd`), and local reviewers must leave a resolvable result
   artifact.
@@ -62,8 +62,6 @@ Turn the agreed plan into intake immediately after init:
 - keep units concrete, bounded, and dependency-ordered
 - give each unit verifiable `acceptance_criteria` and declare the run's
   `risk_tier`
-- use stdin so the workflow does not leave evidence scratch files in the
-  repository
 
 ```bash
 slopmachine intake --file - --run run-id-from-status --dry-run --json <<'JSON'
@@ -80,17 +78,9 @@ slopmachine intake --file - --run run-id-from-status --dry-run --json <<'JSON'
 JSON
 ```
 
-The `--file` payload carries only the intake document; the run travels in
+Put only the intake document in the `--file` payload; pass the run through
 `--run`, exactly as `next_action` prints it. (The raw `--input` shape embeds
 `run` inside the payload instead; do not mix the two.)
-
-- Inspect the dry-run projection; when it matches the agreed intake, repeat
-  the same command without `--dry-run`.
-- Do this for every mutation: validate first, then apply. A dry run never
-  advances canonical state.
-- `verify --cmd --dry-run` cannot predict an exit code; on
-  `outcome_undetermined: true`, validate the command and current state instead
-  of expecting a post-verification transition.
 
 Show the human a compact intake summary: units, delivery mode, required
 reviewers, and exact `intake_revision`. Wait for explicit release approval,
@@ -131,9 +121,9 @@ slopmachine review --evidence - --run run-id-from-status --dry-run --json <<'JSO
 JSON
 ```
 
-For a local reviewer, `artifact_ref` must point at the reviewer's real
-result file (save the slopguard JSON output and reference it); the machine
-refuses dangling or opaque refs on a forge-bound repo.
+For a local reviewer, point `artifact_ref` at the reviewer's real result
+file: save the slopguard JSON output and reference it. The machine refuses
+dangling or opaque refs on a forge-bound repo.
 
 Deliver only after every required reviewer is present in `completed_reviewers`.
 Use stdin evidence and match the intake delivery mode:
@@ -148,7 +138,7 @@ Deliver from the built checkout: the machine anchors the change request's
 head to the local head (or an explicit `commit_sha`) and refuses a change
 request that is already merged or closed.
 
-After each projection is accepted, repeat without `--dry-run`.
+Once you accept a projection, repeat the command without `--dry-run`.
 
 When status shows `evidence_verification: observed`, the binary checks
 deliver and review evidence against the live forge before accepting it.
@@ -161,13 +151,15 @@ deliver and review evidence against the live forge before accepting it.
 
 ## Talk to the human
 
-Collaborator voice: short prose + optional tables. Lead with what changed or
-what you need, never a wall of CLI JSON. Plain words over machine dumps.
+Use collaborator voice: short prose plus optional tables. Lead with what
+changed or what you need, never a wall of CLI JSON. Plain words over machine
+dumps.
 
 ## Three human moments
 
-1. **Release**: confirm table (what/how/review), wait, then
-   `slopmachine release --revision` using `intake_revision` from status JSON.
+1. **Release**: show a confirm table (what/how/review), wait, then run
+   `slopmachine release --revision` with the `intake_revision` from status
+   JSON.
 2. **Required reviewers**: once at intake: pick from the registered
    identities (`slopmachine reviewers` lists them; `slopguard` and `bugbot`
    are built in). Store via intake `required_reviewers`. Do not auto-fire
@@ -211,16 +203,15 @@ later units already build while it waits.
 
 ## Post-review flow
 
-- `clean` records that reviewer. Delivery requires a distinct clean result
-  from every identity in `required_reviewers`.
+- `clean` records that reviewer.
 - `findings` moves directly to `REWORK`; summarize findings, then obey the next
   build command.
 - `ambiguous` moves to `NEEDS_DECISION`; ask the human and record the answer.
 
 ## Mindful spend
 
-Strong model for BUILD; cheaper review (Bugbot / lighter slopguard). Never
-default "most expensive everywhere."
+Use a strong model for BUILD and a cheaper reviewer (Bugbot or a lighter
+slopguard). Never default to "most expensive everywhere."
 
 ## Companion tools
 

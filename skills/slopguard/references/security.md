@@ -49,7 +49,4 @@ create the issue. Tell the user what prevented safe reporting.
 - Use private vulnerability reporting from the `uinaf/ffss` repository
   Security tab.
 - Use synthetic, high-level reproduction details.
-- Even in a private report, never include a frozen bundle, task prompt,
-  reviewed source or diff, repository identity, private or absolute path,
-  credential, environment output, provider command line, or raw provider
-  output.
+- The same exclusion list applies to private reports.

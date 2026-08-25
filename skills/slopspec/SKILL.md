@@ -41,7 +41,7 @@ Separate:
 - facts that can be resolved from the repository or tracker
 - unresolved decisions that block honest decomposition
 
-Do not ask the user for facts that can be discovered. Do not reopen settled choices merely to make the plan more elaborate.
+Do not ask the user for facts you can discover yourself. Do not reopen settled choices merely to make the plan more elaborate.
 
 ### 2. Resolve the durable destination
 
@@ -60,21 +60,17 @@ Before publishing sensitive details to a public or broadly visible tracker, show
 
 ### 3. Choose the smallest useful shape
 
-Use [artifact-shapes.md](references/artifact-shapes.md) for templates and sizing.
-
-- Use one issue for work that one agent can complete and verify in one fresh context.
-- Use a parent issue, epic, or equivalent plus child tickets when the work spans sessions, owners, or independently landable slices.
-- Use a project or initiative only when the repository already uses that level for comparable work.
-
-Each child should deliver a narrow end-to-end behavior and be independently demonstrable or verifiable. Wide mechanical changes may use an expand-migrate-contract sequence when no vertical slice can remain green.
+Pick the shape, templates, and slicing from
+[artifact-shapes.md](references/artifact-shapes.md). Use the least hierarchy
+that keeps the work resumable.
 
 ### 4. Draft from the agreed evidence
 
-The canonical plan should preserve: problem/outcome, decisions, acceptance
-criteria, non-goals, approach at stable module boundaries, verification, risks
-and stop conditions, plus parent/child/blocking relationships. Use the exact
-shapes in [artifact-shapes.md](references/artifact-shapes.md) rather than
-duplicating them here.
+Carry the agreed evidence into the canonical plan: problem and outcome,
+decisions, acceptance criteria, non-goals, approach at stable module boundaries,
+verification, risks and stop conditions, and parent/child/blocking
+relationships. Use the exact shapes in
+[artifact-shapes.md](references/artifact-shapes.md); do not draft your own.
 
 Write every issue, epic, and ticket body in the
 [house style](../slopscriber/references/style.md): outcome first, one fact per
@@ -84,30 +80,26 @@ Blocking edge example: `Migrate auth tokens` blocks `Wire login UI` because the
 UI cannot verify against the new token contract until migration lands; shared
 theme alone is not a blocker.
 
-Use exact paths only when verified against the current revision. Before creating
-multiple tickets, present titles, delivered behavior, and blocking edges for
-approval unless already approved.
+Use exact paths only after verifying them against the current revision. Before
+creating multiple tickets, present titles, delivered behavior, and blocking
+edges for approval unless the user already approved them.
 
 ### 5. Publish or update
 
-Search for an existing canonical issue before creating a duplicate. When the conversation started from an issue, epic, or project, update or attach to it unless the user asked for a new planning root.
+Search for an existing canonical issue before you create a duplicate. When the conversation started from an issue, epic, or project, update or attach to it unless the user asked for a new planning root.
 
 - Preserve repository templates, terminology, labels, teams, projects, milestones, and issue types.
 - Create blockers before dependents so relationships can reference real identifiers.
 - Use native parent/child and dependency relationships when the tracker and available tool support them; otherwise record explicit links in the artifact bodies.
 
-If the preferred tracker cannot be written:
-
-- keep the intended destination
-- produce a paste-ready draft in the correct shape
-- report the missing access or tool
-- do not switch to another tracker or commit a local plan without approval
+If you cannot write to the preferred tracker, follow the fallback in
+[tracker-selection.md](references/tracker-selection.md).
 
 ### 6. Verify the resume point
 
 Re-read every created or updated artifact. Confirm titles, bodies, metadata, hierarchy, blocking relationships, and links match the approved plan.
 
-Return a compact handoff (tracker artifact is durable; do not duplicate it):
+Return a compact handoff. The tracker artifact is the durable record; do not duplicate it:
 
 ```text
 canonical: PROJ-123

@@ -67,7 +67,7 @@ One narrow end-to-end behavior that can be demonstrated or verified independentl
 
 - Prefer tracer-bullet slices through the necessary layers over separate database, API, UI, and test tickets.
 - Size each ticket for one fresh agent context, including verification and cleanup.
-- A completed ticket should leave the repository in a valid, reviewable state.
+- Shape each ticket so completing it leaves the repository in a valid, reviewable state.
 - Create only genuine dependency edges. Shared topic, preferred order, or the same parent does not imply blocking.
 - Put foundational compatibility work first only when later slices genuinely cannot begin without it.
 - For wide mechanical changes that cannot land green as vertical slices, use expand, migrate in reviewable batches, then contract.
@@ -84,4 +84,4 @@ The canonical artifact must let a fresh agent answer:
 - What evidence proves each item complete?
 - Where should newly discovered decisions or scope changes be recorded?
 
-Update the canonical tracker artifacts as the plan changes. Comments may record progress, but settled requirements and current status belong in the artifact fields or body rather than being buried in a conversation log.
+Update the canonical tracker artifacts as the plan changes. Record progress in comments, but keep settled requirements and current status in the artifact fields or body, not buried in a conversation log.

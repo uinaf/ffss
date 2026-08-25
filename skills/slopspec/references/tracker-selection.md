@@ -70,4 +70,4 @@ Do not ask when the user already named the destination or requested publication 
 
 Before writing, verify the target, authenticated identity or profile when relevant, repository or project visibility, and permission to create or update the intended artifact type. Do not install integrations, change authentication, create tracker projects, invent labels, or broaden visibility merely to publish a plan.
 
-When native hierarchy or dependency operations are unavailable, retain the chosen tracker and use explicit parent and blocker links in item bodies. When no write path is available, produce a paste-ready draft and name the exact missing capability.
+When native hierarchy or dependency operations are unavailable, retain the chosen tracker and use explicit parent and blocker links in item bodies. When you have no write path at all, keep the intended destination: produce a paste-ready draft in the correct shape and name the exact missing access or tool. Do not switch to another tracker or commit a local plan without approval.

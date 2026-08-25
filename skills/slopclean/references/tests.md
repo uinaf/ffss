@@ -39,7 +39,7 @@ Interaction assertions stay only where the call itself is the contract
 - Copy-pasted test bodies differing by one literal: table-drive or
   parametrize.
 - Setup duplicated per test: one builder or fixture with per-test deltas;
-  a `beforeEach` only some tests use moves into those tests.
+  move a `beforeEach` only some tests use into those tests.
 - Giant inline fixtures re-declared in every test: one named fixture.
 - N happy-path variants with cosmetic input changes and no boundary or
   failure case: keep one, add the missing edge or report the gap.

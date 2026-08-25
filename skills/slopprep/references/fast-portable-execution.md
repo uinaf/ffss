@@ -2,8 +2,8 @@
 
 The repository owns verification. CI providers only provision a checkout,
 restore safe caches, inject scoped runner capabilities, select
-repository-owned lanes, invoke them, and aggregate results. No provider,
-local agent, or developer shell carries separate validation logic.
+repository-owned lanes, invoke them, and aggregate results. Never let a
+provider, local agent, or developer shell carry separate validation logic.
 
 ## Task graph
 
@@ -49,12 +49,12 @@ local agent, or developer shell carries separate validation logic.
 - With Vite+ task graphs, keep package-script caching disabled unless every
   script is pure; a global `run.cache: true` also caches deploy, publish,
   and migration scripts.
-- Do not share caches from untrusted change execution with privileged
+- Never share caches from untrusted change execution with privileged
   deploy, publish, signing, or secret-bearing jobs.
 
 ## Guardrails
 
-- Do not narrow detectors or disable verification merely to improve timing.
+- Don't narrow detectors or disable verification just to improve timing.
 - Check task-runner install behavior in clean CI: cache the auto-install
   once, or disable it and install the selected lane's declared tools.
 - Keep policy application, deployment, release, migration, and live

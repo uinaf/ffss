@@ -74,8 +74,8 @@ Good, a high-level summary; depth behind a link or on request:
 
 ## Applying to docs
 
-- A paragraph is allowed only for rationale, trade-offs, or causal
-  explanation, and holds one idea in two or three sentences.
+- Allow a paragraph only for rationale, trade-offs, or causal
+  explanation, and hold it to one idea in two or three sentences.
 - Any section where the reader must mine prose for commands, paths, or
   states is a violation; restructure it as bullets or a table.
 - Keep examples minimal and normative; one bad/good pair beats three.

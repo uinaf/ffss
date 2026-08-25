@@ -1,6 +1,6 @@
 # Status contract
 
-Use a field mask as the agent leash:
+Use a field mask as your leash:
 
 ```bash
 slopmachine status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification,route_ready,routing_policy_version
@@ -53,8 +53,6 @@ slopmachine verify --cmd 'go test ./...' --run demo
   `validated_command`; it does not represent persisted state.
 - Re-read status after plain output or an error before choosing the next
   step.
-- `verify --cmd --dry-run` cannot know the command outcome, so it keeps the
-  current state and adds `outcome_undetermined: true`.
 
 - Arrays are always present, including when empty.
 - `next_action` contains a usable command template; replace angle-bracket
@@ -62,8 +60,6 @@ slopmachine verify --cmd 'go test ./...' --run demo
 - Field masks validate every requested name and omit optional fields that are
   not present in the canonical status document; they never synthesize `null`
   values.
-- Structured intake, review, and delivery actions use stdin through
-  `--file -` or `--evidence -`; do not create the payload in the repository.
 - Delivery requires one clean result from every identity in
   `required_reviewers`. Repeating the same reviewer does not satisfy the
   gate.

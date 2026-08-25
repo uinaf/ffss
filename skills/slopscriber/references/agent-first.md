@@ -1,11 +1,11 @@
 # Agent-First Documentation
 
-Optimize internal and operational docs for agent retrieval. Humans benefit
-from the same precision.
+Write internal and operational docs for the agent that retrieves them; humans
+get the same precision for free.
 
-The deletion test: would removing the line cause a capable agent to make a
-material mistake? If not, remove it or move it behind a focused link.
-Instructions that restate capable-model defaults spend attention without
+Apply the deletion test to every line: would removing it cause a capable agent
+to make a material mistake? If not, delete it or move it behind a focused
+link. Instructions that restate capable-model defaults spend attention without
 changing behavior; delete them.
 
 ## Budget Retrieval
@@ -16,7 +16,7 @@ Agent-facing guidance spends two resources:
 - **Discovery cost**: material moved out of context must still be found.
 
 Reduce context cost with focused links, but never hide required guidance
-behind an unnamed or weakly described target. Always-loaded words go to
+behind an unnamed or weakly described target. Spend always-loaded words on
 routing that reliably changes what the agent reads next.
 
 ## Select Information
@@ -120,8 +120,9 @@ the right layer:
   and harness policy; project mechanics stay in their owning repository.
 - **Repository guidance** gives a compact working model for cross-cutting
   work: what the system does, who relies on it, what must not regress,
-  repository-wide hazards, architecture that changes code placement, exact
-  lifecycle commands, and the surfaces a change may need to cover.
+  repository-wide hazards and their safe alternatives, domain terms whose
+  everyday meanings would mislead, architecture that changes code placement,
+  exact lifecycle commands, and the surfaces a change may need to cover.
 - **Scoped guidance** carries package, language, or subsystem rules needed
   only inside that scope.
 
@@ -132,14 +133,16 @@ deep architecture and local-only conventions behind task-shaped pointers.
 Translate values into decisions. Pair each abstract preference with an
 observable consequence, failure mode, or small example; `protect performance`
 becomes useful when it names the regressions to watch and the proof expected.
-A bounded matrix (clients, providers, entry points, connection modes) earns
-its context cost when omissions across those dimensions are a recurring
-defect.
+A bounded matrix (clients, providers, entry points, connection modes,
+contracts, reverse states) earns its context cost when omissions across those
+dimensions are a recurring defect.
 
 Keep at the root: brief system orientation and non-negotiable outcomes; exact
 setup, run, and verification commands; repository-wide hazards and
-completeness checks; conventions that differ from model defaults; ownership
-and safety boundaries; links to deeper docs and scoped guidance.
+completeness checks; what local checks cannot prove; conventions that differ
+from model defaults; ownership and safety boundaries; where durable
+decisions, operational state, and handoffs get written back; links to deeper
+docs and scoped guidance.
 
 Move closer to the code: language- or package-specific rules, commands unique
 to a service, conventions for one directory or file pattern, per-directory

@@ -17,7 +17,7 @@ Default target: B. Treat C as a checkpoint only ([references/grading.md](referen
 - Out of scope: source-diff review, ordinary post-change self-checks when the
   repository already has a usable proof path, prose-only documentation cleanup,
   ship decisions, and unauthorized external actions.
-- Do not invent an orchestrator. Grade platform tools, network access, and
+- Don't invent an orchestrator. Grade platform tools, network access, and
   machine authentication as runner capabilities.
 - Require task-relevant guidance and empirical proof; mock-only tests,
   documentation claims, and builder self-evaluation do not prove readiness.
@@ -57,8 +57,8 @@ Then:
 
    Static file presence alone is weak evidence.
 3. Compare the guide's commands, paths, ownership, and restrictions with the
-   checkout and declared runner. Treat stale or unexecutable guidance as a
-   readiness failure, not merely a prose defect.
+   checkout and declared runner. Stale or unexecutable guidance is a readiness
+   failure, not just a prose defect.
 4. Fill the [Required Output](references/grading.md#required-output) profile; for
    every applicable capability record its grade, evidence, gap, and owner.
 5. For each automation-path stage, write `input / output / owner / terminal` or
@@ -71,8 +71,8 @@ Then:
 Read [references/setup-patterns.md](references/setup-patterns.md) only for a
 missing lifecycle, machine identity, observability, isolation, or unattended
 runner contract. Interactive login, profile switching, copied secrets, and
-printed tokens are runner gaps. Do not introduce a framework or tool solely to
-raise readiness; verify the repository-selected stack instead.
+printed tokens are runner gaps. Don't introduce a framework or tool just to
+raise readiness; verify the stack the repository already chose.
 
 ### 2. Build the missing contract
 
@@ -89,9 +89,9 @@ same surface humans and CI already use.
   [references/fast-portable-execution.md](references/fast-portable-execution.md)
   for runner-neutral task graphs, lane selection, and cache correctness before
   changing verification structure or CI selection.
-- A shell file is not required merely to give the command a name; conversely,
-  when a plain repo-local script satisfies the contract, it is the finished
-  output. Do not scaffold a generator or framework around it.
+- You don't need a shell file just to give a command a name; when a plain
+  repo-local script satisfies the contract, that script is the finished
+  output. Don't scaffold a generator or framework around it.
 - Give every driven target a doctor check, and treat heavyweight runtime
   resources (simulators, containers, services, databases) as owned lifecycle
   state; the stage contract and ownership protocol live in
@@ -104,8 +104,9 @@ same surface humans and CI already use.
 | workspace and branch setup, allowed targets, tool install, secret injection | task interpretation and implementation |
 | boot, test, teardown, artifact manifests, upload and push mechanics | exploratory QA, diagnosis, evidence selection, and recovery strategy |
 
-- Keep `AGENTS.md` as the canonical shared guide; symlink `CLAUDE.md` →
-  `AGENTS.md`. Keep shared guidance model-neutral.
+- Keep `AGENTS.md` as the canonical, model-neutral shared guide; normalize
+  `CLAUDE.md` per the symlink-or-import rule routed through
+  [references/agent-guidance.md](references/agent-guidance.md).
 - Put private human context in an owner-controlled layer when the workspace
   supports one; keep model or harness tuning in its owning configuration.
 

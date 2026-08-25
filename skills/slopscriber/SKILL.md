@@ -64,9 +64,9 @@ Use [references/source-boundaries.md](references/source-boundaries.md) before wr
 
 Keep top-level docs terse and navigational.
 
-- `AGENTS.md` should be a compact operating contract and map, not a wiki
-- If the repo uses `AGENTS.md`, make `CLAUDE.md` a symlink or `@AGENTS.md` import instead of maintaining a second authored file
-- `README.md` should lead with value, quick use, and links to deeper docs
+- Keep `AGENTS.md` a compact operating contract and map, not a wiki
+- If the repo uses `AGENTS.md`, normalize `CLAUDE.md` per the symlink-or-import rule in [references/agent-first.md](references/agent-first.md#agentsmd)
+- Lead `README.md` with value, quick use, and links to deeper docs
 - Refresh `CONTRIBUTING.md` and `SECURITY.md` when they already exist or when moving existing policy out of an overloaded `README.md`; do not invent baseline policy from scratch
 - For workspace repos, keep one canonical setup doc and let `README.md` point to it
 - Use the concrete top-level split and section order in [references/documentation.md](references/documentation.md)

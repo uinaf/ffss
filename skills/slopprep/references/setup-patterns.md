@@ -1,11 +1,11 @@
 # Readiness Setup Patterns
 
 Use only the section matching the missing capability. Adapt contracts to the
-repository's existing tools; do not copy generic infrastructure into a repo.
+repository's existing tools; don't copy generic infrastructure into a repo.
 
 ## Lifecycle
 
-One ordinary repository-owned surface, shared by humans, agents, and CI:
+Build one ordinary repository-owned surface, shared by humans, agents, and CI:
 
 | Stage | Outcome |
 | --- | --- |
@@ -15,17 +15,17 @@ One ordinary repository-owned surface, shared by humans, agents, and CI:
 | verify | canonical guardrails plus the strongest cheap real surface |
 | teardown | release owned processes, runtimes, and state on success, failure, timeout, and cancellation |
 
-Each stage is noninteractive, bounded, idempotent where practical, and says
-whether a failure belongs to the repository or the runner. No parallel
-`agent-*` wrappers; wire missing entrypoints into package scripts, Make/`just`,
-or checked-in scripts CI already uses.
+Keep each stage noninteractive, bounded, and idempotent where practical, and
+make each failure say whether it belongs to the repository or the runner. No
+parallel `agent-*` wrappers; wire missing entrypoints into package scripts,
+Make/`just`, or checked-in scripts CI already uses.
 
 ### Doctor
 
-One read-only "is this instance worth driving?" check per driven target:
+Give each driven target one read-only "is this instance worth driving?" check:
 process up, expected build, port owned by the right process, auth valid,
-whichever contracts the target actually has. Drivers run it before driving and
-again after anything surprising. Doctor never mutates, repairs, or replaces
+whichever contracts the target actually has. Run it before driving and again
+after anything surprising. Doctor never mutates, repairs, or replaces
 bootstrap; it reports whether the instance matches the contract and names the
 missing capability when it does not. A plain repo-local script is a complete
 implementation.
@@ -57,15 +57,15 @@ owned process group, not just the child PID.
 - Cleanup never eats the evidence: artifacts and logs survive teardown.
 
 Own tool versions once: the repository's runtime and package-manager
-declarations, lockfile, catalogs, or tool manager. CI consumes those owners
-instead of copying literals into workflow files.
+declarations, lockfile, catalogs, or tool manager. Have CI consume those
+owners instead of copying literals into workflow files.
 
 Proof selection and failure requirements:
 [verification-contract.md](verification-contract.md).
 
 ## Mechanical Enforcement
 
-Deterministic policy goes in the narrowest existing mechanical surface:
+Put deterministic policy in the narrowest existing mechanical surface:
 
 - formatter, linter, type checker, or compiler for source constraints
 - schema or config validator for structured contracts
@@ -77,13 +77,13 @@ Deterministic policy goes in the narrowest existing mechanical surface:
   express the rule
 
 Adopt an existing linter or hook shape before adding another. Baseline noisy
-checks before making them blocking. Errors name the violated rule, the
+checks before making them blocking. Make errors name the violated rule, the
 boundary, and the recovery action when one exists.
 
 For TypeScript repos already linting with Oxlint, offer vendoring the
 [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) rules: copy and
 own the rule source, let the installed toolchain run it, baseline before
-blocking. Do not introduce Oxlint just to carry them.
+blocking. Don't introduce Oxlint just to carry them.
 
 Shell is the last adapter, not the first implementation: strict process
 options plus a few established commands. The moment a flow parses JSON/YAML,
@@ -102,7 +102,7 @@ execution.
 
 - Separate roles for triage, test fixtures, artifact submission, delivery, and
   production changes.
-- Denied or missing scope fails without printing values and names the
+- Make a denied or missing scope fail without printing values and name the
   recovery owner.
 - Never embed bootstrap secrets, write fetched secrets to artifacts, or switch
   a human profile during an unattended run.
@@ -117,7 +117,7 @@ Expose the smallest machine-readable signal the target supports:
 - stateful system: reproducible fixtures and isolated write/read round trips
 
 Use versioned seed data when empty state cannot exercise the real contract.
-Keep diagnostics contextual and redacted. Do not demand a health endpoint or
+Keep diagnostics contextual and redacted. Don't demand a health endpoint or
 JSON logging where the shipped surface already gives a better signal.
 
 ## Isolation
@@ -154,7 +154,7 @@ queued -> provisioning -> executing -> proving -> submitting -> reconciling
 
 Implementation and no-diff QA are separate result types; a QA task never
 manufactures a branch or pull request unless its contract requests changes.
-Every preserved artifact ties task, attempt, revision or build, scenario,
+Tie every preserved artifact's task, attempt, revision or build, scenario,
 producer, capture time, format, and redaction status to an observed outcome.
 
 ## Recovery and Back-Pressure
@@ -171,7 +171,7 @@ producer, capture time, format, and redaction status to an observed outcome.
 
 ## Maintained Examples
 
-After identifying the missing contract, two public implementations to study:
+Once you know the missing contract, study two public implementations:
 
 - [`uinaf/workspace-kit` lifecycle scripts](https://github.com/uinaf/workspace-kit/blob/main/package.json),
   [installed-package smoke](https://github.com/uinaf/workspace-kit/blob/main/scripts/smoke-package.mjs),

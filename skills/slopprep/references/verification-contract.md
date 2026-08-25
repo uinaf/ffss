@@ -1,8 +1,8 @@
 # Verification Contract
 
-Readiness owns the infrastructure that lets builders and evaluators prove work.
-It does not replace the ordinary responsibility to self-check each completed
-change, and it does not make an independent ship decision.
+You own the infrastructure for proving work. That doesn't replace the ordinary
+responsibility to self-check each completed change, and it doesn't give you an
+independent ship decision.
 
 ## Proof Layers
 
@@ -22,9 +22,8 @@ endpoint unless that exact surface ran.
 
 ## Task Instruments
 
-A builder that must ask a human to check its work is missing an instrument;
-treat the request as a readiness gap, name the missing tool, and provide it
-before iterating.
+If you have to ask a human to check your work, you're missing an instrument.
+Name it and build it before you iterate.
 
 | Claim | Instrument |
 | --- | --- |
@@ -50,16 +49,16 @@ before iterating.
   degrades and keep the last value that holds it.
 - Build, preview, fixture, rollback, and observation paths are readiness
   capabilities; grade their absence.
-- An instrument contributors and CI will reuse belongs in the repository's
-  task graph; a one-task lab stays attempt-scoped scratch, never committed
+- Put an instrument contributors and CI will reuse in the repository's task
+  graph; a one-task lab stays attempt-scoped scratch, never committed
   leftovers.
 
 ## Repository Contract
 
 Prefer one repository-owned verification entrypoint reused by local work and CI.
 That entrypoint may be a manifest script, build task, framework command, or
-typed CLI; it does not need a wrapper file.
-It should:
+typed CLI; it doesn't need a wrapper file.
+Make it:
 
 - run noninteractively with a finite bound
 - preserve a primary failure or signal status and concise, inspectable output;
@@ -70,8 +69,8 @@ It should:
   [setup-patterns.md](setup-patterns.md)
 - emit task-and-attempt-scoped artifacts when evidence must survive the process
 
-Do not create a parallel agent-only verification wrapper. Improve the ordinary
-command used by contributors and CI.
+Don't create a parallel agent-only verification wrapper. Improve the ordinary
+command contributors and CI already use.
 
 ## Real-Surface Evidence
 
@@ -88,9 +87,9 @@ Choose the smallest check set that can honestly disprove the claim:
 - Deploy wiring: exercise the actual configured surface when the claim extends
   beyond local health.
 
-- Real-surface proof exercises the real user path and captures both the action
-  and the resulting state; a command transcript without its observed outcome
-  is not real-surface evidence.
+- Exercise the real user path and capture both the action and the resulting
+  state; a command transcript without its observed outcome is not real-surface
+  evidence.
 - Prefer integration, contract, smoke, and end-to-end checks over mock-heavy
   unit tests at the seam being claimed.
 - Mocked tests remain useful supporting evidence.
@@ -124,5 +123,5 @@ Report outcomes, not command theater:
 - grade final state and side effects rather than trusting an agent's completion
   message
 
-If a repository already provides this contract, use it during ordinary work;
-do not invoke readiness work merely to repeat the builder's final checks.
+If the repository already provides this contract, use it during ordinary work;
+don't start readiness work just to repeat the builder's final checks.

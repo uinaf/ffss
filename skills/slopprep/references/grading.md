@@ -17,7 +17,7 @@ first gap: scale; concurrent result reconciliation has not been exercised
 - **Repository grade**: the versioned checkout and the contracts it exposes.
 - **Runner grade**: the declared devbox, CI worker, or orchestrator
   environment.
-- **Evidence level**: how strongly those grades were exercised:
+- **Evidence level**: how strongly you exercised those grades:
 
 | Level | Strongest evidence |
 | --- | --- |
@@ -137,7 +137,7 @@ with a concrete reason tied to the intended task classes.
 
 ## Repository and Runner Ownership
 
-Grade the owner of a failure, not whichever checkout the audit started in.
+Grade the owner of a failure, not whichever checkout you started the audit in.
 
 | Concern | Repository owns | Runner or platform owns |
 | --- | --- | --- |
@@ -151,10 +151,10 @@ A pre-provisioned Infisical machine identity, OIDC workload identity, or
 scoped CI token is positive runner evidence, not manual repository setup.
 Human login or profile switching during each run is a runner autonomy gap.
 
-Examples: `repository B / runner D` — bootstrap is correct, this workstation
-lacks the promised machine identity. `repository B / runner B` — the devbox
+Examples: `repository B / runner D`: bootstrap is correct, this workstation
+lacks the promised machine identity. `repository B / runner B`: the devbox
 injects a scoped identity and bootstrap consumes it without prompts.
-`repository D / runner B` — the runner is ready, but the repo still asks the
+`repository D / runner B`: the runner is ready, but the repo still asks the
 agent to hand-create `.env` files or follow a wiki.
 
 ## Evidence Ceilings and Blockers
@@ -175,10 +175,10 @@ agent to hand-create `.env` files or follow a wiki.
 
 ## Grading Rules
 
-- Grade what agents can actually use, not what files suggest should work.
+- Grade what you can actually run, not what the files claim works.
 - Prefer cold-start execution over warm developer-machine evidence.
 - Grade final state and side effects, not the agent's success message.
-- Accept equivalent mechanisms; do not mandate Git hooks, a particular
+- Accept equivalent mechanisms; don't mandate Git hooks, a particular
   dead-code tool, worktrees, containers, or a port algorithm without a
   repository-owned reason.
 - Keep task classes explicit: a repo may be B for dependency updates, C for UI
