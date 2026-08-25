@@ -37,19 +37,26 @@ esac
 
 // installFakeGLab puts a glab stub first on PATH that serves the merge
 // request and discussions REST reads used by watch.
-func installFakeGLab(t *testing.T, h *cliHarness, mrJSON, discussionsJSON string) {
+func installFakeGLab(t *testing.T, h *cliHarness, host, project string, mrNumber int, mrJSON, discussionsJSON string) {
 	t.Helper()
 	binDir := t.TempDir()
 	mrFile := filepath.Join(binDir, "mr.json")
 	discussionsFile := filepath.Join(binDir, "discussions.json")
 	mustWrite(t, mrFile, mrJSON)
 	mustWrite(t, discussionsFile, discussionsJSON)
+	mrEndpoint := fmt.Sprintf("projects/%s/merge_requests/%d", project, mrNumber)
+	discussionsEndpoint := mrEndpoint + "/discussions?per_page=100&page=1"
 	script := fmt.Sprintf(`#!/bin/bash
+if [[ "$#" -ne 4 || "$1" != "api" || "$3" != "--hostname" || "$4" != %q ]]; then
+  echo "unexpected glab invocation: $*" >&2
+  exit 1
+fi
 case "$2" in
-  *discussions*) cat %q ;;
-  *) cat %q ;;
+  %q) cat %q ;;
+  %q) cat %q ;;
+  *) echo "unexpected glab endpoint: $2" >&2; exit 1 ;;
 esac
-`, discussionsFile, mrFile)
+`, host, discussionsEndpoint, discussionsFile, mrEndpoint, mrFile)
 	glabPath := filepath.Join(binDir, "glab")
 	if err := os.WriteFile(glabPath, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
@@ -128,7 +135,7 @@ func TestWatchUsesGitLabAdapterFromRepoProfile(t *testing.T) {
 	h.must("deliver", "--evidence", deliver, "--run", "gitlab-watch")
 
 	h.must("repo", "register", "--forge", "gitlab", "--bind", "review=slopguard")
-	installFakeGLab(t, h,
+	installFakeGLab(t, h, "gitlab.example", "group%2Frepo", 4,
 		`{"sha":"aaaa1111aaaa1111","state":"merged","detailed_merge_status":"not_open","head_pipeline":{"status":"success"}}`,
 		`[]`)
 	out := h.must("watch", "--once", "--json", "--run", "gitlab-watch")

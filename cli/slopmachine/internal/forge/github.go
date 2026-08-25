@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -323,9 +324,13 @@ func rollupChecks(count int, at func(int) (status, conclusion string)) ChecksSta
 	return ChecksPassing
 }
 
-// classify maps gh failures onto the stable observation taxonomy. Message
+// classify maps forge CLI failures onto the stable observation taxonomy. Message
 // sniffing is confined to this boundary; callers branch on Error.Kind only.
 func classify(err error) error {
+	var classified *Error
+	if errors.As(err, &classified) {
+		return err
+	}
 	message := strings.ToLower(err.Error())
 	kind := ErrorTransient
 	switch {

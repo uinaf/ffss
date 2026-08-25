@@ -166,6 +166,16 @@ func TestGitLabFailuresAreClassified(t *testing.T) {
 	}
 }
 
+func TestGitLabMissingExecutableIsTransient(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	g := NewGitLab(nil)
+	_, err := g.Head(context.Background(), ChangeRequestRef{Host: "gitlab.com", Owner: "o", Repo: "r", Number: 1})
+	var forgeErr *Error
+	if !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorTransient {
+		t.Fatalf("missing glab classified %v, want %s", err, ErrorTransient)
+	}
+}
+
 func TestGitLabAPIUsesEncodedNestedProjectAndURLHost(t *testing.T) {
 	g := NewGitLab(func(_ context.Context, args ...string) ([]byte, error) {
 		if len(args) != 4 || args[0] != "api" || args[1] != "projects/group%2Fsub%2Frepo/merge_requests/9" || args[2] != "--hostname" || args[3] != "gitlab.example:8443" {
