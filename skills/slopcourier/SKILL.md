@@ -14,8 +14,9 @@ invents a second workflow runtime.
 1. The work is complete and the repository's own gates passed (builder-owned
    checks, run fresh). Report a missing or failing gate instead of delivering.
 2. The change is proven, not merely written: the changed behavior ran and was
-   observed, a covering test fails on revert, and the edges were exercised.
-   Do not make the reviewer the first tester.
+   observed, a covering test fails on revert, the edges were exercised, and
+   you can explain every hunk, and the behavior on unexpected input, in plain
+   sentences. Do not make the reviewer the first tester.
 3. Delivery is authorized: an explicit user request, or an active slopmachine
    run whose status allows `deliver`.
 4. The delivery is a change request. A slopmachine run with

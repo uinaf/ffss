@@ -29,19 +29,25 @@ before iterating.
 | Claim | Instrument |
 | --- | --- |
 | faster | benchmark harness with a recorded baseline on representative input |
-| matches a design or reference | repeatable capture (screenshot, render, output dump) compared against the source until no discrepancy remains |
+| matches a design or reference | repeatable capture (screenshot, render, output dump) plus direct inspection of the rendered properties, compared against the source until no discrepancy remains |
 | correct behavior | a test that fails before the fix and fails again on revert |
-| lower cost, size, or token count | per-unit measurement on a real sample workload |
+| lower cost, size, or token count | per-unit measurement on a real sample workload, with candidates that shrink the billed unit itself |
 | best of several approaches | fixture set plus a scoring script that sweeps every candidate |
 
 - Measure the baseline before the first edit; without one, "improved" is an
   adjective.
-- Change one variable at a time, attribute each gain, and report before/after
-  numbers.
+- Diagnose before editing: rank the measured bottlenecks and write a
+  cause-and-fix hypothesis for each.
+- Outside a scored sweep, change one variable at a time and attribute each
+  gain; report before/after numbers.
+- Commit each verified improvement separately, so a failed hypothesis reverts
+  cleanly and wins survive on their own.
 - When no best path is obvious, define the quality score first, sweep real
   samples, and pick by score; report losing candidates and failed hypotheses,
   not only the winner
   ([laboratory pattern](https://brianlovin.com/writing/give-your-agent-a-laboratory-pt-ii-KjFnCW9)).
+- Refine the winning parameter to the quality frontier: push until the score
+  degrades and keep the last value that holds it.
 - Build, preview, fixture, rollback, and observation paths are readiness
   capabilities; grade their absence.
 - An instrument contributors and CI will reuse belongs in the repository's
@@ -97,7 +103,9 @@ Choose the smallest check set that can honestly disprove the claim:
 ## Failure Quality
 
 Exercise at least one representative failure when the task class touches input,
-IO, authentication, network, configuration, or external dependencies. Require:
+IO, authentication, network, configuration, or external dependencies. Prefer a
+worst-case input over a mild one, and record the intended off-path behavior,
+not only that a failure occurred. Require:
 
 - a non-zero or explicitly failed terminal state
 - a stable error class, code, or machine-readable status when appropriate

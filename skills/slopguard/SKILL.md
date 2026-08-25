@@ -19,7 +19,10 @@ only; it never edits files, runs tests, commits, or pushes.
    relevant real-surface proof. Report a missing prerequisite instead of
    presenting review as verification.
 3. Distill a short task contract: objective, acceptance criteria, explicit
-   non-goals, and source identifiers. Pass it with `--prompt`. Ask for every
+   non-goals, and source identifiers. Pass it with `--prompt`. Steer it
+   toward what a non-executing review can catch: architecture, scope,
+   inappropriate dependencies, missing or weak tests, alongside suspected
+   behavioral defects; behavioral proof stays builder-owned. Ask for every
    suspected finding; never ask the reviewer to pre-filter by severity or
    confidence, because filtering happens during validation.
 4. Require the installed dependencies. If `slopguard` is missing, stop and ask

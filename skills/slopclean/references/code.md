@@ -21,14 +21,17 @@ alone unless asked.
 - Pass-through wrappers, needless interfaces, single-variant enums added
   "for flexibility": collapse to the concrete thing.
 - Config flags, options, and escape hatches nothing reads: delete.
+- Abstractions that contradict themselves or the module around them (a name,
+  type, or doc promising one shape while callers pass another): reconcile
+  the contract or report the mismatch.
 
 ## Naming and shape
 
 - Hedged names (doSomethingSafely, tryProcessMaybe, helper, util, manager):
   name the actual behavior.
 - Names that lie (a `validate` that mutates, a `getUser` that creates, a
-  `Cache` that never hits): rename internals to the observed behavior;
-  public names are API, report the lie instead.
+  name that needs an "actually..." aside to be understood): rename internals
+  to the observed behavior; public names are API, report the lie instead.
 - Error messages that apologize or narrate ("something went wrong while
   attempting"): state the operation, the input, and the failure.
 - Dead symmetry: branches or cases kept "for completeness" that are

@@ -14,6 +14,8 @@ Make agreed work durable and easy to resume without inventing a second backlog.
 - Prefer the repository's work tracker over checked-in tactical plan files
 - Create the smallest artifact set that makes the work independently resumable
 - Slice by verifiable behavior, not by architectural layer
+- The published plan is the builder's completion instrument: work is checked
+  against it instead of asking the requester what done means
 - Represent real blocking edges; independent work stays independent
 - Keep one canonical plan and link to supporting specs, decisions, code, or prototypes
 - Treat tracker publication as an external write and protect private or sensitive details
