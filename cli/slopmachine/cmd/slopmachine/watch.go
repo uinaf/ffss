@@ -322,6 +322,9 @@ func observeUnit(ctx context.Context, st *store.Store, adapter forge.Forge, repo
 			case forge.ErrorRateLimit:
 				result.Note = fmt.Sprintf("forge rate limited at %s; back off and rerun later, or increase --interval", ref)
 				return result, watchAbortForge
+			case forge.ErrorNotFound:
+				result.Note = fmt.Sprintf("change request not found at %s; re-deliver with the current URL or record the signal manually with slopmachine observe", ref)
+				return result, 0
 			}
 			result.Note = fmt.Sprintf("observation failed (%s); rerun watch or use --interval to retry", forgeErr.Kind)
 			return result, 0

@@ -726,6 +726,30 @@ func TestWatchReportsAuthFailure(t *testing.T) {
 	}
 }
 
+func TestWatchReportsMissingChangeRequestRecovery(t *testing.T) {
+	h := newCLIHarness(t)
+	deliverWatchableRun(t, h, "missing-cr")
+	binDir := t.TempDir()
+	script := "#!/bin/bash\necho 'HTTP 404: Not Found' >&2\nexit 1\n"
+	if err := os.WriteFile(filepath.Join(binDir, "gh"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	h.env = append(h.env, "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	out, code := h.run("--json", "watch", "--run", "missing-cr")
+	if code != 7 {
+		t.Fatalf("missing change request must exit 7: exit %d\n%s", code, out)
+	}
+	doc := decodeWatchDoc(t, out)
+	if len(doc.Observations) != 1 || doc.Observations[0].ErrorKind != "not_found" {
+		t.Fatalf("missing change request must preserve its classification: %s", out)
+	}
+	note := doc.Observations[0].Note
+	if !strings.Contains(note, "re-deliver") || !strings.Contains(note, "slopmachine observe") || strings.Contains(note, "--interval") {
+		t.Fatalf("missing change-request recovery must not recommend retry: %s", note)
+	}
+}
+
 func TestForgeAccessCommand(t *testing.T) {
 	if got := forgeAccessCommand(forge.KindGitHub); got != "gh auth status" {
 		t.Fatalf("GitHub access command = %q", got)
