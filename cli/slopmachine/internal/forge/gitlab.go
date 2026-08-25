@@ -129,7 +129,14 @@ func (g *GitLab) Head(ctx context.Context, ref ChangeRequestRef) (HeadState, err
 	if err != nil {
 		return HeadState{}, err
 	}
-	return HeadState{SHA: mr.SHA, Merged: mr.State == "merged", Closed: mr.State == "closed"}, nil
+	switch strings.ToLower(mr.State) {
+	case "opened":
+		return HeadState{SHA: mr.SHA}, nil
+	case "merged":
+		return HeadState{SHA: mr.SHA, Merged: true}, nil
+	default:
+		return HeadState{SHA: mr.SHA, Closed: true}, nil
+	}
 }
 
 func (g *GitLab) Reviews(ctx context.Context, ref ChangeRequestRef) ([]Review, error) {
@@ -326,8 +333,12 @@ func gitLabMergeability(state, detailed, fallback string) Mergeability {
 	switch strings.ToLower(state) {
 	case "merged":
 		return MergeableMerged
-	case "closed":
+	case "closed", "locked":
 		return MergeableClosed
+	case "opened":
+		// Continue to GitLab's detailed and legacy mergeability fields.
+	default:
+		return MergeableUnknown
 	}
 	switch strings.ToLower(detailed) {
 	case "mergeable":

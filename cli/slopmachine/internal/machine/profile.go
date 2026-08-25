@@ -151,14 +151,17 @@ func validForgeLogin(kind ForgeKind, identity, login string) error {
 	if len(login) > maxBytes {
 		return fmt.Errorf("%w: forge login for %q exceeds %d bytes", ErrBadArgs, identity, maxBytes)
 	}
+	if kind == ForgeGitLab && len(login) < 2 {
+		return fmt.Errorf("%w: forge login for %q must contain at least 2 characters", ErrBadArgs, identity)
+	}
 	base := login
 	if kind == ForgeGitHub {
 		base = strings.TrimSuffix(base, "[bot]")
 	}
-	if base == "" || strings.HasPrefix(base, "-") || strings.HasSuffix(base, "-") {
+	if base == "" || strings.HasPrefix(base, "-") || (kind == ForgeGitHub && strings.HasSuffix(base, "-")) {
 		return fmt.Errorf("%w: forge login for %q is not a valid %s username", ErrBadArgs, identity, kind)
 	}
-	if kind == ForgeGitLab && (strings.HasPrefix(base, ".") || strings.HasSuffix(base, ".")) {
+	if kind == ForgeGitLab && (strings.HasPrefix(base, ".") || strings.HasPrefix(base, "_") || strings.HasSuffix(base, ".")) {
 		return fmt.Errorf("%w: forge login for %q is not a valid %s username", ErrBadArgs, identity, kind)
 	}
 	for _, r := range base {
