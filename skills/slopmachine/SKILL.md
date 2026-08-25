@@ -38,6 +38,9 @@ slopmachine repo register --forge github --trust low \
   --bind review=slopguard
 ```
 
+Use `--forge gitlab` for GitLab.com or self-hosted GitLab repositories on
+standard HTTPS; `glab` host selection does not support custom-port URLs.
+
 - Map forge-resident reviewers (bots that review on the change request) with
   `--forge-reviewer identity=login` so the machine corroborates their evidence
   against the live change request.

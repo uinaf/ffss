@@ -48,7 +48,7 @@ func TestValidateProfileNormalizesEmptyBindingLists(t *testing.T) {
 func TestValidateProfileFailsClosed(t *testing.T) {
 	mutations := map[string]func(*machine.RepoProfile){
 		"missing repo key":       func(p *machine.RepoProfile) { p.RepoKey = "" },
-		"unknown forge":          func(p *machine.RepoProfile) { p.ForgeKind = "gitlab" },
+		"unknown forge":          func(p *machine.RepoProfile) { p.ForgeKind = "bitbucket" },
 		"unknown trust":          func(p *machine.RepoProfile) { p.TrustTier = "total" },
 		"unknown readiness":      func(p *machine.RepoProfile) { p.Readiness = "maybe" },
 		"unknown delivery":       func(p *machine.RepoProfile) { p.DeliveryMode = "yolo" },

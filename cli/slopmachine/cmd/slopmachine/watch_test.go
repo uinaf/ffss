@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/uinaf/ffss/cli/slopmachine/internal/forge"
 )
 
 const emptyThreadsJSON = `{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":false,"endCursor":""},"nodes":[]}}}}}`
@@ -33,6 +35,41 @@ esac
 	}
 	h.env = append(h.env, "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	return viewFile
+}
+
+// installFakeGLab puts a glab stub first on PATH that serves the merge
+// request and discussions REST reads used by watch.
+func installFakeGLab(t *testing.T, h *cliHarness, host, project string, mrNumber int, mrJSON, discussionsJSON string) {
+	t.Helper()
+	binDir := t.TempDir()
+	mrFile := filepath.Join(binDir, "mr.json")
+	discussionsFile := filepath.Join(binDir, "discussions.json")
+	mustWrite(t, mrFile, mrJSON)
+	mustWrite(t, discussionsFile, discussionsJSON)
+	mrEndpoint := fmt.Sprintf("projects/%s/merge_requests/%d", project, mrNumber)
+	discussionsEndpoint := mrEndpoint + "/discussions?per_page=100&page=1"
+	script := fmt.Sprintf(`#!/bin/bash
+if [[ "$#" -eq 4 && "$1" == "auth" && "$2" == "status" && "$3" == "--hostname" && "$4" == %q ]]; then
+  exit 0
+fi
+if [[ "$#" -eq 5 && "$1" == "config" && "$2" == "get" && "$3" == "subfolder" && "$4" == "--host" && "$5" == %q ]]; then
+  exit 0
+fi
+if [[ "$#" -ne 4 || "$1" != "api" || "$3" != "--hostname" || "$4" != %q ]]; then
+  echo "unexpected glab invocation: $*" >&2
+  exit 1
+fi
+case "$2" in
+  %q) cat %q ;;
+  %q) cat %q ;;
+  *) echo "unexpected glab endpoint: $2" >&2; exit 1 ;;
+esac
+`, host, host, host, discussionsEndpoint, discussionsFile, mrEndpoint, mrFile)
+	glabPath := filepath.Join(binDir, "glab")
+	if err := os.WriteFile(glabPath, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	h.env = append(h.env, "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
 func deliverWatchableRun(t *testing.T, h *cliHarness, runID string) {
@@ -86,6 +123,33 @@ func TestWatchOnceSettlesMergedUnit(t *testing.T) {
 	doc = decodeWatchDoc(t, out)
 	if len(doc.Observations) != 0 || !strings.Contains(doc.Stopped, "no delivered unit") {
 		t.Fatalf("idempotent pass must record nothing: %s", out)
+	}
+}
+
+func TestWatchUsesGitLabAdapterFromRepoProfile(t *testing.T) {
+	h := newCLIHarness(t)
+	h.must("init", "--run", "gitlab-watch")
+	intake := filepath.Join(t.TempDir(), "intake.json")
+	mustWrite(t, intake, `{"required_reviewers":["slopguard"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	h.must("intake", "--file", intake, "--run", "gitlab-watch")
+	h.must("release", "--revision", "2", "--run", "gitlab-watch")
+	h.must("build", "--run", "gitlab-watch")
+	h.must("verify", "--cmd", "true", "--run", "gitlab-watch")
+	review := filepath.Join(t.TempDir(), "review.json")
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1"}`)
+	h.must("review", "--evidence", review, "--run", "gitlab-watch")
+	deliver := filepath.Join(t.TempDir(), "deliver.json")
+	mustWrite(t, deliver, `{"delivery_mode":"pr-hold","pr_url":"https://gitlab.example/group/repo/-/merge_requests/4","commit_sha":"aaaa1111aaaa1111"}`)
+	h.must("deliver", "--evidence", deliver, "--run", "gitlab-watch")
+
+	h.must("repo", "register", "--forge", "gitlab", "--bind", "review=slopguard")
+	installFakeGLab(t, h, "gitlab.example", "group%2Frepo", 4,
+		`{"sha":"aaaa1111aaaa1111","state":"merged","detailed_merge_status":"not_open","head_pipeline":{"status":"success"}}`,
+		`[]`)
+	out := h.must("watch", "--once", "--json", "--run", "gitlab-watch")
+	doc := decodeWatchDoc(t, out)
+	if len(doc.Observations) != 1 || doc.Observations[0].Signal != "merged" || doc.State != "RUN_DONE" {
+		t.Fatalf("GitLab merge must settle the unit: %s", out)
 	}
 }
 
@@ -373,6 +437,9 @@ esac
 	if doc.Observations[0].ErrorKind != "rate_limit" || !doc.Observations[1].Recorded {
 		t.Fatalf("the first pass failure and second pass recording must both be reported: %s", out)
 	}
+	if note := doc.Observations[0].Note; !strings.Contains(note, "--interval") || strings.Contains(note, "auth status") {
+		t.Fatalf("rate-limit recovery must recommend backoff instead of auth repair: %s", note)
+	}
 }
 
 func TestWatchIntervalExhaustsBoundsCleanly(t *testing.T) {
@@ -653,5 +720,41 @@ func TestWatchReportsAuthFailure(t *testing.T) {
 	}
 	if len(doc.Observations) != 1 || doc.Observations[0].ErrorKind != "auth" {
 		t.Fatalf("the failing observation must still be reported: %s", out)
+	}
+	if !strings.Contains(doc.Observations[0].Note, "gh auth status") {
+		t.Fatalf("GitHub auth failure must name its recovery command: %s", out)
+	}
+}
+
+func TestWatchReportsMissingChangeRequestRecovery(t *testing.T) {
+	h := newCLIHarness(t)
+	deliverWatchableRun(t, h, "missing-cr")
+	binDir := t.TempDir()
+	script := "#!/bin/bash\necho 'HTTP 404: Not Found' >&2\nexit 1\n"
+	if err := os.WriteFile(filepath.Join(binDir, "gh"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	h.env = append(h.env, "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	out, code := h.run("--json", "watch", "--run", "missing-cr")
+	if code != 7 {
+		t.Fatalf("missing change request must exit 7: exit %d\n%s", code, out)
+	}
+	doc := decodeWatchDoc(t, out)
+	if len(doc.Observations) != 1 || doc.Observations[0].ErrorKind != "not_found" {
+		t.Fatalf("missing change request must preserve its classification: %s", out)
+	}
+	note := doc.Observations[0].Note
+	if !strings.Contains(note, "re-deliver") || !strings.Contains(note, "slopmachine observe") || strings.Contains(note, "--interval") {
+		t.Fatalf("missing change-request recovery must not recommend retry: %s", note)
+	}
+}
+
+func TestForgeAccessCommand(t *testing.T) {
+	if got := forgeAccessCommand(forge.KindGitHub); got != "gh auth status" {
+		t.Fatalf("GitHub access command = %q", got)
+	}
+	if got := forgeAccessCommand(forge.KindGitLab); got != "glab auth status --hostname <MR host>" {
+		t.Fatalf("GitLab access command = %q", got)
 	}
 }

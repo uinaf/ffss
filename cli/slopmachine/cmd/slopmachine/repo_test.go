@@ -128,8 +128,8 @@ func TestRepoProfileLifecycle(t *testing.T) {
 		t.Fatalf("update must patch only passed fields: %s", out)
 	}
 
-	out, code = h.run("repo", "update", "--forge", "gitlab")
-	if code != 2 || !strings.Contains(out, "github") {
+	out, code = h.run("repo", "update", "--forge", "bitbucket")
+	if code != 2 || !strings.Contains(out, "github|gitlab") {
 		t.Fatalf("unknown forge must fail closed: exit %d\n%s", code, out)
 	}
 	out, code = h.run("repo", "update", "--bind", "reviewer=slopzapper")

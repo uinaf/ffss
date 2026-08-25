@@ -94,9 +94,21 @@ func cmdWatch(st *store.Store, args []string, opts runOptions) int {
 	if err != nil {
 		return writeFailure(opts, 2, err)
 	}
-	adapter, err := forge.New(forge.KindGitHub)
+	profile, found, err := st.GetRepoProfile(key)
+	if err != nil {
+		return mapErr(err, opts)
+	}
+	adapter, err := forgeProfile(profile, found)
 	if err != nil {
 		return writeFailure(opts, 10, err)
+	}
+	// Profile-less repositories historically observed GitHub delivery URLs.
+	// Keep that behavior; a registered profile declares any other forge.
+	if adapter == nil {
+		adapter, err = forge.New(forge.KindGitHub)
+		if err != nil {
+			return writeFailure(opts, 10, err)
+		}
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -304,9 +316,15 @@ func observeUnit(ctx context.Context, st *store.Store, adapter forge.Forge, repo
 		if errors.As(err, &forgeErr) {
 			result.ErrorKind = string(forgeErr.Kind)
 			switch forgeErr.Kind {
-			case forge.ErrorAuth, forge.ErrorRateLimit:
-				result.Note = fmt.Sprintf("forge not observable (%s) at %s; fix access (gh auth status) and rerun", forgeErr.Kind, ref)
+			case forge.ErrorAuth:
+				result.Note = fmt.Sprintf("forge not observable (%s) at %s; fix access (%s) and rerun", forgeErr.Kind, ref, forgeAccessCommand(adapter.Kind()))
 				return result, watchAbortForge
+			case forge.ErrorRateLimit:
+				result.Note = fmt.Sprintf("forge rate limited at %s; back off and rerun later, or increase --interval", ref)
+				return result, watchAbortForge
+			case forge.ErrorNotFound:
+				result.Note = fmt.Sprintf("change request not found at %s; re-deliver with the current URL or record the signal manually with slopmachine observe", ref)
+				return result, 0
 			}
 			result.Note = fmt.Sprintf("observation failed (%s); rerun watch or use --interval to retry", forgeErr.Kind)
 			return result, 0
@@ -400,6 +418,13 @@ func observeUnit(ctx context.Context, st *store.Store, adapter forge.Forge, repo
 		result.ErrorKind = "conflict"
 	}
 	return result, 0
+}
+
+func forgeAccessCommand(kind forge.Kind) string {
+	if kind == forge.KindGitLab {
+		return "glab auth status --hostname <MR host>"
+	}
+	return "gh auth status"
 }
 
 // casExhaustedNote marks bounded retry exhaustion under concurrent writers.

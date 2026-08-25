@@ -14,7 +14,10 @@ import (
 // Kind names a supported forge implementation.
 type Kind string
 
-const KindGitHub Kind = "github"
+const (
+	KindGitHub Kind = "github"
+	KindGitLab Kind = "gitlab"
+)
 
 // ErrUnknownKind marks a forge kind with no registered adapter.
 var ErrUnknownKind = errors.New("unknown forge kind")
@@ -40,12 +43,16 @@ func (e *Error) Unwrap() error { return e.Err }
 
 // ChangeRequestRef locates one change request on a forge.
 type ChangeRequestRef struct {
+	Host   string
 	Owner  string
 	Repo   string
 	Number int
 }
 
 func (r ChangeRequestRef) String() string {
+	if r.Host != "" && r.Host != "github.com" {
+		return fmt.Sprintf("%s/%s/%s!%d", r.Host, r.Owner, r.Repo, r.Number)
+	}
 	return fmt.Sprintf("%s/%s#%d", r.Owner, r.Repo, r.Number)
 }
 
@@ -143,7 +150,9 @@ func New(kind Kind) (Forge, error) {
 	switch kind {
 	case KindGitHub:
 		return NewGitHub(nil), nil
+	case KindGitLab:
+		return NewGitLab(nil), nil
 	default:
-		return nil, fmt.Errorf("%w: %q (supported: %s)", ErrUnknownKind, kind, KindGitHub)
+		return nil, fmt.Errorf("%w: %q (supported: %s, %s)", ErrUnknownKind, kind, KindGitHub, KindGitLab)
 	}
 }
