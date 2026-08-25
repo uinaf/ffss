@@ -387,6 +387,10 @@ func gitLabMergeability(state, detailed, fallback string) Mergeability {
 		return MergeableClean
 	case "conflict":
 		return MergeableConflicting
+	case "":
+		// Older GitLab responses expose only merge_status below.
+	default:
+		return MergeableUnknown
 	}
 	switch strings.ToLower(fallback) {
 	case "can_be_merged":

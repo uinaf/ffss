@@ -158,6 +158,8 @@ func TestGitLabChecksAndMergeability(t *testing.T) {
 		{"", "mergeable", "can_be_merged", MergeableUnknown},
 		{"opened", "mergeable", "", MergeableClean},
 		{"opened", "conflict", "", MergeableConflicting},
+		{"opened", "not_approved", "can_be_merged", MergeableUnknown},
+		{"opened", "ci_must_pass", "cannot_be_merged", MergeableUnknown},
 		{"opened", "checking", "unchecked", MergeableUnknown},
 	} {
 		if got := gitLabMergeability(tt.state, tt.detailed, tt.fallback); got != tt.want {
