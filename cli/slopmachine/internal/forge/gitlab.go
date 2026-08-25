@@ -307,6 +307,9 @@ func (g *GitLab) api(ctx context.Context, ref ChangeRequestRef, suffix string) (
 	if host == "" {
 		host = "gitlab.com"
 	}
+	if _, err := g.run(ctx, "auth", "status", "--hostname", host); err != nil {
+		return nil, classify(err)
+	}
 	project := url.PathEscape(ref.Owner + "/" + ref.Repo)
 	endpoint := fmt.Sprintf("projects/%s/merge_requests/%d%s", project, ref.Number, suffix)
 	raw, err := g.run(ctx, "api", endpoint, "--hostname", host)

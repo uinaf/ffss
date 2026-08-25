@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -71,10 +72,19 @@ func gitLabRunner(ref ChangeRequestRef, mr, discussions, approvals, notes string
 		host = "gitlab.com"
 	}
 	base := fmt.Sprintf("projects/%s/merge_requests/%d", url.PathEscape(ref.Owner+"/"+ref.Repo), ref.Number)
+	authenticated := false
 	return func(_ context.Context, args ...string) ([]byte, error) {
+		if len(args) == 4 && args[0] == "auth" && args[1] == "status" && args[2] == "--hostname" && args[3] == host {
+			authenticated = true
+			return []byte(host), nil
+		}
 		if len(args) != 4 || args[0] != "api" || args[2] != "--hostname" || args[3] != host {
 			return nil, fmt.Errorf("unexpected glab invocation: %v", args)
 		}
+		if !authenticated {
+			return nil, fmt.Errorf("glab api invoked without host authentication: %v", args)
+		}
+		authenticated = false
 		if fail != nil {
 			return nil, fail
 		}
@@ -207,9 +217,40 @@ func TestGitLabMissingExecutableIsTransient(t *testing.T) {
 	}
 }
 
+func TestGitLabRejectsAmbientTokenWithoutHostAuthentication(t *testing.T) {
+	binDir := t.TempDir()
+	apiMarker := filepath.Join(binDir, "api-called")
+	script := fmt.Sprintf(`#!/bin/bash
+case "$1" in
+  auth) echo "host has not been authenticated with glab" >&2; exit 1 ;;
+  api) /usr/bin/touch %q; exit 99 ;;
+  *) exit 98 ;;
+esac
+`, apiMarker)
+	if err := os.WriteFile(filepath.Join(binDir, "glab"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir)
+	t.Setenv("GITLAB_TOKEN", "ambient-token-must-not-be-used")
+	g := NewGitLab(nil)
+	_, err := g.Head(context.Background(), ChangeRequestRef{Host: "unconfigured.example", Owner: "o", Repo: "r", Number: 1})
+	var forgeErr *Error
+	if !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorAuth {
+		t.Fatalf("unconfigured host classified %v, want %s", err, ErrorAuth)
+	}
+	if _, err := os.Stat(apiMarker); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("glab api must not run after failed host authentication: %v", err)
+	}
+}
+
 func TestGitLabAPIUsesEncodedNestedProjectAndBareURLHostname(t *testing.T) {
+	calls := 0
 	g := NewGitLab(func(_ context.Context, args ...string) ([]byte, error) {
-		if len(args) != 4 || args[0] != "api" || args[1] != "projects/group%2Fsub%2Frepo/merge_requests/9" || args[2] != "--hostname" || args[3] != "gitlab.example" {
+		calls++
+		if calls == 1 && len(args) == 4 && args[0] == "auth" && args[1] == "status" && args[2] == "--hostname" && args[3] == "gitlab.example" {
+			return nil, nil
+		}
+		if calls != 2 || len(args) != 4 || args[0] != "api" || args[1] != "projects/group%2Fsub%2Frepo/merge_requests/9" || args[2] != "--hostname" || args[3] != "gitlab.example" {
 			return nil, fmt.Errorf("unexpected glab invocation: %v", args)
 		}
 		return []byte(`{"sha":"abc1234","state":"opened"}`), nil

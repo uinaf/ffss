@@ -49,6 +49,9 @@ func installFakeGLab(t *testing.T, h *cliHarness, host, project string, mrNumber
 	mrEndpoint := fmt.Sprintf("projects/%s/merge_requests/%d", project, mrNumber)
 	discussionsEndpoint := mrEndpoint + "/discussions?per_page=100&page=1"
 	script := fmt.Sprintf(`#!/bin/bash
+if [[ "$#" -eq 4 && "$1" == "auth" && "$2" == "status" && "$3" == "--hostname" && "$4" == %q ]]; then
+  exit 0
+fi
 if [[ "$#" -ne 4 || "$1" != "api" || "$3" != "--hostname" || "$4" != %q ]]; then
   echo "unexpected glab invocation: $*" >&2
   exit 1
@@ -58,7 +61,7 @@ case "$2" in
   %q) cat %q ;;
   *) echo "unexpected glab endpoint: $2" >&2; exit 1 ;;
 esac
-`, host, discussionsEndpoint, discussionsFile, mrEndpoint, mrFile)
+`, host, host, discussionsEndpoint, discussionsFile, mrEndpoint, mrFile)
 	glabPath := filepath.Join(binDir, "glab")
 	if err := os.WriteFile(glabPath, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
