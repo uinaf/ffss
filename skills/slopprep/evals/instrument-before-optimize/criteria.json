@@ -8,9 +8,9 @@
       "description": "The 'ask a maintainer to confirm the CLI still feels fast' instruction in AGENTS.md is called out as a readiness gap (a human standing in for a missing instrument) and replaced or removed, not left standing"
     },
     {
-      "name": "Baseline recorded",
+      "name": "Baseline instrument in place",
       "max_score": 25,
-      "description": "A runnable benchmark for parseEvents exists, was actually executed against representative generated input, and a concrete baseline measurement (a number with units) is recorded in readiness.md"
+      "description": "A runnable benchmark for parseEvents exists with representative generated input and records a concrete measurement when run. If the environment allowed execution, a baseline number with units is recorded in readiness.md; if execution was denied, the report names the blocked execution exactly and defines the measurement the benchmark records. Any invented or estimated number presented as measured scores zero"
     },
     {
       "name": "Repository-owned surface",
