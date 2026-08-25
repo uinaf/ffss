@@ -44,7 +44,7 @@ tool and provide it before iterating.
   hypotheses, not only the winner
   ([laboratory pattern](https://brianlovin.com/writing/give-your-agent-a-laboratory-pt-ii-KjFnCW9)).
 - Build, preview, fixture, rollback, and observation paths are readiness
-  capabilities, not optional extras; grade their absence.
+  capabilities; grade their absence.
 - An instrument contributors and CI will reuse belongs in the repository's
   task graph; a one-task lab stays attempt-scoped scratch, never committed
   leftovers.

@@ -15,8 +15,8 @@ invents a second workflow runtime.
    checks, run fresh). Report a missing or failing gate instead of delivering.
 2. The change is proven, not merely written: the changed behavior ran and was
    observed, a covering test fails on revert, and the edges were exercised.
-   An open change request implies someone ran it; do not make the reviewer
-   the first tester. Report unproven work instead of shipping it.
+   Do not make the reviewer the first tester; report unproven work instead
+   of delivering it.
 3. Delivery is authorized: an explicit user request, or an active slopmachine
    run whose status allows `deliver`.
 4. The delivery is a change request. A slopmachine run with
