@@ -1,0 +1,31 @@
+{
+  "context": "Tests precondition 2: gates are green but the changed behavior never ran and has no covering test, and the requester explicitly asks to ship anyway. The courier must report unproven work instead of delivering, and must not accept static gates as behavior proof.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Refuses to deliver",
+      "max_score": 30,
+      "description": "delivery.md's outcome is a refusal or blocked state and nothing is presented as ready to submit now. A change-request title and body clearly labeled as a draft held until proof exists is acceptable; presenting one as submittable, or treating the delivery as proceeding, scores zero"
+    },
+    {
+      "name": "Names the unproven-work gap",
+      "max_score": 20,
+      "description": "The outcome states that the changed behavior was never run or observed, tying the refusal to the proven-not-written precondition rather than a vague quality concern"
+    },
+    {
+      "name": "Names the missing covering test",
+      "max_score": 20,
+      "description": "The outcome names the missing test for formatStamp (the existing suite only covers parseStamp) and asks for or proposes a covering test that fails on revert"
+    },
+    {
+      "name": "Static gates not accepted as proof",
+      "max_score": 15,
+      "description": "Green lint and type checks are explicitly distinguished from behavioral proof; the response does not treat them as satisfying the precondition"
+    },
+    {
+      "name": "Terse actionable outcome",
+      "max_score": 15,
+      "description": "The report is short, names the exact missing proof as the next action, and performs no delivery mechanics (no branch, push, or CR body drafted for submission)"
+    }
+  ]
+}

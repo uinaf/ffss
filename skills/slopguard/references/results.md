@@ -2,7 +2,7 @@
 
 - Terminal and JSON output represent the same locally validated report.
 - Review results go to stdout; progress and diagnostics go to stderr.
-- When `review --output json` is selected unambiguously, representable
+- When you select `review --output json` unambiguously, representable
   argument, flag, and configuration failures also use the canonical failure
   report instead of prose.
 - Help remains a separate human-readable surface.
@@ -46,4 +46,4 @@
 - Earlier failures keep nullable metadata unset.
 
 After any provider return, slopguard recollects the target. A changed snapshot
-produces `source_changed`; discard the findings and rerun from a new freeze.
+produces `source_changed`: discard the findings and rerun from a new freeze.

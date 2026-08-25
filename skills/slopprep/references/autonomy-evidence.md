@@ -1,36 +1,25 @@
 # Autonomy Evidence
 
 Readiness infrastructure and observed autonomy are different claims. Use this
-scale to show how strongly a repository and runner grade has been exercised.
+scale to show how strongly you exercised a repository and runner grade.
 
 ## Evidence Levels
 
-### E0: Static
-
-Files and configuration were inspected, but no readiness command ran.
-
-### E1: Exercised
-
-One bootstrap, smoke, verification, or teardown command ran successfully in a
-declared environment. This proves a path exists, not that it is dependable.
-
-### E2: Real-surface
-
-A success path and an actionable failure path exercised the real process,
-interface, or shipped artifact. Final state and artifacts were inspected.
+E0 through E2 are defined by the scale in [grading.md](grading.md); this file
+covers designing and reporting the top two.
 
 ### E3: Representative
 
-A small suite of representative tasks ran multiple trials with outcome graders.
-Results include success rate, human interventions, duration, retries, resource
+Run a small suite of representative tasks over multiple trials with outcome
+graders. Report success rate, human interventions, duration, retries, resource
 or cost class, and failure taxonomy. Start with real recurring work and failures;
 expand the suite as changes become harder to distinguish.
 
 ### E4: Operational
 
 Long-running or parallel work has survived real stalls, crashes, cancellations,
-credential denial, CI or review feedback, and recovery. Evidence is collected
-over time, freshness is tracked, and failures update the harness or eval suite.
+credential denial, CI or review feedback, and recovery. Collect this evidence
+over time, track its freshness, and turn failures into harness or eval updates.
 
 ## Representative Task Design
 
@@ -47,7 +36,7 @@ Choose tasks from the automation path and actual workload, for example:
 - resume after process loss without repeating unsafe side effects
 - run two tasks concurrently without resource or delivery collisions
 
-Cover the task classes the grade claims. Do not generalize from a dependency
+Cover the task classes the grade claims. Don't generalize from a dependency
 bump to UI work, incident response, schema migration, or release automation.
 
 ## Graders
@@ -67,11 +56,11 @@ Use transcripts for efficiency, policy, and diagnosis:
 - human questions or approvals
 - token, duration, and resource or cost class
 
-- Do not accept an agent's completion statement as proof.
+- Don't accept an agent's completion statement as proof.
 - Keep tasks implementation-agnostic unless the implementation is itself the
   contract.
-- Every task should have an unambiguous specification and a known-valid
-  solution or setup that proves the grader can pass.
+- Give every task an unambiguous specification and a known-valid solution or
+  setup that proves the grader can pass.
 
 ## Reliability Profile
 

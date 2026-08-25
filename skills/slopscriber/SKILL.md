@@ -1,6 +1,6 @@
 ---
 name: slopscriber
-description: "Audit, compress, restructure, and update repo documentation and durable agent-facing artifacts such as AGENTS.md, README.md, docs/, specs, decisions, and runbooks. Use when changes risk doc drift or when docs need current-state cleanup or context-efficient agent-first rewriting. Do not use to create tactical work plans, epics, or tracker tickets, or for code review, runtime verification, or boot/readiness infrastructure setup."
+description: "Audit, compress, and update documentation and durable agent-facing artifacts such as AGENTS.md, docs, specs, and runbooks. Use when changes risk doc drift or docs need agent-first cleanup; not for plans, tickets, or code review."
 ---
 
 # Slopscriber
@@ -64,9 +64,9 @@ Use [references/source-boundaries.md](references/source-boundaries.md) before wr
 
 Keep top-level docs terse and navigational.
 
-- `AGENTS.md` should be a compact operating contract and map, not a wiki
-- If the repo uses `AGENTS.md`, make `CLAUDE.md` a symlink or `@AGENTS.md` import instead of maintaining a second authored file
-- `README.md` should lead with value, quick use, and links to deeper docs
+- Keep `AGENTS.md` a compact operating contract and map, not a wiki
+- If the repo uses `AGENTS.md`, normalize `CLAUDE.md` per the symlink-or-import rule in [references/agent-first.md](references/agent-first.md#agentsmd)
+- Lead `README.md` with value, quick use, and links to deeper docs
 - Refresh `CONTRIBUTING.md` and `SECURITY.md` when they already exist or when moving existing policy out of an overloaded `README.md`; do not invent baseline policy from scratch
 - For workspace repos, keep one canonical setup doc and let `README.md` point to it
 - Use the concrete top-level split and section order in [references/documentation.md](references/documentation.md)

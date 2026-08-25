@@ -65,7 +65,7 @@ What this enables and prevents.
 ## Acceptance Coverage
 
 Prefer executable acceptance, contract, or conformance checks when stable
-inputs and outputs can express the behavior. They should:
+inputs and outputs can express the behavior. Write checks that:
 
 - derive from requirements rather than implementation details
 - map each case to an observable rule

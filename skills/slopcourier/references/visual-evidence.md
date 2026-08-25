@@ -22,7 +22,7 @@
   `gh extension list` shows `gh attach` from `uinaf/gh-attach`).
 - Anything else on PATH under that name is not this rung; fall through.
 
-When it is the real tool, it owns attachment end to end:
+When it is the real tool, let it own attachment end to end:
 
 - `attach put` the asset (or `gh attach put` when only the extension is
   installed; the extension does not put an `attach` binary on PATH)
@@ -43,9 +43,8 @@ glab api "projects/:id/uploads" --form "file=@evidence.png"
 
 ## 3. github.com deliveries (`gh` + user-attachments endpoint)
 
-Images and video upload to the same CDN the web
-drag-drop uses; the asset inherits repository visibility and needs no
-browser:
+Upload images and video to the same CDN the web drag-drop uses; the asset
+inherits repository visibility and needs no browser:
 
 ```bash
 repo_id=$(gh api repos/{owner}/{repo} -q .id)

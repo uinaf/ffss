@@ -4,8 +4,8 @@ interface:
   default_prompt: |
     Use $slopclean to clean the artifact: pick prose, code, or test mode,
     detect machine patterns (puffery, stock vocabulary, crutch punctuation,
-    filler, narrating comments, defensive boilerplate, hedged names,
-    tautological or overmocked tests, repetitive setup), rewrite in place
+    filler, narrating comments, defensive boilerplate, hedged or lying
+    names, tautological or overmocked tests, repetitive setup), rewrite in place
     preserving meaning and behavior, add concrete voice where the text is
     sterile, and self-audit for remaining tells. Never change behavior,
     facts, or public API; in test mode never weaken a real assertion or

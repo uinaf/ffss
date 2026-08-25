@@ -70,7 +70,7 @@ contact, support promise, or private-reporting capability.
 
 - Use task-specific current-state guides for architecture, APIs, deployment,
   operations, and recovery.
-- Architecture docs should explain the system and important boundaries,
+- Write architecture docs that explain the system and important boundaries,
   preferably with the smallest useful diagram.
 - Decision records explain why a consequential choice was made.
 

@@ -2,76 +2,35 @@
 
 Audit `AGENTS.md` as an executable operating contract, not a style sample. A
 guide is ready when a capable agent can identify the owner, choose the right
-scope, act within authority, run the lifecycle, and report evidence from a cold
-start without guessing.
+scope, act within authority, run the lifecycle, and report evidence from a
+cold start without guessing.
 
 ## Canonical Shape
 
-Keep one authored `AGENTS.md`. When a harness expects another filename, symlink
-or import the canonical guide instead of maintaining parallel prose.
-
-The root guide should stay short and progressively disclose deeper contracts:
-
-1. **Orientation**: what this repository or workspace is for, who or what it
-   serves, and where implementation belongs.
-2. **Routing**: task-shaped pointers that say when to read each deeper source.
-3. **Authority**: safe local actions, required approvals, destructive or
-   external boundaries, and credential ownership.
-4. **Workflow**: the smallest bootstrap, boot, verify, and teardown path plus
-   where task acceptance comes from.
-5. **Proof**: the canonical gate, task-relevant real surface, failure evidence,
-   and what cannot be inferred from local checks.
-6. **Write-back**: where durable decisions, operational state, and handoffs
-   belong.
-
-Do not duplicate architecture tours, API references, generated trees, complete
-style manuals, or volatile inventories. Link them with a task or question that
-justifies opening them.
-
-## Product or System Working Model
-
-A shared product repository needs more than routing. Give a fresh agent enough
-of the system model to place a change and predict its blast radius:
-
-- what the product does, who relies on it, and the outcomes that must not regress
-- non-negotiable qualities paired with known failure modes or expected proof
-- domain terms whose everyday meanings would cause ambiguity
-- dangerous operations, live-state boundaries, and safe alternatives
-- recurring change dimensions such as clients, providers, entry points,
-  connection modes, contracts, or reverse states
-- one compact architecture or data-flow explanation when it changes where code
-  belongs
-
-Inline only cross-cutting facts. Keep complete architecture, API, and subsystem
-manuals behind task-shaped pointers. The goal is not a standard section list;
-it is enough causal context for the agent to make the right local decision.
-
-Abstract preferences are not operational until they predict behavior. Replace
-`keep it simple`, `protect performance`, or `build clean UI` with a decision
-rule, counterexample, known regression, or required observation. A short
-maintainer note earns its place when it resolves real trade-offs rather than
-adding personality alone.
-
-[T3 Code's repository guide](https://github.com/pingdotgg/t3code/blob/main/AGENTS.md)
-is one concrete example: product priorities are tied to regression modes, a
-bounded coverage matrix, live-state hazards, architecture placement, and exact
-proof rather than left as slogans.
+For the shape of the guide itself, follow
+[../../slopscriber/references/agent-first.md](../../slopscriber/references/agent-first.md):
+the single authored source with a `CLAUDE.md` symlink or import, what belongs
+at the root versus behind task-shaped pointers, the working model a product
+repository needs, and abstract preferences translated into decisions. Do not
+restate those rules here; audit against them. This reference adds only what
+readiness checks on top: owner context, the cross-model contract, the audit
+procedure, and grade effects.
 
 ## Human and Owner Context
 
-For a private owner workspace, a short human introduction can improve judgment.
-State the person's work, priorities, collaboration style, and a useful recurring
-failure mode, then point to the canonical private or public profile sources.
-Treat the introduction as a compass, not a synthetic persona or complete
-biography.
+In a private owner workspace, a short human introduction improves judgment.
+State the person's work, priorities, collaboration style, and a useful
+recurring failure mode, then point to the canonical private or public profile
+sources. Treat the introduction as a compass, not a synthetic persona or
+complete biography.
 
-For a shared product repository, orient around the product, users, maintainer
-contract, and ownership boundaries. Do not add personal biography merely to make
-the guide sound friendly.
+In a shared product repository, orient around the product, users, maintainer
+contract, and ownership boundaries. Do not add personal biography merely to
+make the guide sound friendly.
 
 Keep sensitive identity, credentials, finance, machine state, and private
-workspace facts behind task-relevant pointers. An agent should open the smallest
-source needed rather than loading every personal facet at session start.
+workspace facts behind task-relevant pointers, so an agent opens the smallest
+source needed instead of loading every personal facet at session start.
 
 ## Cross-Model Contract
 
@@ -118,8 +77,8 @@ families:
   model changes, and operational drift into simpler guidance or mechanical
   enforcement.
 - A polished guide cannot raise Executability or Feedback when its commands do
-  not work. Documentation claims are evidence only after the declared path is
-  exercised.
+  not work. Treat documentation claims as evidence only after you exercise the
+  declared path.
 
-Use documentation-focused cleanup for prose compression or restructuring that
-does not change autonomous execution capability.
+Route prose compression or restructuring that does not change autonomous
+execution capability to documentation-focused cleanup.

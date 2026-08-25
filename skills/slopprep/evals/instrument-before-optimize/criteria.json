@@ -1,0 +1,36 @@
+{
+  "context": "Tests the Task Instruments contract: readiness work for a planned optimization should flag human-eyeball verification as a missing instrument, record a benchmark baseline before anyone optimizes, wire the instrument into the repository's own task surface, and stay out of the optimization itself.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Missing instrument identified",
+      "max_score": 20,
+      "description": "The 'ask a maintainer to confirm the CLI still feels fast' instruction in AGENTS.md is called out as a readiness gap (a human standing in for a missing instrument) and replaced or removed, not left standing"
+    },
+    {
+      "name": "Baseline instrument in place",
+      "max_score": 25,
+      "description": "A runnable benchmark for parseEvents exists with representative generated input and records a concrete measurement when run. If the environment allowed execution, a baseline number with units is recorded in readiness.md; if execution was denied, the report names the blocked execution exactly and defines the measurement the benchmark records. Any invented or estimated number presented as measured scores zero"
+    },
+    {
+      "name": "Repository-owned surface",
+      "max_score": 20,
+      "description": "The benchmark is reachable through the repository's own task surface (a package.json script or equivalent) and AGENTS.md points at it; no parallel agent-only wrapper layer"
+    },
+    {
+      "name": "Boundary held",
+      "max_score": 15,
+      "description": "src/parse.js keeps its algorithm; the parser is not optimized in this pass, and the report does not smuggle in the optimization"
+    },
+    {
+      "name": "Correctness instrument present",
+      "max_score": 10,
+      "description": "Output-equivalence protection for the future optimization is in place: the existing behavior test is kept or extended, or an equivalence check is added, and the report names it as the correctness gate"
+    },
+    {
+      "name": "Numbers, not adjectives",
+      "max_score": 10,
+      "description": "readiness.md reports measured values; no 'fast', 'slow', or 'improved' standing in for a measurement"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 ---
 name: slopclean
-description: "Strip AI tells from writing, a diff, or a test suite: detect machine patterns (puffery, stock vocabulary, crutch punctuation, filler, narrating comments, defensive boilerplate, tautological or overmocked tests, repetitive setup), rewrite with a concrete human voice, and self-audit. Use when asked to unslop, de-slop, humanize, or clean up text, docs, commit messages, tests, or a change before it ships. Do not use for correctness review (slopguard's lane), fact-checking, or translating."
+description: "Strip AI tells from prose, code, or tests and rewrite with a human voice. Use to unslop, de-slop, humanize, or clean up an artifact before it ships. Not correctness review (slopguard's lane)."
 ---
 
 # Slopclean

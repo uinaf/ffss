@@ -25,9 +25,10 @@ Every mutation accepts `--input PATH`; use `--input -` for stdin. Raw input is
 mutually exclusive with convenience flags, including `--run`, because the raw
 payload carries its own `run` field.
 
-The payload is transport, not durable state. Accepted evidence is stored in
-the SQLite event log. Never materialize `*.evidence.json` or other command
-payloads in the repository; use `--input -`, `--file -`, or `--evidence -`.
+The payload is transport, not durable state; the machine stores accepted
+evidence in the SQLite event log. Never materialize `*.evidence.json` or other
+command payloads in the repository; use `--input -`, `--file -`, or
+`--evidence -`.
 
 ## Validate mutations
 
@@ -68,5 +69,5 @@ Put human prose in title, question, answer, or reason fields.
 - A state location that cannot be prepared (for example an unwritable
   directory) returns `state_unavailable` with the resolved path and a
   `SLOPMACHINE_DB` recovery.
-- All exit 2 so an agent can correct its input without treating the failure
-  as an internal defect.
+- All exit 2 so you can correct your input without treating the failure as an
+  internal defect.

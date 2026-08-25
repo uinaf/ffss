@@ -41,16 +41,23 @@ Corresponding environment variables are `SLOPGUARD_ENGINE`,
 - There are no profiles or local override files.
 - `max_bytes` defaults to 1 MiB and cannot exceed 128 MiB.
 
-- Native isolation is the default and preserves configured provider or session
-  authentication in an empty bundle-only workspace.
+## Isolation
+
+- Native is the default. It preserves configured provider or session
+  authentication and runs the review in an empty temporary workspace holding
+  only the frozen bundle.
+- Strict runs with empty provider state and a constrained environment, and
+  requires the provider's supported API-key environment variable. Select it
+  explicitly only when the task needs the harder provider-state boundary.
 - Any source may select `strict`; an untrusted higher-precedence source cannot
   weaken an already selected strict value.
-- Strict mode requires the provider's supported API-key environment variable.
+
+## Web access
 
 - Web access defaults off for Codex, Claude, and Grok.
 - Explicit CLI `--engine cursor` enables otherwise-unset web access implicitly
   because Cursor cannot guarantee a per-run web disable.
 - Repository, environment, or XDG engine selection does not grant web access.
-- Explicit `web_access: false` remains authoritative and prevents a Cursor run.
-- Only an explicit flag or ownership-checked account-home XDG file may
+- Explicit `web_access: false` stays authoritative and prevents a Cursor run.
+- Only an explicit flag or an ownership-checked account-home XDG file may
   otherwise enable web access.

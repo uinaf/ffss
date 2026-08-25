@@ -1,32 +1,36 @@
 ---
 name: slopcourier
-description: "Deliver a completed, verified change as a change request on the repository's forge: branch discipline, conventional commits, push, open the change request from the repo's template, attach the clearest visual evidence, and return the URL. Use when asked to deliver, ship, file, or open a pull/merge/change request for finished work, or when a slopmachine run reaches DELIVER. Do not use to implement or review changes, merge or enable auto-merge, or record slopmachine evidence by itself."
+description: "Deliver a completed, verified change as one change request on the repository's forge and return the URL. Use to deliver, ship, or file finished work, or at slopmachine DELIVER; never to implement, review, or merge."
 ---
 
 # Slopcourier
 
-Deliver finished, verified work as exactly one change request. This skill
-owns delivery mechanics only; it never implements, reviews, merges, or
-invents a second workflow runtime.
+Deliver finished, verified work as exactly one change request. You own
+delivery mechanics only: don't implement, review, merge, or invent a
+second workflow runtime.
 
 ## Preconditions
 
 1. The work is complete and the repository's own gates passed (builder-owned
-   checks, run fresh). Report a missing or failing gate instead of delivering.
-2. Delivery is authorized: an explicit user request, or an active slopmachine
-   run whose status allows `deliver`.
-3. The delivery is a change request. A slopmachine run with
-   `delivery_mode: direct-trunk` is out of this skill's lane. Do not open
-   a change request for it; the delivery is the trunk commit itself,
-   recorded with `slopmachine deliver` and its `commit_sha`.
-4. The delivery contains only the intended change: both the worktree and,
-   when reusing a task branch, its commits ahead of the default branch
+   checks, run fresh). If a gate is missing or failing, report it instead
+   of delivering.
+2. Don't deliver what you haven't proven: you ran the changed behavior and
+   watched it work, a covering test fails on revert, and you can explain
+   every hunk in plain sentences. The reviewer is not your first tester.
+3. Confirm delivery is authorized: an explicit user request, or an active
+   slopmachine run whose status allows `deliver`.
+4. Deliver as a change request. A slopmachine run with
+   `delivery_mode: direct-trunk` is out of your lane: don't open a change
+   request for it; that delivery is the trunk commit itself, recorded with
+   `slopmachine deliver` and its `commit_sha`.
+5. Deliver only the intended change. Check both the worktree and, when
+   reusing a task branch, its commits ahead of the default branch
    (`git log <default>..HEAD`). Preserve unrelated work; never sweep it
    into the change request.
 
 ## Forge dispatch
 
-The vocabulary is "change request"; the forge decides the tool:
+Call it a change request; let the forge decide the tool:
 
 1. Read the remote: `git remote get-url origin`.
 2. Dispatch on its host: `github.com` → `gh`; a GitLab host → `glab`;
@@ -34,8 +38,8 @@ The vocabulary is "change request"; the forge decides the tool:
    a forge API.
 3. Verify authentication for that host (`GH_HOST=github.com gh auth
    status` or `glab auth status --hostname <host>`); a login on some
-   other configured host proves nothing. Report a missing dependency; do
-   not install tooling or switch identities.
+   other configured host proves nothing. If a dependency is missing,
+   report it; don't install tooling or switch identities.
 
 ## Deliver
 
@@ -75,39 +79,24 @@ The vocabulary is "change request"; the forge decides the tool:
      - **Fix:** negotiate permessage-deflate on the websocket.
      - **Measured:** frame size down 70%+ on the busiest feeds, against
        the staging firehose."
-6. Give a non-trivial change its single clearest review aid: a labeled
-   screenshot or recording, a focused diagram, or sanitized contract
-   input/output. Load [visual-evidence.md](references/visual-evidence.md)
-   for the attachment ladder. Never commit proof assets to the repository.
+6. Give a non-trivial change its single clearest review aid; load
+   [visual-evidence.md](references/visual-evidence.md).
 7. Return the change-request URL as the result.
 
 ## Compose with slopmachine
 
 When an active slopmachine run asked for this delivery:
 
-- Hand the URL straight back through stdin evidence and let the binary judge
-  it (a forge-bound repo verifies the change request and head before
-  accepting).
-- Read `delivery_mode` from the status document instead of assuming one; it
-  must match the run.
-- Validate first, then apply, per the slopship protocol: the same payload
-  with `--dry-run --json`, proceed only when the projection matches:
-
-```bash
-slopmachine deliver --evidence - --dry-run --json --run <run-id> <<'JSON'
-{"delivery_mode":"<delivery_mode from status>","pr_url":"<change request URL>","commit_sha":"<delivered head>"}
-JSON
-# projection ok -> repeat without --dry-run
-```
-
-A rejection means the forge disagreed with the claim; fix the delivery, not
-the evidence.
+- Hand the URL back through `slopmachine deliver` stdin evidence.
+- Read `delivery_mode` from the status document; never assume one.
+- Follow slopmachine's validate-then-apply protocol: see
+  [slopmachine](../slopmachine/SKILL.md).
+- Set `commit_sha` to the delivered head.
 
 ## Boundaries
 
-- One change request per delivery; unrelated work is never batched.
-- No merging, no auto-merge enablement, no branch deletion, no review of
-  your own delivery.
-- Address review feedback only when asked; when a finding is fixed, reply
-  with the commit hash. Babysitting the open change request through
-  review and CI is slopnanny's lane; hand off when asked.
+- One change request per delivery; never batch unrelated work.
+- Don't merge, enable auto-merge, delete branches, or review your own
+  delivery.
+- Address review feedback only when asked; babysitting the open change
+  request is slopnanny's lane.

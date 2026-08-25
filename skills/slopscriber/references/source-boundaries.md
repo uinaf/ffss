@@ -1,6 +1,6 @@
 # Source Boundaries
 
-Documentation captures contracts the target repo owns.
+Document only contracts the target repo owns.
 
 ## Evidence Routing
 

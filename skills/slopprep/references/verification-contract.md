@@ -1,8 +1,8 @@
 # Verification Contract
 
-Readiness owns the infrastructure that lets builders and evaluators prove work.
-It does not replace the ordinary responsibility to self-check each completed
-change, and it does not make an independent ship decision.
+You own the infrastructure for proving work. That doesn't replace the ordinary
+responsibility to self-check each completed change, and it doesn't give you an
+independent ship decision.
 
 ## Proof Layers
 
@@ -20,106 +20,57 @@ A build does not prove a browser flow. A screenshot does not prove an end-to-end
 transition. Green CI does not prove a provider, account, device, or deployed
 endpoint unless that exact surface ran.
 
+## Task Instruments
+
+If you have to ask a human to check your work, you're missing an instrument.
+Name it and build it before you iterate.
+
+| Claim | Instrument |
+| --- | --- |
+| faster | benchmark harness with a recorded baseline on representative input |
+| matches a design or reference | repeatable capture (screenshot, render, output dump) plus direct inspection of the rendered properties, compared against the source until no discrepancy remains |
+| correct behavior | a test that fails before the fix and fails again on revert |
+| lower cost, size, or token count | per-unit measurement on a real sample workload, with candidates that shrink the billed unit itself |
+| best of several approaches | fixture set plus a scoring script that sweeps every candidate |
+
+- Measure the baseline before the first edit; without one, "improved" is an
+  adjective.
+- Diagnose before editing: rank the measured bottlenecks and write a
+  cause-and-fix hypothesis for each.
+- Outside a scored sweep, change one variable at a time and attribute each
+  gain; report before/after numbers.
+- Commit each verified improvement separately, so a failed hypothesis reverts
+  cleanly and wins survive on their own.
+- When no best path is obvious, define the quality score first, sweep real
+  samples, and pick by score; report losing candidates and failed hypotheses,
+  not only the winner
+  ([laboratory pattern](https://brianlovin.com/writing/give-your-agent-a-laboratory-pt-ii-KjFnCW9)).
+- Refine the winning parameter to the quality frontier: push until the score
+  degrades and keep the last value that holds it.
+- Build, preview, fixture, rollback, and observation paths are readiness
+  capabilities; grade their absence.
+- Put an instrument contributors and CI will reuse in the repository's task
+  graph; a one-task lab stays attempt-scoped scratch, never committed
+  leftovers.
+
 ## Repository Contract
 
 Prefer one repository-owned verification entrypoint reused by local work and CI.
 That entrypoint may be a manifest script, build task, framework command, or
-typed CLI; it does not need a wrapper file.
-It should:
+typed CLI; it doesn't need a wrapper file.
+Make it:
 
 - run noninteractively with a finite bound
 - preserve a primary failure or signal status and concise, inspectable output;
   make cleanup or absence-verification failure non-zero after primary success
 - exercise the strongest cheap surface appropriate to the repository
 - distinguish repository failures from missing runner capabilities
-- clean up owned processes, ports, test state, temporary credentials, and
-  heavyweight runtimes such as simulators, emulators, virtual machines,
-  containers, browsers, services, and databases on success, failure, timeout,
-  and cancellation
-- preserve pre-existing resources, record exact IDs for resources created or
-  acquired by the attempt, track an owned process tree when a launcher can spawn
-  descendants, and verify final state rather than trusting cleanup exit status
+- release owned resources on every exit path per the ownership protocol in
+  [setup-patterns.md](setup-patterns.md)
 - emit task-and-attempt-scoped artifacts when evidence must survive the process
 
-Do not create a parallel agent-only verification wrapper. Improve the ordinary
-command used by contributors and CI.
-
-## Fast Portable Execution
-
-The repository owns verification. CI providers only provision a checkout,
-restore safe caches, inject scoped runner capabilities, select repository-owned
-lanes, invoke them, and aggregate their results. GitHub Actions, GitLab CI,
-Buildkite, local agents, and developer shells must not carry separate validation
-logic.
-
-- Extend the existing task graph or manifest before adding a runner or wrapper.
-  For heterogeneous repositories, `mise` tasks with explicit dependencies and
-  sources are a suitable existing surface; use another established project
-  runner when it already owns the graph.
-- Keep each command, dependency set, and test-file list in one live task owner.
-  Compatibility package scripts delegate to that task instead of copying its
-  implementation. Contract tests inspect the task definition actually used by
-  the graph, or execute that task; an assertion against an unused wrapper does
-  not protect the live gate.
-- Give independent checks separate tasks and run their dependency graph in
-  parallel. Keep output attributable to each lane and preserve every failure.
-  Tasks that write the same generated directory, compiler state, or local cache
-  are not independent; isolate that state or encode an ordering edge.
-- Select affected work from explicit inputs. Exercise added, modified, deleted,
-  renamed, staged, unstaged, and untracked cases that the local contract claims
-  to support. When local freshness cannot safely represent one case, retain a
-  forced full command and make merge-diff CI authoritative for it.
-- Include the task-graph definition itself in each cached lane's inputs. A
-  changed command, dependency edge, source map, or cache policy must invalidate
-  every lane whose meaning changed. Include runtime and toolchain pin files in
-  every cached lane they can affect.
-- Treat task-runner source/output freshness as an optimization, not as
-  Git-equivalent affected detection. Preserved timestamps, deletion, and rename
-  handling must be proven before freshness can represent those cases.
-- Keep affected-input policy in one repository-owned map. If every CI adapter
-  cannot consume that map, run the exhaustive repository gate in CI instead of
-  copying path filters into provider configuration.
-- Keep one exhaustive, non-cached path. Selection and caches optimize proof;
-  they never redefine which changes require proof.
-- Model generated artifacts as outputs of one task and dependencies of every
-  consumer. A dependency edge may only order execution; unless the runner
-  explicitly includes dependency hashes, each cached consumer must also
-  fingerprint the generated files it reads. Prove the graph once without
-  pre-existing generated output; a warm checkout can hide a missing edge behind
-  stale files.
-- Separate ephemeral working state from persistent download and build caches.
-  Key provider, compiler, dependency, and generated-tool caches by the relevant
-  lockfile or source revision plus operating system, architecture, and toolchain
-  when those affect compatibility. A cache miss must remain correct.
-- Exclude `.git`, dependency directories, build output, generated state, and
-  large binaries from filesystem scans unless the scanner's policy explicitly
-  owns them. Do not narrow detectors or disable verification merely to improve
-  timing.
-- Check task-runner install behavior in clean CI. Some runners auto-install every
-  declared tool before one selected task; either cache that installation once or
-  disable task auto-install and install the selected lane's declared tools.
-- Treat environment tracking as cache policy. Fingerprint variables that can
-  change results, and explicitly leave shell bookkeeping such as `SHLVL` and
-  package-manager launch metadata such as `INIT_CWD` untracked only after proving
-  they do not affect output. Otherwise identical work in a new shell becomes a
-  false cache miss.
-- With Vite+ task graphs, keep package-script caching disabled unless every
-  script is pure. A global `run.cache: true` also caches deploy, publish, and
-  migration scripts; prefer the default task-only cache or opt safe tasks in
-  individually.
-- Do not share caches from untrusted change execution with privileged deploy,
-  publish, signing, or secret-bearing jobs.
-- Keep policy application, deployment, release, migration, and live acceptance
-  exhaustive unless their owning contract independently proves safe selection.
-- Before pushing verification-only work, inspect automatic release
-  classification. Use a non-releasing commit type unless a product release is
-  authorized; do not let a verification optimization trigger publication.
-
-Record four timings after a material change: unchanged selection, one relevant
-change, warm full verification, and cold full verification. Also report the
-slowest lane and distinguish task time from provisioning, tool installation,
-cache restore, and runner queue time. Optimize measured ownership boundaries,
-not the workflow's total duration by guesswork.
+Don't create a parallel agent-only verification wrapper. Improve the ordinary
+command contributors and CI already use.
 
 ## Real-Surface Evidence
 
@@ -136,9 +87,9 @@ Choose the smallest check set that can honestly disprove the claim:
 - Deploy wiring: exercise the actual configured surface when the claim extends
   beyond local health.
 
-- Real-surface proof exercises the real user path and captures both the action
-  and the resulting state; a command transcript without its observed outcome
-  is not real-surface evidence.
+- Exercise the real user path and capture both the action and the resulting
+  state; a command transcript without its observed outcome is not real-surface
+  evidence.
 - Prefer integration, contract, smoke, and end-to-end checks over mock-heavy
   unit tests at the seam being claimed.
 - Mocked tests remain useful supporting evidence.
@@ -146,7 +97,9 @@ Choose the smallest check set that can honestly disprove the claim:
 ## Failure Quality
 
 Exercise at least one representative failure when the task class touches input,
-IO, authentication, network, configuration, or external dependencies. Require:
+IO, authentication, network, configuration, or external dependencies. Prefer a
+worst-case input over a mild one, and record the intended off-path behavior,
+not only that a failure occurred. Require:
 
 - a non-zero or explicitly failed terminal state
 - a stable error class, code, or machine-readable status when appropriate
@@ -170,5 +123,5 @@ Report outcomes, not command theater:
 - grade final state and side effects rather than trusting an agent's completion
   message
 
-If a repository already provides this contract, use it during ordinary work;
-do not invoke readiness work merely to repeat the builder's final checks.
+If the repository already provides this contract, use it during ordinary work;
+don't start readiness work just to repeat the builder's final checks.

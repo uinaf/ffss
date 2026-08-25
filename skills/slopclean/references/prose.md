@@ -32,7 +32,7 @@ Detect, then rewrite. Preserve meaning and tone.
   another. Sole exception: an image's alt text may keep one when the
   house banner format uses it.
 - Colon connectors as crutches: end the sentence.
-- Long sentences: a sentence stacking three or more clauses gets split.
+- Long sentences: split any sentence stacking three or more clauses.
   If reading it aloud needs a breath, it is two sentences.
 - Bold-label lists that restate the line ("**Performance:** performance
   improved"): prose.
@@ -60,5 +60,5 @@ Detect, then rewrite. Preserve meaning and tone.
 - Generic conclusions ("the future looks bright"): specific plans or end.
 - Verbose UI copy and the docs that narrate it: "Click the button below
   to get started with creating your first project" is "Create a project".
-  Labels, empty states, and tooltips carry the action, not a tour; docs
-  that restate what the interface already shows get deleted.
+  Labels, empty states, and tooltips carry the action, not a tour; delete
+  docs that restate what the interface already shows.
