@@ -20,6 +20,35 @@ A build does not prove a browser flow. A screenshot does not prove an end-to-end
 transition. Green CI does not prove a provider, account, device, or deployed
 endpoint unless that exact surface ran.
 
+## Task Instruments
+
+A builder that must ask a human to check its work is missing an instrument.
+Treat every "please verify this manually" as a readiness gap: name the missing
+tool and provide it before iterating.
+
+| Claim | Instrument |
+| --- | --- |
+| faster or cheaper | benchmark harness with a recorded baseline on representative input |
+| matches a design or reference | repeatable capture (screenshot, render, output dump) plus comparison against the source |
+| correct behavior | a test that fails before the fix and fails again on revert |
+| lower cost, size, or token count | per-unit measurement on a real sample workload |
+| best of several approaches | fixture set plus a scoring script that sweeps every candidate |
+
+- Measure the baseline before the first edit; without one, "improved" is an
+  adjective.
+- Change one variable at a time, attribute each gain, and report before/after
+  numbers.
+- When no best path is obvious, build a lab: representative real samples, a
+  harness that runs every candidate combination, and an evaluation that
+  defines quality. Pick by score; report losing candidates and failed
+  hypotheses, not only the winner
+  ([laboratory pattern](https://brianlovin.com/writing/give-your-agent-a-laboratory-pt-ii-KjFnCW9)).
+- Build, preview, fixture, rollback, and observation paths are readiness
+  capabilities, not optional extras; grade their absence.
+- An instrument contributors and CI will reuse belongs in the repository's
+  task graph; a one-task lab stays attempt-scoped scratch, never committed
+  leftovers.
+
 ## Repository Contract
 
 Prefer one repository-owned verification entrypoint reused by local work and CI.

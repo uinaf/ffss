@@ -179,6 +179,6 @@ Name exact commands only for failures, reproduction, or when asked.
 
 - [references/grading.md](references/grading.md): repository and runner grades, capability matrix, ceilings, and blockers
 - [references/agent-guidance.md](references/agent-guidance.md): model-neutral AGENTS.md orientation, routing, authority, lifecycle, and human-context checks
-- [references/verification-contract.md](references/verification-contract.md): canonical gates, proof layers, real-surface evidence, and failure quality
+- [references/verification-contract.md](references/verification-contract.md): canonical gates, proof layers, task instruments, real-surface evidence, and failure quality
 - [references/autonomy-evidence.md](references/autonomy-evidence.md): evidence levels, representative trials, outcome graders, and reliability metrics
 - [references/setup-patterns.md](references/setup-patterns.md): lifecycle, credentials, observability, isolation, unattended execution, and recovery patterns

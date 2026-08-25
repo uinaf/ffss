@@ -26,6 +26,9 @@ alone unless asked.
 
 - Hedged names (doSomethingSafely, tryProcessMaybe, helper, util, manager):
   name the actual behavior.
+- Names that lie (a `validate` that mutates, a `getUser` that creates, a
+  `Cache` that never hits): rename internals to the observed behavior; a
+  lying public name is a finding, not a cleanup.
 - Error messages that apologize or narrate ("something went wrong while
   attempting"): state the operation, the input, and the failure.
 - Dead symmetry: branches or cases kept "for completeness" that are

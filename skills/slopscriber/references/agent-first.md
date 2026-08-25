@@ -101,6 +101,15 @@ A pointer is the short text that decides whether an agent opens another source. 
 
 Each link costs a tool call. Split by retrieval boundary, not by arbitrary size.
 
+## Capture Proven Workflows
+
+When a session's workflow earns reuse (a prompt sequence, an instrument setup,
+a refinement loop), distill it from the conversation into a named skill or
+runbook: the operator's prompts plus the approach that actually worked,
+written to the structure rules above. Capture after the workflow has proven
+itself, not on first use; premature formalization freezes guesswork into
+guidance.
+
 ## AGENTS.md
 
 Use `AGENTS.md` for requirements that apply to agent work in its scope.

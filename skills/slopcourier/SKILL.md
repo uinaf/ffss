@@ -13,13 +13,17 @@ invents a second workflow runtime.
 
 1. The work is complete and the repository's own gates passed (builder-owned
    checks, run fresh). Report a missing or failing gate instead of delivering.
-2. Delivery is authorized: an explicit user request, or an active slopmachine
+2. The change is proven, not merely written: the changed behavior ran and was
+   observed, a covering test fails on revert, and the edges were exercised.
+   An open change request implies someone ran it; do not make the reviewer
+   the first tester. Report unproven work instead of shipping it.
+3. Delivery is authorized: an explicit user request, or an active slopmachine
    run whose status allows `deliver`.
-3. The delivery is a change request. A slopmachine run with
+4. The delivery is a change request. A slopmachine run with
    `delivery_mode: direct-trunk` is out of this skill's lane. Do not open
    a change request for it; the delivery is the trunk commit itself,
    recorded with `slopmachine deliver` and its `commit_sha`.
-4. The delivery contains only the intended change: both the worktree and,
+5. The delivery contains only the intended change: both the worktree and,
    when reusing a task branch, its commits ahead of the default branch
    (`git log <default>..HEAD`). Preserve unrelated work; never sweep it
    into the change request.
