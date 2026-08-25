@@ -29,6 +29,9 @@ func TestGitLabParseChangeRequestURL(t *testing.T) {
 		"https://gitlab.com/o/r/-/merge_requests/-1",
 		"https://gitlab.com//o/r/-/merge_requests/1",
 		"https://gitlab.com/o/r/-/merge_requests/1//",
+		"https://:443/o/r/-/merge_requests/1",
+		"https://gitlab.com:0/o/r/-/merge_requests/1",
+		"https://gitlab.com:65536/o/r/-/merge_requests/1",
 		"https://gitlab.com/o/r/-/merge_requests/1/diffs",
 		"https://gitlab.com/o/r/-/merge_requests/1?view=parallel",
 	} {
@@ -189,14 +192,18 @@ func TestGitLabMissingExecutableIsTransient(t *testing.T) {
 	}
 }
 
-func TestGitLabAPIUsesEncodedNestedProjectAndURLHost(t *testing.T) {
+func TestGitLabAPIUsesEncodedNestedProjectAndBareURLHostname(t *testing.T) {
 	g := NewGitLab(func(_ context.Context, args ...string) ([]byte, error) {
-		if len(args) != 4 || args[0] != "api" || args[1] != "projects/group%2Fsub%2Frepo/merge_requests/9" || args[2] != "--hostname" || args[3] != "gitlab.example:8443" {
+		if len(args) != 4 || args[0] != "api" || args[1] != "projects/group%2Fsub%2Frepo/merge_requests/9" || args[2] != "--hostname" || args[3] != "gitlab.example" {
 			return nil, fmt.Errorf("unexpected glab invocation: %v", args)
 		}
 		return []byte(`{"sha":"abc1234","state":"opened"}`), nil
 	})
-	head, err := g.Head(context.Background(), ChangeRequestRef{Host: "gitlab.example:8443", Owner: "group/sub", Repo: "repo", Number: 9})
+	ref, err := g.ParseChangeRequestURL("https://gitlab.example:8443/group/sub/repo/-/merge_requests/9")
+	if err != nil || ref.Host != "gitlab.example" {
+		t.Fatalf("ref=%+v err=%v", ref, err)
+	}
+	head, err := g.Head(context.Background(), ref)
 	if err != nil || head.SHA != "abc1234" {
 		t.Fatalf("head=%+v err=%v", head, err)
 	}

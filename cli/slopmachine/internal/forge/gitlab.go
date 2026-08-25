@@ -50,8 +50,14 @@ func (g *GitLab) Kind() Kind { return KindGitLab }
 
 func (g *GitLab) ParseChangeRequestURL(raw string) (ChangeRequestRef, error) {
 	parsed, err := url.Parse(strings.TrimSuffix(raw, "/"))
-	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("not a GitLab merge request URL: %q", raw)}
+	}
+	if port := parsed.Port(); port != "" {
+		number, err := strconv.Atoi(port)
+		if err != nil || number < 1 || number > 65535 {
+			return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("invalid GitLab host in %q", raw)}
+		}
 	}
 	if !strings.HasPrefix(parsed.Path, "/") {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("not a GitLab merge request URL: %q", raw)}
@@ -77,7 +83,7 @@ func (g *GitLab) ParseChangeRequestURL(raw string) (ChangeRequestRef, error) {
 	}
 	project := segments[:len(segments)-3]
 	return ChangeRequestRef{
-		Host:   parsed.Host,
+		Host:   parsed.Hostname(),
 		Owner:  strings.Join(project[:len(project)-1], "/"),
 		Repo:   project[len(project)-1],
 		Number: number,
