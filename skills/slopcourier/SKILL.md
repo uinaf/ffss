@@ -1,6 +1,6 @@
 ---
 name: slopcourier
-description: "Deliver a completed, verified change as a change request on the repository's forge: branch discipline, conventional commits, push, open the change request from the repo's template, attach the clearest visual evidence, and return the URL. Use when asked to deliver, ship, file, or open a pull/merge/change request for finished work, or when a slopmachine run reaches DELIVER. Do not use to implement or review changes, merge or enable auto-merge, or record slopmachine evidence by itself."
+description: "Deliver a completed, verified change as one change request on the repository's forge and return the URL. Use to deliver, ship, or file finished work, or at slopmachine DELIVER; never to implement, review, or merge."
 ---
 
 # Slopcourier

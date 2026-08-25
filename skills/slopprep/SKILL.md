@@ -1,6 +1,6 @@
 ---
 name: slopprep
-description: "Audit and improve repository guidance, lifecycle commands, fast portable verification, and runner infrastructure for dependable autonomous work. Use when making a repo agent-ready, local or CI gates are slow, duplicated, platform-bound, or ad hoc, agents cannot boot or verify, setup still needs a human, or a runner must finish tasks unsupervised. Do not use for reviewing an existing diff, an ordinary builder self-check in a healthy repo, or prose-only documentation cleanup."
+description: "Make a repository, its agent guide, and its declared runner dependable for autonomous work. Use when agents cannot boot, verify, or finish unsupervised, or gates are slow or ad hoc; not for diff review or ordinary self-checks."
 disable-model-invocation: true
 ---
 
@@ -94,7 +94,7 @@ same surface humans and CI already use.
   and select affected lanes at the earliest reliable boundary. Keep a forced
   full gate for broad changes and before claims that require exhaustive proof.
 - Measure unchanged, relevant-change, warm-full, and cold-full paths. Read
-  [references/verification-contract.md](references/verification-contract.md#fast-portable-execution)
+  [references/fast-portable-execution.md](references/fast-portable-execution.md)
   before changing verification performance or CI selection.
 - A shell file is not required merely to give the command a name; conversely,
   when a plain repo-local script satisfies the contract, it is the finished
@@ -180,5 +180,6 @@ Name exact commands only for failures, reproduction, or when asked.
 - [references/grading.md](references/grading.md): repository and runner grades, capability matrix, ceilings, and blockers
 - [references/agent-guidance.md](references/agent-guidance.md): model-neutral AGENTS.md orientation, routing, authority, lifecycle, and human-context checks
 - [references/verification-contract.md](references/verification-contract.md): canonical gates, proof layers, task instruments, real-surface evidence, and failure quality
+- [references/fast-portable-execution.md](references/fast-portable-execution.md): repository-owned task graphs, affected selection, and cache correctness; read before changing verification performance or CI selection
 - [references/autonomy-evidence.md](references/autonomy-evidence.md): evidence levels, representative trials, outcome graders, and reliability metrics
 - [references/setup-patterns.md](references/setup-patterns.md): lifecycle, credentials, observability, isolation, unattended execution, and recovery patterns

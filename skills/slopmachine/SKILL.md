@@ -1,6 +1,6 @@
 ---
 name: slopmachine
-description: "Runs a structured, deterministic implementation workflow via the installed slopmachine CLI: clarifies intake, gates human release, runs build and verify, records independent review evidence, and delivers a reviewed artifact. Use when the user says /slopmachine, run this plan, execute the task list, ship this in slices, implement with checkpoints, walk the plan end to end, build it with human gates, or do a governed multi-step implementation. Do not use for ad-hoc edits or planning-only work."
+description: "Run a governed, deterministic implementation workflow via the slopmachine CLI: intake, human release gates, build, verify, independent review, delivery. Use for /slopmachine, running a plan, or governed multi-step implementation; not ad-hoc edits or planning."
 disable-model-invocation: true
 ---
 
