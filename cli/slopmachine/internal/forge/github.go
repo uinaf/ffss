@@ -337,16 +337,16 @@ func classify(err error) error {
 	case strings.Contains(message, "rate limit"), strings.Contains(message, "http 429"),
 		strings.Contains(message, "too many requests"):
 		kind = ErrorRateLimit
+	// Transport failures stay transient even when wrapper text names an auth
+	// command or their wording overlaps object-resolution messages.
+	case strings.Contains(message, "could not resolve host"), strings.Contains(message, "no such host"),
+		strings.Contains(message, "dial tcp"), strings.Contains(message, "timeout"):
+		kind = ErrorTransient
 	case strings.Contains(message, "http 401"), strings.Contains(message, "http 403"),
 		strings.Contains(message, "401 unauthorized"), strings.Contains(message, "403 forbidden"),
 		strings.Contains(message, "authentication"), strings.Contains(message, "auth login"),
 		strings.Contains(message, "auth status"), strings.Contains(message, "bad credentials"):
 		kind = ErrorAuth
-	// Transport failures stay transient even when their wording overlaps
-	// GitHub's object-resolution messages.
-	case strings.Contains(message, "could not resolve host"), strings.Contains(message, "no such host"),
-		strings.Contains(message, "dial tcp"), strings.Contains(message, "timeout"):
-		kind = ErrorTransient
 	case strings.Contains(message, "http 404"), strings.Contains(message, "404 not found"), strings.Contains(message, "not found"),
 		strings.Contains(message, "could not resolve to"):
 		kind = ErrorNotFound

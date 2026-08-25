@@ -146,6 +146,8 @@ func TestClassifyMapsFailureTaxonomy(t *testing.T) {
 		"gh: To get started with GitHub CLI, run gh auth login":     ErrorAuth,
 		"gh pr view: dial tcp: lookup api.github.com: no such host": ErrorTransient,
 		"gh api: could not resolve host: api.github.com":            ErrorTransient,
+		"glab auth status: could not resolve host: gitlab.example":  ErrorTransient,
+		"glab auth status: dial tcp: timeout":                       ErrorTransient,
 		"gh api: HTTP 429: Too Many Requests":                       ErrorRateLimit,
 	}
 	for message, want := range tests {
