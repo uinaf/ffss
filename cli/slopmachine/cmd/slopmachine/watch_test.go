@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/uinaf/ffss/cli/slopmachine/internal/forge"
 )
 
 const emptyThreadsJSON = `{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":false,"endCursor":""},"nodes":[]}}}}}`
@@ -709,5 +711,17 @@ func TestWatchReportsAuthFailure(t *testing.T) {
 	}
 	if len(doc.Observations) != 1 || doc.Observations[0].ErrorKind != "auth" {
 		t.Fatalf("the failing observation must still be reported: %s", out)
+	}
+	if !strings.Contains(doc.Observations[0].Note, "gh auth status") {
+		t.Fatalf("GitHub auth failure must name its recovery command: %s", out)
+	}
+}
+
+func TestForgeAccessCommand(t *testing.T) {
+	if got := forgeAccessCommand(forge.KindGitHub); got != "gh auth status" {
+		t.Fatalf("GitHub access command = %q", got)
+	}
+	if got := forgeAccessCommand(forge.KindGitLab); got != "glab auth status --hostname <MR host>" {
+		t.Fatalf("GitLab access command = %q", got)
 	}
 }

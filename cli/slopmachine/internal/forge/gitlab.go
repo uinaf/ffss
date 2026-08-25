@@ -62,7 +62,13 @@ func (g *GitLab) ParseChangeRequestURL(raw string) (ChangeRequestRef, error) {
 			return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("invalid GitLab project path in %q", raw)}
 		}
 	}
-	number, err := strconv.Atoi(segments[len(segments)-1])
+	iid := segments[len(segments)-1]
+	for _, r := range iid {
+		if r < '0' || r > '9' {
+			return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("invalid merge request number in %q", raw)}
+		}
+	}
+	number, err := strconv.Atoi(iid)
 	if err != nil || number < 1 {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("invalid merge request number in %q", raw)}
 	}

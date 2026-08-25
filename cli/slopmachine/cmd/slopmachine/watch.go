@@ -317,7 +317,7 @@ func observeUnit(ctx context.Context, st *store.Store, adapter forge.Forge, repo
 			result.ErrorKind = string(forgeErr.Kind)
 			switch forgeErr.Kind {
 			case forge.ErrorAuth, forge.ErrorRateLimit:
-				result.Note = fmt.Sprintf("forge not observable (%s) at %s; fix access (gh auth status) and rerun", forgeErr.Kind, ref)
+				result.Note = fmt.Sprintf("forge not observable (%s) at %s; fix access (%s) and rerun", forgeErr.Kind, ref, forgeAccessCommand(adapter.Kind()))
 				return result, watchAbortForge
 			}
 			result.Note = fmt.Sprintf("observation failed (%s); rerun watch or use --interval to retry", forgeErr.Kind)
@@ -412,6 +412,13 @@ func observeUnit(ctx context.Context, st *store.Store, adapter forge.Forge, repo
 		result.ErrorKind = "conflict"
 	}
 	return result, 0
+}
+
+func forgeAccessCommand(kind forge.Kind) string {
+	if kind == forge.KindGitLab {
+		return "glab auth status --hostname <MR host>"
+	}
+	return "gh auth status"
 }
 
 // casExhaustedNote marks bounded retry exhaustion under concurrent writers.

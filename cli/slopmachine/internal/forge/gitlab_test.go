@@ -24,6 +24,8 @@ func TestGitLabParseChangeRequestURL(t *testing.T) {
 		"https://gitlab.com/o/r/merge_requests/1",
 		"https://gitlab.com/o/r/-/issues/1",
 		"https://gitlab.com/o/r/-/merge_requests/0",
+		"https://gitlab.com/o/r/-/merge_requests/+1",
+		"https://gitlab.com/o/r/-/merge_requests/-1",
 		"https://gitlab.com/o/r/-/merge_requests/1/diffs",
 		"https://gitlab.com/o/r/-/merge_requests/1?view=parallel",
 	} {
