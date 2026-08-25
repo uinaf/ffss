@@ -66,13 +66,8 @@ It should:
   make cleanup or absence-verification failure non-zero after primary success
 - exercise the strongest cheap surface appropriate to the repository
 - distinguish repository failures from missing runner capabilities
-- clean up owned processes, ports, test state, temporary credentials, and
-  heavyweight runtimes such as simulators, emulators, virtual machines,
-  containers, browsers, services, and databases on success, failure, timeout,
-  and cancellation
-- preserve pre-existing resources, record exact IDs for resources created or
-  acquired by the attempt, track an owned process tree when a launcher can spawn
-  descendants, and verify final state rather than trusting cleanup exit status
+- release owned resources on every exit path per the ownership protocol in
+  [setup-patterns.md](setup-patterns.md)
 - emit task-and-attempt-scoped artifacts when evidence must survive the process
 
 Do not create a parallel agent-only verification wrapper. Improve the ordinary

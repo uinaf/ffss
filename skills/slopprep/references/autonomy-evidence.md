@@ -5,19 +5,8 @@ scale to show how strongly a repository and runner grade has been exercised.
 
 ## Evidence Levels
 
-### E0: Static
-
-Files and configuration were inspected, but no readiness command ran.
-
-### E1: Exercised
-
-One bootstrap, smoke, verification, or teardown command ran successfully in a
-declared environment. This proves a path exists, not that it is dependable.
-
-### E2: Real-surface
-
-A success path and an actionable failure path exercised the real process,
-interface, or shipped artifact. Final state and artifacts were inspected.
+E0 through E2 are defined by the scale in [grading.md](grading.md); this file
+covers designing and reporting the top two.
 
 ### E3: Representative
 

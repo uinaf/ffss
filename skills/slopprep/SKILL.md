@@ -83,45 +83,21 @@ trials**.
 Reuse the repository's ordinary bootstrap, verify, and teardown commands; the
 same surface humans and CI already use.
 
-- Do not invent a parallel `agent-*` script layer.
 - If entrypoints are missing, extend the existing build manifest, task graph,
   compiler/linter/test framework, or typed project CLI.
-- Make verification runner-neutral: local work and GitHub Actions, GitLab CI,
-  Buildkite, or another runner invoke the same repository-owned tasks. Provider
-  configuration may select lanes and restore caches; it must not own a second
-  command graph.
-- Split independent checks into explicit task-graph lanes, run them in parallel,
-  and select affected lanes at the earliest reliable boundary. Keep a forced
-  full gate for broad changes and before claims that require exhaustive proof.
 - Measure unchanged, relevant-change, warm-full, and cold-full paths. Read
   [references/fast-portable-execution.md](references/fast-portable-execution.md)
-  before changing verification performance or CI selection.
+  for runner-neutral task graphs, lane selection, and cache correctness before
+  changing verification structure or CI selection.
 - A shell file is not required merely to give the command a name; conversely,
   when a plain repo-local script satisfies the contract, it is the finished
   output. Do not scaffold a generator or framework around it.
-- Bootstrap validates prerequisites; verify is the CI-reused gate; teardown
-  covers success, failure, timeout, and cancellation.
-- Give every driven target a doctor: one read-only "is this instance worth
-  driving?" check (process up, right build, port owned, auth valid) run before
-  driving and after anything surprising
-  ([references/setup-patterns.md](references/setup-patterns.md)).
+- Give every driven target a doctor check, and treat heavyweight runtime
+  resources (simulators, containers, services, databases) as owned lifecycle
+  state; the stage contract and ownership protocol live in
+  [references/setup-patterns.md](references/setup-patterns.md).
 - Name the declared commands and their proof boundary in `AGENTS.md`.
 - Key automation artifacts by task and attempt.
-
-Treat heavyweight runtime resources as owned lifecycle state: simulators,
-emulators, virtual machines, containers, browsers, services, databases, and
-similar runners.
-
-- Snapshot pre-existing state, record exact resource IDs, and release only
-  resources raised by the current task or attempt on every exit path.
-- Treat a launcher and its descendants as one owned process tree when
-  applicable. Preserve resources that were already running.
-- Verify the final state after a successful run and an injected failure.
-- If ordinary work succeeded but teardown or absence verification fails,
-  return non-zero; otherwise preserve the primary failure or signal status
-  while reporting the cleanup failure.
-- A persistent `run` or development task must hand off its resource IDs and
-  explicit teardown command instead of silently leaking them.
 
 | Enforce mechanically | Leave to agent judgment |
 | --- | --- |
