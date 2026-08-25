@@ -22,13 +22,13 @@ endpoint unless that exact surface ran.
 
 ## Task Instruments
 
-A builder that must ask a human to check its work is missing an instrument.
-Treat every "please verify this manually" as a readiness gap: name the missing
-tool and provide it before iterating.
+A builder that must ask a human to check its work is missing an instrument;
+treat the request as a readiness gap, name the missing tool, and provide it
+before iterating.
 
 | Claim | Instrument |
 | --- | --- |
-| faster or cheaper | benchmark harness with a recorded baseline on representative input |
+| faster | benchmark harness with a recorded baseline on representative input |
 | matches a design or reference | repeatable capture (screenshot, render, output dump) plus comparison against the source |
 | correct behavior | a test that fails before the fix and fails again on revert |
 | lower cost, size, or token count | per-unit measurement on a real sample workload |
@@ -38,10 +38,9 @@ tool and provide it before iterating.
   adjective.
 - Change one variable at a time, attribute each gain, and report before/after
   numbers.
-- When no best path is obvious, build a lab: representative real samples, a
-  harness that runs every candidate combination, and an evaluation that
-  defines quality. Pick by score; report losing candidates and failed
-  hypotheses, not only the winner
+- When no best path is obvious, define the quality score first, sweep real
+  samples, and pick by score; report losing candidates and failed hypotheses,
+  not only the winner
   ([laboratory pattern](https://brianlovin.com/writing/give-your-agent-a-laboratory-pt-ii-KjFnCW9)).
 - Build, preview, fixture, rollback, and observation paths are readiness
   capabilities; grade their absence.
