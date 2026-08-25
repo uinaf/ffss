@@ -1,12 +1,3 @@
-# Shared agent rules
-
-This file is the shared behavior contract for coding agents across machines.
-[uinaf/dotfiles](https://github.com/uinaf/dotfiles) renders it into
-`~/AGENTS.md` between private `agents.start.md` and `agents.end.md` fragments.
-Until dotfiles constructs `AGENTS.md` from remote sources, the copy in
-`dotfiles/chezmoi/private_AGENTS.md.tmpl` is kept in sync with this file by
-hand; edit both in one change.
-
 ## General guidelines
 
 ### Communication
