@@ -54,7 +54,10 @@ provider, local agent, or developer shell carry separate validation logic.
 
 ## Guardrails
 
-- Don't narrow detectors or disable verification just to improve timing.
+- Exclude `.git`, dependency directories, build output, generated state, and
+  large binaries from filesystem scans unless the scanner's policy explicitly
+  owns them; don't narrow detectors or disable verification just to improve
+  timing.
 - Check task-runner install behavior in clean CI: cache the auto-install
   once, or disable it and install the selected lane's declared tools.
 - Keep policy application, deployment, release, migration, and live
@@ -64,8 +67,8 @@ provider, local agent, or developer shell carry separate validation logic.
   classification; use a non-releasing commit type unless a product release
   is authorized.
 
-Record four timings after a material change: unchanged selection, one
-relevant change, warm full, and cold full. Report the slowest lane and
+Record four timings after a material change: unchanged, relevant-change,
+warm-full, and cold-full. Report the slowest lane and
 separate task time from provisioning, tool install, cache restore, and
 runner queue time. Optimize measured ownership boundaries, not total
 duration by guesswork.
