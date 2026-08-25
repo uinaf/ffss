@@ -31,8 +31,11 @@ func TestGitLabParseChangeRequestURL(t *testing.T) {
 		"https://gitlab.com//o/r/-/merge_requests/1",
 		"https://gitlab.com/o/r/-/merge_requests/1//",
 		"https://:443/o/r/-/merge_requests/1",
-		"https://gitlab.com:0/o/r/-/merge_requests/1",
-		"https://gitlab.com:65536/o/r/-/merge_requests/1",
+		"https://gitlab.com:8443/o/r/-/merge_requests/1",
+		"https://gitlab.com/group/bad%00repo/-/merge_requests/1",
+		"https://gitlab.com/group/bad%20repo/-/merge_requests/1",
+		"https://gitlab.com/group/bad@repo/-/merge_requests/1",
+		"https://gitlab.com/group/-repo/-/merge_requests/1",
 		"https://gitlab.com/o/r/-/merge_requests/1/diffs",
 		"https://gitlab.com/o/r/-/merge_requests/1?view=parallel",
 	} {
@@ -243,7 +246,7 @@ esac
 	}
 }
 
-func TestGitLabAPIUsesEncodedNestedProjectAndBareURLHostname(t *testing.T) {
+func TestGitLabAPIUsesEncodedNestedProjectAndSelfHostedHostname(t *testing.T) {
 	calls := 0
 	g := NewGitLab(func(_ context.Context, args ...string) ([]byte, error) {
 		calls++
@@ -255,7 +258,7 @@ func TestGitLabAPIUsesEncodedNestedProjectAndBareURLHostname(t *testing.T) {
 		}
 		return []byte(`{"sha":"abc1234","state":"opened"}`), nil
 	})
-	ref, err := g.ParseChangeRequestURL("https://gitlab.example:8443/group/sub/repo/-/merge_requests/9")
+	ref, err := g.ParseChangeRequestURL("https://gitlab.example/group/sub/repo/-/merge_requests/9")
 	if err != nil || ref.Host != "gitlab.example" {
 		t.Fatalf("ref=%+v err=%v", ref, err)
 	}

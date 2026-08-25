@@ -172,9 +172,10 @@ slopmachine repo register \
   --forge-reviewer 'slopzapper=slopzapper'
 ```
 
-Use `--forge gitlab` for GitLab.com or self-hosted GitLab merge requests. The
-adapter uses the authenticated `glab` CLI and derives the host from each merge
-request URL.
+Use `--forge gitlab` for GitLab.com or self-hosted GitLab merge requests on
+standard HTTPS. The adapter uses the authenticated `glab` CLI and derives the
+host from each merge request URL; custom-port URLs fail closed because `glab`
+does not accept ports in host selection.
 
 A registered repo drives defaults and gates; unregistered repositories keep
 profile-less behavior.

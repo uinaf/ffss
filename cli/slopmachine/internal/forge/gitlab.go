@@ -50,14 +50,8 @@ func (g *GitLab) Kind() Kind { return KindGitLab }
 
 func (g *GitLab) ParseChangeRequestURL(raw string) (ChangeRequestRef, error) {
 	parsed, err := url.Parse(strings.TrimSuffix(raw, "/"))
-	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.Port() != "" || parsed.User != nil || parsed.RawPath != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("not a GitLab merge request URL: %q", raw)}
-	}
-	if port := parsed.Port(); port != "" {
-		number, err := strconv.Atoi(port)
-		if err != nil || number < 1 || number > 65535 {
-			return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("invalid GitLab host in %q", raw)}
-		}
 	}
 	if !strings.HasPrefix(parsed.Path, "/") {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("not a GitLab merge request URL: %q", raw)}
@@ -66,8 +60,8 @@ func (g *GitLab) ParseChangeRequestURL(raw string) (ChangeRequestRef, error) {
 	if len(segments) < 5 || segments[len(segments)-3] != "-" || segments[len(segments)-2] != "merge_requests" {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("not a GitLab merge request URL: %q", raw)}
 	}
-	for _, segment := range segments {
-		if segment == "" || segment == "." || segment == ".." {
+	for _, segment := range segments[:len(segments)-3] {
+		if !validGitLabPathSegment(segment) {
 			return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("invalid GitLab project path in %q", raw)}
 		}
 	}
@@ -88,6 +82,18 @@ func (g *GitLab) ParseChangeRequestURL(raw string) (ChangeRequestRef, error) {
 		Repo:   project[len(project)-1],
 		Number: number,
 	}, nil
+}
+
+func validGitLabPathSegment(segment string) bool {
+	if segment == "" || segment == "." || segment == ".." || strings.HasPrefix(segment, "-") {
+		return false
+	}
+	for _, r := range segment {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && r != '-' && r != '_' && r != '.' {
+			return false
+		}
+	}
+	return true
 }
 
 type gitLabMergeRequest struct {
