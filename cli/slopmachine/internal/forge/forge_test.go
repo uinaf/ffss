@@ -10,12 +10,14 @@ import (
 )
 
 func TestNewFailsClosedOnUnknownKind(t *testing.T) {
-	if _, err := New("gitlab"); !errors.Is(err, ErrUnknownKind) {
+	if _, err := New("bitbucket"); !errors.Is(err, ErrUnknownKind) {
 		t.Fatalf("unknown kind: %v", err)
 	}
-	adapter, err := New(KindGitHub)
-	if err != nil || adapter.Kind() != KindGitHub {
-		t.Fatalf("github adapter: %v", err)
+	for _, kind := range []Kind{KindGitHub, KindGitLab} {
+		adapter, err := New(kind)
+		if err != nil || adapter.Kind() != kind {
+			t.Fatalf("%s adapter: %v", kind, err)
+		}
 	}
 }
 

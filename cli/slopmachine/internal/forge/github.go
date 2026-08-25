@@ -12,9 +12,9 @@ import (
 	"strings"
 )
 
-// Runner executes one forge CLI invocation and returns its stdout. The
-// GitHub adapter shells out to the installed, authenticated `gh` so the
-// binary never holds forge credentials itself.
+// Runner executes one forge CLI invocation and returns its stdout. Adapters
+// shell out to the installed, authenticated forge CLI so the binary never
+// holds forge credentials itself.
 type Runner func(ctx context.Context, args ...string) ([]byte, error)
 
 func ghRunner(ctx context.Context, args ...string) ([]byte, error) {
@@ -58,7 +58,7 @@ func (g *GitHub) ParseChangeRequestURL(url string) (ChangeRequestRef, error) {
 	if err != nil || number < 1 {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("invalid pull request number in %q", url)}
 	}
-	return ChangeRequestRef{Owner: match[1], Repo: match[2], Number: number}, nil
+	return ChangeRequestRef{Host: "github.com", Owner: match[1], Repo: match[2], Number: number}, nil
 }
 
 func (g *GitHub) Observe(ctx context.Context, ref ChangeRequestRef) (Observation, error) {
@@ -333,15 +333,16 @@ func classify(err error) error {
 		strings.Contains(message, "too many requests"):
 		kind = ErrorRateLimit
 	case strings.Contains(message, "http 401"), strings.Contains(message, "http 403"),
+		strings.Contains(message, "401 unauthorized"), strings.Contains(message, "403 forbidden"),
 		strings.Contains(message, "authentication"), strings.Contains(message, "auth login"),
-		strings.Contains(message, "bad credentials"):
+		strings.Contains(message, "auth status"), strings.Contains(message, "bad credentials"):
 		kind = ErrorAuth
 	// Transport failures stay transient even when their wording overlaps
 	// GitHub's object-resolution messages.
 	case strings.Contains(message, "could not resolve host"), strings.Contains(message, "no such host"),
 		strings.Contains(message, "dial tcp"), strings.Contains(message, "timeout"):
 		kind = ErrorTransient
-	case strings.Contains(message, "http 404"), strings.Contains(message, "not found"),
+	case strings.Contains(message, "http 404"), strings.Contains(message, "404 not found"), strings.Contains(message, "not found"),
 		strings.Contains(message, "could not resolve to"):
 		kind = ErrorNotFound
 	}

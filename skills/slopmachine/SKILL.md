@@ -38,6 +38,8 @@ slopmachine repo register --forge github --trust low \
   --bind review=slopguard
 ```
 
+Use `--forge gitlab` for GitLab.com or self-hosted GitLab repositories.
+
 - Map forge-resident reviewers (bots that review on the change request) with
   `--forge-reviewer identity=login` so their evidence is corroborated against
   the live change request.

@@ -26,7 +26,10 @@ func Roles() []Role { return []Role{RoleReview, RoleQA, RoleVenue, RoleMemory} }
 // Recorded data only until an adapter consumes it.
 type ForgeKind string
 
-const ForgeGitHub ForgeKind = "github"
+const (
+	ForgeGitHub ForgeKind = "github"
+	ForgeGitLab ForgeKind = "gitlab"
+)
 
 // TrustTier records how much autonomy the repo has earned.
 type TrustTier string
@@ -76,9 +79,9 @@ func ValidateProfile(p *RepoProfile) error {
 		return fmt.Errorf("%w: profile repo key required", ErrBadArgs)
 	}
 	switch p.ForgeKind {
-	case "", ForgeGitHub:
+	case "", ForgeGitHub, ForgeGitLab:
 	default:
-		return fmt.Errorf("%w: forge kind must be github", ErrBadArgs)
+		return fmt.Errorf("%w: forge kind must be github|gitlab", ErrBadArgs)
 	}
 	switch p.TrustTier {
 	case "", TrustLow, TrustMedium, TrustHigh:
@@ -124,7 +127,7 @@ func ValidateProfile(p *RepoProfile) error {
 		if err := ValidateResourceID("forge reviewer", identity); err != nil {
 			return err
 		}
-		if err := validForgeLogin(identity, login); err != nil {
+		if err := validForgeLogin(p.ForgeKind, identity, login); err != nil {
 			return err
 		}
 	}
@@ -134,23 +137,37 @@ func ValidateProfile(p *RepoProfile) error {
 	return nil
 }
 
-const maxForgeLoginBytes = 64
+const maxGitHubLoginBytes = 64
+const maxGitLabLoginBytes = 255
 
-// validForgeLogin checks a declared forge login: alphanumerics and hyphens
-// with an optional [bot] suffix, matching GitHub's login charset. GraphQL
-// reads return bot logins without the suffix, so corroboration strips it on
-// both sides before comparing.
-func validForgeLogin(identity, login string) error {
-	if len(login) > maxForgeLoginBytes {
-		return fmt.Errorf("%w: forge login for %q exceeds %d bytes", ErrBadArgs, identity, maxForgeLoginBytes)
+// validForgeLogin checks the declared forge's native username shape. GitHub
+// permits alphanumerics and hyphens plus the REST-only [bot] suffix; GitLab
+// additionally permits periods and underscores.
+func validForgeLogin(kind ForgeKind, identity, login string) error {
+	maxBytes := maxGitHubLoginBytes
+	if kind == ForgeGitLab {
+		maxBytes = maxGitLabLoginBytes
 	}
-	base := strings.TrimSuffix(login, "[bot]")
+	if len(login) > maxBytes {
+		return fmt.Errorf("%w: forge login for %q exceeds %d bytes", ErrBadArgs, identity, maxBytes)
+	}
+	base := login
+	if kind == ForgeGitHub {
+		base = strings.TrimSuffix(base, "[bot]")
+	}
 	if base == "" || strings.HasPrefix(base, "-") || strings.HasSuffix(base, "-") {
-		return fmt.Errorf("%w: forge login for %q must be a login name with an optional [bot] suffix", ErrBadArgs, identity)
+		return fmt.Errorf("%w: forge login for %q is not a valid %s username", ErrBadArgs, identity, kind)
+	}
+	if kind == ForgeGitLab && (strings.HasPrefix(base, ".") || strings.HasSuffix(base, ".")) {
+		return fmt.Errorf("%w: forge login for %q is not a valid %s username", ErrBadArgs, identity, kind)
 	}
 	for _, r := range base {
-		if (r < '0' || r > '9') && (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && r != '-' {
-			return fmt.Errorf("%w: forge login for %q must contain only alphanumerics and hyphens (optional [bot] suffix)", ErrBadArgs, identity)
+		valid := (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '-'
+		if kind == ForgeGitLab {
+			valid = valid || r == '_' || r == '.'
+		}
+		if !valid {
+			return fmt.Errorf("%w: forge login for %q is not a valid %s username", ErrBadArgs, identity, kind)
 		}
 	}
 	return nil

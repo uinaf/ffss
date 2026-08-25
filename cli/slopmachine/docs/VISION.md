@@ -72,8 +72,8 @@ babysitting, QA gates, risk-tiered review) land before parallel dispatch.
    fails closed. Detection may propose bindings; a human confirms them.
 4. **Forge independence.** The state machine and schemas never assume one
    forge. Observation goes through a small adapter seam: change-request URL,
-   head SHA, checks state, review threads, mergeability. GitHub is the first
-   adapter; others are added when a repo that needs them registers.
+   head SHA, checks state, review threads, mergeability. GitHub and GitLab
+   adapters are available; others are added when a repo that needs them registers.
 5. **Deterministic orchestration.** Queues, polling, policy, routing, and
    escalation are code. Models run only at reasoning steps: building,
    reviewing, judging, clarifying.
@@ -224,7 +224,7 @@ this is the shape.
   registration), profiles and bindings, post-delivery unit states with
   independent unit latches, harness conformance contract.
 - **M2: observed evidence.** Transition telemetry, the forge adapter seam
-  with a GitHub implementation, a `watch` verb turning forge observations
+  with GitHub and GitLab implementations, a `watch` verb turning observations
   into babysit events, verified review and delivery evidence, delivery
   conventions in bound driver skills.
 - **M3: dispatch and routing.** Venue and worker adapters from local

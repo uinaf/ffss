@@ -94,9 +94,21 @@ func cmdWatch(st *store.Store, args []string, opts runOptions) int {
 	if err != nil {
 		return writeFailure(opts, 2, err)
 	}
-	adapter, err := forge.New(forge.KindGitHub)
+	profile, found, err := st.GetRepoProfile(key)
+	if err != nil {
+		return mapErr(err, opts)
+	}
+	adapter, err := forgeProfile(profile, found)
 	if err != nil {
 		return writeFailure(opts, 10, err)
+	}
+	// Profile-less repositories historically observed GitHub delivery URLs.
+	// Keep that behavior; a registered profile declares any other forge.
+	if adapter == nil {
+		adapter, err = forge.New(forge.KindGitHub)
+		if err != nil {
+			return writeFailure(opts, 10, err)
+		}
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

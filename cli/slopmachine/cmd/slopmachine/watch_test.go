@@ -35,6 +35,28 @@ esac
 	return viewFile
 }
 
+// installFakeGLab puts a glab stub first on PATH that serves the merge
+// request and discussions REST reads used by watch.
+func installFakeGLab(t *testing.T, h *cliHarness, mrJSON, discussionsJSON string) {
+	t.Helper()
+	binDir := t.TempDir()
+	mrFile := filepath.Join(binDir, "mr.json")
+	discussionsFile := filepath.Join(binDir, "discussions.json")
+	mustWrite(t, mrFile, mrJSON)
+	mustWrite(t, discussionsFile, discussionsJSON)
+	script := fmt.Sprintf(`#!/bin/bash
+case "$2" in
+  *discussions*) cat %q ;;
+  *) cat %q ;;
+esac
+`, discussionsFile, mrFile)
+	glabPath := filepath.Join(binDir, "glab")
+	if err := os.WriteFile(glabPath, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	h.env = append(h.env, "PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
 func deliverWatchableRun(t *testing.T, h *cliHarness, runID string) {
 	t.Helper()
 	h.must("init", "--run", runID)
@@ -86,6 +108,33 @@ func TestWatchOnceSettlesMergedUnit(t *testing.T) {
 	doc = decodeWatchDoc(t, out)
 	if len(doc.Observations) != 0 || !strings.Contains(doc.Stopped, "no delivered unit") {
 		t.Fatalf("idempotent pass must record nothing: %s", out)
+	}
+}
+
+func TestWatchUsesGitLabAdapterFromRepoProfile(t *testing.T) {
+	h := newCLIHarness(t)
+	h.must("init", "--run", "gitlab-watch")
+	intake := filepath.Join(t.TempDir(), "intake.json")
+	mustWrite(t, intake, `{"required_reviewers":["slopguard"],"series_bound":1,"units":[{"id":"u1","title":"one"}]}`)
+	h.must("intake", "--file", intake, "--run", "gitlab-watch")
+	h.must("release", "--revision", "2", "--run", "gitlab-watch")
+	h.must("build", "--run", "gitlab-watch")
+	h.must("verify", "--cmd", "true", "--run", "gitlab-watch")
+	review := filepath.Join(t.TempDir(), "review.json")
+	mustWrite(t, review, `{"reviewer":"slopguard","verdict":"clean","artifact_ref":"test://1"}`)
+	h.must("review", "--evidence", review, "--run", "gitlab-watch")
+	deliver := filepath.Join(t.TempDir(), "deliver.json")
+	mustWrite(t, deliver, `{"delivery_mode":"pr-hold","pr_url":"https://gitlab.example/group/repo/-/merge_requests/4","commit_sha":"aaaa1111aaaa1111"}`)
+	h.must("deliver", "--evidence", deliver, "--run", "gitlab-watch")
+
+	h.must("repo", "register", "--forge", "gitlab", "--bind", "review=slopguard")
+	installFakeGLab(t, h,
+		`{"sha":"aaaa1111aaaa1111","state":"merged","detailed_merge_status":"not_open","head_pipeline":{"status":"success"}}`,
+		`[]`)
+	out := h.must("watch", "--once", "--json", "--run", "gitlab-watch")
+	doc := decodeWatchDoc(t, out)
+	if len(doc.Observations) != 1 || doc.Observations[0].Signal != "merged" || doc.State != "RUN_DONE" {
+		t.Fatalf("GitLab merge must settle the unit: %s", out)
 	}
 }
 

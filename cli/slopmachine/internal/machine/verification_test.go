@@ -127,6 +127,18 @@ func TestProfileForgeLoginCharset(t *testing.T) {
 			t.Fatalf("login %q must pass: %v", login, err)
 		}
 	}
+	for _, login := range []string{"zap_bot", "zap.bot", strings.Repeat("a", 255)} {
+		profile := &machine.RepoProfile{RepoKey: "k", ForgeKind: machine.ForgeGitLab, ForgeReviewers: map[string]string{"slopzapper": login}}
+		if err := machine.ValidateProfile(profile); err != nil {
+			t.Fatalf("GitLab login %q must pass: %v", login, err)
+		}
+	}
+	for _, login := range []string{"bad/login", "bad[bot]", ".bad", "bad."} {
+		profile := &machine.RepoProfile{RepoKey: "k", ForgeKind: machine.ForgeGitLab, ForgeReviewers: map[string]string{"slopzapper": login}}
+		if err := machine.ValidateProfile(profile); !errors.Is(err, machine.ErrBadArgs) {
+			t.Fatalf("invalid GitLab login %q must fail: %v", login, err)
+		}
+	}
 }
 
 func TestNormalizeForgeLogin(t *testing.T) {

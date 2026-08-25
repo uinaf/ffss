@@ -251,7 +251,7 @@ func flags(names ...string) []flagSchema {
 		case "iterations":
 			typeName, description = "integer", "Maximum polling passes for --interval (default 20, max 1000)."
 		case "forge":
-			description = "Forge kind hosting this repo's change requests: github."
+			description = "Forge kind hosting this repo's change requests: github or gitlab."
 		case "trust":
 			description = "Earned autonomy tier: low, medium, or high."
 		case "verify-cmd":
