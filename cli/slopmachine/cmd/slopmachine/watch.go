@@ -316,8 +316,11 @@ func observeUnit(ctx context.Context, st *store.Store, adapter forge.Forge, repo
 		if errors.As(err, &forgeErr) {
 			result.ErrorKind = string(forgeErr.Kind)
 			switch forgeErr.Kind {
-			case forge.ErrorAuth, forge.ErrorRateLimit:
+			case forge.ErrorAuth:
 				result.Note = fmt.Sprintf("forge not observable (%s) at %s; fix access (%s) and rerun", forgeErr.Kind, ref, forgeAccessCommand(adapter.Kind()))
+				return result, watchAbortForge
+			case forge.ErrorRateLimit:
+				result.Note = fmt.Sprintf("forge rate limited at %s; back off and rerun later, or increase --interval", ref)
 				return result, watchAbortForge
 			}
 			result.Note = fmt.Sprintf("observation failed (%s); rerun watch or use --interval to retry", forgeErr.Kind)

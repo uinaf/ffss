@@ -437,6 +437,9 @@ esac
 	if doc.Observations[0].ErrorKind != "rate_limit" || !doc.Observations[1].Recorded {
 		t.Fatalf("the first pass failure and second pass recording must both be reported: %s", out)
 	}
+	if note := doc.Observations[0].Note; !strings.Contains(note, "--interval") || strings.Contains(note, "auth status") {
+		t.Fatalf("rate-limit recovery must recommend backoff instead of auth repair: %s", note)
+	}
 }
 
 func TestWatchIntervalExhaustsBoundsCleanly(t *testing.T) {
