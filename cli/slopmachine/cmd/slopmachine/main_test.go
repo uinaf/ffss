@@ -950,6 +950,10 @@ func TestCommandHelpAndScopedFlags(t *testing.T) {
 	if !ok || !strings.Contains(help, "Verdicts: clean, findings, ambiguous") {
 		t.Fatalf("review help: %q", help)
 	}
+	watchHelp, ok := commandUsage("watch")
+	if !ok || !strings.Contains(watchHelp, "rate_limit (back off") || strings.Contains(watchHelp, "auth/rate_limit") {
+		t.Fatalf("watch help: %q", watchHelp)
+	}
 	if _, err := parseFlagsWith([]string{"--evidence", "x"}, commandFlags["init"]); err == nil {
 		t.Fatal("init accepted review evidence")
 	}

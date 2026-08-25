@@ -321,7 +321,8 @@ bounded iteration count (default 20) and stops early once nothing awaits
 signals. Interrupting with Ctrl-C is safe. Exit 7 means the final pass
 left something unobserved or unrecorded; the emitted watch document
 still reports every observation already recorded plus error_kind:
-auth/rate_limit (fix gh or glab access and rerun), transient (rerun),
+auth (fix gh or glab access and rerun), rate_limit (back off and rerun later,
+or increase --interval), transient (rerun),
 not_found (the change request is gone; ask or re-deliver), unobservable
 (delivery evidence unusable; record manually with slopmachine observe),
 conflict (concurrent writers or a fresh re-delivery; rerun watch).
