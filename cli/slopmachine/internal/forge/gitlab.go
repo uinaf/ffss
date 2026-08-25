@@ -50,7 +50,7 @@ func (g *GitLab) Kind() Kind { return KindGitLab }
 
 func (g *GitLab) ParseChangeRequestURL(raw string) (ChangeRequestRef, error) {
 	parsed, err := url.Parse(strings.TrimSuffix(raw, "/"))
-	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.Port() != "" || parsed.User != nil || parsed.RawPath != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
+	if err != nil || !strings.EqualFold(parsed.Scheme, "https") || parsed.Hostname() == "" || parsed.Port() != "" || parsed.User != nil || parsed.RawPath != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("not a GitLab merge request URL: %q", raw)}
 	}
 	if !strings.HasPrefix(parsed.Path, "/") {
@@ -60,8 +60,9 @@ func (g *GitLab) ParseChangeRequestURL(raw string) (ChangeRequestRef, error) {
 	if len(segments) < 5 || segments[len(segments)-3] != "-" || segments[len(segments)-2] != "merge_requests" {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("not a GitLab merge request URL: %q", raw)}
 	}
-	for _, segment := range segments[:len(segments)-3] {
-		if !validGitLabPathSegment(segment) {
+	project := segments[:len(segments)-3]
+	for index, segment := range project {
+		if !validGitLabPathSegment(segment, index < len(project)-1) {
 			return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("invalid GitLab project path in %q", raw)}
 		}
 	}
@@ -75,17 +76,20 @@ func (g *GitLab) ParseChangeRequestURL(raw string) (ChangeRequestRef, error) {
 	if err != nil || number < 1 {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("invalid merge request number in %q", raw)}
 	}
-	project := segments[:len(segments)-3]
 	return ChangeRequestRef{
-		Host:   parsed.Hostname(),
+		Host:   strings.ToLower(parsed.Hostname()),
 		Owner:  strings.Join(project[:len(project)-1], "/"),
 		Repo:   project[len(project)-1],
 		Number: number,
 	}, nil
 }
 
-func validGitLabPathSegment(segment string) bool {
+func validGitLabPathSegment(segment string, namespace bool) bool {
 	if segment == "" || segment == "." || segment == ".." || strings.HasPrefix(segment, "-") {
+		return false
+	}
+	lower := strings.ToLower(segment)
+	if strings.HasSuffix(lower, ".git") || strings.HasSuffix(lower, ".atom") || (namespace && strings.HasSuffix(segment, ".")) {
 		return false
 	}
 	for _, r := range segment {

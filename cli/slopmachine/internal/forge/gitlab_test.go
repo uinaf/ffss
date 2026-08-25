@@ -20,6 +20,10 @@ func TestGitLabParseChangeRequestURL(t *testing.T) {
 	if ref.String() != "gitlab.example.com/platform/services/api!38" {
 		t.Fatalf("ref string: %s", ref.String())
 	}
+	upper, err := g.ParseChangeRequestURL("HTTPS://GITLAB.COM/group/repo/-/merge_requests/1")
+	if err != nil || upper.Host != "gitlab.com" {
+		t.Fatalf("uppercase authority: ref=%+v err=%v", upper, err)
+	}
 	for _, invalid := range []string{
 		"",
 		"http://gitlab.com/o/r/-/merge_requests/1",
@@ -36,6 +40,10 @@ func TestGitLabParseChangeRequestURL(t *testing.T) {
 		"https://gitlab.com/group/bad%20repo/-/merge_requests/1",
 		"https://gitlab.com/group/bad@repo/-/merge_requests/1",
 		"https://gitlab.com/group/-repo/-/merge_requests/1",
+		"https://gitlab.com/group./repo/-/merge_requests/1",
+		"https://gitlab.com/group.atom/repo/-/merge_requests/1",
+		"https://gitlab.com/group/repo.git/-/merge_requests/1",
+		"https://gitlab.com/group/repo.atom/-/merge_requests/1",
 		"https://gitlab.com/o/r/-/merge_requests/1/diffs",
 		"https://gitlab.com/o/r/-/merge_requests/1?view=parallel",
 	} {
