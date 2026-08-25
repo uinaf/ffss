@@ -76,18 +76,24 @@ func gitLabRunner(ref ChangeRequestRef, mr, discussions, approvals, notes string
 	}
 	base := fmt.Sprintf("projects/%s/merge_requests/%d", url.PathEscape(ref.Owner+"/"+ref.Repo), ref.Number)
 	authenticated := false
+	configured := false
 	return func(_ context.Context, args ...string) ([]byte, error) {
 		if len(args) == 4 && args[0] == "auth" && args[1] == "status" && args[2] == "--hostname" && args[3] == host {
 			authenticated = true
 			return []byte(host), nil
 		}
+		if len(args) == 5 && args[0] == "config" && args[1] == "get" && args[2] == "subfolder" && args[3] == "--host" && args[4] == host && authenticated {
+			configured = true
+			return nil, nil
+		}
 		if len(args) != 4 || args[0] != "api" || args[2] != "--hostname" || args[3] != host {
 			return nil, fmt.Errorf("unexpected glab invocation: %v", args)
 		}
-		if !authenticated {
-			return nil, fmt.Errorf("glab api invoked without host authentication: %v", args)
+		if !authenticated || !configured {
+			return nil, fmt.Errorf("glab api invoked without host authentication and configuration: %v", args)
 		}
 		authenticated = false
+		configured = false
 		if fail != nil {
 			return nil, fail
 		}
@@ -182,7 +188,7 @@ func TestGitLabHeadAndReviews(t *testing.T) {
 
 func TestGitLabHeadFailsClosedForNonOpenStates(t *testing.T) {
 	ref := ChangeRequestRef{Host: "gitlab.com", Owner: "o", Repo: "r", Number: 3}
-	for _, state := range []string{"closed", "locked", "unknown", ""} {
+	for _, state := range []string{"closed", "locked"} {
 		g := NewGitLab(gitLabRunner(ref,
 			fmt.Sprintf(`{"sha":"abc1234","state":%q}`, state),
 			`[]`, `{}`, `[]`, nil))
@@ -253,7 +259,10 @@ func TestGitLabAPIUsesEncodedNestedProjectAndSelfHostedHostname(t *testing.T) {
 		if calls == 1 && len(args) == 4 && args[0] == "auth" && args[1] == "status" && args[2] == "--hostname" && args[3] == "gitlab.example" {
 			return nil, nil
 		}
-		if calls != 2 || len(args) != 4 || args[0] != "api" || args[1] != "projects/group%2Fsub%2Frepo/merge_requests/9" || args[2] != "--hostname" || args[3] != "gitlab.example" {
+		if calls == 2 && len(args) == 5 && args[0] == "config" && args[1] == "get" && args[2] == "subfolder" && args[3] == "--host" && args[4] == "gitlab.example" {
+			return nil, nil
+		}
+		if calls != 3 || len(args) != 4 || args[0] != "api" || args[1] != "projects/group%2Fsub%2Frepo/merge_requests/9" || args[2] != "--hostname" || args[3] != "gitlab.example" {
 			return nil, fmt.Errorf("unexpected glab invocation: %v", args)
 		}
 		return []byte(`{"sha":"abc1234","state":"opened"}`), nil
@@ -262,6 +271,37 @@ func TestGitLabAPIUsesEncodedNestedProjectAndSelfHostedHostname(t *testing.T) {
 	if err != nil || ref.Host != "gitlab.example" {
 		t.Fatalf("ref=%+v err=%v", ref, err)
 	}
+	head, err := g.Head(context.Background(), ref)
+	if err != nil || head.SHA != "abc1234" {
+		t.Fatalf("head=%+v err=%v", head, err)
+	}
+}
+
+func TestGitLabAPIStripsConfiguredRelativeRoot(t *testing.T) {
+	ref := ChangeRequestRef{Host: "gitlab.example", Owner: "gitlab/group", Repo: "repo", Number: 9}
+	calls := 0
+	g := NewGitLab(func(_ context.Context, args ...string) ([]byte, error) {
+		calls++
+		switch calls {
+		case 1:
+			if fmt.Sprint(args) != "[auth status --hostname gitlab.example]" {
+				return nil, fmt.Errorf("unexpected auth invocation: %v", args)
+			}
+			return nil, nil
+		case 2:
+			if fmt.Sprint(args) != "[config get subfolder --host gitlab.example]" {
+				return nil, fmt.Errorf("unexpected config invocation: %v", args)
+			}
+			return []byte("gitlab\n"), nil
+		case 3:
+			if fmt.Sprint(args) != "[api projects/group%2Frepo/merge_requests/9 --hostname gitlab.example]" {
+				return nil, fmt.Errorf("unexpected API invocation: %v", args)
+			}
+			return []byte(`{"sha":"abc1234","state":"opened"}`), nil
+		default:
+			return nil, fmt.Errorf("unexpected extra invocation: %v", args)
+		}
+	})
 	head, err := g.Head(context.Background(), ref)
 	if err != nil || head.SHA != "abc1234" {
 		t.Fatalf("head=%+v err=%v", head, err)
@@ -278,5 +318,11 @@ func TestGitLabRejectsMalformedPayloads(t *testing.T) {
 	g = NewGitLab(gitLabRunner(ref, `{"sha":"abc1234","state":"opened"}`, "not json", `{}`, `[]`, nil))
 	if _, err := g.Observe(context.Background(), ref); !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorTransient {
 		t.Fatalf("malformed discussions: %v", err)
+	}
+	for _, payload := range []string{`{}`, `{"state":"merged"}`, `{"sha":"abc1234","state":"unknown"}`} {
+		g = NewGitLab(gitLabRunner(ref, payload, `[]`, `{}`, `[]`, nil))
+		if _, err := g.Head(context.Background(), ref); !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorTransient {
+			t.Fatalf("incomplete merge request %s: %v", payload, err)
+		}
 	}
 }

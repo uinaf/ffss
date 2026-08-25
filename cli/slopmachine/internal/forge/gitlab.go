@@ -166,7 +166,27 @@ func (g *GitLab) mergeRequest(ctx context.Context, ref ChangeRequestRef) (gitLab
 	if err := json.Unmarshal(raw, &mr); err != nil {
 		return gitLabMergeRequest{}, &Error{Kind: ErrorTransient, Err: fmt.Errorf("decode merge request for %s: %w", ref, err)}
 	}
+	if !validGitLabHead(mr.SHA) {
+		return gitLabMergeRequest{}, &Error{Kind: ErrorTransient, Err: fmt.Errorf("merge request for %s has no valid head revision", ref)}
+	}
+	switch strings.ToLower(mr.State) {
+	case "opened", "closed", "locked", "merged":
+	default:
+		return gitLabMergeRequest{}, &Error{Kind: ErrorTransient, Err: fmt.Errorf("merge request for %s has unknown state %q", ref, mr.State)}
+	}
 	return mr, nil
+}
+
+func validGitLabHead(head string) bool {
+	if len(head) < 7 || len(head) > 64 {
+		return false
+	}
+	for _, r := range head {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') && (r < 'A' || r > 'F') {
+			return false
+		}
+	}
+	return true
 }
 
 func (g *GitLab) approvals(ctx context.Context, ref ChangeRequestRef) ([]Review, error) {
@@ -316,7 +336,20 @@ func (g *GitLab) api(ctx context.Context, ref ChangeRequestRef, suffix string) (
 	if _, err := g.run(ctx, "auth", "status", "--hostname", host); err != nil {
 		return nil, classify(err)
 	}
-	project := url.PathEscape(ref.Owner + "/" + ref.Repo)
+	projectPath := ref.Owner + "/" + ref.Repo
+	configuredRoot, err := g.run(ctx, "config", "get", "subfolder", "--host", host)
+	if err != nil {
+		return nil, classify(err)
+	}
+	root := strings.Trim(strings.TrimSpace(string(configuredRoot)), "/")
+	if root != "" {
+		prefix := root + "/"
+		if !strings.HasPrefix(projectPath, prefix) {
+			return nil, &Error{Kind: ErrorTransient, Err: fmt.Errorf("GitLab URL path %q does not include configured root %q", projectPath, root)}
+		}
+		projectPath = strings.TrimPrefix(projectPath, prefix)
+	}
+	project := url.PathEscape(projectPath)
 	endpoint := fmt.Sprintf("projects/%s/merge_requests/%d%s", project, ref.Number, suffix)
 	raw, err := g.run(ctx, "api", endpoint, "--hostname", host)
 	if err != nil {

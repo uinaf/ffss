@@ -52,6 +52,9 @@ func installFakeGLab(t *testing.T, h *cliHarness, host, project string, mrNumber
 if [[ "$#" -eq 4 && "$1" == "auth" && "$2" == "status" && "$3" == "--hostname" && "$4" == %q ]]; then
   exit 0
 fi
+if [[ "$#" -eq 5 && "$1" == "config" && "$2" == "get" && "$3" == "subfolder" && "$4" == "--host" && "$5" == %q ]]; then
+  exit 0
+fi
 if [[ "$#" -ne 4 || "$1" != "api" || "$3" != "--hostname" || "$4" != %q ]]; then
   echo "unexpected glab invocation: $*" >&2
   exit 1
@@ -61,7 +64,7 @@ case "$2" in
   %q) cat %q ;;
   *) echo "unexpected glab endpoint: $2" >&2; exit 1 ;;
 esac
-`, host, host, discussionsEndpoint, discussionsFile, mrEndpoint, mrFile)
+`, host, host, host, discussionsEndpoint, discussionsFile, mrEndpoint, mrFile)
 	glabPath := filepath.Join(binDir, "glab")
 	if err := os.WriteFile(glabPath, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
