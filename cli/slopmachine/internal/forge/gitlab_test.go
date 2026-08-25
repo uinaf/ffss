@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -26,6 +27,8 @@ func TestGitLabParseChangeRequestURL(t *testing.T) {
 		"https://gitlab.com/o/r/-/merge_requests/0",
 		"https://gitlab.com/o/r/-/merge_requests/+1",
 		"https://gitlab.com/o/r/-/merge_requests/-1",
+		"https://gitlab.com//o/r/-/merge_requests/1",
+		"https://gitlab.com/o/r/-/merge_requests/1//",
 		"https://gitlab.com/o/r/-/merge_requests/1/diffs",
 		"https://gitlab.com/o/r/-/merge_requests/1?view=parallel",
 	} {
@@ -59,23 +62,30 @@ func TestGitLabObserveLive(t *testing.T) {
 		ref, observation.HeadSHA, observation.Checks, observation.Mergeability, observation.UnresolvedThreads)
 }
 
-func gitLabRunner(mr, discussions, approvals, notes string, fail error) Runner {
+func gitLabRunner(ref ChangeRequestRef, mr, discussions, approvals, notes string, fail error) Runner {
+	host := ref.Host
+	if host == "" {
+		host = "gitlab.com"
+	}
+	base := fmt.Sprintf("projects/%s/merge_requests/%d", url.PathEscape(ref.Owner+"/"+ref.Repo), ref.Number)
 	return func(_ context.Context, args ...string) ([]byte, error) {
+		if len(args) != 4 || args[0] != "api" || args[2] != "--hostname" || args[3] != host {
+			return nil, fmt.Errorf("unexpected glab invocation: %v", args)
+		}
 		if fail != nil {
 			return nil, fail
 		}
-		if len(args) < 4 || args[0] != "api" || args[2] != "--hostname" {
-			return nil, fmt.Errorf("unexpected glab invocation: %v", args)
-		}
-		switch {
-		case strings.Contains(args[1], "/discussions?"):
+		switch args[1] {
+		case base:
+			return []byte(mr), nil
+		case base + "/discussions?per_page=100&page=1":
 			return []byte(discussions), nil
-		case strings.HasSuffix(args[1], "/approvals"):
+		case base + "/approvals":
 			return []byte(approvals), nil
-		case strings.Contains(args[1], "/notes?"):
+		case base + "/notes?sort=asc&order_by=created_at&per_page=100&page=1":
 			return []byte(notes), nil
 		default:
-			return []byte(mr), nil
+			return nil, fmt.Errorf("unexpected glab endpoint: %v", args)
 		}
 	}
 }
@@ -89,8 +99,9 @@ func TestGitLabObserveMapsPipelineMergeabilityAndDiscussions(t *testing.T) {
 			{"id":3,"body":"latest line\nmore","author":{"username":"human"},"updated_at":"2026-08-25T10:00:00Z"}
 		]}
 	]`
-	g := NewGitLab(gitLabRunner(mr, discussions, `{}`, `[]`, nil))
-	obs, err := g.Observe(context.Background(), ChangeRequestRef{Host: "gitlab.example", Owner: "group/sub", Repo: "repo", Number: 7})
+	ref := ChangeRequestRef{Host: "gitlab.example", Owner: "group/sub", Repo: "repo", Number: 7}
+	g := NewGitLab(gitLabRunner(ref, mr, discussions, `{}`, `[]`, nil))
+	obs, err := g.Observe(context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +144,7 @@ func TestGitLabChecksAndMergeability(t *testing.T) {
 
 func TestGitLabHeadAndReviews(t *testing.T) {
 	ref := ChangeRequestRef{Host: "gitlab.com", Owner: "o", Repo: "r", Number: 3}
-	g := NewGitLab(gitLabRunner(
+	g := NewGitLab(gitLabRunner(ref,
 		`{"sha":"abc1234","state":"merged"}`,
 		`[]`,
 		`{"approved_by":[{"user":{"username":"approve_bot"}}]}`,
@@ -159,7 +170,7 @@ func TestGitLabFailuresAreClassified(t *testing.T) {
 		"404 Not Found":         ErrorNotFound,
 		"dial tcp: timeout":     ErrorTransient,
 	} {
-		g := NewGitLab(gitLabRunner("", "", "", "", errors.New(message)))
+		g := NewGitLab(gitLabRunner(ref, "", "", "", "", errors.New(message)))
 		_, err := g.Head(context.Background(), ref)
 		var forgeErr *Error
 		if !errors.As(err, &forgeErr) || forgeErr.Kind != want {
@@ -194,11 +205,11 @@ func TestGitLabAPIUsesEncodedNestedProjectAndURLHost(t *testing.T) {
 func TestGitLabRejectsMalformedPayloads(t *testing.T) {
 	ref := ChangeRequestRef{Host: "gitlab.com", Owner: "o", Repo: "r", Number: 1}
 	var forgeErr *Error
-	g := NewGitLab(gitLabRunner("not json", `[]`, `{}`, `[]`, nil))
+	g := NewGitLab(gitLabRunner(ref, "not json", `[]`, `{}`, `[]`, nil))
 	if _, err := g.Head(context.Background(), ref); !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorTransient {
 		t.Fatalf("malformed merge request: %v", err)
 	}
-	g = NewGitLab(gitLabRunner(`{"sha":"abc1234","state":"opened"}`, "not json", `{}`, `[]`, nil))
+	g = NewGitLab(gitLabRunner(ref, `{"sha":"abc1234","state":"opened"}`, "not json", `{}`, `[]`, nil))
 	if _, err := g.Observe(context.Background(), ref); !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorTransient {
 		t.Fatalf("malformed discussions: %v", err)
 	}

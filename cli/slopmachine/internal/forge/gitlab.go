@@ -53,7 +53,10 @@ func (g *GitLab) ParseChangeRequestURL(raw string) (ChangeRequestRef, error) {
 	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("not a GitLab merge request URL: %q", raw)}
 	}
-	segments := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if !strings.HasPrefix(parsed.Path, "/") {
+		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("not a GitLab merge request URL: %q", raw)}
+	}
+	segments := strings.Split(strings.TrimPrefix(parsed.Path, "/"), "/")
 	if len(segments) < 5 || segments[len(segments)-3] != "-" || segments[len(segments)-2] != "merge_requests" {
 		return ChangeRequestRef{}, &Error{Kind: ErrorNotFound, Err: fmt.Errorf("not a GitLab merge request URL: %q", raw)}
 	}
