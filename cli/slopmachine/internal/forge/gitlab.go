@@ -333,9 +333,9 @@ func (g *GitLab) reviewNotes(ctx context.Context, ref ChangeRequestRef) ([]Revie
 }
 
 func (g *GitLab) api(ctx context.Context, ref ChangeRequestRef, suffix string) ([]byte, error) {
-	host := ref.Host
+	host := strings.TrimSpace(ref.Host)
 	if host == "" {
-		host = "gitlab.com"
+		return nil, &Error{Kind: ErrorTransient, Err: fmt.Errorf("GitLab change request has no host")}
 	}
 	if _, err := g.run(ctx, "auth", "status", "--hostname", host); err != nil {
 		return nil, classify(err)

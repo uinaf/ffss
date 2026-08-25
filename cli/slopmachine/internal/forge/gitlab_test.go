@@ -262,6 +262,22 @@ esac
 	}
 }
 
+func TestGitLabRejectsHostlessReferenceWithoutRunnerCall(t *testing.T) {
+	called := false
+	g := NewGitLab(func(_ context.Context, _ ...string) ([]byte, error) {
+		called = true
+		return nil, fmt.Errorf("must not run")
+	})
+	_, err := g.Head(context.Background(), ChangeRequestRef{Owner: "o", Repo: "r", Number: 1})
+	var forgeErr *Error
+	if !errors.As(err, &forgeErr) || forgeErr.Kind != ErrorTransient {
+		t.Fatalf("hostless ref classified %v, want %s", err, ErrorTransient)
+	}
+	if called {
+		t.Fatal("hostless ref must fail before invoking glab")
+	}
+}
+
 func TestGitLabAPIUsesEncodedNestedProjectAndSelfHostedHostname(t *testing.T) {
 	calls := 0
 	g := NewGitLab(func(_ context.Context, args ...string) ([]byte, error) {
