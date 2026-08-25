@@ -29,7 +29,7 @@ before iterating.
 | Claim | Instrument |
 | --- | --- |
 | faster | benchmark harness with a recorded baseline on representative input |
-| matches a design or reference | repeatable capture (screenshot, render, output dump) plus comparison against the source |
+| matches a design or reference | repeatable capture (screenshot, render, output dump) compared against the source until no discrepancy remains |
 | correct behavior | a test that fails before the fix and fails again on revert |
 | lower cost, size, or token count | per-unit measurement on a real sample workload |
 | best of several approaches | fixture set plus a scoring script that sweeps every candidate |
