@@ -97,7 +97,9 @@ review fan-out above that limit.
   reported value is a Git-generated `index <old>..<new>` object ID inside the
   frozen diff. This also covers decoder duplicates whose line metadata no
   longer maps to the original payload. Identical text in prompts, file
-  content, deleted bytes, or context still fails the scan.
+  content, deleted bytes, or context still fails the scan, including values
+  reconstructed from HTML entities, URL escapes, invisible characters, or
+  inline markup.
 - It runs offline with verification disabled, no update check, one worker, no
   inherited environment, and `--fail-on-scan-errors`.
 - Any detection, scan error, missing executable, or output overflow is a

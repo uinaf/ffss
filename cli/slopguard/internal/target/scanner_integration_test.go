@@ -88,6 +88,22 @@ func TestTruffleHogScannerKeepsCloudflareMatchInSource(t *testing.T) {
 	}
 }
 
+func TestTruffleHogScannerKeepsHTMLDecodedCloudflareMatchInSource(t *testing.T) {
+	if os.Getenv("SLOPGUARD_REAL_TRUFFLEHOG") != "1" {
+		t.Skip("set SLOPGUARD_REAL_TRUFFLEHOG=1 to exercise the installed scanner")
+	}
+	repository := newRepository(t)
+	writeFile(t, repository, testCloudflarePath, "<p>&#101;"+testOldObjectID[1:]+"</p>\n")
+
+	collector, err := New(Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); !errors.Is(err, ErrSecretFound) {
+		t.Fatalf("Freeze() error = %v, want HTML-decoded ErrSecretFound", err)
+	}
+}
+
 func TestCollectorRealRepositorySmoke(t *testing.T) {
 	if os.Getenv("SLOPGUARD_REAL_REPOSITORY") != "1" {
 		t.Skip("set SLOPGUARD_REAL_REPOSITORY=1 to freeze the current checkout")

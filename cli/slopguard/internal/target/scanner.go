@@ -159,7 +159,13 @@ type truffleHogFinding struct {
 		} `json:"Data"`
 	} `json:"SourceMetadata"`
 	DetectorName string `json:"DetectorName"`
+	DecoderName  string `json:"DecoderName"`
 	Raw          string `json:"Raw"`
+}
+
+type truffleHogFindingCounts struct {
+	plain int
+	html  int
 }
 
 func truffleHogFindingsContainSecret(output []byte, payload string) (bool, error) {
@@ -185,17 +191,32 @@ func truffleHogFindingsContainSecret(output []byte, payload string) (bool, error
 	}
 
 	candidates := make(map[string]struct{}, len(findings))
+	findingCounts := make(map[string]truffleHogFindingCounts, len(findings))
 	for _, finding := range findings {
 		if finding.DetectorName != "CloudflareApiToken" || !validObjectID(finding.Raw) {
 			return true, nil
 		}
 		candidates[finding.Raw] = struct{}{}
+		counts := findingCounts[finding.Raw]
+		switch finding.DecoderName {
+		case "PLAIN":
+			counts.plain++
+		case "HTML":
+			counts.html++
+		default:
+			return true, nil
+		}
+		findingCounts[finding.Raw] = counts
 	}
 
 	indexOccurrences := gitIndexObjectIDOccurrences(payload[diffStart:diffEnd])
 	payloadOccurrences := objectIDCandidateOccurrences(payload, candidates)
 	for candidate := range candidates {
-		if indexOccurrences[candidate] == 0 || payloadOccurrences[candidate] != indexOccurrences[candidate] {
+		counts := findingCounts[candidate]
+		if indexOccurrences[candidate] == 0 ||
+			payloadOccurrences[candidate] != indexOccurrences[candidate] ||
+			counts.plain != indexOccurrences[candidate] ||
+			counts.html > indexOccurrences[candidate] {
 			return true, nil
 		}
 	}
