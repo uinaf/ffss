@@ -192,6 +192,7 @@ func truffleHogFindingsContainSecret(output []byte, payload string) (bool, error
 
 	candidates := make(map[string]struct{}, len(findings))
 	findingCounts := make(map[string]truffleHogFindingCounts, len(findings))
+	hasHTMLFindings := false
 	for _, finding := range findings {
 		if finding.DetectorName != "CloudflareApiToken" || !validObjectID(finding.Raw) {
 			return true, nil
@@ -203,6 +204,7 @@ func truffleHogFindingsContainSecret(output []byte, payload string) (bool, error
 			counts.plain++
 		case "HTML":
 			counts.html++
+			hasHTMLFindings = true
 		default:
 			return true, nil
 		}
@@ -211,6 +213,12 @@ func truffleHogFindingsContainSecret(output []byte, payload string) (bool, error
 
 	indexOccurrences := gitIndexObjectIDOccurrences(payload[diffStart:diffEnd])
 	payloadOccurrences := objectIDCandidateOccurrences(payload, candidates)
+	if hasHTMLFindings {
+		redactions := gitIndexObjectIDRanges(payload[diffStart:diffEnd], diffStart)
+		if htmlDecodedPayloadContainsObjectID(payload, redactions, candidates) {
+			return true, nil
+		}
+	}
 	for candidate := range candidates {
 		counts := findingCounts[candidate]
 		if indexOccurrences[candidate] == 0 ||

@@ -74,6 +74,29 @@ func TestTruffleHogFindingsKeepHTMLDecodedSourceMatches(t *testing.T) {
 	}
 }
 
+func TestTruffleHogFindingsKeepHTMLDecodedSourceMatchWithDuplicateGitObjectIDs(t *testing.T) {
+	t.Parallel()
+	indexLine := "index " + testOldObjectID + ".." + testNewObjectID + " 100644"
+	encodedSource := "+&#101;" + testOldObjectID[1:]
+	diff := "diff --git a/first.txt b/first.txt\n" + indexLine + "\n--- a/first.txt\n+++ b/first.txt\n@@ -1 +1 @@\n-old\n+new\ndiff --git a/" + testCloudflarePath + " b/" + testCloudflarePath + "\n" + indexLine + "\n--- a/" + testCloudflarePath + "\n+++ b/" + testCloudflarePath + "\n@@ -0,0 +1 @@\n" + encodedSource + "\n"
+	payload := scannerTestPayload(t, diff, nil)
+	firstIndexLine := scannerTestLine(t, payload, indexLine)
+	secondIndexOffset := strings.LastIndex(payload, indexLine)
+	secondIndexLine := strings.Count(payload[:secondIndexOffset], "\n") + 1
+	output := scannerTestFindingWithDecoder(t, "CloudflareApiToken", "PLAIN", testOldObjectID, firstIndexLine)
+	output = append(output, scannerTestFindingWithDecoder(t, "CloudflareApiToken", "PLAIN", testOldObjectID, secondIndexLine)...)
+	output = append(output, scannerTestFindingWithDecoder(t, "CloudflareApiToken", "HTML", testOldObjectID, 1)...)
+	output = append(output, scannerTestFindingWithDecoder(t, "CloudflareApiToken", "HTML", testOldObjectID, scannerTestLine(t, payload, encodedSource))...)
+
+	found, err := truffleHogFindingsContainSecret(output, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found {
+		t.Fatal("HTML-decoded source match consumed duplicate Git object ID allowance")
+	}
+}
+
 func TestTruffleHogFindingsKeepUserControlledMatches(t *testing.T) {
 	t.Parallel()
 	indexLine := "index " + testOldObjectID + ".." + testNewObjectID + " 100644"
