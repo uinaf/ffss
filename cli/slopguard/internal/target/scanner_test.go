@@ -29,6 +29,74 @@ func TestTruffleHogFindingsIgnoreCloudflareMatchesOnGitObjectIDs(t *testing.T) {
 	}
 }
 
+func TestTruffleHogFindingsIgnoreHTMLDecoderDuplicateOfGitObjectID(t *testing.T) {
+	t.Parallel()
+	firstIndexLine := "index " + strings.Repeat("1", 40) + ".." + strings.Repeat("2", 40) + " 100644"
+	targetIndexLine := "index " + testOldObjectID + ".." + testNewObjectID + " 100644"
+	payload := scannerTestPayload(t, "diff --git a/page.html b/page.html\n"+firstIndexLine+"\n--- a/page.html\n+++ b/page.html\n@@ -1 +1 @@\n-<p>old</p>\n+<p>new</p>\ndiff --git a/"+testCloudflarePath+" b/"+testCloudflarePath+"\n"+targetIndexLine+"\n--- a/"+testCloudflarePath+"\n+++ b/"+testCloudflarePath+"\n@@ -1 +1 @@\n-old\n+new\n", nil)
+	output := scannerTestFindingWithDecoder(t, "CloudflareApiToken", "HTML", testOldObjectID, scannerTestLine(t, payload, firstIndexLine))
+	output = append(output, scannerTestFindingWithDecoder(t, "CloudflareApiToken", "PLAIN", testOldObjectID, scannerTestLine(t, payload, targetIndexLine))...)
+
+	found, err := truffleHogFindingsContainSecret(output, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found {
+		t.Fatal("HTML-decoded duplicate of a Git-generated object ID was treated as a secret")
+	}
+}
+
+func TestTruffleHogFindingsKeepHTMLDecodedSourceMatches(t *testing.T) {
+	t.Parallel()
+	indexLine := "index " + testOldObjectID + ".." + testNewObjectID + " 100644"
+	tests := map[string]string{
+		"entity":     "+&#101;" + testOldObjectID[1:],
+		"URL escape": "+%65" + testOldObjectID[1:],
+		"invisible":  "+" + testOldObjectID[:1] + "\u200b" + testOldObjectID[1:],
+		"markup":     "+" + testOldObjectID[:1] + "<span></span>" + testOldObjectID[1:],
+	}
+	for name, encodedSource := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			payload := scannerTestPayload(t, "diff --git a/"+testCloudflarePath+" b/"+testCloudflarePath+"\n"+indexLine+"\n--- a/"+testCloudflarePath+"\n+++ b/"+testCloudflarePath+"\n@@ -0,0 +1 @@\n"+encodedSource+"\n", nil)
+			output := scannerTestFindingWithDecoder(t, "CloudflareApiToken", "PLAIN", testOldObjectID, scannerTestLine(t, payload, indexLine))
+			output = append(output, scannerTestFindingWithDecoder(t, "CloudflareApiToken", "HTML", testOldObjectID, 1)...)
+			output = append(output, scannerTestFindingWithDecoder(t, "CloudflareApiToken", "HTML", testOldObjectID, scannerTestLine(t, payload, encodedSource))...)
+
+			found, err := truffleHogFindingsContainSecret(output, payload)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !found {
+				t.Fatal("HTML-decoded source match was ignored with its Git object ID duplicate")
+			}
+		})
+	}
+}
+
+func TestTruffleHogFindingsKeepHTMLDecodedSourceMatchWithDuplicateGitObjectIDs(t *testing.T) {
+	t.Parallel()
+	indexLine := "index " + testOldObjectID + ".." + testNewObjectID + " 100644"
+	encodedSource := "+&#101;" + testOldObjectID[1:]
+	diff := "diff --git a/first.txt b/first.txt\n" + indexLine + "\n--- a/first.txt\n+++ b/first.txt\n@@ -1 +1 @@\n-old\n+new\ndiff --git a/" + testCloudflarePath + " b/" + testCloudflarePath + "\n" + indexLine + "\n--- a/" + testCloudflarePath + "\n+++ b/" + testCloudflarePath + "\n@@ -0,0 +1 @@\n" + encodedSource + "\n"
+	payload := scannerTestPayload(t, diff, nil)
+	firstIndexLine := scannerTestLine(t, payload, indexLine)
+	secondIndexOffset := strings.LastIndex(payload, indexLine)
+	secondIndexLine := strings.Count(payload[:secondIndexOffset], "\n") + 1
+	output := scannerTestFindingWithDecoder(t, "CloudflareApiToken", "PLAIN", testOldObjectID, firstIndexLine)
+	output = append(output, scannerTestFindingWithDecoder(t, "CloudflareApiToken", "PLAIN", testOldObjectID, secondIndexLine)...)
+	output = append(output, scannerTestFindingWithDecoder(t, "CloudflareApiToken", "HTML", testOldObjectID, 1)...)
+	output = append(output, scannerTestFindingWithDecoder(t, "CloudflareApiToken", "HTML", testOldObjectID, scannerTestLine(t, payload, encodedSource))...)
+
+	found, err := truffleHogFindingsContainSecret(output, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !found {
+		t.Fatal("HTML-decoded source match consumed duplicate Git object ID allowance")
+	}
+}
+
 func TestTruffleHogFindingsKeepUserControlledMatches(t *testing.T) {
 	t.Parallel()
 	indexLine := "index " + testOldObjectID + ".." + testNewObjectID + " 100644"
@@ -38,6 +106,7 @@ func TestTruffleHogFindingsKeepUserControlledMatches(t *testing.T) {
 		contexts map[string][]byte
 		needle   string
 		detector string
+		decoder  string
 		raw      string
 	}{
 		{
@@ -69,6 +138,14 @@ func TestTruffleHogFindingsKeepUserControlledMatches(t *testing.T) {
 			detector: "CloudflareApiToken",
 			raw:      strings.Repeat("c", 40),
 		},
+		{
+			name:     "different decoder",
+			diff:     "diff --git a/" + testCloudflarePath + " b/" + testCloudflarePath + "\n" + indexLine + "\n--- a/" + testCloudflarePath + "\n+++ b/" + testCloudflarePath + "\n@@ -1 +1 @@\n-old\n+new\n",
+			needle:   indexLine,
+			detector: "CloudflareApiToken",
+			decoder:  "BASE64",
+			raw:      testOldObjectID,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -78,7 +155,11 @@ func TestTruffleHogFindingsKeepUserControlledMatches(t *testing.T) {
 			if test.name == "context file" {
 				line++
 			}
-			output := scannerTestFinding(t, test.detector, test.raw, line)
+			decoder := test.decoder
+			if decoder == "" {
+				decoder = "PLAIN"
+			}
+			output := scannerTestFindingWithDecoder(t, test.detector, decoder, test.raw, line)
 			found, err := truffleHogFindingsContainSecret(output, payload)
 			if err != nil {
 				t.Fatal(err)
@@ -153,8 +234,12 @@ func scannerTestPayload(t *testing.T, diff string, contexts map[string][]byte) s
 }
 
 func scannerTestFinding(t *testing.T, detector, raw string, line int) []byte {
+	return scannerTestFindingWithDecoder(t, detector, "PLAIN", raw, line)
+}
+
+func scannerTestFindingWithDecoder(t *testing.T, detector, decoder, raw string, line int) []byte {
 	t.Helper()
-	finding := truffleHogFinding{DetectorName: detector, Raw: raw}
+	finding := truffleHogFinding{DetectorName: detector, DecoderName: decoder, Raw: raw}
 	finding.SourceMetadata.Data.Filesystem.Line = line
 	encoded, err := json.Marshal(finding)
 	if err != nil {
