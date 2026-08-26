@@ -49,21 +49,25 @@ func TestTruffleHogScannerDetectsCredential(t *testing.T) {
 	}
 }
 
-func TestTruffleHogScannerIgnoresGitObjectIDs(t *testing.T) {
+func TestTruffleHogScannerIgnoresHTMLDecodedGitObjectIDs(t *testing.T) {
 	if os.Getenv("SLOPGUARD_REAL_TRUFFLEHOG") != "1" {
 		t.Skip("set SLOPGUARD_REAL_TRUFFLEHOG=1 to exercise the installed scanner")
 	}
 	repository := newRepository(t)
 	writeFile(t, repository, testCloudflarePath, "def old_value():\n    return \"old\"\n")
+	writeFile(t, repository, "page.html", "<p>old</p>\n")
 	gitCommand(t, repository, "add", ".")
 	gitCommand(t, repository, "commit", "-m", "cloudflare fixture")
 	writeFile(t, repository, testCloudflarePath, "def new_value():\n    return \"new\"\n")
+	writeFile(t, repository, "page.html", "<p>new</p>\n")
+	gitCommand(t, repository, "add", ".")
+	gitCommand(t, repository, "commit", "-m", "html decoder fixture")
 
 	collector, err := New(Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
+	if _, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}); err != nil {
 		t.Fatalf("Freeze() error = %v, want Git object IDs ignored", err)
 	}
 }

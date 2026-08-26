@@ -29,6 +29,23 @@ func TestTruffleHogFindingsIgnoreCloudflareMatchesOnGitObjectIDs(t *testing.T) {
 	}
 }
 
+func TestTruffleHogFindingsIgnoreHTMLDecoderDuplicateOfGitObjectID(t *testing.T) {
+	t.Parallel()
+	firstIndexLine := "index " + strings.Repeat("1", 40) + ".." + strings.Repeat("2", 40) + " 100644"
+	targetIndexLine := "index " + testOldObjectID + ".." + testNewObjectID + " 100644"
+	payload := scannerTestPayload(t, "diff --git a/page.html b/page.html\n"+firstIndexLine+"\n--- a/page.html\n+++ b/page.html\n@@ -1 +1 @@\n-<p>old</p>\n+<p>new</p>\ndiff --git a/"+testCloudflarePath+" b/"+testCloudflarePath+"\n"+targetIndexLine+"\n--- a/"+testCloudflarePath+"\n+++ b/"+testCloudflarePath+"\n@@ -1 +1 @@\n-old\n+new\n", nil)
+	output := scannerTestFindingWithDecoder(t, "CloudflareApiToken", "HTML", testOldObjectID, scannerTestLine(t, payload, firstIndexLine))
+	output = append(output, scannerTestFindingWithDecoder(t, "CloudflareApiToken", "PLAIN", testOldObjectID, scannerTestLine(t, payload, targetIndexLine))...)
+
+	found, err := truffleHogFindingsContainSecret(output, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found {
+		t.Fatal("HTML-decoded duplicate of a Git-generated object ID was treated as a secret")
+	}
+}
+
 func TestTruffleHogFindingsKeepUserControlledMatches(t *testing.T) {
 	t.Parallel()
 	indexLine := "index " + testOldObjectID + ".." + testNewObjectID + " 100644"
@@ -153,10 +170,17 @@ func scannerTestPayload(t *testing.T, diff string, contexts map[string][]byte) s
 }
 
 func scannerTestFinding(t *testing.T, detector, raw string, line int) []byte {
+	return scannerTestFindingWithDecoder(t, detector, "PLAIN", raw, line)
+}
+
+func scannerTestFindingWithDecoder(t *testing.T, detector, decoder, raw string, line int) []byte {
 	t.Helper()
 	finding := truffleHogFinding{DetectorName: detector, Raw: raw}
 	finding.SourceMetadata.Data.Filesystem.Line = line
-	encoded, err := json.Marshal(finding)
+	encoded, err := json.Marshal(struct {
+		truffleHogFinding
+		DecoderName string
+	}{truffleHogFinding: finding, DecoderName: decoder})
 	if err != nil {
 		t.Fatal(err)
 	}

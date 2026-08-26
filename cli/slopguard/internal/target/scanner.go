@@ -164,33 +164,42 @@ type truffleHogFinding struct {
 
 func truffleHogFindingsContainSecret(output []byte, payload string) (bool, error) {
 	decoder := json.NewDecoder(bytes.NewReader(output))
-	diffStart, diffEnd, hasDiff := repositoryDiffRange(payload)
-	lineCache := map[int]string{}
+	var findings []truffleHogFinding
 	for {
 		var finding truffleHogFinding
 		if err := decoder.Decode(&finding); err != nil {
 			if errors.Is(err, io.EOF) {
-				return false, nil
+				break
 			}
 			return false, err
 		}
-		if !hasDiff || finding.DetectorName != "CloudflareApiToken" || finding.SourceMetadata.Data.Filesystem.Line < 1 {
+		findings = append(findings, finding)
+	}
+	if len(findings) == 0 {
+		return false, nil
+	}
+
+	diffStart, diffEnd, hasDiff := repositoryDiffRange(payload)
+	if !hasDiff {
+		return true, nil
+	}
+
+	candidates := make(map[string]struct{}, len(findings))
+	for _, finding := range findings {
+		if finding.DetectorName != "CloudflareApiToken" || !validObjectID(finding.Raw) {
 			return true, nil
 		}
-		lineNumber := finding.SourceMetadata.Data.Filesystem.Line
-		line, ok := lineCache[lineNumber]
-		if !ok {
-			var start, end int
-			line, start, end, ok = payloadLine(payload, lineNumber)
-			if !ok || start < diffStart || end > diffEnd {
-				return true, nil
-			}
-			lineCache[lineNumber] = line
-		}
-		if !gitIndexLineContainsObjectID(line, finding.Raw) {
+		candidates[finding.Raw] = struct{}{}
+	}
+
+	indexOccurrences := gitIndexObjectIDOccurrences(payload[diffStart:diffEnd])
+	payloadOccurrences := objectIDCandidateOccurrences(payload, candidates)
+	for candidate := range candidates {
+		if indexOccurrences[candidate] == 0 || payloadOccurrences[candidate] != indexOccurrences[candidate] {
 			return true, nil
 		}
 	}
+	return false, nil
 }
 
 func repositoryDiffRange(payload string) (int, int, bool) {
@@ -232,43 +241,74 @@ func repositoryDiffRange(payload string) (int, int, bool) {
 	return 0, 0, false
 }
 
-func payloadLine(payload string, number int) (string, int, int, bool) {
-	if number < 1 {
-		return "", 0, 0, false
-	}
-	start := 0
-	for current := 1; current < number; current++ {
-		newline := strings.IndexByte(payload[start:], '\n')
-		if newline < 0 {
-			return "", 0, 0, false
+func gitIndexObjectIDOccurrences(diff string) map[string]int {
+	occurrences := make(map[string]int)
+	for len(diff) > 0 {
+		line, remaining, found := strings.Cut(diff, "\n")
+		ids, ok := gitIndexLineObjectIDs(line)
+		if ok {
+			occurrences[ids[0]]++
+			occurrences[ids[1]]++
 		}
-		start += newline + 1
+		if !found {
+			break
+		}
+		diff = remaining
 	}
-	end := strings.IndexByte(payload[start:], '\n')
-	if end < 0 {
-		end = len(payload)
-	} else {
-		end += start
+	return occurrences
+}
+
+func objectIDCandidateOccurrences(payload string, candidates map[string]struct{}) map[string]int {
+	occurrences := make(map[string]int, len(candidates))
+	for start := 0; start < len(payload); {
+		if !isLowerHex(payload[start]) {
+			start++
+			continue
+		}
+		end := start + 1
+		for end < len(payload) && isLowerHex(payload[end]) {
+			end++
+		}
+		for offset := start; offset+40 <= end; offset++ {
+			candidate := payload[offset : offset+40]
+			if _, ok := candidates[candidate]; ok {
+				occurrences[candidate]++
+			}
+			if offset+64 <= end {
+				candidate = payload[offset : offset+64]
+				if _, ok := candidates[candidate]; ok {
+					occurrences[candidate]++
+				}
+			}
+		}
+		start = end
 	}
-	return payload[start:end], start, end, true
+	return occurrences
+}
+
+func isLowerHex(character byte) bool {
+	return (character >= '0' && character <= '9') || (character >= 'a' && character <= 'f')
 }
 
 func gitIndexLineContainsObjectID(line, raw string) bool {
-	if !strings.HasPrefix(line, "index ") {
-		return false
-	}
+	ids, ok := gitIndexLineObjectIDs(line)
+	return ok && (raw == ids[0] || raw == ids[1])
+}
+
+func gitIndexLineObjectIDs(line string) ([2]string, bool) {
+	var objectIDs [2]string
 	fields := strings.Split(line, " ")
 	if len(fields) < 2 || len(fields) > 3 || fields[0] != "index" {
-		return false
+		return objectIDs, false
 	}
 	ids := strings.Split(fields[1], "..")
 	if len(ids) != 2 || !validObjectID(ids[0]) || !validObjectID(ids[1]) {
-		return false
+		return objectIDs, false
 	}
 	if len(fields) == 3 && !validGitMode(fields[2]) {
-		return false
+		return objectIDs, false
 	}
-	return raw == ids[0] || raw == ids[1]
+	return [2]string{ids[0], ids[1]}, true
 }
 
 func validGitMode(mode string) bool {
