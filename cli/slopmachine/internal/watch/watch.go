@@ -1,6 +1,6 @@
 // Package watch turns forge observations about delivered units into observe
 // signals. Decisions are pure: one observation maps to at most one signal,
-// and unit phases make recording naturally idempotent — a signal that
+// and unit phases make recording naturally idempotent. A signal that
 // already moved its unit out of the delivered phase is never re-recorded.
 package watch
 
@@ -32,8 +32,8 @@ type Outcome struct {
 }
 
 // Decide maps one forge observation onto at most one observe signal.
-// Precedence: a moved head invalidates the delivery evidence before any
-// other outcome is trusted for it — including merged: a change request
+// A moved head invalidates the delivery evidence before any other outcome,
+// including merged, is trusted. A change request
 // merged with a different head than delivered merged something the run
 // never reviewed, which is rework, not settlement.
 func Decide(target Target, obs forge.Observation) Outcome {

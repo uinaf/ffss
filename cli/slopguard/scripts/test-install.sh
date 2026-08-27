@@ -309,8 +309,8 @@ test "$("$case_home/.local/bin/slopguard" --version)" = \
   'slopguard v1.2.3 (fixture-darwin-arm64)'
 assert_no_residue
 
-# Case: no sha256sum on the PATH at all — the installer falls back to
-# shasum -a 256, the macOS default.
+# Without sha256sum on PATH, the installer falls back to the macOS default,
+# shasum -a 256.
 if [ -n "$fixture_shasum" ]; then
   new_case
   TEST_UNAME_S=Darwin TEST_UNAME_M=arm64 run_installer_without_sha256sum \
@@ -362,8 +362,8 @@ chmod 755 "$case_home/.local/bin/slopguard"
 FAKE_CURL_MODE=fail-download expect_failure 'failed to download' run_installer
 test "$("$case_home/.local/bin/slopguard")" = 'old slopguard'
 
-# Case: no git on the host — the paginated API fallback resolves latest
-# from a later page.
+# Without Git on the host, the paginated API fallback resolves the latest
+# release from a later page.
 new_case
 FAKE_GIT_MODE=absent run_installer >/dev/null
 test "$("$case_home/.local/bin/slopguard" --version)" = \

@@ -1,7 +1,7 @@
 // Package forge is the observation seam between the state machine and code
 // hosts. The machine and store never import an adapter; they consume the
 // five observation reads through this interface, and unknown forge kinds
-// fail closed. Adapters read only — delivery and merges stay human- and
+// fail closed. Adapters read only. Delivery and merges stay human- and
 // driver-owned.
 package forge
 
@@ -100,26 +100,24 @@ type Observation struct {
 	Mergeability Mergeability
 	// UnresolvedThreads counts open review conversations; Threads carries a
 	// bounded sample of them for evidence, newest first. ThreadsDigest
-	// fingerprints EVERY unresolved thread's identity and newest comment —
-	// not just the sample — so feedback beyond the sample bound is still
+	// fingerprints every unresolved thread's identity and newest comment,
+	// including feedback beyond the sample bound, so changes remain
 	// distinguishable.
 	UnresolvedThreads int
 	Threads           []ReviewThread
 	ThreadsDigest     string
 }
 
-// Review is one submitted (or pending) review on a change request, read for
-// evidence corroboration only — adapters never create or mutate reviews.
+// Review is one submitted (or pending) review on a change request. Adapters
+// read reviews only to corroborate evidence; they never create or mutate one.
 type Review struct {
 	Author      string
 	State       string // forge-native state, e.g. APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED, PENDING
 	SubmittedAt string
 }
 
-// HeadState is the narrow delivery-verification read: the current head
-// revision plus whether the change request is still open. A delivered
-// change request must be open — an already merged or closed one cannot be
-// the delivery of new work.
+// HeadState carries the current head revision and whether the change request
+// remains open. An already merged or closed request cannot deliver new work.
 type HeadState struct {
 	SHA    string
 	Merged bool

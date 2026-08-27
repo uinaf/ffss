@@ -142,11 +142,14 @@ func TestProfileForgeLoginCharset(t *testing.T) {
 }
 
 func TestNormalizeForgeLogin(t *testing.T) {
-	if machine.NormalizeForgeLogin("Zapbot[bot]") != machine.NormalizeForgeLogin("zapbot") {
-		t.Fatal("bot suffix and case must normalize away")
-	}
-	if machine.NormalizeForgeLogin("zapbot") == machine.NormalizeForgeLogin("other") {
-		t.Fatal("distinct logins must stay distinct")
+	for input, want := range map[string]string{
+		"Zapbot[bot]": "zapbot",
+		"zapbot":      "zapbot",
+		"other":       "other",
+	} {
+		if got := machine.NormalizeForgeLogin(input); got != want {
+			t.Errorf("NormalizeForgeLogin(%q)=%q want %q", input, got, want)
+		}
 	}
 }
 

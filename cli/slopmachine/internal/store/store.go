@@ -274,7 +274,7 @@ func (s *Store) migrate() error {
 			// At v8 "slopguard" can only be a CUSTOM identity; renaming
 			// autoreview onto it would merge two distinct reviewers and
 			// weaken existing review gates, in any row or field. Refuse
-			// whenever the name occupies the reviewer-identity namespace —
+			// whenever the name occupies the reviewer-identity namespace:
 			// the registry, run reviewer arrays, REVIEW role bindings, and
 			// forge-reviewer keys. Other role bindings and forge-reviewer
 			// values are vendor/login names, not reviewer identities, and

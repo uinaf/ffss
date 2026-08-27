@@ -22,8 +22,7 @@ func cmdSelfupdate(args []string, opts runOptions) int {
 	if code != 0 {
 		return code
 	}
-	// --dry-run projects the decision without touching the binary — the
-	// same contract as --check.
+	// --dry-run projects the same non-mutating decision as --check.
 	_, check := fs["check"]
 	check = check || opts.dryRun
 	options := selfupdate.Options{
@@ -57,9 +56,8 @@ func selfupdateErrorExit(err error) int {
 	return 3
 }
 
-// selfupdateError stamps the stable error taxonomy: refusals are invalid
-// input (exit 2 maps there already), everything else is an unmet guard —
-// the update's preconditions (resolvable release, intact archive) failed.
+// selfupdateError maps refusals to invalid input. Every other error is an
+// unmet release-resolution or archive-integrity guard.
 func selfupdateError(err error) error {
 	if errors.Is(err, selfupdate.ErrNotRelease) || errors.Is(err, selfupdate.ErrBrewManaged) || errors.Is(err, selfupdate.ErrInvalidVersion) {
 		return err

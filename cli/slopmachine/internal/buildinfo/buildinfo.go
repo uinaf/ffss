@@ -22,9 +22,8 @@ func Version() string {
 
 // Release returns the bare release version (for example v1.0.1) when this
 // binary is a published release, and "" otherwise; selfupdate refuses to
-// replace non-release builds. Published member tags are exactly vX.Y.Z, so
-// anything else — snapshots, pseudo-versions from go install, dirty builds —
-// is not a release.
+// replace non-release builds. Published member tags are exactly vX.Y.Z.
+// Snapshots, pseudo-versions from go install, and dirty builds are not releases.
 func Release() string {
 	build, ok := debug.ReadBuildInfo()
 	v, _ := resolve(version, commit, build, ok)

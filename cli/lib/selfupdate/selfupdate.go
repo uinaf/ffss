@@ -1,8 +1,8 @@
 // Package selfupdate replaces the running binary with a published release.
 // It mirrors the installer's contract: member-prefixed tags on the shared
 // ffss repository, sha256 verification against the release's
-// checksums.txt, and an atomic rename into place. Homebrew-managed installs
-// are refused — the cask owns those binaries.
+// checksums.txt, and an atomic rename into place. The cask owns
+// Homebrew-managed installs, so selfupdate refuses them.
 package selfupdate
 
 import (

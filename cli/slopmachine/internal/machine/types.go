@@ -62,8 +62,8 @@ type VerifyEvidence struct {
 }
 
 // EvidenceVerification records how a piece of evidence was established.
-// The driver stamps it — callers never supply it — and the machine only
-// checks its consistency, because observation lives outside the machine.
+// The driver stamps it because observation lives outside the machine. Callers
+// never supply it; the machine only checks its consistency.
 type EvidenceVerification string
 
 const (

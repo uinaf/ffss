@@ -46,10 +46,9 @@ var (
 )
 
 // Every class this package emits has to be defined by the vendored pair or by
-// app.css. A utility renamed upstream otherwise renders unstyled and nothing
-// fails: the projector is Go templates and Go strings, neither of which the
-// design system's own markup linter can see. Bare names count too — the
-// crumb separator ships as `.sep`, not `.u-sep`.
+// app.css. An upstream rename would otherwise render unstyled because the
+// design system's markup linter cannot inspect Go templates and strings. Bare
+// names count too; the crumb separator ships as `.sep`, not `.u-sep`.
 func TestEmittedClassesExistInVendoredCSS(t *testing.T) {
 	sheet := servedCSS(t)
 

@@ -41,9 +41,9 @@ case "$member" in
   *) description="$member" ;;
 esac
 
-# The tap's default branch requires signed commits, so the cask is written
-# through the contents API — GitHub signs API commits, and the sha
-# parameter makes each write a compare-and-swap.
+# The tap's default branch requires signed commits. The contents API gives
+# each write a GitHub signature, while the sha parameter makes it a
+# compare-and-swap.
 cask_path="Casks/${member}.rb"
 rendered=$(mktemp)
 trap 'rm -f "$rendered"' EXIT

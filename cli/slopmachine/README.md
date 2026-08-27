@@ -10,11 +10,10 @@ then enforces each build, verification, review, and delivery transition.
 plan  →  /slopmachine  →  clarify  →  human releases  →  machine runs
 ```
 
-- **Human-controlled:** scope, release, required reviewers, and recovery stay
-  explicit.
-- **Deterministic:** a Go state machine decides what can happen next.
-- **Auditable:** structured evidence and an SQLite event log make every
-  transition inspectable.
+- Humans keep scope, release, required reviewers, and recovery explicit.
+- A Go state machine decides what can happen next.
+- Structured evidence and an SQLite event log make every transition
+  inspectable.
 
 ## Install
 

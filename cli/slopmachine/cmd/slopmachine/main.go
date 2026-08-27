@@ -184,7 +184,7 @@ func isMutatingCommand(command string) bool {
 }
 
 func usage() string {
-	return `slopmachine — deterministic structured slop cannoning
+	return `slopmachine: deterministic structured slop cannoning
 
 Usage:
   slopmachine init [--run ID]
@@ -470,7 +470,7 @@ func cmdInit(st *store.Store, args []string, opts runOptions) int {
 	if opts.dryRun {
 		if st == nil {
 			// A fresh installation cannot hold a profile, so its evidence
-			// mode is recorded — stated like every other active document.
+			// mode is recorded like every other active document.
 			fresh := status.Context{EvidenceVerification: string(machine.VerificationRecorded)}
 			doc := status.FromContext(run, nil, contextWithTelemetry(fresh, tel))
 			doc.DryRun = true
@@ -755,9 +755,9 @@ func cmdVerify(st *store.Store, args []string, opts runOptions) int {
 			if err != nil {
 				return mapErr(err, opts)
 			}
-			// Caller-supplied dimensions project like a real run; the
+			// Caller-supplied dimensions project like a real run. The
 			// measured duration stays undetermined without execution, and a
-			// caller-supplied duration never overrides it — clear it so the
+			// caller-supplied duration never overrides it. Clear it so the
 			// projection matches the real command's merge. The real command
 			// always records one event (measured duration), so the count
 			// projects even when nothing else is known.

@@ -348,9 +348,9 @@ func observeUnit(ctx context.Context, st *store.Store, adapter forge.Forge, repo
 		}
 		return result, 0
 	}
-	// Only NEW feedback pulls a unit back: a current unresolved set that is
+	// Only new feedback pulls a unit back. A current unresolved set that is
 	// a subset of what was already recorded (same threads, same newest
-	// comments) carries nothing new — resolving some threads or re-delivering
+	// comments) carries nothing new. Resolving some threads or re-delivering
 	// does not re-trigger rework. Added threads, new comments, and (when the
 	// forge exposes them) reopened threads produce unseen tokens. This runs
 	// before the dry-run return so dry passes report exactly what a real

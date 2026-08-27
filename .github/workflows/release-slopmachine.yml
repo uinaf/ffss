@@ -23,7 +23,7 @@ jobs:
   verify:
     # This job keeps #16's gate: a broken GoReleaser config must fail
     # before the release job injects Apple secrets and burns a
-    # semantic-release tag. Full member verify is not repeated here — the
+    # semantic-release tag. Full member verify is not repeated here. The
     # merge path runs it in PR CI; dispatch runs and direct pushes trade
     # that repetition for speed on the same published-artifact gate.
     # Snapshot skips signing, and the member builds with CGO disabled, so

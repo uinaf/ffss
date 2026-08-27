@@ -290,7 +290,7 @@ func TestAgentDXStructuredProtocolAndSchema(t *testing.T) {
 	}
 }
 
-func TestAgentDXProtocolHelperBranches(t *testing.T) {
+func TestAgentProtocolContracts(t *testing.T) {
 	cleaned, opts, err := parseRunOptions([]string{"--json", "build", "--dry-run", "--run=x"})
 	if err != nil || !opts.json || !opts.dryRun || strings.Join(cleaned, " ") != "build --run=x" {
 		t.Fatalf("parse options cleaned=%v opts=%+v err=%v", cleaned, opts, err)
@@ -343,13 +343,13 @@ func TestAgentDXProtocolHelperBranches(t *testing.T) {
 		t.Fatal("unencodable JSON accepted")
 	}
 	var mirror strings.Builder
-	mirroredDigest, expectedDigest := newOutputDigester(&mirror), newOutputDigester()
+	mirroredDigest := newOutputDigester(&mirror)
 	for _, chunk := range []string{"out", "err"} {
 		_, _ = mirroredDigest.Write([]byte(chunk))
-		_, _ = expectedDigest.Write([]byte(chunk))
 	}
-	if digest := mirroredDigest.String(); mirror.String() != "outerr" || !strings.HasPrefix(digest, "sha256:") || digest != expectedDigest.String() {
-		t.Fatalf("mirrored output=%q digest=%q expected=%q", mirror.String(), digest, expectedDigest.String())
+	const mirroredWant = "sha256:0db14a89d67977799dff485cc6419361e26b4b775037de1377bcf57e2efcf45f"
+	if digest := mirroredDigest.String(); mirror.String() != "outerr" || digest != mirroredWant {
+		t.Fatalf("mirrored output=%q digest=%q", mirror.String(), digest)
 	}
 	streamed, shellCode, shellDigest := captureStderrResult(t, func() (int, string) {
 		code, digest, err := runShell(context.Background(), "printf out; printf err >&2", true)
@@ -358,15 +358,10 @@ func TestAgentDXProtocolHelperBranches(t *testing.T) {
 		}
 		return code, digest
 	})
-	stdoutExpected, stderrExpected := newOutputDigester(), newOutputDigester()
-	_, _ = stdoutExpected.Write([]byte("out"))
-	_, _ = stderrExpected.Write([]byte("err"))
-	if shellCode != 0 || (streamed != "outerr" && streamed != "errout") || shellDigest != digestOutputs(stdoutExpected, stderrExpected) {
+	const separatedWant = "sha256:0c19ffc0ab4de78717f9f66404c28fc1735d52a1ab286723d5a8e26b4b412ae5"
+	if shellCode != 0 || (streamed != "outerr" && streamed != "errout") || shellDigest != separatedWant {
 		t.Fatalf("runShell code=%d output=%q digest=%q", shellCode, streamed, shellDigest)
 	}
-	plainExpected := newOutputDigester()
-	_, _ = plainExpected.Write([]byte("plain-error"))
-	emptyExpected := newOutputDigester()
 	plainStreamed, plainCode, plainDigest := captureStderrResult(t, func() (int, string) {
 		code, digest, err := runShell(context.Background(), "printf plain-error >&2", false)
 		if err != nil {
@@ -374,7 +369,8 @@ func TestAgentDXProtocolHelperBranches(t *testing.T) {
 		}
 		return code, digest
 	})
-	if plainCode != 0 || plainStreamed != "plain-error" || plainDigest != digestOutputs(emptyExpected, plainExpected) {
+	const plainWant = "sha256:e13a9c3673209bebf6528c672780677b3fdd406fc298263d86ae4cbbad068a43"
+	if plainCode != 0 || plainStreamed != "plain-error" || plainDigest != plainWant {
 		t.Fatalf("plain runShell code=%d output=%q digest=%q", plainCode, plainStreamed, plainDigest)
 	}
 	output, code := captureStdoutResult(t, func() int { return writeFailure(runOptions{json: true}, 2, errors.New("bad")) })

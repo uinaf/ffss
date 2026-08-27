@@ -18,7 +18,7 @@
       <h1>runs</h1>
       <span class="u-meta repo-key" title="{{.RepoKey}}">{{.RepoKey}}</span>
     </div>
-    <p class="u-meta lede">projector over the same sqlite as the CLI. loopback only — not a second authority.</p>
+    <p class="u-meta lede">projector over the same sqlite as the CLI. loopback only. not a second authority.</p>
 
     <div class="band">
       <span class="u-label">runs</span>
@@ -47,7 +47,7 @@
                 </span>
               </td>
               <td class="col-flag">{{if .Released}}yes{{else}}no{{end}}</td>
-              <td class="col-unit" title="{{.CurrentUnitID}}">{{if .CurrentUnitID}}{{.CurrentUnitID}}{{else}}—{{end}}</td>
+              <td class="col-unit" title="{{.CurrentUnitID}}">{{if .CurrentUnitID}}{{.CurrentUnitID}}{{else}}-{{end}}</td>
               <td data-num class="col-num">{{.CompletedUnits}}</td>
               <td data-num class="col-num">{{.SeriesBound}}</td>
               <td class="col-time" title="{{.UpdatedAt}}">{{shortTime .UpdatedAt}}</td>

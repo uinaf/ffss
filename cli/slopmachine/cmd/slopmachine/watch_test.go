@@ -292,7 +292,7 @@ func TestWatchFeedbackSubsetDoesNotRetrigger(t *testing.T) {
 	}
 	redeliver()
 
-	// One thread resolved: the remaining set is a subset — nothing new.
+	// Resolving one thread leaves a subset with no new feedback.
 	mustWrite(t, threadsFile, threadsJSON(threadNode("t1", "a.go", 3, "c1", "fix this")))
 	out = h.must("watch", "--json", "--run", "w9")
 	doc := decodeWatchDoc(t, out)
@@ -332,8 +332,7 @@ func TestWatchFeedbackBeyondSampleBoundStillTriggers(t *testing.T) {
 	mustWrite(t, deliver, `{"delivery_mode":"pr-hold","pr_url":"https://github.com/o/r/pull/1","commit_sha":"aaaa1111aaaa1111"}`)
 	h.must("deliver", "--evidence", deliver, "--run", "w10")
 
-	// An 11th thread lands outside the 10-thread sample: the sampled tokens
-	// are all previously recorded, but the count changed — must re-trigger.
+	// An 11th thread outside the sample must trigger despite unchanged sampled tokens.
 	eleven := append(append([]string{}, tenThreads...), threadNode("t10", "f10.go", 11, "c10", "new"))
 	mustWrite(t, threadsFile, threadsJSON(eleven...))
 	out = h.must("watch", "--json", "--run", "w10")

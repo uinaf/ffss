@@ -234,7 +234,7 @@ func statusDotClass(state string, open bool) string {
 
 func shortTime(value string) string {
 	if value == "" {
-		return "—"
+		return "-"
 	}
 	if t, err := time.Parse(time.RFC3339Nano, value); err == nil {
 		return t.UTC().Format("15:04:05")

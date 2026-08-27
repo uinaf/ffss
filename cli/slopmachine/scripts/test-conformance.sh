@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Harness conformance: prove a skill-less shell agent — no harness features,
-# no bundled skill, no JSON tooling beyond the shell — can drive one complete
+# Harness conformance proves a skill-less shell agent with no harness features,
+# bundled skill, or JSON tooling beyond the shell can drive one complete
 # multi-unit run using only `status --json --fields`, `schema`, stdin
 # payloads, and the executable commands `next_action` returns.
 
@@ -28,7 +28,7 @@ assert_conformant() {
   fi
   # The driver executes next_action verbatim, so it must be exactly one
   # command: no separators, pipes, substitutions, or extra lines. Angle
-  # brackets stay legal — they are documented placeholders.
+  # brackets stay legal because they are documented placeholders.
   if [[ $action == *$'\n'* ]] || grep -qE '[;&|$`]|<\(|>\(' <<<"$action"; then
     printf 'conformance: next_action is not a single plain command: %s\n' "$action" >&2
     return 1

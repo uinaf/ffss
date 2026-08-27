@@ -18,7 +18,7 @@ From this directory:
 
 ```sh
 npm ci
-npm run lint                                  # keyless, no network — the CI half
+npm run lint                                  # CI lane; keyless and offline
 npm run run -- ../../skills/<skill>/evals/<scenario>
 npm run sweep                                 # resumes; only scenarios without results
 npm run summarize                             # writes .skillcheck/scorecards/<UTC-date>.json

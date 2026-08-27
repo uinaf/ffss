@@ -97,7 +97,7 @@ func TestHandlerHostsStaticAndRenderFailure(t *testing.T) {
 	}
 }
 
-func TestPresentationAndLoopbackHelpers(t *testing.T) {
+func TestPresentationAndLoopbackContracts(t *testing.T) {
 	classes := map[string]string{
 		"BLOCKED": "error", "NEEDS_DECISION": "warn", "REWORK": "warn", "RUN_DONE": "ok",
 	}
@@ -113,7 +113,7 @@ func TestPresentationAndLoopbackHelpers(t *testing.T) {
 		t.Fatalf("closed dot: %q", got)
 	}
 	for value, want := range map[string]string{
-		"": "—", "2026-08-08T12:34:56Z": "12:34:56", "2026-08-08T12:34:56.123Z": "12:34:56",
+		"": "-", "2026-08-08T12:34:56Z": "12:34:56", "2026-08-08T12:34:56.123Z": "12:34:56",
 		"a very long invalid timestamp": "a very long invalid", "short": "short",
 	} {
 		if got := shortTime(value); got != want {

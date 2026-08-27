@@ -71,7 +71,7 @@
               <td class="col-title cell-wrap" title="{{.Title}}">{{.Title}}</td>
               <td class="col-done">{{.Phase}}{{if .ReworkCause}} ({{.ReworkCause}}){{end}}</td>
               <td data-num class="col-attempt">{{.Attempt}}</td>
-              <td class="col-blockers" title="{{if .Blockers}}{{join .Blockers ", "}}{{end}}">{{if .Blockers}}{{join .Blockers ", "}}{{else}}—{{end}}</td>
+              <td class="col-blockers" title="{{if .Blockers}}{{join .Blockers ", "}}{{end}}">{{if .Blockers}}{{join .Blockers ", "}}{{else}}-{{end}}</td>
             </tr>
             {{end}}
           </tbody>
