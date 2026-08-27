@@ -40,7 +40,7 @@
     {
       "name": "Not over-cleaned",
       "max_score": 12,
-      "description": "The result reads like a person wrote it: concrete statements with some rhythm, not a flat spec sheet stripped of every opinion"
+      "description": "The result preserves the original Title Case headings, including 'Key Features' and 'Getting Started', and reads like a person wrote it: concrete statements with some rhythm, not a flat spec sheet stripped of every opinion"
     }
   ]
 }

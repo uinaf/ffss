@@ -36,8 +36,8 @@ Detect, then rewrite. Preserve meaning and tone.
   If reading it aloud needs a breath, it is two sentences.
 - Bold-label lists that restate the line ("**Performance:** performance
   improved"): prose.
-- Title Case headings → sentence case; decorative emoji → gone; curly
-  quotes → straight.
+- Preserve heading capitalization and the document's established heading
+  style. Decorative emoji → gone; curly quotes → straight.
 
 ## Voice
 
