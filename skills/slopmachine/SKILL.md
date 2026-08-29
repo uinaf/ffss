@@ -1,7 +1,6 @@
 ---
 name: slopmachine
 description: "Run a governed, deterministic implementation workflow via the slopmachine CLI: intake, human release gates, build, verify, independent review, delivery. Use for /slopmachine, running a plan, or governed multi-step implementation; not ad-hoc edits or planning."
-disable-model-invocation: true
 ---
 
 # Slopmachine

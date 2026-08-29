@@ -4,4 +4,4 @@ interface:
   default_prompt: "Use $slopmachine to run the agreed plan through field-masked JSON status, dry-run validation, human release, and evidence-backed build, verify, review, and delivery."
 
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true
