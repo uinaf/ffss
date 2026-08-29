@@ -98,6 +98,9 @@ Failure classes are:
 - `source_changed`
 - `internal`
 
+`secret_scan` remains in schema v1 for compatibility with historical reports;
+current Slopguard builds do not emit it.
+
 Failure messages are sanitized diagnostics, not raw provider output. Protocol
 failures include a stable correction category such as `finding_location`,
 `multiple_documents`, or `schema_mismatch` when the malformed response can be

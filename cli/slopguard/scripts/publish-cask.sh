@@ -7,10 +7,7 @@ set -euo pipefail
 
 member=${1:?member name required}
 case "$member" in
-  slopguard) depends_stanza='  depends_on formula: [
-      "git",
-      "trufflehog",
-    ]
+  slopguard) depends_stanza='  depends_on formula: "git"
 ' ;;
   *) depends_stanza='' ;;
 esac

@@ -18,9 +18,8 @@ mise run verify
 ```
 
 Before release-related changes, run the complete release gate and release
-configuration checks. The release gate requires the installed `trufflehog`
-executable and network access: it exercises trufflehog's benign and detection
-paths and checks the current Go vulnerability database.
+configuration checks. The release gate requires network access to check the
+current Go vulnerability database.
 
 ```bash
 mise run verify:release
@@ -72,8 +71,8 @@ SLOPGUARD_LIVE_PROVIDERS=grok SLOPGUARD_LIVE_REPEAT=3 mise run verify:live
 - The selected providers, routes, 2 controls, and repeat count may request at
   most 80 reviews, which keeps the worst-case retry path inside the 8h30m test
   timeout.
-- These checks consume provider quota and require every selected harness
-  plus `trufflehog` on `PATH`.
+- These checks consume provider quota and require every selected harness on
+  `PATH`.
 - At the maximum repeat value, the default four-provider route can take more
   than eight hours when every review consumes its protocol retry. The full
   two-route matrix therefore caps the repeat count at 5.

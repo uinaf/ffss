@@ -119,7 +119,7 @@ func BenchmarkVerifyUnchanged(b *testing.B) {
 				benchmarkGit(b, repository, "commit", "-q", "-am", "commit")
 				request.Commit = "HEAD"
 			}
-			collector, err := New(Options{Repository: repository, Scanner: &recordingScanner{}})
+			collector, err := New(Options{Repository: repository})
 			if err != nil {
 				b.Fatal(err)
 			}

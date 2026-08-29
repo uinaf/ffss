@@ -21,6 +21,8 @@
 - Failure classes are `config`, `target`, `secret_scan`, `capability`,
   `authentication`, `timeout`, `cancelled`, `provider`, `protocol`,
   `source_changed`, and `internal`.
+- `secret_scan` is retained for historical result-v1 compatibility; current
+  Slopguard builds do not emit it.
 - Do not reinterpret an operational failure as a clean review.
 
 - Slopguard performs at most one configured retry, only for a malformed

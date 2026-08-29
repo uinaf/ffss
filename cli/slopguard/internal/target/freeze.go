@@ -29,12 +29,9 @@ const (
 )
 
 type Collector struct {
-	git            *gitClient
-	scanner        Scanner
-	gitPath        string
-	truffleHogPath string
-	skipSecretScan bool
-	repository     *repositorypkg.Context
+	git        *gitClient
+	gitPath    string
+	repository *repositorypkg.Context
 }
 
 type collected struct {
@@ -59,12 +56,7 @@ func New(options Options) (*Collector, error) {
 }
 
 func NewContext(ctx context.Context, options Options) (*Collector, error) {
-	collector := &Collector{
-		scanner:        options.Scanner,
-		gitPath:        options.GitPath,
-		truffleHogPath: options.TruffleHogPath,
-		skipSecretScan: options.SkipSecretScan,
-	}
+	collector := &Collector{gitPath: options.GitPath}
 	if options.Context != nil {
 		if options.Repository != "" {
 			if err := options.Context.ValidateRequested(options.Repository); err != nil {
@@ -111,20 +103,6 @@ func (collector *Collector) Freeze(ctx context.Context, repository string, reque
 	if first.target.SnapshotHash != second.target.SnapshotHash {
 		return nil, fmt.Errorf("target changed while freezing: %w", ErrSourceChanged)
 	}
-	if !request.SkipSecretScan {
-		freezeSpan.End()
-		scanSpan := phase.Start(ctx, phase.SecretScan)
-		defer scanSpan.End()
-		if collector.scanner == nil {
-			return nil, fmt.Errorf("%w: secret scanner is unavailable", ErrSecretScan)
-		}
-		if err := collector.scanner.Scan(ctx, first.payload); err != nil {
-			if errors.Is(err, ErrSecretFound) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				return nil, err
-			}
-			return nil, fmt.Errorf("%w: %w", ErrSecretScan, err)
-		}
-	}
 	if err := collector.validateRepositoryContext(ctx, repository); err != nil {
 		return nil, err
 	}
@@ -163,21 +141,10 @@ func (collector *Collector) forContext(ctx context.Context, repositoryContext *r
 		return nil, err
 	}
 	git := &gitClient{path: repositoryContext.GitPath()}
-	scanner := collector.scanner
-	if scanner == nil && !collector.skipSecretScan {
-		var err error
-		scanner, err = newTruffleHogScannerWithBoundaries(ctx, collector.truffleHogPath, repositoryContext.TrustedBoundaries())
-		if err != nil {
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				return nil, err
-			}
-			return nil, fmt.Errorf("%w: %w", ErrSecretScan, err)
-		}
-	}
 	if err := repositoryContext.ValidateGit(ctx); err != nil {
 		return nil, err
 	}
-	return &Collector{git: git, scanner: scanner, skipSecretScan: collector.skipSecretScan, repository: repositoryContext}, nil
+	return &Collector{git: git, repository: repositoryContext}, nil
 }
 
 func validateRequest(request *Request) error {

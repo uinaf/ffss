@@ -148,18 +148,19 @@ func TestLoadRevalidatesRepositoryAfterConfigReads(t *testing.T) {
 	}
 }
 
-func TestLoadDefaultsToNativeAndEnablesCursorWebImplicitly(t *testing.T) {
+func TestLoadAppliesProviderDefaults(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range []struct {
 		name   string
 		engine protocol.ProviderName
+		effort ReasoningEffort
 		web    bool
 	}{
-		{name: "Codex keeps web disabled", engine: protocol.ProviderCodex},
-		{name: "Claude keeps web disabled", engine: protocol.ProviderClaude},
-		{name: "Cursor enables web", engine: protocol.ProviderCursor, web: true},
-		{name: "Grok keeps web disabled", engine: protocol.ProviderGrok},
+		{name: "Codex medium with web disabled", engine: protocol.ProviderCodex, effort: ReasoningMedium},
+		{name: "Claude high with web disabled", engine: protocol.ProviderClaude, effort: ReasoningHigh},
+		{name: "Cursor high with web enabled", engine: protocol.ProviderCursor, effort: ReasoningHigh, web: true},
+		{name: "Grok high with web disabled", engine: protocol.ProviderGrok, effort: ReasoningHigh},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			repository := configRepository(t)
@@ -174,6 +175,9 @@ func TestLoadDefaultsToNativeAndEnablesCursorWebImplicitly(t *testing.T) {
 			}
 			if effective.Isolation.Value != protocol.IsolationNative || effective.Isolation.Source != SourceDefault {
 				t.Fatalf("isolation = %+v", effective.Isolation)
+			}
+			if effective.ReasoningEffort.Value != test.effort || effective.ReasoningEffort.Source != SourceDefault {
+				t.Fatalf("reasoning_effort = %+v", effective.ReasoningEffort)
 			}
 			expectedWebSource := SourceDefault
 			if test.engine == protocol.ProviderCursor {

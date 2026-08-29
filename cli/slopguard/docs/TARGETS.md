@@ -68,11 +68,11 @@ Target collection requires Git 2.41 or newer.
 
 - The snapshot includes resolved Git identity plus the raw copied index,
   tracked working-tree, status, untracked target, prompt, and context state.
-- Source material is recollected before scanning to catch concurrent reads,
-  but the verification pass computes only the snapshot instead of
+- Source material is recollected before bundle construction to catch concurrent
+  reads, but the verification pass computes only the snapshot instead of
   materializing a second bundle.
-- Secret scanning, provider execution, and the optional protocol retry stream
-  the same immutable payload without full-payload copies.
+- Provider execution and the optional protocol retry use the same immutable
+  payload without full-payload copies.
 - The caller must run the supplied unchanged check after provider completion;
   a mismatch invalidates the result as `source_changed`.
 
@@ -89,28 +89,12 @@ The 128 MiB ceiling keeps the supported envelope bounded while collection holds
 source material alongside one frozen payload. There is no automatic chunking or
 review fan-out above that limit.
 
-## Secret scan
+## Disclosure boundary
 
-- The installed `trufflehog` executable scans the complete frozen payload,
+- Slopguard sends the complete frozen payload to the selected provider,
   including deleted bytes and appended context.
-- Cloudflare-token findings are ignored only when every occurrence of the
-  reported value is a Git-generated `index <old>..<new>` object ID inside the
-  frozen diff. This also covers decoder duplicates whose line metadata no
-  longer maps to the original payload. Identical text in prompts, file
-  content, deleted bytes, or context still fails the scan, including values
-  reconstructed from HTML entities, URL escapes, invisible characters, or
-  inline markup.
-- It runs offline with verification disabled, no update check, one worker, no
-  inherited environment, and `--fail-on-scan-errors`.
-- Any detection, scan error, missing executable, or output overflow is a
-  `secret_scan` failure.
-- Cancellation and deadline expiry keep the `cancelled` and `timeout` classes.
-- Pass `--skip-secret-scan` to omit TruffleHog resolution and the frozen-payload
-  scan for one run. This is an explicit operator override for a known false
-  positive; it is not available from configuration or environment variables.
-- A skipped scan still freezes the same payload and prints `secret scan skipped`
-  on stderr.
-- The scanner runs in its own process group and terminates remaining
-  descendants before returning on any exit path.
-- TruffleHog is an external runtime dependency; its AGPL code is not linked or
-  embedded in this MIT project.
+- Slopguard rejects known sensitive paths and non-placeholder environment
+  templates, but it does not scan the payload for credentials.
+- Operators are responsible for authorizing the frozen content for disclosure
+  to the selected provider. Repository-wide secret scanning belongs in the
+  repository's normal local or continuous-integration gates.

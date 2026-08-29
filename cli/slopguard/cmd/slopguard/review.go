@@ -102,7 +102,6 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	var contextFiles stringList
 	flags.Var(&contextFiles, "context-file", "repository-relative context file (repeatable)")
 	output := flags.String("output", "terminal", "output format: terminal or json")
-	skipSecretScan := flags.Bool("skip-secret-scan", false, "omit TruffleHog for this run")
 	configFlags := bindConfigFlags(flags)
 	flagStderr := stderr
 	if jsonRequested {
@@ -186,7 +185,7 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	newCollector := dependencies.newCollector
 	if newCollector == nil {
 		newCollector = func() (*target.Collector, error) {
-			return target.NewContext(ctx, target.Options{Context: repositoryContext, SkipSecretScan: *skipSecretScan})
+			return target.NewContext(ctx, target.Options{Context: repositoryContext})
 		}
 	}
 	probeSpan := recorder.Start(phase.DependencyProbes)
@@ -199,8 +198,6 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 			class = protocol.FailureCancelled
 		case errors.Is(err, context.DeadlineExceeded):
 			class = protocol.FailureTimeout
-		case errors.Is(err, target.ErrSecretScan):
-			class = protocol.FailureSecretScan
 		}
 		return finish(failureWithElapsed(class, fmt.Errorf("initialize target collector: %w", err), started, recorder))
 	}
@@ -213,13 +210,12 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		NewReviewer: newReviewer,
 		Repository:  *repository,
 		Target: target.Request{
-			Mode:           protocol.TargetMode(*mode),
-			Base:           *base,
-			Commit:         *commit,
-			Prompt:         resolvedPrompt,
-			ContextFiles:   append([]string(nil), contextFiles...),
-			MaxBytes:       effective.MaxBytes.Value,
-			SkipSecretScan: *skipSecretScan,
+			Mode:         protocol.TargetMode(*mode),
+			Base:         *base,
+			Commit:       *commit,
+			Prompt:       resolvedPrompt,
+			ContextFiles: append([]string(nil), contextFiles...),
+			MaxBytes:     effective.MaxBytes.Value,
 		},
 		Config: effective,
 		Progress: func(message string) {
@@ -275,7 +271,7 @@ func reviewTelemetryRequested(arguments []string) bool {
 		}
 		if inline {
 			switch name {
-			case "--skip-secret-scan", "-skip-secret-scan", "--web-access", "-web-access":
+			case "--web-access", "-web-access":
 				if _, err := strconv.ParseBool(raw); err != nil {
 					return seen && selected
 				}
@@ -299,7 +295,7 @@ func reviewTelemetryRequested(arguments []string) bool {
 		switch argument {
 		case "--help", "-h":
 			return seen && selected
-		case "--skip-secret-scan", "-skip-secret-scan", "--web-access", "-web-access":
+		case "--web-access", "-web-access":
 			continue
 		default:
 			return seen && selected

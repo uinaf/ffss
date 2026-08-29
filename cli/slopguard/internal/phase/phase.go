@@ -13,13 +13,15 @@ const (
 	Config              Name = "config"
 	DependencyProbes    Name = "dependency_probes"
 	TargetFreeze        Name = "target_freeze"
-	SecretScan          Name = "secret_scan"
 	ProviderPreparation Name = "provider_preparation"
 	ProviderProcess     Name = "provider_process"
 	ProtocolDecode      Name = "protocol_decode"
 	SourceRevalidation  Name = "source_revalidation"
 	ReportWrite         Name = "report_write"
 )
+
+// SecretScan remains accepted when decoding stored telemetry from older builds.
+const SecretScan Name = "secret_scan"
 
 type Measurement struct {
 	Name     Name

@@ -72,7 +72,6 @@ type FailureClass string
 const (
 	FailureConfig        FailureClass = "config"
 	FailureTarget        FailureClass = "target"
-	FailureSecretScan    FailureClass = "secret_scan"
 	FailureCapability    FailureClass = "capability"
 	FailureAuth          FailureClass = "authentication"
 	FailureTimeout       FailureClass = "timeout"
@@ -82,6 +81,9 @@ const (
 	FailureSourceChanged FailureClass = "source_changed"
 	FailureInternal      FailureClass = "internal"
 )
+
+// FailureSecretScan remains in result schema v1 for historical reports.
+const FailureSecretScan FailureClass = "secret_scan"
 
 type ProtocolReason string
 

@@ -7,7 +7,6 @@ go = "1.26.6"
 goreleaser = "2.17.1"
 rg = "15.2.0"
 shellcheck = "0.11.0"
-trufflehog = "3.96.0"
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.6.0"
 
 [env]
@@ -47,10 +46,6 @@ depends = ["fmt:check", "test", "test:race", "vet", "build", "installer:check"]
 description = "Opt in to the authenticated CLI-level provider and auth-route matrix"
 run = '''
 set -e
-command -v trufflehog >/dev/null || {
-  printf '%s\n' "verify:live requires the trufflehog executable on PATH" >&2
-  exit 1
-}
 SLOPGUARD_TEST_LIVE=1 \
   go test -p 1 -parallel 1 ./cmd/slopguard \
   -run '^TestBinaryLiveProviderMatrix$' \
@@ -85,23 +80,15 @@ shellcheck -s bash scripts/test-install.sh
 '''
 
 [tasks."test:integration"]
-description = "Run CLI and scanner integration tests"
+description = "Run CLI integration tests"
 run = '''
 set -e
-command -v trufflehog >/dev/null || {
-  printf '%s\n' "test:integration requires the trufflehog executable on PATH" >&2
-  exit 1
-}
 go test ./cmd/slopguard -run '^TestBinaryEndToEndWithFakeCodex$' -count=1 -timeout 10m
-SLOPGUARD_REAL_TRUFFLEHOG=1 \
-  go test ./internal/target \
-  -run '^Test(TruffleHogScanner.*|CollectorDetectsCredentialInDeletedFile)$' \
-  -count=1 -v -timeout 10m
 (cd testdata/v0.1-fixture/after && go test ./... -timeout 10m)
 '''
 
 [tasks."test:current-checkout"]
-description = "Opt in to freezing and scanning the current checkout"
+description = "Opt in to freezing the current checkout"
 run = '''
 SLOPGUARD_REAL_REPOSITORY=1 \
   go test ./internal/target \

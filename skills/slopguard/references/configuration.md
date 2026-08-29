@@ -23,7 +23,7 @@ The YAML schema is:
 ```yaml
 engine: codex
 model: gpt-5.6-sol
-reasoning_effort: high
+reasoning_effort: medium
 timeout: 15m
 retries: 1
 max_bytes: 1048576
@@ -40,6 +40,8 @@ Corresponding environment variables are `SLOPGUARD_ENGINE`,
   zero or one, and invalid types fail closed.
 - There are no profiles or local override files.
 - `max_bytes` defaults to 1 MiB and cannot exceed 128 MiB.
+- Reasoning effort defaults to `medium` for Codex and `high` for Claude,
+  Cursor, and Grok. Explicit configuration still wins.
 
 ## Isolation
 

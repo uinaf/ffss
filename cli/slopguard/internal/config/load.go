@@ -370,6 +370,14 @@ func applyRaw(effective *Effective, raw rawConfig, source Source, allowCapabilit
 }
 
 func applyProviderDefaults(effective *Effective) {
+	if effective.ReasoningEffort.Source == SourceDefault {
+		switch effective.Engine.Value {
+		case protocol.ProviderCodex:
+			effective.ReasoningEffort.Value = ReasoningMedium
+		case protocol.ProviderClaude, protocol.ProviderCursor, protocol.ProviderGrok:
+			effective.ReasoningEffort.Value = ReasoningHigh
+		}
+	}
 	if effective.Engine.Value == protocol.ProviderCursor && effective.Engine.Source == SourceFlag && effective.WebAccess.Source == SourceDefault {
 		effective.WebAccess.Value = true
 		effective.WebAccess.Source = SourceFlag

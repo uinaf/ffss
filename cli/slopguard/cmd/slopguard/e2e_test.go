@@ -18,7 +18,7 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
 )
 
-func TestBinaryDoctorWithFakeCodexDoesNotInvokeModelOrScanner(t *testing.T) {
+func TestBinaryDoctorWithFakeCodexDoesNotInvokeModel(t *testing.T) {
 	binary := buildSlopguardBinary(t)
 	repository := reviewRepository(t)
 	tools, calls, providerPID, processLog, _ := writeFakeReviewTools(t, "clean")
@@ -53,7 +53,7 @@ func TestBinaryDoctorWithFakeCodexDoesNotInvokeModelOrScanner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(processes), "trufflehog") || strings.Count(string(processes), "codex\n") != 3 {
+	if strings.Count(string(processes), "codex\n") != 3 {
 		t.Fatalf("doctor processes = %q", processes)
 	}
 }
@@ -324,9 +324,6 @@ func writeFakeReviewTools(t testing.TB, scenario string) (string, string, string
 	}
 	script += "printf '%s' \"$result\" > \"$output\"\nprintf '%s' \"$envelope\"\n"
 	if err := os.WriteFile(filepath.Join(directory, "codex"), []byte(script), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(directory, "trufflehog"), []byte("#!/bin/sh\nprintf '%s\\n' trufflehog >> "+shellLiteral(processLog)+"\nexit 0\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	gitScript := "#!/bin/sh\nset -eu\nprintf '%s\\n' git >> " + shellLiteral(processLog) + "\n" +

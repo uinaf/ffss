@@ -12,32 +12,22 @@ import (
 
 var (
 	ErrSourceChanged = errors.New("reviewed source changed")
-	ErrSecretFound   = errors.New("secret scan found credentials")
-	ErrSecretScan    = errors.New("secret scan failed")
 	ErrNoChanges     = errors.New("target has no changed files")
 )
 
 type Request struct {
-	Mode           protocol.TargetMode
-	Base           string
-	Commit         string
-	Prompt         string
-	ContextFiles   []string
-	MaxBytes       int64
-	SkipSecretScan bool
-}
-
-type Scanner interface {
-	Scan(context.Context, string) error
+	Mode         protocol.TargetMode
+	Base         string
+	Commit       string
+	Prompt       string
+	ContextFiles []string
+	MaxBytes     int64
 }
 
 type Options struct {
-	Repository     string
-	Context        *repository.Context
-	GitPath        string
-	TruffleHogPath string
-	Scanner        Scanner
-	SkipSecretScan bool
+	Repository string
+	Context    *repository.Context
+	GitPath    string
 }
 
 type Contributor struct {

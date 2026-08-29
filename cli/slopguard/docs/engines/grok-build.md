@@ -9,7 +9,7 @@ grok login
 ```
 
 The adapter always passes an explicit model; an empty model setting resolves to
-`grok-4.6`, with no fallback.
+`grok-4.6`, with no fallback. Reasoning effort defaults to `high`.
 
 ## Runtime contract
 

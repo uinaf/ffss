@@ -1,7 +1,7 @@
 # Provider doctor
 
-`slopguard doctor` checks one provider without freezing a target, running
-TruffleHog, or sending a model request:
+`slopguard doctor` checks one provider without freezing a target or sending a
+model request:
 
 ```bash
 slopguard doctor --engine codex

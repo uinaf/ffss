@@ -22,18 +22,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-type recordingScanner struct {
-	payload string
-	err     error
-	calls   int
-}
-
-func (scanner *recordingScanner) Scan(_ context.Context, payload string) error {
-	scanner.calls++
-	scanner.payload = payload
-	return scanner.err
-}
-
 func TestFreezeLocalCapturesCompleteImmutableTarget(t *testing.T) {
 	t.Parallel()
 
@@ -52,8 +40,7 @@ func TestFreezeLocalCapturesCompleteImmutableTarget(t *testing.T) {
 	}
 	writeFile(t, repository, "untracked.txt", "one\ntwo\n")
 
-	scanner := &recordingScanner{}
-	collector := newCollector(t, scanner)
+	collector := newCollector(t)
 	bundle, err := collector.Freeze(context.Background(), repository, Request{
 		Mode:         protocol.TargetLocal,
 		Prompt:       "Find correctness defects.",
@@ -61,9 +48,6 @@ func TestFreezeLocalCapturesCompleteImmutableTarget(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("Freeze() error = %v", err)
-	}
-	if scanner.calls != 1 || scanner.payload != bundle.Payload() {
-		t.Fatal("scanner did not receive the complete frozen payload")
 	}
 	payload := bundle.Payload()
 	for _, expected := range []string{"Find correctness defects.", "deleted-secret-value", "staged.txt", "untracked.txt", "one\ntwo", "trusted reference"} {
@@ -87,12 +71,40 @@ func TestFreezeLocalCapturesCompleteImmutableTarget(t *testing.T) {
 	}
 }
 
+func TestCollectorRealRepositorySmoke(t *testing.T) {
+	if os.Getenv("SLOPGUARD_REAL_REPOSITORY") != "1" {
+		t.Skip("set SLOPGUARD_REAL_REPOSITORY=1 to freeze the current checkout")
+	}
+	collector, err := New(Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repository := filepath.Join("..", "..")
+	bundle, err := collector.Freeze(context.Background(), repository, Request{
+		Mode:     protocol.TargetLocal,
+		Prompt:   "Review the current checkout.",
+		MaxBytes: 2 << 20,
+	})
+	if errors.Is(err, ErrNoChanges) {
+		t.Skip("current checkout has no local changes")
+	}
+	if err != nil {
+		t.Fatalf("Freeze() error = %v", err)
+	}
+	if len(bundle.Target().Files) == 0 || len(bundle.Payload()) == 0 {
+		t.Fatal("real repository bundle is empty")
+	}
+	if err := bundle.VerifyUnchanged(context.Background()); err != nil {
+		t.Fatalf("VerifyUnchanged() error = %v", err)
+	}
+}
+
 func TestLazyCollectorRecordsOneTargetFreeze(t *testing.T) {
 	t.Parallel()
 
 	repository := committedRepository(t)
 	writeFile(t, repository, "file.txt", "changed\n")
-	collector := newCollector(t, &recordingScanner{})
+	collector := newCollector(t)
 	current := time.Unix(0, 0)
 	var measurements []phase.Measurement
 	recorder := phase.New(func() time.Time {
@@ -109,7 +121,7 @@ func TestLazyCollectorRecordsOneTargetFreeze(t *testing.T) {
 	for _, measurement := range measurements {
 		counts[measurement.Name]++
 	}
-	if counts[phase.TargetFreeze] != 1 || counts[phase.SecretScan] != 1 {
+	if counts[phase.TargetFreeze] != 1 {
 		t.Fatalf("phase counts = %+v", counts)
 	}
 }
@@ -123,7 +135,7 @@ func TestPreparedCollectorRejectsChangedRepositoryArgument(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	collector, err := NewContext(context.Background(), Options{Context: repositoryContext, Scanner: &recordingScanner{}})
+	collector, err := NewContext(context.Background(), Options{Context: repositoryContext})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,24 +167,6 @@ func TestBundleRevalidatesRepositoryContextBeforeUnchangedCheck(t *testing.T) {
 	}
 }
 
-func TestFreezeRevalidatesRepositoryAfterSecretScan(t *testing.T) {
-	repository := committedRepository(t)
-	writeFile(t, repository, "file.txt", "changed\n")
-	scanner := ScannerFunc(func(context.Context, string) error {
-		if err := os.Rename(filepath.Join(repository, ".git"), filepath.Join(repository, ".git-old")); err != nil {
-			return err
-		}
-		return os.Mkdir(filepath.Join(repository, ".git"), 0o700)
-	})
-	collector, err := New(Options{Repository: repository, Scanner: scanner})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err == nil || !strings.Contains(err.Error(), "metadata boundary changed") {
-		t.Fatalf("Freeze() error = %v", err)
-	}
-}
-
 func TestFreezeBatchesDeletedBlobReads(t *testing.T) {
 	t.Parallel()
 
@@ -187,7 +181,7 @@ func TestFreezeBatchesDeletedBlobReads(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err != nil {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -204,7 +198,7 @@ func TestFreezeSupportsUnbornRepository(t *testing.T) {
 
 	repository := newRepository(t)
 	writeFile(t, repository, "first.go", "package first\n")
-	bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err != nil {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -222,7 +216,7 @@ func TestFreezeDoesNotWriteRepositoryObjects(t *testing.T) {
 	repository := newRepository(t)
 	writeFile(t, repository, "first.go", "package first\n")
 	before := gitCommand(t, repository, "count-objects", "-v")
-	if _, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
+	if _, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
 		t.Fatalf("Freeze() error = %v", err)
 	}
 	after := gitCommand(t, repository, "count-objects", "-v")
@@ -244,7 +238,7 @@ func TestFreezeBranchUsesMergeBase(t *testing.T) {
 	gitCommand(t, repository, "commit", "-am", "feature")
 	head := gitCommand(t, repository, "rev-parse", "HEAD")
 
-	bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
 	if err != nil {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -272,7 +266,7 @@ func TestFreezeIncludesTrackedSymlinks(t *testing.T) {
 		gitCommand(t, repository, "add", ".")
 		gitCommand(t, repository, "commit", "-m", "track skill symlink")
 
-		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
 		if err != nil {
 			t.Fatalf("Freeze() error = %v", err)
 		}
@@ -304,7 +298,7 @@ func TestFreezeIncludesTrackedSymlinks(t *testing.T) {
 		// same-size symlink retarget on the verification collect.
 		waitPastIndexSecond(t, repository)
 
-		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 		if err != nil {
 			t.Fatalf("Freeze() error = %v", err)
 		}
@@ -328,7 +322,7 @@ func TestGitSandboxPreservesIndexModTime(t *testing.T) {
 	}
 	waitPastIndexSecond(t, repository)
 
-	collector := newCollector(t, &recordingScanner{})
+	collector := newCollector(t)
 	prepared, err := collector.forRepository(context.Background(), repository)
 	if err != nil {
 		t.Fatalf("forRepository() error = %v", err)
@@ -354,7 +348,7 @@ func TestFreezeRejectsGitlink(t *testing.T) {
 
 	repository := committedRepository(t)
 	gitCommand(t, repository, "update-index", "--add", "--cacheinfo", "160000,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,vendor")
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err == nil || !strings.Contains(err.Error(), "gitlink input") {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -368,7 +362,7 @@ func TestFreezeCommitAndRejectMergeCommit(t *testing.T) {
 	gitCommand(t, repository, "add", ".")
 	gitCommand(t, repository, "commit", "-m", "root")
 	rootCommit := gitCommand(t, repository, "rev-parse", "HEAD")
-	if _, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: rootCommit}); err != nil {
+	if _, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: rootCommit}); err != nil {
 		t.Fatalf("Freeze(root commit) error = %v", err)
 	}
 
@@ -377,7 +371,7 @@ func TestFreezeCommitAndRejectMergeCommit(t *testing.T) {
 	gitCommand(t, repository, "add", ".")
 	gitCommand(t, repository, "commit", "-m", "side")
 	sideCommit := gitCommand(t, repository, "rev-parse", "HEAD")
-	if _, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: sideCommit}); err != nil {
+	if _, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: sideCommit}); err != nil {
 		t.Fatalf("Freeze(normal commit) error = %v", err)
 	}
 	gitCommand(t, repository, "switch", "main")
@@ -386,7 +380,7 @@ func TestFreezeCommitAndRejectMergeCommit(t *testing.T) {
 	gitCommand(t, repository, "commit", "-m", "main")
 	gitCommand(t, repository, "merge", "--no-ff", "side", "-m", "merge")
 	merge := gitCommand(t, repository, "rev-parse", "HEAD")
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: merge})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: merge})
 	if err == nil || !strings.Contains(err.Error(), "merge commits are unsupported") {
 		t.Fatalf("Freeze(merge) error = %v", err)
 	}
@@ -398,7 +392,7 @@ func TestFreezeRejectsUnsafeInputs(t *testing.T) {
 	t.Run("binary", func(t *testing.T) {
 		repository := committedRepository(t)
 		writeBytes(t, repository, "file.txt", []byte{'a', 0, 'b'})
-		_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 		if err == nil || !strings.Contains(err.Error(), "binary") {
 			t.Fatalf("Freeze() error = %v", err)
 		}
@@ -407,7 +401,7 @@ func TestFreezeRejectsUnsafeInputs(t *testing.T) {
 	t.Run("sensitive path", func(t *testing.T) {
 		repository := committedRepository(t)
 		writeFile(t, repository, ".env", "TOKEN=secret\n")
-		_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 		if err == nil || !strings.Contains(err.Error(), "sensitive path") {
 			t.Fatalf("Freeze() error = %v", err)
 		}
@@ -426,14 +420,14 @@ func TestFreezeRejectsUnsafeInputs(t *testing.T) {
 			t.Fatal(err)
 		}
 		writeFile(t, repository, "file.txt", "changed\n")
-		_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, ContextFiles: []string{"escape"}})
+		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, ContextFiles: []string{"escape"}})
 		if err == nil || !strings.Contains(err.Error(), "no-follow open") {
 			t.Fatalf("Freeze() error = %v", err)
 		}
 	})
 
 	t.Run("unsafe revision", func(t *testing.T) {
-		_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), committedRepository(t), Request{Mode: protocol.TargetBranch, Base: "--help"})
+		_, err := newCollector(t).Freeze(context.Background(), committedRepository(t), Request{Mode: protocol.TargetBranch, Base: "--help"})
 		if err == nil || !strings.Contains(err.Error(), "non-option Git revision") {
 			t.Fatalf("Freeze() error = %v", err)
 		}
@@ -445,7 +439,7 @@ func TestFreezeRejectsUnsafeInputs(t *testing.T) {
 		gitCommand(t, repository, "config", "filter.evil.clean", "touch "+marker)
 		writeFile(t, repository, ".gitattributes", "*.txt filter=evil\n")
 		writeFile(t, repository, "file.txt", "changed\n")
-		_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 		if err == nil || !strings.Contains(err.Error(), "executable filter") {
 			t.Fatalf("Freeze() error = %v", err)
 		}
@@ -464,7 +458,7 @@ func TestFreezeAllowsPlaceholderOnlyEnvironmentTemplates(t *testing.T) {
 		gitCommand(t, repository, "add", ".")
 		gitCommand(t, repository, "commit", "-m", "template")
 
-		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD", SkipSecretScan: true})
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD"})
 		if err != nil {
 			t.Fatalf("Freeze() error = %v", err)
 		}
@@ -480,7 +474,7 @@ func TestFreezeAllowsPlaceholderOnlyEnvironmentTemplates(t *testing.T) {
 		gitCommand(t, repository, "commit", "-m", "template")
 		writeFile(t, repository, ".env.example", "API_KEY=<your-api-key>\n")
 
-		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, SkipSecretScan: true})
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 		if err != nil {
 			t.Fatalf("Freeze() error = %v", err)
 		}
@@ -493,7 +487,7 @@ func TestFreezeAllowsPlaceholderOnlyEnvironmentTemplates(t *testing.T) {
 		repository := committedRepository(t)
 		writeFile(t, repository, ".env.production.sample", "export API_KEY=${API_KEY}\nEMPTY=\"\"\n")
 
-		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, SkipSecretScan: true})
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 		if err != nil {
 			t.Fatalf("Freeze() error = %v", err)
 		}
@@ -511,7 +505,7 @@ func TestFreezeAllowsPlaceholderOnlyEnvironmentTemplates(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, SkipSecretScan: true})
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 		if err != nil {
 			t.Fatalf("Freeze() error = %v", err)
 		}
@@ -521,7 +515,7 @@ func TestFreezeAllowsPlaceholderOnlyEnvironmentTemplates(t *testing.T) {
 	})
 }
 
-func TestFreezeRejectsEnvironmentTemplateValuesWithoutSecretScan(t *testing.T) {
+func TestFreezeRejectsEnvironmentTemplateValues(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range []struct {
@@ -560,13 +554,9 @@ func TestFreezeRejectsEnvironmentTemplateValuesWithoutSecretScan(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			repository := test.setup(t)
-			scanner := &recordingScanner{}
-			_, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, SkipSecretScan: true})
+			_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 			if err == nil || !strings.Contains(err.Error(), "non-placeholder environment template content") {
 				t.Fatalf("Freeze() error = %v", err)
-			}
-			if scanner.calls != 0 {
-				t.Fatalf("scanner calls = %d, want 0", scanner.calls)
 			}
 		})
 	}
@@ -576,14 +566,9 @@ func TestFreezeRejectsEnvironmentTemplateValuesWithoutSecretScan(t *testing.T) {
 		writeFile(t, repository, ".env.example", "API_KEY=live-credential-value\n")
 		gitCommand(t, repository, "add", ".")
 		gitCommand(t, repository, "commit", "-m", "template")
-		scanner := &recordingScanner{}
-
-		_, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD", SkipSecretScan: true})
+		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD"})
 		if err == nil || !strings.Contains(err.Error(), "non-placeholder environment template content") {
 			t.Fatalf("Freeze() error = %v", err)
-		}
-		if scanner.calls != 0 {
-			t.Fatalf("scanner calls = %d, want 0", scanner.calls)
 		}
 	})
 
@@ -594,14 +579,9 @@ func TestFreezeRejectsEnvironmentTemplateValuesWithoutSecretScan(t *testing.T) {
 		gitCommand(t, repository, "add", ".")
 		gitCommand(t, repository, "commit", "-m", "base")
 		writeFile(t, repository, "file.txt", "changed\n")
-		scanner := &recordingScanner{}
-
-		_, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, ContextFiles: []string{".env.example"}, SkipSecretScan: true})
+		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, ContextFiles: []string{".env.example"}})
 		if err == nil || !strings.Contains(err.Error(), "sensitive context path") {
 			t.Fatalf("Freeze() error = %v", err)
-		}
-		if scanner.calls != 0 {
-			t.Fatalf("scanner calls = %d, want 0", scanner.calls)
 		}
 	})
 }
@@ -611,7 +591,7 @@ func TestFreezeReportsOversizedContributors(t *testing.T) {
 
 	repository := committedRepository(t)
 	writeFile(t, repository, "large.txt", strings.Repeat("x", 256))
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 128})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 128})
 	var sizeError *SizeError
 	if !errors.As(err, &sizeError) {
 		t.Fatalf("Freeze() error = %v, want SizeError", err)
@@ -626,7 +606,7 @@ func TestFreezeReportsOversizedTrackedPath(t *testing.T) {
 
 	repository := committedRepository(t)
 	writeFile(t, repository, "file.txt", strings.Repeat("x", 1024)+"\n")
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 128})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 128})
 	var sizeError *SizeError
 	if !errors.As(err, &sizeError) {
 		t.Fatalf("Freeze() error = %v, want SizeError", err)
@@ -643,7 +623,7 @@ func TestFreezePreservesStagedChangeCounteractedInWorktree(t *testing.T) {
 	writeFile(t, repository, "file.txt", "staged content\n")
 	gitCommand(t, repository, "add", "file.txt")
 	writeFile(t, repository, "file.txt", "base\n")
-	bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err != nil {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -655,15 +635,14 @@ func TestFreezePreservesStagedChangeCounteractedInWorktree(t *testing.T) {
 	}
 }
 
-func TestFreezeEnforcesAggregateUntrackedBudgetBeforeScanning(t *testing.T) {
+func TestFreezeEnforcesAggregateUntrackedBudget(t *testing.T) {
 	t.Parallel()
 
 	repository := committedRepository(t)
 	writeFile(t, repository, "a.txt", strings.Repeat("a", 80))
 	writeFile(t, repository, "b.txt", strings.Repeat("b", 80))
 	writeFile(t, repository, "c.txt", strings.Repeat("c", 80))
-	scanner := &recordingScanner{}
-	_, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 180})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 180})
 	var sizeError *SizeError
 	if !errors.As(err, &sizeError) {
 		t.Fatalf("Freeze() error = %v, want SizeError", err)
@@ -673,9 +652,6 @@ func TestFreezeEnforcesAggregateUntrackedBudgetBeforeScanning(t *testing.T) {
 	}
 	if !strings.Contains(sizeError.Error(), "framing") || !strings.Contains(sizeError.Error(), "untracked:a.txt") || !strings.Contains(sizeError.Error(), "untracked:b.txt") || !strings.Contains(sizeError.Error(), "untracked:c.txt") {
 		t.Fatalf("contributors = %v, want framing and all three files", sizeError.Contributors)
-	}
-	if scanner.calls != 0 {
-		t.Fatal("scanner ran for oversized aggregate")
 	}
 }
 
@@ -689,7 +665,7 @@ func TestOversizedDiffContributorsUseBytesNotLineCounts(t *testing.T) {
 	gitCommand(t, repository, "commit", "-m", "base")
 	writeFile(t, repository, "huge.txt", strings.Repeat("x", 2048)+"\n")
 	writeFile(t, repository, "many.txt", strings.Repeat("x\n", 100))
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 128})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 128})
 	var sizeError *SizeError
 	if !errors.As(err, &sizeError) {
 		t.Fatalf("Freeze() error = %v, want SizeError", err)
@@ -708,135 +684,12 @@ func TestFreezeAcceptsDiffLineLargerThanDefaultLimitWhenConfigured(t *testing.T)
 
 	repository := committedRepository(t)
 	writeFile(t, repository, "file.txt", strings.Repeat("x", (1<<20)+128)+"\n")
-	bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 3 << 20})
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 3 << 20})
 	if err != nil {
 		t.Fatalf("Freeze() error = %v", err)
 	}
 	if got := targetPaths(bundle.Target()); !equalStrings(got, []string{"file.txt"}) {
 		t.Fatalf("target paths = %v", got)
-	}
-}
-
-func TestFreezeSkipSecretScanDoesNotCallScanner(t *testing.T) {
-	t.Parallel()
-
-	repository := committedRepository(t)
-	writeFile(t, repository, "file.txt", "changed\n")
-	scanner := &recordingScanner{err: ErrSecretFound}
-	bundle, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, SkipSecretScan: true})
-	if err != nil {
-		t.Fatalf("Freeze() error = %v", err)
-	}
-	if scanner.calls != 0 {
-		t.Fatalf("scanner calls = %d, want 0", scanner.calls)
-	}
-	if got := targetPaths(bundle.Target()); !equalStrings(got, []string{"file.txt"}) {
-		t.Fatalf("target paths = %v", got)
-	}
-}
-
-func TestNewContextCanceledProbeIsNotSecretScan(t *testing.T) {
-	repository := committedRepository(t)
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	_, err := NewContext(ctx, Options{Repository: repository})
-	if err == nil || errors.Is(err, ErrSecretScan) {
-		t.Fatalf("NewContext() error = %v", err)
-	}
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("NewContext() error = %v, want canceled", err)
-	}
-}
-
-func TestNewContextMissingTruffleHogIsSecretScan(t *testing.T) {
-	repository := committedRepository(t)
-	gitPath, err := exec.LookPath("git")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", t.TempDir())
-	_, err = NewContext(t.Context(), Options{Repository: repository, GitPath: gitPath})
-	if !errors.Is(err, ErrSecretScan) || !strings.Contains(err.Error(), "find trufflehog") {
-		t.Fatalf("NewContext() error = %v", err)
-	}
-}
-
-func TestNewContextSkipSecretScanDoesNotRequireTruffleHog(t *testing.T) {
-	repository := committedRepository(t)
-	writeFile(t, repository, "file.txt", "changed\n")
-	gitPath, err := exec.LookPath("git")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", filepath.Dir(gitPath)+string(os.PathListSeparator)+t.TempDir())
-	collector, err := NewContext(t.Context(), Options{Repository: repository, SkipSecretScan: true})
-	if err != nil {
-		t.Fatalf("NewContext() error = %v", err)
-	}
-	if collector.scanner != nil {
-		t.Fatal("skip-secret-scan resolved a scanner")
-	}
-	bundle, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, SkipSecretScan: true})
-	if err != nil {
-		t.Fatalf("Freeze() error = %v", err)
-	}
-	if got := targetPaths(bundle.Target()); !equalStrings(got, []string{"file.txt"}) {
-		t.Fatalf("target paths = %v", got)
-	}
-}
-
-func TestFreezeFailsClosedWhenSecretScannerIsUnavailable(t *testing.T) {
-	t.Parallel()
-
-	repository := committedRepository(t)
-	writeFile(t, repository, "file.txt", "changed\n")
-	collector, err := New(Options{SkipSecretScan: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
-	if !errors.Is(err, ErrSecretScan) || !strings.Contains(err.Error(), "secret scanner is unavailable") {
-		t.Fatalf("Freeze() error = %v", err)
-	}
-}
-
-func TestFreezeFailsClosedOnScannerErrorAndCancellation(t *testing.T) {
-	t.Parallel()
-
-	repository := committedRepository(t)
-	writeFile(t, repository, "file.txt", "changed\n")
-	scannerFailure := errors.New("scanner unavailable")
-	scanner := &recordingScanner{err: scannerFailure}
-	_, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
-	if !errors.Is(err, ErrSecretScan) || !errors.Is(err, scannerFailure) || !strings.Contains(err.Error(), "scanner unavailable") {
-		t.Fatalf("Freeze() error = %v", err)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	_, err = newCollector(t, &recordingScanner{}).Freeze(ctx, repository, Request{Mode: protocol.TargetLocal})
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("Freeze(cancelled) error = %v", err)
-	}
-}
-
-func TestFreezePreservesTerminalScannerErrors(t *testing.T) {
-	t.Parallel()
-
-	terminalErrors := []error{ErrSecretFound, context.Canceled, context.DeadlineExceeded}
-	for _, terminalError := range terminalErrors {
-		t.Run(terminalError.Error(), func(t *testing.T) {
-			t.Parallel()
-			repository := committedRepository(t)
-			writeFile(t, repository, "file.txt", "changed\n")
-			_, err := newCollector(t, &recordingScanner{err: terminalError}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
-			if err != terminalError {
-				t.Fatalf("Freeze() error = %v, want unchanged %v", err, terminalError)
-			}
-			if errors.Is(err, ErrSecretScan) {
-				t.Fatalf("Freeze() error = %v, unexpectedly tagged ErrSecretScan", err)
-			}
-		})
 	}
 }
 
@@ -845,7 +698,7 @@ func TestVerifyUnchangedDetectsIndexOnlyMutation(t *testing.T) {
 
 	repository := committedRepository(t)
 	writeFile(t, repository, "file.txt", "working content\n")
-	bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -885,7 +738,7 @@ func TestVerifyUnchangedImmutableModesIgnoreUnrelatedWorktreeState(t *testing.T)
 			t.Parallel()
 			repository := committedRepository(t)
 			request := test.request(t, repository)
-			bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, request)
+			bundle, err := newCollector(t).Freeze(context.Background(), repository, request)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -912,7 +765,7 @@ func TestVerifyUnchangedImmutableModesDetectRelevantChanges(t *testing.T) {
 		gitCommand(t, repository, "switch", "-c", "feature")
 		writeFile(t, repository, "file.txt", "feature\n")
 		gitCommand(t, repository, "commit", "-am", "feature")
-		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -931,7 +784,7 @@ func TestVerifyUnchangedImmutableModesDetectRelevantChanges(t *testing.T) {
 		gitCommand(t, repository, "switch", "-c", "feature")
 		writeFile(t, repository, "file.txt", "feature\n")
 		gitCommand(t, repository, "commit", "-am", "feature")
-		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -950,7 +803,7 @@ func TestVerifyUnchangedImmutableModesDetectRelevantChanges(t *testing.T) {
 		writeFile(t, repository, "file.txt", "second\n")
 		gitCommand(t, repository, "commit", "-am", "second")
 		second := gitCommand(t, repository, "rev-parse", "HEAD")
-		bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "reviewed"})
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "reviewed"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -973,7 +826,7 @@ func TestVerifyUnchangedImmutableModesDetectRelevantChanges(t *testing.T) {
 			} else {
 				request.Commit = "HEAD"
 			}
-			bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, request)
+			bundle, err := newCollector(t).Freeze(context.Background(), repository, request)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1036,7 +889,7 @@ func TestVerifyUnchangedRejectsNewRepositoryFilterWithoutExecutingIt(t *testing.
 	gitCommand(t, repository, "add", ".gitattributes")
 	gitCommand(t, repository, "commit", "-m", "attributes")
 	writeFile(t, repository, "file.txt", "working content\n")
-	bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1055,7 +908,7 @@ func TestVerifyUnchangedDetectsIndexFlags(t *testing.T) {
 
 	repository := committedRepository(t)
 	writeFile(t, repository, "file.txt", "changed\n")
-	bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1073,7 +926,7 @@ func TestFreezeRejectsPreexistingHiddenIndexFlags(t *testing.T) {
 			repository := committedRepository(t)
 			gitCommand(t, repository, "update-index", flag, "file.txt")
 			writeFile(t, repository, "file.txt", "hidden change\n")
-			_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+			_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 			if err == nil || !strings.Contains(err.Error(), "index flags") {
 				t.Fatalf("Freeze() error = %v", err)
 			}
@@ -1088,7 +941,7 @@ func TestFreezeBoundsContextInventoryBeforeCopy(t *testing.T) {
 	for index := range contexts {
 		contexts[index] = fmt.Sprintf("context-%03d.txt", index)
 	}
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), committedRepository(t), Request{Mode: protocol.TargetLocal, MaxBytes: 256, ContextFiles: contexts})
+	_, err := newCollector(t).Freeze(context.Background(), committedRepository(t), Request{Mode: protocol.TargetLocal, MaxBytes: 256, ContextFiles: contexts})
 	var sizeError *SizeError
 	if !errors.As(err, &sizeError) || !strings.Contains(sizeError.Error(), "framing") {
 		t.Fatalf("Freeze() error = %v, want context inventory SizeError", err)
@@ -1101,7 +954,7 @@ func TestFreezeRejectsRepositoryLocalExcludesFile(t *testing.T) {
 	repository := committedRepository(t)
 	gitCommand(t, repository, "config", "core.excludesFile", ".custom-ignore")
 	writeFile(t, repository, "file.txt", "changed\n")
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err == nil || !strings.Contains(err.Error(), "external excludes file") {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -1114,21 +967,17 @@ func TestFreezeBoundsEmptyFileFraming(t *testing.T) {
 	for index := 0; index < 100; index++ {
 		writeFile(t, repository, fmt.Sprintf("empty-%03d.txt", index), "")
 	}
-	scanner := &recordingScanner{}
-	_, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 512})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 512})
 	var sizeError *SizeError
 	if !errors.As(err, &sizeError) || !strings.Contains(sizeError.Error(), "framing") {
 		t.Fatalf("Freeze() error = %v, want framing SizeError", err)
-	}
-	if scanner.calls != 0 {
-		t.Fatal("scanner ran for framing-oversized target")
 	}
 }
 
 func TestFreezeRejectsImpracticalMaximum(t *testing.T) {
 	t.Parallel()
 
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), committedRepository(t), Request{Mode: protocol.TargetLocal, MaxBytes: MaximumMaxBytes + 1})
+	_, err := newCollector(t).Freeze(context.Background(), committedRepository(t), Request{Mode: protocol.TargetLocal, MaxBytes: MaximumMaxBytes + 1})
 	if err == nil || !strings.Contains(err.Error(), "max bundle bytes") {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -1142,7 +991,7 @@ func TestGitSandboxIgnoresRepositoryInfoAttributesAndFilterConfig(t *testing.T) 
 	writeFile(t, repository, ".git/info/attributes", "*.txt filter=evil\n")
 	gitCommand(t, repository, "config", "filter.evil.clean", "touch "+marker)
 	writeFile(t, repository, "file.txt", "changed\n")
-	collector, err := New(Options{Repository: repository, Scanner: &recordingScanner{}})
+	collector, err := New(Options{Repository: repository})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1174,7 +1023,7 @@ func TestFreezeRejectsArbitrarilyNamedTerraformState(t *testing.T) {
 
 	repository := committedRepository(t)
 	writeFile(t, repository, "prod.tfstate", "{}\n")
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err == nil || !strings.Contains(err.Error(), "sensitive path") {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -1192,7 +1041,7 @@ func TestFreezeRejectsSensitiveContextThroughInternalSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeFile(t, repository, "file.txt", "changed\n")
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, ContextFiles: []string{"context.txt"}})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, ContextFiles: []string{"context.txt"}})
 	if err == nil || !strings.Contains(err.Error(), "no-follow open") {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -1209,7 +1058,7 @@ func TestFreezeRejectsFIFOWithoutBlocking(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeFile(t, repository, "file.txt", "changed\n")
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, ContextFiles: []string{"pipe"}})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, ContextFiles: []string{"pipe"}})
 	if err == nil || !strings.Contains(err.Error(), "not a regular file") {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -1228,7 +1077,7 @@ func TestFreezeRejectsGitMetadataFIFOWithoutBlocking(t *testing.T) {
 			if err := unix.Mkfifo(path, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+			_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 			if err == nil || !strings.Contains(err.Error(), "not a regular file") {
 				t.Fatalf("Freeze() error = %v", err)
 			}
@@ -1241,7 +1090,7 @@ func TestFreezeRejectsSplitIndex(t *testing.T) {
 
 	repository := committedRepository(t)
 	gitCommand(t, repository, "update-index", "--split-index")
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err == nil || !strings.Contains(err.Error(), "split Git indexes are unsupported") {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -1253,7 +1102,7 @@ func TestFreezeSupportsVersionFourIndex(t *testing.T) {
 	repository := committedRepository(t)
 	gitCommand(t, repository, "update-index", "--index-version=4")
 	writeFile(t, repository, "file.txt", "version four change\n")
-	if _, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
+	if _, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
 		t.Fatalf("Freeze() error = %v", err)
 	}
 }
@@ -1269,7 +1118,7 @@ func TestFreezeSupportsSHA256Index(t *testing.T) {
 	gitCommand(t, repository, "add", ".")
 	gitCommand(t, repository, "commit", "-m", "base")
 	writeFile(t, repository, "file.txt", "changed\n")
-	if _, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
+	if _, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
 		t.Fatalf("Freeze() error = %v", err)
 	}
 }
@@ -1279,11 +1128,11 @@ func TestFreezeRejectsPayloadExactlyOneByteOverLimit(t *testing.T) {
 
 	repository := committedRepository(t)
 	writeFile(t, repository, "file.txt", "changed\n")
-	bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: int64(len(bundle.Payload()) - 1)})
+	_, err = newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: int64(len(bundle.Payload()) - 1)})
 	var sizeError *SizeError
 	if !errors.As(err, &sizeError) || sizeError.Actual != int64(len(bundle.Payload())) {
 		t.Fatalf("Freeze() error = %v, want exact one-byte-over SizeError", err)
@@ -1295,7 +1144,7 @@ func TestFreezeRejectsWorktreeRedirectOutsideRequestedCheckout(t *testing.T) {
 
 	repository := committedRepository(t)
 	gitCommand(t, repository, "config", "core.worktree", t.TempDir())
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err == nil || !strings.Contains(err.Error(), "does not contain requested repository path") {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -1307,7 +1156,7 @@ func TestFreezeRejectsMalformedHEADInsteadOfTreatingItAsUnborn(t *testing.T) {
 	repository := newRepository(t)
 	writeFile(t, repository, ".git/refs/heads/main", "malformed\n")
 	writeFile(t, repository, "file.txt", "content\n")
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err == nil || !strings.Contains(err.Error(), "resolve HEAD") {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -1331,7 +1180,7 @@ func TestFreezeSeesMergeParentsPastShallowMetadata(t *testing.T) {
 	gitCommand(t, repository, "merge", "--no-ff", "side", "-m", "merge")
 	merge := gitCommand(t, repository, "rev-parse", "HEAD")
 	writeFile(t, repository, ".git/shallow", merge+"\n")
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: merge})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: merge})
 	if err == nil || !strings.Contains(err.Error(), "merge commits are unsupported") {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -1351,7 +1200,7 @@ func TestBranchFreezeAndVerifyIgnoreLiveAncestryOverrides(t *testing.T) {
 			head := gitCommand(t, repository, "rev-parse", "HEAD")
 			writeFile(t, repository, filepath.Join(".git", metadata), head+"\n")
 
-			bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
+			bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "main"})
 			if err != nil {
 				t.Fatalf("Freeze() error = %v", err)
 			}
@@ -1481,143 +1330,8 @@ func TestFreezeIgnoresRepositoryColorConfiguration(t *testing.T) {
 	gitCommand(t, repository, "config", "color.ui", "always")
 	gitCommand(t, repository, "config", "color.diff", "always")
 	writeFile(t, repository, "file.txt", "changed\n")
-	if _, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
+	if _, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
 		t.Fatalf("Freeze() error = %v", err)
-	}
-}
-
-func TestScannerUsesSeparateHomeAndPreservesExitError(t *testing.T) {
-	t.Parallel()
-
-	script := filepath.Join(t.TempDir(), "trufflehog")
-	writeFile(t, filepath.Dir(script), filepath.Base(script), "#!/bin/sh\nfor last in \"$@\"; do :; done\nif [ ! -e \"$last/frozen-review.txt\" ]; then exit 0; fi\nif [ \"$HOME\" = \"$last\" ]; then exit 6; fi\nexit 7\n")
-	if err := os.Chmod(script, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	scanner, err := newTruffleHogScanner(t.Context(), script, repositoryBoundaryFixture(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = scanner.Scan(context.Background(), "benign")
-	var exitError *exec.ExitError
-	if !errors.As(err, &exitError) || exitError.ExitCode() != 7 {
-		t.Fatalf("Scan() error = %v, want wrapped exit code 7", err)
-	}
-}
-
-func TestCollectorNeverExecutesRepositoryLocalTruffleHog(t *testing.T) {
-	repository := committedRepository(t)
-	marker := filepath.Join(t.TempDir(), "executed")
-	repositoryBin := filepath.Join(repository, "bin")
-	writeFile(t, repositoryBin, "trufflehog", "#!/bin/sh\nprintf executed > "+quoteShellTest(marker)+"\nexit 99\n")
-	if err := os.Chmod(filepath.Join(repositoryBin, "trufflehog"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	externalBin := t.TempDir()
-	writeFile(t, externalBin, "trufflehog", "#!/bin/sh\nexit 0\n")
-	if err := os.Chmod(filepath.Join(externalBin, "trufflehog"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", repositoryBin+string(os.PathListSeparator)+externalBin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	writeFile(t, repository, "file.txt", "changed\n")
-
-	collector, err := New(Options{Repository: repository})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("repository-local trufflehog was executed: %v", err)
-	}
-}
-
-func TestCollectorPreservesLexicalAndResolvedTruffleHogBoundaries(t *testing.T) {
-	lexicalRepository := committedRepository(t)
-	resolvedRepository := committedRepository(t)
-	alias := filepath.Join(lexicalRepository, "linked")
-	if err := os.Symlink(resolvedRepository, alias); err != nil {
-		t.Fatal(err)
-	}
-	repositoryContext, err := repositorypkg.Resolve(context.Background(), repositorypkg.Options{Path: alias})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Rename(filepath.Join(lexicalRepository, ".git"), filepath.Join(lexicalRepository, ".git-old")); err != nil {
-		t.Fatal(err)
-	}
-	var pathEntries []string
-	var markers []string
-	for _, repository := range []string{lexicalRepository, resolvedRepository} {
-		bin := filepath.Join(repository, "bin")
-		marker := filepath.Join(t.TempDir(), "executed")
-		writeFile(t, bin, "trufflehog", "#!/bin/sh\n: > "+quoteShellTest(marker)+"\nexit 99\n")
-		if err := os.Chmod(filepath.Join(bin, "trufflehog"), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		pathEntries = append(pathEntries, bin)
-		markers = append(markers, marker)
-	}
-	externalBin := t.TempDir()
-	external := filepath.Join(externalBin, "trufflehog")
-	writeFile(t, externalBin, "trufflehog", "#!/bin/sh\nexit 0\n")
-	if err := os.Chmod(external, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	pathEntries = append(pathEntries, externalBin, "/usr/bin", "/bin")
-	t.Setenv("PATH", strings.Join(pathEntries, string(os.PathListSeparator)))
-	collector, err := NewContext(context.Background(), Options{Context: repositoryContext})
-	if err != nil {
-		t.Fatal(err)
-	}
-	scanner, ok := collector.scanner.(*truffleHogScanner)
-	if !ok {
-		t.Fatalf("scanner = %T", collector.scanner)
-	}
-	want, err := filepath.EvalSymlinks(external)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if scanner.path != want {
-		t.Fatalf("scanner path = %q, want %q", scanner.path, want)
-	}
-	for _, marker := range markers {
-		if _, err := os.Stat(marker); !os.IsNotExist(err) {
-			t.Fatalf("repository TruffleHog executed: %v", err)
-		}
-	}
-}
-
-func TestCollectorSkipsUnusablePathShim(t *testing.T) {
-	repository := committedRepository(t)
-	shimBin := t.TempDir()
-	manager := filepath.Join(shimBin, "manager")
-	writeFile(t, shimBin, "manager", "#!/bin/sh\nprintf 'raw dependency output' >&2\nexit 9\n")
-	if err := os.Chmod(manager, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(manager, filepath.Join(shimBin, "trufflehog")); err != nil {
-		t.Fatal(err)
-	}
-	healthyBin := t.TempDir()
-	marker := filepath.Join(t.TempDir(), "healthy-scanner-ran")
-	writeFile(t, healthyBin, "trufflehog", "#!/bin/sh\nfor last in \"$@\"; do :; done\nif [ ! -e \"$last/frozen-review.txt\" ]; then exit 0; fi\nprintf scanned > "+quoteShellTest(marker)+"\n")
-	if err := os.Chmod(filepath.Join(healthyBin, "trufflehog"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("PATH", strings.Join([]string{shimBin, healthyBin, os.Getenv("PATH")}, string(os.PathListSeparator)))
-	writeFile(t, repository, "file.txt", "changed\n")
-
-	collector, err := New(Options{Repository: repository})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(marker); err != nil {
-		t.Fatalf("healthy scanner was not executed: %v", err)
 	}
 }
 
@@ -1652,7 +1366,7 @@ func TestFreezeAssignsRangesForQuotedDiffPath(t *testing.T) {
 	gitCommand(t, repository, "add", ".")
 	gitCommand(t, repository, "commit", "-m", "base")
 	writeFile(t, repository, path, "one\nchanged\n")
-	bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err != nil {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -1680,7 +1394,7 @@ func TestFreezeRejectsTrackedPathThroughIntermediateSymlink(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(repository, "dir")); err != nil {
 		t.Fatal(err)
 	}
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err == nil || !strings.Contains(err.Error(), "no-follow open") {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -1700,71 +1414,12 @@ func TestResolveCommitIgnoresReplacementRefsWhilePeelingTag(t *testing.T) {
 	gitCommand(t, repository, "commit", "-am", "second")
 	second := gitCommand(t, repository, "rev-parse", "HEAD")
 	gitCommand(t, repository, "replace", "-f", tagObject, second)
-	bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "v1"})
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "v1"})
 	if err != nil {
 		t.Fatalf("Freeze() error = %v", err)
 	}
 	if bundle.Target().CommitRevision != first {
 		t.Fatalf("commit revision = %s, want raw tag target %s", bundle.Target().CommitRevision, first)
-	}
-}
-
-func TestFreezeCancelsBlockingScanner(t *testing.T) {
-	t.Parallel()
-
-	repository := committedRepository(t)
-	writeFile(t, repository, "file.txt", "changed\n")
-	ctx, cancel := context.WithCancel(context.Background())
-	scanner := ScannerFunc(func(ctx context.Context, _ string) error {
-		cancel()
-		<-ctx.Done()
-		return ctx.Err()
-	})
-	_, err := newCollector(t, scanner).Freeze(ctx, repository, Request{Mode: protocol.TargetLocal})
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("Freeze() error = %v, want context cancellation", err)
-	}
-	if errors.Is(err, ErrSecretScan) {
-		t.Fatalf("Freeze() error = %v, unexpectedly tagged ErrSecretScan", err)
-	}
-}
-
-func TestScannerReceivesDeletedBytes(t *testing.T) {
-	t.Parallel()
-
-	repository := newRepository(t)
-	writeFile(t, repository, "remove.txt", "deleted-secret-sentinel-value\n")
-	gitCommand(t, repository, "add", ".")
-	gitCommand(t, repository, "commit", "-m", "secret")
-	if err := os.Remove(filepath.Join(repository, "remove.txt")); err != nil {
-		t.Fatal(err)
-	}
-	scanner := &recordingScanner{}
-	if _, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
-		t.Fatalf("Freeze() error = %v", err)
-	}
-	if !strings.Contains(scanner.payload, "deleted-secret-sentinel-value") {
-		t.Fatal("secret scanner payload omitted deleted bytes")
-	}
-}
-
-func TestScannerReceivesRawMultilineDeletedBytes(t *testing.T) {
-	t.Parallel()
-
-	repository := newRepository(t)
-	deleted := "-----BEGIN PRIVATE KEY-----\nmultiline-sentinel\n-----END PRIVATE KEY-----\n"
-	writeFile(t, repository, "remove.pem.txt", deleted)
-	gitCommand(t, repository, "add", ".")
-	gitCommand(t, repository, "commit", "-m", "raw deleted material")
-	if err := os.Remove(filepath.Join(repository, "remove.pem.txt")); err != nil {
-		t.Fatal(err)
-	}
-	scanner := &recordingScanner{}
-	if _, err := newCollector(t, scanner).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal}); err != nil {
-		t.Fatalf("Freeze() error = %v", err)
-	}
-	if !strings.Contains(scanner.payload, deleted) {
-		t.Fatal("secret scanner payload omitted contiguous raw deleted bytes")
 	}
 }
 
@@ -1780,7 +1435,7 @@ func TestFreezePreservesDeletedRangesWhenPathIsRecreatedUntracked(t *testing.T) 
 	}
 	gitCommand(t, repository, "add", "file.txt")
 	writeFile(t, repository, "file.txt", "new\n")
-	bundle, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err != nil {
 		t.Fatalf("Freeze() error = %v", err)
 	}
@@ -1800,15 +1455,15 @@ func TestFreezeRejectsTrackedFIFO(t *testing.T) {
 	if err := unix.Mkfifo(filepath.Join(repository, "file.txt"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err := newCollector(t, &recordingScanner{}).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 	if err == nil || !strings.Contains(err.Error(), "not a regular file") {
 		t.Fatalf("Freeze() error = %v", err)
 	}
 }
 
-func newCollector(t *testing.T, scanner Scanner) *Collector {
+func newCollector(t *testing.T) *Collector {
 	t.Helper()
-	collector, err := New(Options{Scanner: scanner})
+	collector, err := New(Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1828,7 +1483,7 @@ func preparedCollectorWithGitWrapper(t *testing.T) (*Collector, string, string) 
 	}
 	directory := t.TempDir()
 	gitPath := filepath.Join(directory, "git")
-	writeFile(t, directory, "git", "#!/bin/sh\nexec "+quoteShellTest(realGit)+" \"$@\"\n")
+	writeFile(t, directory, "git", fmt.Sprintf("#!/bin/sh\nexec %q \"$@\"\n", realGit))
 	if err := os.Chmod(gitPath, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -1836,7 +1491,7 @@ func preparedCollectorWithGitWrapper(t *testing.T) (*Collector, string, string) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	collector, err := NewContext(context.Background(), Options{Context: repositoryContext, Scanner: &recordingScanner{}})
+	collector, err := NewContext(context.Background(), Options{Context: repositoryContext})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1872,12 +1527,6 @@ func repositoryBoundaryFixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return repository
-}
-
-type ScannerFunc func(context.Context, string) error
-
-func (scan ScannerFunc) Scan(ctx context.Context, payload string) error {
-	return scan(ctx, payload)
 }
 
 type cancelAfterChecksContext struct {

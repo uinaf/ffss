@@ -37,8 +37,8 @@ func TestResolveUsesOutermostRepositoryBoundary(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(nested, ".git"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	path := writeExecutable(t, filepath.Join(repository, "bin", "trufflehog"))
-	if _, err := Resolve(t.Context(), "trufflehog", path, nested, nil, successfulCheck); err == nil {
+	path := writeExecutable(t, filepath.Join(repository, "bin", "tool"))
+	if _, err := Resolve(t.Context(), "tool", path, nested, nil, successfulCheck); err == nil {
 		t.Fatal("Resolve() accepted an executable in the outer reviewed repository")
 	}
 }
@@ -143,15 +143,15 @@ func TestResolveSkipsShimThatFailsCapabilityProbe(t *testing.T) {
 	if err := os.WriteFile(manager, []byte("#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then exit 0; fi\nexit 9\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(manager, filepath.Join(shimBin, "trufflehog")); err != nil {
+	if err := os.Symlink(manager, filepath.Join(shimBin, "tool")); err != nil {
 		t.Fatal(err)
 	}
-	healthy := writeExecutable(t, filepath.Join(healthyBin, "trufflehog"))
+	healthy := writeExecutable(t, filepath.Join(healthyBin, "tool"))
 	environment := []string{
 		"PATH=" + strings.Join([]string{shimBin, healthyBin}, string(os.PathListSeparator)),
 		"HOME=" + t.TempDir(),
 	}
-	resolved, err := Resolve(t.Context(), "trufflehog", "", repository, environment, Probe([]string{"filesystem"}, t.TempDir(), environment))
+	resolved, err := Resolve(t.Context(), "tool", "", repository, environment, Probe([]string{"check"}, t.TempDir(), environment))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,8 +164,8 @@ func TestResolveStopsWhenProbeCleanupFails(t *testing.T) {
 	repository := testRepository(t)
 	firstBin := t.TempDir()
 	secondBin := t.TempDir()
-	writeExecutable(t, filepath.Join(firstBin, "trufflehog"))
-	writeExecutable(t, filepath.Join(secondBin, "trufflehog"))
+	writeExecutable(t, filepath.Join(firstBin, "tool"))
+	writeExecutable(t, filepath.Join(secondBin, "tool"))
 	checks := 0
 	check := func(context.Context, string) error {
 		checks++
@@ -176,7 +176,7 @@ func TestResolveStopsWhenProbeCleanupFails(t *testing.T) {
 	}
 
 	path := strings.Join([]string{firstBin, secondBin}, string(os.PathListSeparator))
-	_, err := Resolve(t.Context(), "trufflehog", "", repository, []string{"PATH=" + path}, check)
+	_, err := Resolve(t.Context(), "tool", "", repository, []string{"PATH=" + path}, check)
 	if err == nil || !strings.Contains(err.Error(), "capability probe cleanup failed") {
 		t.Fatalf("Resolve() error = %v", err)
 	}
@@ -211,14 +211,14 @@ func TestResolvePreservesUsableStandaloneSymlink(t *testing.T) {
 
 	repository := testRepository(t)
 	bin := t.TempDir()
-	target := writeExecutable(t, filepath.Join(t.TempDir(), "trufflehog-3.90.0"))
-	link := filepath.Join(bin, "trufflehog")
+	target := writeExecutable(t, filepath.Join(t.TempDir(), "tool-1.0.0"))
+	link := filepath.Join(bin, "tool")
 	if err := os.Symlink(target, link); err != nil {
 		t.Fatal(err)
 	}
 	environment := []string{"PATH=" + bin, "HOME=" + t.TempDir()}
 
-	resolved, err := Resolve(t.Context(), "trufflehog", "", repository, environment, Probe([]string{"--version"}, t.TempDir(), environment))
+	resolved, err := Resolve(t.Context(), "tool", "", repository, environment, Probe([]string{"--version"}, t.TempDir(), environment))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,13 +261,13 @@ func TestResolveStopsOnCallerDeadline(t *testing.T) {
 	repository := testRepository(t)
 	hangingBin := t.TempDir()
 	healthyBin := t.TempDir()
-	writeExecutableContent(t, filepath.Join(hangingBin, "trufflehog"), "#!/bin/sh\n/bin/sleep 5\n")
-	writeExecutable(t, filepath.Join(healthyBin, "trufflehog"))
+	writeExecutableContent(t, filepath.Join(hangingBin, "tool"), "#!/bin/sh\n/bin/sleep 5\n")
+	writeExecutable(t, filepath.Join(healthyBin, "tool"))
 	environment := []string{"PATH=" + strings.Join([]string{hangingBin, healthyBin}, string(os.PathListSeparator))}
 	ctx, cancel := context.WithTimeout(t.Context(), 25*time.Millisecond)
 	defer cancel()
 
-	_, err := Resolve(ctx, "trufflehog", "", repository, environment, Probe([]string{"--version"}, t.TempDir(), environment))
+	_, err := Resolve(ctx, "tool", "", repository, environment, Probe([]string{"--version"}, t.TempDir(), environment))
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("Resolve() error = %v, want caller deadline", err)
 	}
@@ -329,10 +329,10 @@ func TestResolveDoesNotExposeProbeOutput(t *testing.T) {
 
 	repository := testRepository(t)
 	bin := t.TempDir()
-	writeExecutableContent(t, filepath.Join(bin, "trufflehog"), "#!/bin/sh\nprintf 'raw dependency output' >&2\nexit 9\n")
+	writeExecutableContent(t, filepath.Join(bin, "tool"), "#!/bin/sh\nprintf 'raw dependency output' >&2\nexit 9\n")
 	environment := []string{"PATH=" + bin, "HOME=" + t.TempDir()}
 
-	_, err := Resolve(t.Context(), "trufflehog", "", repository, environment, Probe([]string{"--version"}, t.TempDir(), environment))
+	_, err := Resolve(t.Context(), "tool", "", repository, environment, Probe([]string{"--version"}, t.TempDir(), environment))
 	if err == nil || !strings.Contains(err.Error(), "not usable under the hardened environment") {
 		t.Fatalf("Resolve() error = %v", err)
 	}

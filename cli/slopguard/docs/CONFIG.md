@@ -20,7 +20,7 @@ Both YAML files use the same strict schema:
 ```yaml
 engine: codex
 model: gpt-5.6
-reasoning_effort: high
+reasoning_effort: medium
 timeout: 15m
 retries: 1
 max_bytes: 1048576
@@ -37,6 +37,10 @@ telemetry: false
 
 `max_bytes` defaults to 1 MiB and must be between 1 byte and 128 MiB
 (`134217728`).
+
+Default reasoning effort depends on the selected provider: `medium` for Codex
+and Claude, and `high` for Cursor and Grok. Any explicit configuration source
+overrides the provider default.
 
 - Each configuration file must be a regular file no larger than 64 KiB, and
   symbolic links are rejected.

@@ -47,10 +47,9 @@ slopguard --version
 Go-built binaries track `main` and report `dev (unknown)`; `selfupdate`
 refuses them. Signed, versioned builds come from the tap or the installer.
 
-Runtime dependencies are Git 2.41 or newer and the selected review harness
-on `PATH`. TruffleHog is required unless `--skip-secret-scan` is set for
-that run. Multiple supported harnesses may be installed; `--engine` selects
-exactly one. The skip flag is CLI-only and is for a known false positive.
+Runtime dependencies are Git 2.41 or newer and the selected review harness on
+`PATH`. Multiple supported harnesses may be installed; `--engine` selects
+exactly one.
 
 ## Quick use
 

@@ -2,6 +2,7 @@
 
 Select this engine with `--engine codex`. The adapter always passes an explicit
 model; an empty model setting resolves to `gpt-5.6-sol`, with no fallback.
+Reasoning effort defaults to `medium`.
 
 ## Runtime contract
 

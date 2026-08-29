@@ -2,7 +2,8 @@
 
 Select this engine with `--engine claude`. The adapter always passes an explicit
 model; an empty model setting resolves to `claude-opus-5`, with no fallback.
-Effort must be `low`, `medium`, `high`, `xhigh`, or `max`.
+Effort defaults to `high` and must be `low`, `medium`, `high`, `xhigh`, or
+`max`.
 
 ## Runtime contract
 

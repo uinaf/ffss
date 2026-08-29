@@ -43,10 +43,6 @@ func TestBinaryLiveProviderMatrix(t *testing.T) {
 	if os.Getenv("SLOPGUARD_TEST_LIVE") != "1" {
 		t.Skip("run with mise run verify:live")
 	}
-	if _, err := exec.LookPath("trufflehog"); err != nil {
-		t.Fatal("live verification requires trufflehog on PATH")
-	}
-
 	providers := selectedLiveProviders(t)
 	routes := selectedLiveAuthRoutes(t)
 	requireLiveStrictCredentials(t, providers, routes)

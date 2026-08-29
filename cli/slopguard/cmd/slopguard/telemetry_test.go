@@ -21,7 +21,7 @@ import (
 func TestReviewTelemetryDisabledDoesNoFilesystemWork(t *testing.T) {
 	repository := reviewRepository(t)
 	reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
-	dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+	dependencies := reviewDependencies(t, reviewer)
 	startCalls := 0
 	dependencies.startTelemetry = func(telemetrypkg.Event) error {
 		startCalls++
@@ -49,7 +49,7 @@ func TestLastTelemetryFlagControlsOptIn(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			repository := reviewRepository(t)
 			reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
-			dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+			dependencies := reviewDependencies(t, reviewer)
 			startCalls := 0
 			dependencies.startTelemetry = func(telemetrypkg.Event) error {
 				startCalls++
@@ -75,7 +75,7 @@ func TestTelemetryHandoffFailureCannotChangeReviewResult(t *testing.T) {
 		t.Helper()
 		reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
 		clock := &steppingClock{current: time.Unix(0, 0), step: 5 * time.Millisecond}
-		dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+		dependencies := reviewDependencies(t, reviewer)
 		dependencies.now = clock.Now
 		startCalls := 0
 		var event telemetrypkg.Event
@@ -128,7 +128,7 @@ func TestTelemetryEnablementPathsCaptureSamePhases(t *testing.T) {
 		}
 		reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
 		clock := &steppingClock{current: time.Unix(0, 0), step: 5 * time.Millisecond}
-		dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+		dependencies := reviewDependencies(t, reviewer)
 		dependencies.now = clock.Now
 		dependencies.lookupEnv = func(string) (string, bool) { return "", false }
 		dependencies.homeDir = func() (string, error) { return home, nil }
@@ -256,7 +256,7 @@ func TestReviewTelemetryPreScan(t *testing.T) {
 		{name: "prompt value", arguments: []string{"--prompt", "--telemetry"}},
 		{name: "later parse error", arguments: []string{"--telemetry", "--unknown"}, want: true},
 		{name: "inline boolean before telemetry", arguments: []string{"--web-access=false", "--telemetry", "--unknown"}, want: true},
-		{name: "inline skip before telemetry", arguments: []string{"--skip-secret-scan=false", "--telemetry", "--unknown"}, want: true},
+		{name: "inline web before telemetry", arguments: []string{"--web-access=false", "--telemetry", "--unknown"}, want: true},
 		{name: "invalid inline before telemetry", arguments: []string{"--web-access=invalid", "--telemetry"}},
 		{name: "invalid inline after telemetry", arguments: []string{"--telemetry", "--web-access=invalid"}, want: true},
 		{name: "inline prompt value", arguments: []string{"--prompt=--telemetry"}},
@@ -295,7 +295,7 @@ func TestExplicitTelemetryRecordsSemanticFlagFailureRegardlessOfOrder(t *testing
 	} {
 		t.Run(strings.Join(flags, "_"), func(t *testing.T) {
 			repository := reviewRepository(t)
-			dependencies := reviewDependencies(t, cleanScanner{}, &scriptedReviewer{})
+			dependencies := reviewDependencies(t, &scriptedReviewer{})
 			startCalls := 0
 			var event telemetrypkg.Event
 			dependencies.startTelemetry = func(value telemetrypkg.Event) error {
@@ -337,7 +337,7 @@ func TestReviewTelemetryAppendsLocalEvent(t *testing.T) {
 	repository := reviewRepository(t)
 	path := filepath.Join(t.TempDir(), "telemetry.jsonl")
 	reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
-	dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+	dependencies := reviewDependencies(t, reviewer)
 	dependencies.startTelemetry = func(event telemetrypkg.Event) error {
 		return (telemetrypkg.Store{Path: path}).Append(event)
 	}

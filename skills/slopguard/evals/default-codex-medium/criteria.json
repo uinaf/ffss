@@ -1,0 +1,16 @@
+{
+  "context": "Tests whether the skill selects exactly one Codex review with medium reasoning when no user or trusted configuration chooses a provider, while preserving explicit-choice precedence.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {"name": "Codex selected", "description": "response.md selects Codex as the one review provider", "max_score": 10},
+    {"name": "Medium reasoning", "description": "The response identifies medium as the effective reasoning effort", "max_score": 10},
+    {"name": "One engine flag", "description": "The command contains exactly one --engine value and it is codex", "max_score": 10},
+    {"name": "Local target", "description": "The command uses review --mode local", "max_score": 10},
+    {"name": "Canonical JSON", "description": "The command requests --output json", "max_score": 10},
+    {"name": "Trusted prompt input", "description": "The command passes the distilled task contract through standard input with --prompt-file -", "max_score": 10},
+    {"name": "No model guess", "description": "The response does not invent or explicitly override the default Codex model", "max_score": 10},
+    {"name": "No provider fallback", "description": "The response does not queue another provider after Codex", "max_score": 10},
+    {"name": "Explicit choices win", "description": "The response states that an explicit user provider, model, or effort choice overrides this default", "max_score": 10},
+    {"name": "Trusted config wins", "description": "The response states that a trusted configured provider, model, or effort choice overrides this default", "max_score": 10}
+  ]
+}

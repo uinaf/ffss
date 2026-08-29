@@ -16,7 +16,7 @@ independent code review.
 
 - Keep the runtime entirely in Go. Do not add Python files, Python workflow
   steps, shell-based runtime helpers, or Go-to-Python wrappers.
-- Runtime dependencies are Git, TruffleHog, and the selected review harness.
+- Runtime dependencies are Git and the selected review harness.
 - The CLI reviews and reports; it never edits reviewed source, runs tests,
   commits, pushes, or invokes nested review workflows.
 - Keep provider execution, protocol validation, review policy, configuration,

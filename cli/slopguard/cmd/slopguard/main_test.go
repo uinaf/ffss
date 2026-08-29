@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -32,7 +31,7 @@ func TestReviewCommandCleanJSON(t *testing.T) {
 	exit := run(t.Context(), []string{
 		"review", "--repository", repository, "--mode", "local", "--engine", "codex",
 		"--prompt", "Check the acceptance criteria.", "--context-file", "CONTEXT.md", "--output", "json",
-	}, &stdout, &stderr, reviewDependencies(t, cleanScanner{}, reviewer))
+	}, &stdout, &stderr, reviewDependencies(t, reviewer))
 	if exit != 0 {
 		t.Fatalf("run() exit = %d, stderr = %s, stdout = %s", exit, stderr.String(), stdout.String())
 	}
@@ -61,13 +60,13 @@ func TestReviewCommandRecordsEndToEndPhases(t *testing.T) {
 	reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
 	clock := &steppingClock{current: time.Unix(0, 0), step: 5 * time.Millisecond}
 	var measurements []phase.Measurement
-	dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+	dependencies := reviewDependencies(t, reviewer)
 	dependencies.now = clock.Now
 	dependencies.observePhase = func(measurement phase.Measurement) {
 		measurements = append(measurements, measurement)
 	}
 	dependencies.newCollector = func() (*target.Collector, error) {
-		return target.New(target.Options{Repository: repository, Scanner: cleanScanner{}})
+		return target.New(target.Options{Repository: repository})
 	}
 	var stdout bytes.Buffer
 	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--output", "json"}, &stdout, io.Discard, dependencies)
@@ -85,7 +84,6 @@ func TestReviewCommandRecordsEndToEndPhases(t *testing.T) {
 		phase.Config,
 		phase.DependencyProbes,
 		phase.TargetFreeze,
-		phase.SecretScan,
 		phase.SourceRevalidation,
 		phase.ReportWrite,
 	)
@@ -170,7 +168,7 @@ func TestReviewCommandPrintsEveryFindingAndExitsOne(t *testing.T) {
 	reviewer := &scriptedReviewer{results: []reviewStep{{result: result}}}
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target."}, &stdout, &stderr, reviewDependencies(t, cleanScanner{}, reviewer))
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target."}, &stdout, &stderr, reviewDependencies(t, reviewer))
 	if exit != 1 || !strings.Contains(stdout.String(), "high confidence") || !strings.Contains(stdout.String(), "low confidence") {
 		t.Fatalf("run() exit = %d, stdout = %s, stderr = %s", exit, stdout.String(), stderr.String())
 	}
@@ -186,7 +184,7 @@ func TestReviewCommandRetriesOnlyProtocolFailures(t *testing.T) {
 	}}
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, &stderr, reviewDependencies(t, cleanScanner{}, reviewer))
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, &stderr, reviewDependencies(t, reviewer))
 	if exit != 0 {
 		t.Fatalf("run() exit = %d, stderr = %s, stdout = %s", exit, stderr.String(), stdout.String())
 	}
@@ -204,7 +202,7 @@ func TestReviewCommandRetriesOnlyProtocolFailures(t *testing.T) {
 	authReviewer := &scriptedReviewer{results: []reviewStep{{err: providerError(protocol.FailureAuth, protocol.AttemptFailed)}, {result: cleanResult()}}}
 	stdout.Reset()
 	stderr.Reset()
-	exit = run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, &stderr, reviewDependencies(t, cleanScanner{}, authReviewer))
+	exit = run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, &stderr, reviewDependencies(t, authReviewer))
 	if exit != 2 || len(authReviewer.prompts) != 1 {
 		t.Fatalf("authentication failure retried: exit=%d prompts=%d output=%s", exit, len(authReviewer.prompts), stdout.String())
 	}
@@ -216,7 +214,7 @@ func TestReviewCommandClassifiesPlainReviewerError(t *testing.T) {
 	repository := reviewRepository(t)
 	reviewer := &scriptedReviewer{results: []reviewStep{{err: errors.New("unwrapped reviewer failure")}, {result: cleanResult()}}}
 	var stdout bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
 	if exit != 2 || len(reviewer.prompts) != 1 {
 		t.Fatalf("exit=%d calls=%d output=%s", exit, len(reviewer.prompts), stdout.String())
 	}
@@ -241,7 +239,7 @@ func TestReviewCommandRejectsInvalidFindingBoundaries(t *testing.T) {
 	invalid.Review.Findings[0].Location.FilePath = "other.go"
 	reviewer := &scriptedReviewer{results: []reviewStep{{result: invalid}, {result: invalid}}}
 	var stdout bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
 	if exit != 2 || len(reviewer.prompts) != 2 {
 		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
 	}
@@ -272,7 +270,7 @@ func TestReviewCommandRecoversDiscontiguousFindingLocation(t *testing.T) {
 	valid.Review.Findings[0].Location.EndLine = 30
 	reviewer := &scriptedReviewer{results: []reviewStep{{result: invalid}, {result: valid}}}
 	var stdout bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
 	if exit != 1 || len(reviewer.prompts) != 2 {
 		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
 	}
@@ -300,7 +298,7 @@ func TestReviewCommandRetriesMetadataMismatchWithGenericCorrection(t *testing.T)
 	mismatched.Provider.Name = protocol.ProviderClaude
 	reviewer := &scriptedReviewer{results: []reviewStep{{result: mismatched}, {result: cleanResult()}}}
 	var stdout bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
 	if exit != 0 || len(reviewer.prompts) != 2 {
 		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
 	}
@@ -320,7 +318,7 @@ func TestReviewCommandPreservesExecutionMetadataAfterProtocolRetryExhausts(t *te
 	}
 	reviewer := &scriptedReviewer{results: []reviewStep{{err: cursorProtocolError(execution, protocol.ProtocolReasonMultipleDocuments)}, {err: cursorProtocolError(execution, protocol.ProtocolReasonMultipleDocuments)}}}
 	var stdout bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", reviewRepository(t), "--mode", "local", "--engine", "cursor", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+	exit := run(t.Context(), []string{"review", "--repository", reviewRepository(t), "--mode", "local", "--engine", "cursor", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
 	if exit != 2 || len(reviewer.prompts) != 2 {
 		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
 	}
@@ -364,7 +362,7 @@ func TestReviewCommandPreservesRecoveryAcrossProtocolRetry(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			reviewer := &scriptedReviewer{results: []reviewStep{{result: recovered}, test.retry}}
 			var stdout bytes.Buffer
-			exit := run(t.Context(), []string{"review", "--repository", reviewRepository(t), "--mode", "local", "--engine", "cursor", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+			exit := run(t.Context(), []string{"review", "--repository", reviewRepository(t), "--mode", "local", "--engine", "cursor", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
 			if exit != 2 {
 				t.Fatalf("run() exit = %d, output = %s", exit, stdout.String())
 			}
@@ -388,7 +386,7 @@ func TestReviewCommandRejectsIncompleteLowConfidenceCleanResult(t *testing.T) {
 	incomplete.Review.OverallConfidence = 0.01
 	reviewer := &scriptedReviewer{results: []reviewStep{{result: incomplete}, {result: incomplete}}}
 	var stdout bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
 	if exit != 2 || len(reviewer.prompts) != 2 {
 		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
 	}
@@ -406,9 +404,9 @@ func TestReviewCommandClassifiesCancelledCollectorInit(t *testing.T) {
 
 	repository := reviewRepository(t)
 	reviewer := &scriptedReviewer{}
-	dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+	dependencies := reviewDependencies(t, reviewer)
 	dependencies.newCollector = func() (*target.Collector, error) {
-		return nil, fmt.Errorf("%w: %w", target.ErrSecretScan, context.Canceled)
+		return nil, context.Canceled
 	}
 	var stdout bytes.Buffer
 	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--output", "json"}, &stdout, io.Discard, dependencies)
@@ -424,73 +422,24 @@ func TestReviewCommandClassifiesCancelledCollectorInit(t *testing.T) {
 	}
 }
 
-func TestReviewCommandClassifiesMissingScannerAsSecretScan(t *testing.T) {
-	t.Parallel()
-
-	repository := reviewRepository(t)
-	reviewer := &scriptedReviewer{}
-	dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
-	dependencies.newCollector = func() (*target.Collector, error) {
-		return nil, fmt.Errorf("%w: find trufflehog: missing", target.ErrSecretScan)
-	}
-	var stdout bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--output", "json"}, &stdout, io.Discard, dependencies)
-	if exit != 2 || len(reviewer.prompts) != 0 {
-		t.Fatalf("exit=%d calls=%d output=%s", exit, len(reviewer.prompts), stdout.String())
-	}
-	var result protocol.Report
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		t.Fatal(err)
-	}
-	if result.Failure == nil || result.Failure.Class != protocol.FailureSecretScan {
-		t.Fatalf("failure = %+v", result.Failure)
-	}
-}
-
-func TestReviewCommandSkipSecretScanBypassesScanner(t *testing.T) {
-	t.Parallel()
-
-	repository := reviewRepository(t)
-	reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
-	scanner := scannerError{err: target.ErrSecretFound}
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--skip-secret-scan", "--output", "json"}, &stdout, &stderr, reviewDependencies(t, scanner, reviewer))
-	if exit != 0 || len(reviewer.prompts) != 1 {
-		t.Fatalf("exit=%d calls=%d stdout=%s stderr=%s", exit, len(reviewer.prompts), stdout.String(), stderr.String())
-	}
-	if !strings.Contains(stderr.String(), "secret scan skipped") {
-		t.Fatalf("stderr = %q, want skip notice", stderr.String())
-	}
-	var result protocol.Report
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		t.Fatal(err)
-	}
-	if result.Status != protocol.StatusClean {
-		t.Fatalf("result = %+v", result)
-	}
-}
-
-func TestReviewCommandClassifiesSecretTimeoutAndCancellation(t *testing.T) {
+func TestReviewCommandClassifiesProviderTimeoutAndCancellation(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name        string
-		scanner     target.Scanner
 		reviewer    *scriptedReviewer
 		wantClass   protocol.FailureClass
 		wantMessage string
 		wantCalls   int
 	}{
-		{name: "secret", scanner: scannerError{err: target.ErrSecretFound}, reviewer: &scriptedReviewer{}, wantClass: protocol.FailureSecretScan, wantMessage: target.ErrSecretFound.Error(), wantCalls: 0},
-		{name: "timeout", scanner: cleanScanner{}, reviewer: &scriptedReviewer{results: []reviewStep{{err: providerError(protocol.FailureTimeout, protocol.AttemptFailed)}}}, wantClass: protocol.FailureTimeout, wantCalls: 1},
-		{name: "cancelled", scanner: cleanScanner{}, reviewer: &scriptedReviewer{results: []reviewStep{{err: providerError(protocol.FailureCancelled, protocol.AttemptFailed)}}}, wantClass: protocol.FailureCancelled, wantCalls: 1},
+		{name: "timeout", reviewer: &scriptedReviewer{results: []reviewStep{{err: providerError(protocol.FailureTimeout, protocol.AttemptFailed)}}}, wantClass: protocol.FailureTimeout, wantCalls: 1},
+		{name: "cancelled", reviewer: &scriptedReviewer{results: []reviewStep{{err: providerError(protocol.FailureCancelled, protocol.AttemptFailed)}}}, wantClass: protocol.FailureCancelled, wantCalls: 1},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			repository := reviewRepository(t)
 			var stdout bytes.Buffer
-			exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, test.scanner, test.reviewer))
+			exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, test.reviewer))
 			if exit != 2 || len(test.reviewer.prompts) != test.wantCalls {
 				t.Fatalf("exit=%d calls=%d output=%s", exit, len(test.reviewer.prompts), stdout.String())
 			}
@@ -518,7 +467,7 @@ func TestReviewCommandRefusesSourceMutation(t *testing.T) {
 		}
 	}, result: cleanResult()}}}
 	var stdout bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
 	if exit != 2 {
 		t.Fatalf("run() exit = %d, output = %s", exit, stdout.String())
 	}
@@ -556,7 +505,7 @@ func TestReviewCommandAcceptsUnrelatedImmutableMutation(t *testing.T) {
 				}
 			}, result: cleanResult()}}}
 			var stdout bytes.Buffer
-			exit := run(t.Context(), arguments, &stdout, io.Discard, reviewDependencies(t, cleanScanner{}, reviewer))
+			exit := run(t.Context(), arguments, &stdout, io.Discard, reviewDependencies(t, reviewer))
 			if exit != 0 {
 				t.Fatalf("run() exit = %d, output = %s", exit, stdout.String())
 			}
@@ -576,7 +525,7 @@ func TestReviewCommandReportsOutputFailure(t *testing.T) {
 
 	repository := reviewRepository(t)
 	var stderr bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target."}, failingWriter{}, &stderr, reviewDependencies(t, cleanScanner{}, &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}))
+	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target."}, failingWriter{}, &stderr, reviewDependencies(t, &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}))
 	if exit != 2 || !strings.Contains(stderr.String(), "write review result") {
 		t.Fatalf("run() exit = %d, stderr = %s", exit, stderr.String())
 	}
@@ -590,7 +539,7 @@ func TestTopLevelAndCommandHelp(t *testing.T) {
 		t.Fatalf("top-level help exit=%d output=%q", exit, stdout.String())
 	}
 	stdout.Reset()
-	if exit := run(t.Context(), []string{"review", "--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "Usage of slopguard review") || !strings.Contains(stdout.String(), "-skip-secret-scan") {
+	if exit := run(t.Context(), []string{"review", "--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "Usage of slopguard review") || strings.Contains(stdout.String(), "secret-scan") {
 		t.Fatalf("review help exit=%d output=%q", exit, stdout.String())
 	}
 	stdout.Reset()
@@ -744,7 +693,7 @@ func TestReviewCommandLoadsEquivalentPromptSources(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
-			dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+			dependencies := reviewDependencies(t, reviewer)
 			dependencies.stdin = test.stdin
 			arguments := []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--output", "json"}
 			arguments = append(arguments, test.arguments...)
@@ -856,7 +805,7 @@ func TestReviewCommandRejectsInvalidPromptInputBeforeProvider(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			reviewer := &scriptedReviewer{}
-			dependencies := reviewDependencies(t, cleanScanner{}, reviewer)
+			dependencies := reviewDependencies(t, reviewer)
 			arguments := []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--output", "json"}
 			arguments = append(arguments, test.arguments...)
 			var stdout bytes.Buffer
@@ -913,7 +862,7 @@ func TestConfigCommandPrintsSourceAwareJSON(t *testing.T) {
 	}
 }
 
-func TestConfigCommandReportsNativeAndCursorWebDefaults(t *testing.T) {
+func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 	t.Parallel()
 
 	repository := cliRepository(t)
@@ -928,13 +877,16 @@ func TestConfigCommandReportsNativeAndCursorWebDefaults(t *testing.T) {
 		arguments       []string
 		isolation       protocol.Isolation
 		isolationSource config.Source
+		effort          config.ReasoningEffort
 		web             bool
 		webSource       config.Source
 	}{
-		{name: "implicit", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, web: true, webSource: config.SourceFlag},
-		{name: "explicit false", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--web-access=false", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, webSource: config.SourceFlag},
-		{name: "strict still implicit", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--isolation", "strict", "--json"}, isolation: protocol.IsolationStrict, isolationSource: config.SourceFlag, web: true, webSource: config.SourceFlag},
-		{name: "Grok native web off", arguments: []string{"config", "--repository", repository, "--engine", "grok", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, webSource: config.SourceDefault},
+		{name: "Codex medium", arguments: []string{"config", "--repository", repository, "--engine", "codex", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, effort: config.ReasoningMedium, webSource: config.SourceDefault},
+		{name: "Claude high", arguments: []string{"config", "--repository", repository, "--engine", "claude", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, effort: config.ReasoningHigh, webSource: config.SourceDefault},
+		{name: "Cursor high with implicit web", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, effort: config.ReasoningHigh, web: true, webSource: config.SourceFlag},
+		{name: "Cursor high with explicit false", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--web-access=false", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, effort: config.ReasoningHigh, webSource: config.SourceFlag},
+		{name: "Cursor high strict", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--isolation", "strict", "--json"}, isolation: protocol.IsolationStrict, isolationSource: config.SourceFlag, effort: config.ReasoningHigh, web: true, webSource: config.SourceFlag},
+		{name: "Grok high", arguments: []string{"config", "--repository", repository, "--engine", "grok", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, effort: config.ReasoningHigh, webSource: config.SourceDefault},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var stdout bytes.Buffer
@@ -952,6 +904,9 @@ func TestConfigCommandReportsNativeAndCursorWebDefaults(t *testing.T) {
 			}
 			if effective.Isolation.Value != test.isolation || effective.Isolation.Source != test.isolationSource {
 				t.Fatalf("isolation = %+v", effective.Isolation)
+			}
+			if effective.ReasoningEffort.Value != test.effort || effective.ReasoningEffort.Source != config.SourceDefault {
+				t.Fatalf("reasoning_effort = %+v", effective.ReasoningEffort)
 			}
 			if effective.WebAccess.Value != test.web || effective.WebAccess.Source != test.webSource {
 				t.Fatalf("web_access = %+v", effective.WebAccess)
@@ -1090,14 +1045,6 @@ func (reviewer *scriptedReviewer) Review(_ context.Context, request provider.Req
 	return step.result, step.err
 }
 
-type cleanScanner struct{}
-
-func (cleanScanner) Scan(context.Context, string) error { return nil }
-
-type scannerError struct{ err error }
-
-func (scanner scannerError) Scan(context.Context, string) error { return scanner.err }
-
 func cleanResult() provider.Result {
 	return provider.Result{
 		Review: protocol.Review{
@@ -1146,7 +1093,7 @@ func cursorProtocolError(execution *provider.Execution, reason protocol.Protocol
 	}
 }
 
-func reviewDependencies(t *testing.T, scanner target.Scanner, reviewer provider.Reviewer) dependencies {
+func reviewDependencies(t *testing.T, reviewer provider.Reviewer) dependencies {
 	t.Helper()
 	xdg := t.TempDir()
 	return dependencies{
@@ -1158,7 +1105,7 @@ func reviewDependencies(t *testing.T, scanner target.Scanner, reviewer provider.
 		},
 		homeDir: func() (string, error) { return t.TempDir(), nil },
 		newCollector: func() (*target.Collector, error) {
-			return target.New(target.Options{Scanner: scanner})
+			return target.New(target.Options{})
 		},
 		newReviewer: func(protocol.ProviderName, string) provider.Reviewer { return reviewer },
 	}

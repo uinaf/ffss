@@ -3,15 +3,15 @@
 - The CLI freezes one explicit local, branch, or commit target into a bounded
   UTF-8 bundle.
 - It labels repository material as untrusted.
-- It scans the complete bundle with installed TruffleHog in offline mode.
+- It sends the complete frozen bundle, including deleted bytes and context, to
+  the selected provider without credential scanning.
 - It invokes provider executables outside the reviewed repository.
 - It refuses stale source after provider execution.
 
-- Do not bypass a secret-scan, sensitive-path, size, binary-data, symlink,
-  revision, capability, isolation, or source-change refusal.
-- Do not pass `--skip-secret-scan` unless the user explicitly named that flag.
-  A request to disable TruffleHog, ignore a detection, or proceed despite a
-  suspected false positive is not authorization.
+- Do not bypass a sensitive-path, size, binary-data, symlink, revision,
+  capability, isolation, or source-change refusal.
+- Confirm that the frozen target is authorized for disclosure to the selected
+  provider; Slopguard does not scan it for credentials.
 - Do not split an oversized bundle and claim whole-change cleanliness.
 
 ## Public defects

@@ -91,9 +91,6 @@ func Run(ctx context.Context, options Options) protocol.Report {
 		return failure(protocol.FailureInternal, errors.New("provider factory is unavailable"), nil, []protocol.Attempt{})
 	}
 
-	if options.Target.SkipSecretScan {
-		progress("secret scan skipped")
-	}
 	progress("collecting frozen target")
 	bundle, err := options.Collector.Freeze(ctx, options.Repository, options.Target)
 	if err != nil {
@@ -315,10 +312,6 @@ func classify(err error) protocol.FailureClass {
 		return protocol.FailureCancelled
 	case errors.Is(err, context.DeadlineExceeded):
 		return protocol.FailureTimeout
-	case errors.Is(err, target.ErrSecretFound):
-		return protocol.FailureSecretScan
-	case errors.Is(err, target.ErrSecretScan):
-		return protocol.FailureSecretScan
 	case errors.Is(err, target.ErrSourceChanged):
 		return protocol.FailureSourceChanged
 	default:
