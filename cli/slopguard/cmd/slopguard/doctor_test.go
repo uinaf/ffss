@@ -29,7 +29,7 @@ func TestDoctorCommandWritesReadyJSON(t *testing.T) {
 			return provider.Diagnostic{
 				SchemaVersion: provider.DoctorSchemaVersion, Status: provider.DoctorReady,
 				Provider: options.Config.Engine.Value, Version: "1.2.3", Compatible: true,
-				Isolation: options.Config.Isolation.Value, WebAccess: options.Config.WebAccess.Value,
+				WebAccess:      options.Config.WebAccess.Value,
 				Authentication: provider.AuthenticationDelegated,
 			}
 		},
@@ -85,7 +85,7 @@ func TestDoctorCommandReturnsExit1ForInternalDiagnostic(t *testing.T) {
 		doctor: func(context.Context, provider.DoctorOptions) provider.Diagnostic {
 			return provider.Diagnostic{
 				SchemaVersion: provider.DoctorSchemaVersion, Status: provider.DoctorNotReady,
-				Provider: protocol.ProviderCodex, Isolation: protocol.IsolationNative,
+				Provider:       protocol.ProviderCodex,
 				Authentication: provider.AuthenticationDelegated, FailureClass: protocol.FailureInternal,
 				Message: "provider diagnostic failed internally",
 			}
@@ -148,7 +148,7 @@ func TestDoctorCommandRejectsInjectedUnboundedDiagnostic(t *testing.T) {
 		doctor: func(context.Context, provider.DoctorOptions) provider.Diagnostic {
 			return provider.Diagnostic{
 				SchemaVersion: provider.DoctorSchemaVersion, Status: provider.DoctorNotReady,
-				Provider: protocol.ProviderCodex, Isolation: protocol.IsolationNative,
+				Provider:       protocol.ProviderCodex,
 				Authentication: provider.AuthenticationDelegated, FailureClass: protocol.FailureProvider, Message: private,
 			}
 		},
@@ -167,7 +167,7 @@ func TestDoctorCommandWritesNotReadyTerminal(t *testing.T) {
 		doctor: func(context.Context, provider.DoctorOptions) provider.Diagnostic {
 			return provider.Diagnostic{
 				SchemaVersion: provider.DoctorSchemaVersion, Status: provider.DoctorNotReady,
-				Provider: protocol.ProviderCodex, Isolation: protocol.IsolationNative,
+				Provider:       protocol.ProviderCodex,
 				Authentication: provider.AuthenticationDelegated, FailureClass: protocol.FailureCapability,
 				Message: "provider executable is missing or incompatible",
 			}

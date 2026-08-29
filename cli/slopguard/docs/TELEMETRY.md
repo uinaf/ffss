@@ -29,7 +29,7 @@ latency.
 Events contain only:
 
 - telemetry, CLI release, and result-schema versions;
-- provider enum, target mode, isolation, web access, outcome, and failure
+- provider enum, target mode, web access, outcome, and failure
   class;
 - attempt outcomes and protocol-recovery enum;
 - coarse bundle-size, finding-count, and phase-duration buckets.

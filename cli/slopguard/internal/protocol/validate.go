@@ -35,9 +35,6 @@ func (report Report) Validate() error {
 	if err := report.Metadata.ProtocolRecovery.validate(); err != nil {
 		return err
 	}
-	if report.Metadata.Isolation != nil && !validIsolation(*report.Metadata.Isolation) {
-		return fmt.Errorf("invalid metadata.isolation %q", *report.Metadata.Isolation)
-	}
 	if report.Metadata.Target != nil {
 		if err := report.Metadata.Target.validate(); err != nil {
 			return err
@@ -60,8 +57,8 @@ func (report Report) Validate() error {
 		if report.Review == nil || report.Failure != nil {
 			return fmt.Errorf("status %q requires review and forbids failure", report.Status)
 		}
-		if report.Metadata.Target == nil || report.Metadata.Provider == nil || report.Metadata.Isolation == nil {
-			return fmt.Errorf("status %q requires target, provider, and isolation metadata", report.Status)
+		if report.Metadata.Target == nil || report.Metadata.Provider == nil {
+			return fmt.Errorf("status %q requires target and provider metadata", report.Status)
 		}
 		if len(report.Metadata.Attempts) == 0 || report.Metadata.Attempts[len(report.Metadata.Attempts)-1].Outcome != AttemptValid {
 			return fmt.Errorf("status %q requires a final valid attempt", report.Status)
@@ -334,10 +331,6 @@ func validPath(value string) error {
 
 func ValidatePath(value string) error {
 	return validPath(value)
-}
-
-func validIsolation(value Isolation) bool {
-	return value == IsolationStrict || value == IsolationNative
 }
 
 func validFailureClass(value FailureClass) bool {

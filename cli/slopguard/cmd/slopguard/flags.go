@@ -36,7 +36,6 @@ type configFlagValues struct {
 	timeout   *string
 	retries   *int
 	maxBytes  *int64
-	isolation *string
 	webAccess *bool
 	telemetry *bool
 }
@@ -49,7 +48,6 @@ func bindConfigFlags(flags *flag.FlagSet) configFlagValues {
 		timeout:   flags.String("timeout", "", "provider timeout"),
 		retries:   flags.Int("retries", 0, "protocol retry count: 0 or 1"),
 		maxBytes:  flags.Int64("max-bytes", 0, "maximum frozen bundle bytes"),
-		isolation: flags.String("isolation", "", "provider isolation: strict or native"),
 		webAccess: flags.Bool("web-access", false, "allow provider web access"),
 		telemetry: flags.Bool("telemetry", false, "record privacy-minimized local telemetry"),
 	}
@@ -82,10 +80,6 @@ func (values configFlagValues) overrides(flags *flag.FlagSet) (config.Overrides,
 	}
 	if visited["max-bytes"] {
 		overrides.MaxBytes = values.maxBytes
-	}
-	if visited["isolation"] {
-		value := protocol.Isolation(*values.isolation)
-		overrides.Isolation = &value
 	}
 	if visited["web-access"] {
 		overrides.WebAccess = values.webAccess

@@ -145,7 +145,7 @@ func Run(ctx context.Context, options Options) protocol.Report {
 
 		attempt := normalizeAttempt(result.Attempt, attemptNumber, attemptDuration)
 		attempts = append(attempts, attempt)
-		metadataMatches := result.Provider.Name == options.Config.Engine.Value && result.Isolation == options.Config.Isolation.Value && result.WebAccess == options.Config.WebAccess.Value
+		metadataMatches := result.Provider.Name == options.Config.Engine.Value && result.WebAccess == options.Config.WebAccess.Value
 		if metadataMatches {
 			execution := mergeExecution(resolvedExecution, result.ResolvedExecution())
 			resolvedExecution = &execution
@@ -190,7 +190,6 @@ func successReport(reviewedTarget protocol.Target, result provider.Result, attem
 	if len(result.Review.Findings) > 0 {
 		status = protocol.StatusFindings
 	}
-	isolation := result.Isolation
 	providerMetadata := result.Provider
 	return protocol.Report{
 		SchemaVersion: protocol.SchemaVersion,
@@ -201,7 +200,6 @@ func successReport(reviewedTarget protocol.Target, result provider.Result, attem
 			Provider:         &providerMetadata,
 			Attempts:         append([]protocol.Attempt(nil), attempts...),
 			DurationMS:       durationMS,
-			Isolation:        &isolation,
 			WebAccess:        result.WebAccess,
 			ProtocolRecovery: result.ProtocolRecovery,
 		},
@@ -221,9 +219,7 @@ func failureReport(class protocol.FailureClass, message string, reviewedTarget *
 	}
 	if execution != nil {
 		providerMetadata := execution.Provider
-		isolation := execution.Isolation
 		report.Metadata.Provider = &providerMetadata
-		report.Metadata.Isolation = &isolation
 		report.Metadata.WebAccess = execution.WebAccess
 		report.Metadata.ProtocolRecovery = execution.ProtocolRecovery
 	}

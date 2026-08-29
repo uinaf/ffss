@@ -23,7 +23,7 @@ func TestBinaryDoctorWithFakeCodexDoesNotInvokeModel(t *testing.T) {
 	repository := reviewRepository(t)
 	tools, calls, providerPID, processLog, _ := writeFakeReviewTools(t, "clean")
 	command := exec.Command(binary,
-		"doctor", "--repository", repository, "--engine", "codex", "--isolation", "strict", "--output", "json",
+		"doctor", "--repository", repository, "--engine", "codex", "--output", "json",
 	)
 	command.Env = replaceEnvironment(os.Environ(), map[string]string{
 		"PATH":            tools + ":/usr/bin:/bin",
@@ -197,28 +197,22 @@ func TestBinarySchemaCommandsAreStandalone(t *testing.T) {
 	}
 }
 
-func TestBinaryConfigCommandReportsNativeAndCursorWebDefaults(t *testing.T) {
+func TestBinaryConfigCommandReportsCursorWebDefaults(t *testing.T) {
 	binary := buildSlopguardBinary(t)
 	repository := cliRepository(t)
 
 	for _, test := range []struct {
-		name            string
-		arguments       []string
-		isolation       protocol.Isolation
-		isolationSource config.Source
-		web             bool
-		webSource       config.Source
+		name      string
+		arguments []string
+		web       bool
+		webSource config.Source
 	}{
-		{name: "implicit", arguments: []string{"--engine", "cursor"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, web: true, webSource: config.SourceFlag},
-		{name: "explicit false", arguments: []string{"--engine", "cursor", "--web-access=false"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, webSource: config.SourceFlag},
-		{name: "strict still implicit", arguments: []string{"--engine", "cursor", "--isolation", "strict"}, isolation: protocol.IsolationStrict, isolationSource: config.SourceFlag, web: true, webSource: config.SourceFlag},
-		{name: "Grok native web off", arguments: []string{"--engine", "grok"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, webSource: config.SourceDefault},
+		{name: "implicit", arguments: []string{"--engine", "cursor"}, web: true, webSource: config.SourceFlag},
+		{name: "explicit false", arguments: []string{"--engine", "cursor", "--web-access=false"}, webSource: config.SourceFlag},
+		{name: "Grok web off", arguments: []string{"--engine", "grok"}, webSource: config.SourceDefault},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			effective := runBinaryConfig(t, binary, repository, test.arguments...)
-			if effective.Isolation.Value != test.isolation || effective.Isolation.Source != test.isolationSource {
-				t.Fatalf("isolation = %+v", effective.Isolation)
-			}
 			if effective.WebAccess.Value != test.web || effective.WebAccess.Source != test.webSource {
 				t.Fatalf("web_access = %+v", effective.WebAccess)
 			}
@@ -306,8 +300,8 @@ func writeFakeReviewTools(t testing.TB, scenario string) (string, string, string
 	malformedEnvelope := fakeCodexEnvelope(t, "not-json")
 	script := "#!/bin/sh\nset -eu\nprintf '%s\\n' codex >> " + shellLiteral(processLog) + "\n" +
 		"if [ \"${1:-}\" = \"--version\" ]; then printf '%s\\n' 'codex-cli 0.146.0'; exit 0; fi\n" +
-		"if [ \"${1:-}\" = \"--help\" ]; then printf '%s\\n' '--ask-for-approval --strict-config --search'; exit 0; fi\n" +
-		"if [ \"${1:-}\" = \"exec\" ] && [ \"${2:-}\" = \"--help\" ]; then printf '%s\\n' '--ephemeral --skip-git-repo-check --output-schema --output-last-message --json --cd --ignore-user-config --ignore-rules --sandbox'; exit 0; fi\n" +
+		"if [ \"${1:-}\" = \"--help\" ]; then printf '%s\\n' '--ask-for-approval --search'; exit 0; fi\n" +
+		"if [ \"${1:-}\" = \"exec\" ] && [ \"${2:-}\" = \"--help\" ]; then printf '%s\\n' '--ephemeral --skip-git-repo-check --output-schema --output-last-message --json --cd'; exit 0; fi\n" +
 		"output=''\nprevious=''\nfor argument in \"$@\"; do\n  if [ \"$previous\" = \"--output-last-message\" ]; then output=\"$argument\"; fi\n  previous=\"$argument\"\ndone\n" +
 		"test -n \"$output\"\n/bin/cat >/dev/null\n" +
 		"printf '%s\\n' \"$$\" > " + shellLiteral(providerPID) + "\n" +

@@ -9,26 +9,21 @@ Reasoning effort defaults to `medium`.
 The adapter capability-probes the following installed CLI surfaces before model
 invocation:
 
-- top level: `--ask-for-approval`, plus `--strict-config` in strict mode and
-  `--search` when web access is enabled;
+- top level: `--ask-for-approval`, plus `--search` when web access is enabled;
 - `exec`: `--ephemeral`, `--skip-git-repo-check`, `--output-schema`,
-  `--output-last-message`, `--json`, and `--cd`;
-- strict `exec`: `--ignore-user-config`, `--ignore-rules`, and `--sandbox`.
+  `--output-last-message`, `--json`, and `--cd`.
 
-It checks `--version` and both help surfaces before invocation. Native mode
-lets the actual `codex exec` process resolve authentication from the preserved
-Codex configuration, including custom model-provider credential helpers.
+It checks `--version` and both help surfaces before invocation. The actual
+`codex exec` process resolves authentication from the preserved Codex
+configuration, including custom model-provider credential helpers.
 Provider authentication, capability, timeout, cancellation, process, and
 protocol failures remain distinct.
 
-## Isolation and web access
+## Web access
 
-Web access is off unless trusted configuration enables it.
-
-| Mode | Authentication and configuration | Isolation controls |
-| --- | --- | --- |
-| `native` (default) | Existing environment, user configuration, and configured provider or session authentication | Review runs in an empty temporary workspace |
-| `strict` | Empty home, XDG, and Codex directories; requires `CODEX_API_KEY` or `OPENAI_API_KEY` | Read-only sandbox, ignored user config and rules, disabled hooks, plugins, skills, and multi-agent behavior |
+Web access is off unless trusted configuration enables it. The review keeps
+the existing environment, user configuration, and configured provider or
+session authentication, and runs in an empty temporary workspace.
 
 ## Output contract
 

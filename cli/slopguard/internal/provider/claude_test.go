@@ -14,7 +14,7 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/reviewpolicy"
 )
 
-func TestClaudeReviewStrictUsesFrozenStdinAndSafeMode(t *testing.T) {
+func TestClaudeReviewUsesFrozenStdinAndCanonicalArguments(t *testing.T) {
 	t.Parallel()
 
 	fake := newFakeClaude(t, fakeClaudeOptions{})
@@ -23,11 +23,9 @@ func TestClaudeReviewStrictUsesFrozenStdinAndSafeMode(t *testing.T) {
 		Environment: []string{
 			"PATH=/usr/bin:/bin",
 			"ANTHROPIC_API_KEY=test-provider-secret",
-			"OPENAI_API_KEY=must-not-pass",
-			"HOME=/private/home",
 		},
 	})
-	result, err := reviewer.Review(context.Background(), Request{Prompt: "frozen review bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: "frozen review bundle", Config: claudeConfig(false, 5*time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,21 +41,21 @@ func TestClaudeReviewStrictUsesFrozenStdinAndSafeMode(t *testing.T) {
 		t.Fatalf("provider stdin omitted trusted review policy: %q", prompt)
 	}
 	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
-	for _, required := range []string{"--safe-mode", "--setting-sources", "user", "--strict-mcp-config", "--disallowedTools", "mcp__*", "--print", "--no-session-persistence", "--output-format", "json", "--json-schema", "--permission-mode", "dontAsk", "--no-chrome", "--tools", "--model", "test-model", "--effort", "high"} {
+	for _, required := range []string{"--print", "--no-session-persistence", "--output-format", "json", "--json-schema", "--permission-mode", "dontAsk", "--no-chrome", "--tools", "--model", "test-model", "--effort", "high"} {
 		if !contains(arguments, required) {
 			t.Errorf("Claude arguments omitted %q: %v", required, arguments)
 		}
 	}
 	if contains(arguments, "--fallback-model") || argumentAfter(arguments, "--tools") != "" {
-		t.Fatalf("Claude strict arguments = %v", arguments)
+		t.Fatalf("Claude arguments = %v", arguments)
 	}
 	schema := argumentAfter(arguments, "--json-schema")
 	if strings.Contains(schema, `"not"`) || !strings.Contains(schema, `"findings"`) {
 		t.Fatalf("Claude schema projection = %s", schema)
 	}
 	environment := readTestFile(t, fake.environment)
-	if !strings.Contains(environment, "ANTHROPIC_API_KEY=test-provider-secret") || !strings.Contains(environment, "CLAUDE_CODE_DISABLE_AUTO_MEMORY=1") || strings.Contains(environment, "OPENAI_API_KEY") || strings.Contains(environment, "HOME=/private/home") {
-		t.Fatalf("strict environment = %s", environment)
+	if !strings.Contains(environment, "ANTHROPIC_API_KEY=test-provider-secret") {
+		t.Fatalf("provider environment = %s", environment)
 	}
 }
 
@@ -65,7 +63,7 @@ func TestClaudeReviewRejectsCombinedPromptBeforeDiscovery(t *testing.T) {
 	t.Parallel()
 
 	policyBytes := int64(len(reviewpolicy.ClaudeReviewProtocol()))
-	effective := claudeConfig(protocol.IsolationStrict, false, 5*time.Second)
+	effective := claudeConfig(false, 5*time.Second)
 	effective.MaxBytes = config.Value[int64]{Value: policyBytes, Source: config.SourceFlag}
 	maximumPrompt := effective.MaxBytes.Value + providerPromptAllowance
 	prompt := strings.Repeat("x", int(maximumPrompt-policyBytes+1))
@@ -77,7 +75,7 @@ func TestClaudeReviewRejectsCombinedPromptBeforeDiscovery(t *testing.T) {
 	}
 }
 
-func TestClaudeReviewNativePreservesConfigurationAndEnablesWeb(t *testing.T) {
+func TestClaudeReviewPreservesConfigurationAndEnablesWeb(t *testing.T) {
 	t.Parallel()
 
 	fake := newFakeClaude(t, fakeClaudeOptions{})
@@ -91,25 +89,23 @@ func TestClaudeReviewNativePreservesConfigurationAndEnablesWeb(t *testing.T) {
 			"ANTHROPIC_BASE_URL=https://gateway.invalid",
 		},
 	})
-	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationNative, true, 5*time.Second)})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(true, 5*time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.WebAccess || result.Isolation != protocol.IsolationNative {
+	if !result.WebAccess {
 		t.Fatalf("result policy = %+v", result)
 	}
 	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
-	for _, forbidden := range []string{"--safe-mode", "--strict-mcp-config", "--disallowedTools", "--fallback-model"} {
-		if contains(arguments, forbidden) {
-			t.Errorf("native arguments retained %q: %v", forbidden, arguments)
-		}
+	if contains(arguments, "--fallback-model") {
+		t.Fatalf("arguments retained --fallback-model: %v", arguments)
 	}
 	if argumentAfter(arguments, "--tools") != "WebSearch" || argumentAfter(arguments, "--allowedTools") != "WebSearch" {
-		t.Fatalf("native web arguments = %v", arguments)
+		t.Fatalf("web arguments = %v", arguments)
 	}
 	environment := readTestFile(t, fake.environment)
-	if !strings.Contains(environment, "HOME=/native/home") || !strings.Contains(environment, "CLAUDE_CONFIG_DIR=/native/claude") || !strings.Contains(environment, "ANTHROPIC_AUTH_TOKEN=test-provider-helper") || !strings.Contains(environment, "ANTHROPIC_BASE_URL=https://gateway.invalid") || strings.Contains(environment, "CLAUDE_CODE_DISABLE_AUTO_MEMORY") {
-		t.Fatalf("native environment = %s", environment)
+	if !strings.Contains(environment, "HOME=/native/home") || !strings.Contains(environment, "CLAUDE_CONFIG_DIR=/native/claude") || !strings.Contains(environment, "ANTHROPIC_AUTH_TOKEN=test-provider-helper") || !strings.Contains(environment, "ANTHROPIC_BASE_URL=https://gateway.invalid") {
+		t.Fatalf("provider environment = %s", environment)
 	}
 }
 
@@ -118,56 +114,30 @@ func TestClaudeReviewFailsCapabilityProbeBeforeInvocation(t *testing.T) {
 
 	fake := newFakeClaude(t, fakeClaudeOptions{help: "--print --output-format"})
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)})
 	_ = assertProviderError(t, err, protocol.FailureCapability)
 	if _, err := os.Stat(fake.arguments); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("model was invoked after failed capability probe: %v", err)
 	}
 }
 
-func TestClaudeReviewNativeReportsProviderAuthenticationFailure(t *testing.T) {
+func TestClaudeReviewReportsProviderAuthenticationFailure(t *testing.T) {
 	t.Parallel()
 
 	fake := newFakeClaude(t, fakeClaudeOptions{reviewOutputError: `{"type":"result","subtype":"success","is_error":true,"api_error_status":401,"result":"Invalid API key"}`})
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationNative, false, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureAuth)
 	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 		t.Fatalf("attempt = %+v", failure.Attempt)
 	}
-	assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", protocol.IsolationNative, false)
-}
-
-func TestClaudeReviewStrictExplainsCredentialRequirement(t *testing.T) {
-	t.Parallel()
-
-	fake := newFakeClaude(t, fakeClaudeOptions{})
-	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
-	failure := assertProviderError(t, err, protocol.FailureAuth)
-	if !strings.Contains(failure.Message, "strict isolation requires ANTHROPIC_API_KEY") || !strings.Contains(failure.Message, "--isolation native") {
-		t.Fatalf("failure = %q", failure.Message)
-	}
-	if _, err := os.Stat(fake.arguments); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("provider was probed without a strict credential: %v", err)
-	}
-}
-
-func TestClaudeReviewStrictReportsMissingExecutableBeforeCredential(t *testing.T) {
-	t.Parallel()
-
-	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: "missing-claude", Environment: []string{"PATH=/usr/bin:/bin"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
-	failure := assertProviderError(t, err, protocol.FailureCapability)
-	if !strings.Contains(failure.Message, "was not found") || strings.Contains(failure.Message, "API_KEY") {
-		t.Fatalf("failure = %q", failure.Message)
-	}
+	assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", false)
 }
 
 func TestClaudeReviewUsesExplicitDefaultModel(t *testing.T) {
 	t.Parallel()
 
-	effective := claudeConfig(protocol.IsolationStrict, false, 5*time.Second)
+	effective := claudeConfig(false, 5*time.Second)
 	effective.Model = config.Value[string]{Source: config.SourceDefault}
 	fake := newFakeClaude(t, fakeClaudeOptions{})
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
@@ -189,7 +159,7 @@ func TestClaudeReviewOmitsProviderFailureOutput(t *testing.T) {
 
 	fake := newFakeClaude(t, fakeClaudeOptions{reviewError: "\033[31m" + providerOutputSentinel + " test-provider-secret\r"})
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=test-provider-secret"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: providerOutputSentinel, Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: providerOutputSentinel, Config: claudeConfig(false, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureProvider)
 	if strings.Contains(failure.Message, providerOutputSentinel) || strings.Contains(failure.Message, "test-provider-secret") || strings.ContainsRune(failure.Message, '\x1b') {
 		t.Fatalf("provider failure = %q", failure.Message)
@@ -224,7 +194,7 @@ func TestClaudeReviewDistinguishesTimeoutAndCancellation(t *testing.T) {
 					cancel()
 				}()
 			}
-			_, err := reviewer.Review(ctx, Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, test.timeout)})
+			_, err := reviewer.Review(ctx, Request{Prompt: "bundle", Config: claudeConfig(false, test.timeout)})
 			_ = assertProviderError(t, err, test.class)
 		})
 	}
@@ -251,7 +221,7 @@ func TestClaudeReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fake := newFakeClaude(t, fakeClaudeOptions{output: test.output})
 			reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
-			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)})
 			if test.name == "valid control" {
 				if err != nil {
 					t.Fatal(err)
@@ -265,7 +235,7 @@ func TestClaudeReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptMalformed {
 				t.Fatalf("attempt = %+v", failure.Attempt)
 			}
-			assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", protocol.IsolationStrict, false)
+			assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", false)
 		})
 	}
 }
@@ -287,7 +257,7 @@ func TestClaudeReviewClassifiesReportedFailures(t *testing.T) {
 			output := `{"type":"result","subtype":"error_during_execution","is_error":true,"api_error_status":` + test.status + `,"result":"` + providerOutputSentinel + `"}`
 			fake := newFakeClaude(t, fakeClaudeOptions{output: output})
 			reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
-			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)})
 			failure := assertProviderError(t, err, test.class)
 			if strings.Contains(failure.Message, providerOutputSentinel) {
 				t.Fatalf("provider failure disclosed provider output: %q", failure.Message)
@@ -295,7 +265,7 @@ func TestClaudeReviewClassifiesReportedFailures(t *testing.T) {
 			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 				t.Fatalf("attempt = %+v", failure.Attempt)
 			}
-			assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", protocol.IsolationStrict, false)
+			assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", false)
 		})
 	}
 }
@@ -306,7 +276,7 @@ func TestClaudeReviewPrefersReportedFailureOnNonZeroExit(t *testing.T) {
 	output := `{"type":"result","subtype":"error_max_structured_output_retries","is_error":true,"api_error_status":429,"result":"` + providerOutputSentinel + `"}`
 	fake := newFakeClaude(t, fakeClaudeOptions{reviewOutputError: output, reviewError: "not authenticated"})
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureProvider)
 	if failure.Message != "Claude reported a rate limit" {
 		t.Fatalf("failure = %q", failure.Message)
@@ -322,7 +292,7 @@ func TestClaudeReviewRejectsMalformedTypedFailureOnNonZeroExit(t *testing.T) {
 	output := `{"type":"result","subtype":"unknown","is_error":true,"api_error_status":401,"result":"` + providerOutputSentinel + `"}`
 	fake := newFakeClaude(t, fakeClaudeOptions{reviewOutputError: output})
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureProvider)
 	if strings.Contains(failure.Message, providerOutputSentinel) {
 		t.Fatalf("provider failure disclosed provider output: %q", failure.Message)
@@ -356,18 +326,18 @@ func TestClaudeReviewEnforcesOutputBounds(t *testing.T) {
 
 	fake := newFakeClaude(t, fakeClaudeOptions{output: strings.Repeat("x", int(providerStdoutLimit)+1)})
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureProvider)
 	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 		t.Fatalf("attempt = %+v", failure.Attempt)
 	}
-	assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", protocol.IsolationStrict, false)
+	assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", false)
 }
 
 func TestClaudeReviewRejectsUnsupportedEffort(t *testing.T) {
 	t.Parallel()
 
-	effective := claudeConfig(protocol.IsolationStrict, false, 5*time.Second)
+	effective := claudeConfig(false, 5*time.Second)
 	effective.ReasoningEffort.Value = config.ReasoningUltra
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir()})
 	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: effective})
@@ -400,7 +370,7 @@ func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 		probes: filepath.Join(root, "probes.txt"), directory: filepath.Join(root, "directory.txt"),
 	}
 	if options.help == "" {
-		options.help = "--safe-mode --setting-sources --strict-mcp-config --disallowedTools --print --no-session-persistence --output-format --json-schema --model --effort --tools --allowedTools --permission-mode --no-chrome"
+		options.help = "--print --no-session-persistence --output-format --json-schema --model --effort --tools --allowedTools --permission-mode --no-chrome"
 	}
 	if options.output == "" {
 		options.output = claudeEnvelope(`{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`)
@@ -427,14 +397,6 @@ func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 		"set -eu\n" +
 		"fail_contract() { printf '%s\\n' 'unexpected Claude CLI arguments' >&2; exit 64; }\n" +
 		"validate_review() {\n" +
-		"  if [ \"${1:-}\" = '--safe-mode' ]; then\n" +
-		"    shift\n" +
-		"    [ \"${1:-}\" = '--setting-sources' ] || return 1; shift\n" +
-		"    [ \"${1:-}\" = 'user' ] || return 1; shift\n" +
-		"    [ \"${1:-}\" = '--strict-mcp-config' ] || return 1; shift\n" +
-		"    [ \"${1:-}\" = '--disallowedTools' ] || return 1; shift\n" +
-		"    [ \"${1:-}\" = 'mcp__*' ] || return 1; shift\n" +
-		"  fi\n" +
 		"  [ \"${1:-}\" = '--print' ] || return 1; shift\n" +
 		"  [ \"${1:-}\" = '--no-session-persistence' ] || return 1; shift\n" +
 		"  [ \"${1:-}\" = '--output-format' ] || return 1; shift\n" +
@@ -470,7 +432,7 @@ func claudeEnvelope(review string) string {
 	return `{"type":"result","subtype":"success","is_error":false,"structured_output":` + review + `}`
 }
 
-func claudeConfig(isolation protocol.Isolation, web bool, timeout time.Duration) config.Effective {
+func claudeConfig(web bool, timeout time.Duration) config.Effective {
 	return config.Effective{
 		Engine:          config.Value[protocol.ProviderName]{Value: protocol.ProviderClaude, Source: config.SourceFlag},
 		Model:           config.Value[string]{Value: "test-model", Source: config.SourceFlag},
@@ -478,7 +440,6 @@ func claudeConfig(isolation protocol.Isolation, web bool, timeout time.Duration)
 		Timeout:         config.Value[config.Duration]{Value: config.Duration(timeout), Source: config.SourceFlag},
 		Retries:         config.Value[int]{Value: 1, Source: config.SourceDefault},
 		MaxBytes:        config.Value[int64]{Value: 1 << 20, Source: config.SourceDefault},
-		Isolation:       config.Value[protocol.Isolation]{Value: isolation, Source: config.SourceFlag},
 		WebAccess:       config.Value[bool]{Value: web, Source: config.SourceFlag},
 	}
 }

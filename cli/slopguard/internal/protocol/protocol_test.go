@@ -300,7 +300,6 @@ func TestDecodeReportRejectsDuplicateFields(t *testing.T) {
 			"provider": null,
 			"attempts": [],
 			"duration_ms": 0,
-			"isolation": null,
 			"web_access": false,
 			"protocol_recovery": {"applied": false, "strategy": null}
 		}
@@ -405,15 +404,7 @@ func TestReportValidateSemanticRules(t *testing.T) {
 			mutate: func(report *Report) {
 				report.Metadata.Provider = nil
 			},
-			wantErr: "requires target, provider, and isolation metadata",
-		},
-		{
-			name: "invalid isolation",
-			mutate: func(report *Report) {
-				value := Isolation("loose")
-				report.Metadata.Isolation = &value
-			},
-			wantErr: "invalid metadata.isolation",
+			wantErr: "requires target and provider metadata",
 		},
 		{
 			name: "negative duration",

@@ -81,7 +81,6 @@ func doctorConfigFailure(name protocol.ProviderName) provider.Diagnostic {
 		SchemaVersion:  provider.DoctorSchemaVersion,
 		Status:         provider.DoctorNotReady,
 		Provider:       name,
-		Isolation:      protocol.IsolationNative,
 		Authentication: provider.AuthenticationDelegated,
 		FailureClass:   protocol.FailureConfig,
 		Message:        "provider configuration is invalid",
@@ -102,9 +101,9 @@ func writeDoctorResult(stdout, stderr io.Writer, jsonOutput bool, diagnostic pro
 		}
 		return exit
 	}
-	if _, err := fmt.Fprintf(stdout, "status: %s\nprovider: %s version=%s compatible=%t\nisolation: %s web_access=%t\nauthentication: %s\n",
+	if _, err := fmt.Fprintf(stdout, "status: %s\nprovider: %s version=%s compatible=%t\nweb_access=%t\nauthentication: %s\n",
 		diagnostic.Status, diagnostic.Provider, diagnostic.Version, diagnostic.Compatible,
-		diagnostic.Isolation, diagnostic.WebAccess, diagnostic.Authentication,
+		diagnostic.WebAccess, diagnostic.Authentication,
 	); err != nil {
 		report(stderr, "write doctor result: operation failed\n")
 		return 2

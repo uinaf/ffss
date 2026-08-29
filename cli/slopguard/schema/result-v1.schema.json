@@ -103,7 +103,6 @@
             "properties": {
               "target": { "$ref": "#/$defs/target" },
               "provider": { "$ref": "#/$defs/provider" },
-              "isolation": { "enum": ["strict", "native"] },
               "attempts": {
                 "type": "array",
                 "minItems": 1,
@@ -152,7 +151,6 @@
         "provider",
         "attempts",
         "duration_ms",
-        "isolation",
         "web_access",
         "protocol_recovery"
       ],
@@ -177,12 +175,6 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9223372036854775807
-        },
-        "isolation": {
-          "oneOf": [
-            { "enum": ["strict", "native"] },
-            { "type": "null" }
-          ]
         },
         "web_access": {
           "type": "boolean"

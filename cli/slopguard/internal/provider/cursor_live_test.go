@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
-	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
 func TestCursorLive(t *testing.T) {
 	if os.Getenv("SLOPGUARD_TEST_LIVE_CURSOR") != "1" {
 		t.Skip("set SLOPGUARD_TEST_LIVE_CURSOR=1 to run the authenticated Cursor smoke test")
 	}
-	effective := cursorConfig(protocol.IsolationNative, true, 2*time.Minute)
+	effective := cursorConfig(true, 2*time.Minute)
 	effective.Model = config.Value[string]{Source: config.SourceDefault}
 	reviewer := NewCursor(CursorOptions{Repository: t.TempDir()})
 	result, err := reviewer.Review(context.Background(), Request{

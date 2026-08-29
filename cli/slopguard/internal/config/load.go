@@ -36,7 +36,6 @@ type rawConfig struct {
 	Timeout         yamlString `yaml:"timeout"`
 	Retries         yamlInt    `yaml:"retries"`
 	MaxBytes        yamlInt    `yaml:"max_bytes"`
-	Isolation       yamlString `yaml:"isolation"`
 	WebAccess       yamlBool   `yaml:"web_access"`
 	Telemetry       yamlBool   `yaml:"telemetry"`
 }
@@ -216,7 +215,7 @@ func validateYAMLDocument(content []byte) error {
 	}
 	expected := map[string]string{
 		"engine": "!!str", "model": "!!str", "reasoning_effort": "!!str", "timeout": "!!str",
-		"retries": "!!int", "max_bytes": "!!int", "isolation": "!!str", "web_access": "!!bool", "telemetry": "!!bool",
+		"retries": "!!int", "max_bytes": "!!int", "web_access": "!!bool", "telemetry": "!!bool",
 	}
 	seen := map[string]struct{}{}
 	mapping := document.Content[0]
@@ -276,9 +275,6 @@ func applyEnvironment(effective *Effective, lookup func(string) (string, bool)) 
 		}
 		raw.MaxBytes = yamlInt{value: parsed, set: true}
 	}
-	if value, ok := lookup("SLOPGUARD_ISOLATION"); ok {
-		raw.Isolation = yamlString{value: value, set: true}
-	}
 	if value, ok := lookup("SLOPGUARD_WEB_ACCESS"); ok {
 		parsed, err := strconv.ParseBool(value)
 		if err != nil {
@@ -309,9 +305,6 @@ func applyOverrides(effective *Effective, overrides Overrides) error {
 	if overrides.MaxBytes != nil {
 		raw.MaxBytes = yamlInt{value: *overrides.MaxBytes, set: true}
 	}
-	if overrides.Isolation != nil {
-		raw.Isolation = yamlString{value: string(*overrides.Isolation), set: true}
-	}
 	if overrides.WebAccess != nil {
 		raw.WebAccess = yamlBool{value: *overrides.WebAccess, set: true}
 	}
@@ -324,9 +317,6 @@ func applyOverrides(effective *Effective, overrides Overrides) error {
 func applyRaw(effective *Effective, raw rawConfig, source Source, allowCapabilities bool) error {
 	if err := validateRaw(raw, source); err != nil {
 		return err
-	}
-	if raw.Isolation.set && protocol.Isolation(raw.Isolation.value) == protocol.IsolationNative && !allowCapabilities && effective.Isolation.Value == protocol.IsolationStrict {
-		return fmt.Errorf("%s config cannot weaken strict isolation", source)
 	}
 	if raw.WebAccess.set && raw.WebAccess.value && !allowCapabilities {
 		return fmt.Errorf("%s config cannot enable web access", source)
@@ -355,10 +345,6 @@ func applyRaw(effective *Effective, raw rawConfig, source Source, allowCapabilit
 	}
 	if raw.MaxBytes.set {
 		effective.MaxBytes = Value[int64]{Value: raw.MaxBytes.value, Source: source}
-	}
-	if raw.Isolation.set {
-		isolation := protocol.Isolation(raw.Isolation.value)
-		effective.Isolation = Value[protocol.Isolation]{Value: isolation, Source: source}
 	}
 	if raw.WebAccess.set {
 		effective.WebAccess = Value[bool]{Value: raw.WebAccess.value, Source: source}
@@ -418,12 +404,6 @@ func validateRaw(raw rawConfig, source Source) error {
 	}
 	if raw.MaxBytes.set && (raw.MaxBytes.value < 1 || raw.MaxBytes.value > target.MaximumMaxBytes) {
 		return fmt.Errorf("%s max_bytes must be between 1 and %d", source, target.MaximumMaxBytes)
-	}
-	if raw.Isolation.set {
-		isolation := protocol.Isolation(raw.Isolation.value)
-		if isolation != protocol.IsolationStrict && isolation != protocol.IsolationNative {
-			return fmt.Errorf("%s isolation: invalid value %q", source, raw.Isolation.value)
-		}
 	}
 	return nil
 }

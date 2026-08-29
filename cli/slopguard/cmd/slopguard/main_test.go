@@ -225,7 +225,7 @@ func TestReviewCommandClassifiesPlainReviewerError(t *testing.T) {
 	if result.Failure == nil || result.Failure.Class != protocol.FailureProvider || len(result.Metadata.Attempts) != 1 || result.Metadata.Attempts[0].Outcome != protocol.AttemptFailed {
 		t.Fatalf("result=%+v", result)
 	}
-	if result.Metadata.Provider != nil || result.Metadata.Isolation != nil || result.Metadata.WebAccess || result.Metadata.ProtocolRecovery.Applied {
+	if result.Metadata.Provider != nil || result.Metadata.WebAccess || result.Metadata.ProtocolRecovery.Applied {
 		t.Fatalf("unresolved execution metadata = %+v", result.Metadata)
 	}
 }
@@ -313,7 +313,6 @@ func TestReviewCommandPreservesExecutionMetadataAfterProtocolRetryExhausts(t *te
 
 	execution := &provider.Execution{
 		Provider:  protocol.Provider{Name: protocol.ProviderCursor, Model: "cursor-grok-4.5-high-fast", Version: "2026.08.04-aaa8809"},
-		Isolation: protocol.IsolationNative,
 		WebAccess: true,
 	}
 	reviewer := &scriptedReviewer{results: []reviewStep{{err: cursorProtocolError(execution, protocol.ProtocolReasonMultipleDocuments)}, {err: cursorProtocolError(execution, protocol.ProtocolReasonMultipleDocuments)}}}
@@ -330,7 +329,7 @@ func TestReviewCommandPreservesExecutionMetadataAfterProtocolRetryExhausts(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Failure == nil || !strings.Contains(result.Failure.Message, string(protocol.ProtocolReasonMultipleDocuments)) || result.Metadata.Provider == nil || *result.Metadata.Provider != execution.Provider || result.Metadata.Isolation == nil || *result.Metadata.Isolation != execution.Isolation || !result.Metadata.WebAccess {
+	if result.Failure == nil || !strings.Contains(result.Failure.Message, string(protocol.ProtocolReasonMultipleDocuments)) || result.Metadata.Provider == nil || *result.Metadata.Provider != execution.Provider || !result.Metadata.WebAccess {
 		t.Fatalf("result = %+v", result)
 	}
 }
@@ -347,7 +346,6 @@ func TestReviewCommandPreservesRecoveryAcrossProtocolRetry(t *testing.T) {
 	recovered.Review.Findings[0].Location.FilePath = "other.go"
 	execution := &provider.Execution{
 		Provider:  recovered.Provider,
-		Isolation: recovered.Isolation,
 		WebAccess: recovered.WebAccess,
 	}
 	unrecovered := recovered
@@ -873,20 +871,17 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 		return "", false
 	}
 	for _, test := range []struct {
-		name            string
-		arguments       []string
-		isolation       protocol.Isolation
-		isolationSource config.Source
-		effort          config.ReasoningEffort
-		web             bool
-		webSource       config.Source
+		name      string
+		arguments []string
+		effort    config.ReasoningEffort
+		web       bool
+		webSource config.Source
 	}{
-		{name: "Codex medium", arguments: []string{"config", "--repository", repository, "--engine", "codex", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, effort: config.ReasoningMedium, webSource: config.SourceDefault},
-		{name: "Claude high", arguments: []string{"config", "--repository", repository, "--engine", "claude", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, effort: config.ReasoningHigh, webSource: config.SourceDefault},
-		{name: "Cursor high with implicit web", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, effort: config.ReasoningHigh, web: true, webSource: config.SourceFlag},
-		{name: "Cursor high with explicit false", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--web-access=false", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, effort: config.ReasoningHigh, webSource: config.SourceFlag},
-		{name: "Cursor high strict", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--isolation", "strict", "--json"}, isolation: protocol.IsolationStrict, isolationSource: config.SourceFlag, effort: config.ReasoningHigh, web: true, webSource: config.SourceFlag},
-		{name: "Grok high", arguments: []string{"config", "--repository", repository, "--engine", "grok", "--json"}, isolation: protocol.IsolationNative, isolationSource: config.SourceDefault, effort: config.ReasoningHigh, webSource: config.SourceDefault},
+		{name: "Codex medium", arguments: []string{"config", "--repository", repository, "--engine", "codex", "--json"}, effort: config.ReasoningMedium, webSource: config.SourceDefault},
+		{name: "Claude high", arguments: []string{"config", "--repository", repository, "--engine", "claude", "--json"}, effort: config.ReasoningHigh, webSource: config.SourceDefault},
+		{name: "Cursor high with implicit web", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--json"}, effort: config.ReasoningHigh, web: true, webSource: config.SourceFlag},
+		{name: "Cursor high with explicit false", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--web-access=false", "--json"}, effort: config.ReasoningHigh, webSource: config.SourceFlag},
+		{name: "Grok high", arguments: []string{"config", "--repository", repository, "--engine", "grok", "--json"}, effort: config.ReasoningHigh, webSource: config.SourceDefault},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var stdout bytes.Buffer
@@ -901,9 +896,6 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 			var effective config.Effective
 			if err := json.Unmarshal(stdout.Bytes(), &effective); err != nil {
 				t.Fatal(err)
-			}
-			if effective.Isolation.Value != test.isolation || effective.Isolation.Source != test.isolationSource {
-				t.Fatalf("isolation = %+v", effective.Isolation)
 			}
 			if effective.ReasoningEffort.Value != test.effort || effective.ReasoningEffort.Source != config.SourceDefault {
 				t.Fatalf("reasoning_effort = %+v", effective.ReasoningEffort)
@@ -1058,8 +1050,7 @@ func cleanResult() provider.Result {
 			Outcome:    protocol.AttemptValid,
 			DurationMS: 1,
 		},
-		Duration:  time.Millisecond,
-		Isolation: protocol.IsolationNative,
+		Duration: time.Millisecond,
 	}
 }
 

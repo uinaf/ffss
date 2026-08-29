@@ -55,7 +55,6 @@ func TestWriteJSONEmitsOneValidatedDocument(t *testing.T) {
 func TestWriteTerminalIndentsMultilineSummary(t *testing.T) {
 	t.Parallel()
 
-	isolation := protocol.IsolationStrict
 	report := protocol.Report{
 		SchemaVersion: protocol.SchemaVersion,
 		Status:        protocol.StatusClean,
@@ -71,9 +70,8 @@ func TestWriteTerminalIndentsMultilineSummary(t *testing.T) {
 				HeadRevision: "abc",
 				Files:        []protocol.ReviewedFile{{FilePath: "app.go", LineRanges: []protocol.LineRange{{StartLine: 1, EndLine: 1}}}},
 			},
-			Provider:  &protocol.Provider{Name: protocol.ProviderCodex, Model: "model", Version: "1.0.0"},
-			Attempts:  []protocol.Attempt{{Number: 1, Outcome: protocol.AttemptValid}},
-			Isolation: &isolation,
+			Provider: &protocol.Provider{Name: protocol.ProviderCodex, Model: "model", Version: "1.0.0"},
+			Attempts: []protocol.Attempt{{Number: 1, Outcome: protocol.AttemptValid}},
 		},
 	}
 	var output bytes.Buffer

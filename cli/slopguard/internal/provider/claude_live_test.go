@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
-	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
 func TestClaudeLive(t *testing.T) {
 	if os.Getenv("SLOPGUARD_TEST_LIVE_CLAUDE") != "1" {
 		t.Skip("set SLOPGUARD_TEST_LIVE_CLAUDE=1 to run the authenticated Claude smoke test")
 	}
-	effective := claudeConfig(protocol.IsolationNative, false, 2*time.Minute)
+	effective := claudeConfig(false, 2*time.Minute)
 	effective.Model = config.Value[string]{Source: config.SourceDefault}
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir()})
 	result, err := reviewer.Review(context.Background(), Request{

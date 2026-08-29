@@ -15,7 +15,6 @@ import (
 
 func TestEventUsesPrivacyAllowlist(t *testing.T) {
 	const private = "PRIVATE-SENTINEL-path-revision-prompt-model-prose"
-	isolation := protocol.IsolationNative
 	recovery := protocol.RecoveryCursorTrailingObject
 	report := protocol.Report{
 		SchemaVersion: protocol.SchemaVersion,
@@ -33,9 +32,9 @@ func TestEventUsesPrivacyAllowlist(t *testing.T) {
 				Mode: protocol.TargetBranch, SnapshotHash: private, HeadRevision: private, BaseRevision: private,
 				Files: []protocol.ReviewedFile{{FilePath: private, LineRanges: []protocol.LineRange{{StartLine: 1, EndLine: 1}}}},
 			},
-			Provider:  &protocol.Provider{Name: protocol.ProviderCursor, Model: private, Version: private},
-			Attempts:  []protocol.Attempt{{Number: 1, Outcome: protocol.AttemptMalformed}, {Number: 2, Outcome: protocol.AttemptValid}},
-			Isolation: &isolation, WebAccess: true,
+			Provider:         &protocol.Provider{Name: protocol.ProviderCursor, Model: private, Version: private},
+			Attempts:         []protocol.Attempt{{Number: 1, Outcome: protocol.AttemptMalformed}, {Number: 2, Outcome: protocol.AttemptValid}},
+			WebAccess:        true,
 			ProtocolRecovery: protocol.ProtocolRecovery{Applied: true, Strategy: &recovery},
 		},
 	}
@@ -55,7 +54,7 @@ func TestEventUsesPrivacyAllowlist(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		"attempt_outcomes", "bundle_bucket", "cli_version", "finding_count_bucket", "isolation", "outcome",
+		"attempt_outcomes", "bundle_bucket", "cli_version", "finding_count_bucket", "outcome",
 		"phase_duration_buckets", "protocol_recovery_applied", "protocol_recovery_strategy", "provider",
 		"report_schema_version", "schema_version", "target_mode", "web_access",
 	}

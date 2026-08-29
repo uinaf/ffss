@@ -1,4 +1,4 @@
-# Configuration and isolation
+# Configuration
 
 Slopguard loads one flat, typed configuration in descending precedence:
 
@@ -24,7 +24,6 @@ reasoning_effort: medium
 timeout: 15m
 retries: 1
 max_bytes: 1048576
-isolation: native
 web_access: false
 telemetry: false
 ```
@@ -51,8 +50,7 @@ overrides the provider default.
 
 The corresponding environment variables are `SLOPGUARD_ENGINE`,
 `SLOPGUARD_MODEL`, `SLOPGUARD_REASONING_EFFORT`, `SLOPGUARD_TIMEOUT`,
-`SLOPGUARD_RETRIES`, `SLOPGUARD_MAX_BYTES`, `SLOPGUARD_ISOLATION`, and
-`SLOPGUARD_WEB_ACCESS`.
+`SLOPGUARD_RETRIES`, `SLOPGUARD_MAX_BYTES`, and `SLOPGUARD_WEB_ACCESS`.
 
 Telemetry has no environment-variable source. It defaults off and can be
 enabled only with `--telemetry` or `telemetry: true` in the ownership-checked
@@ -60,12 +58,6 @@ account-home XDG file. Repository configuration and an XDG path selected by
 `XDG_CONFIG_HOME` cannot enable it. See [Optional telemetry](TELEMETRY.md).
 
 ## Security controls
-
-Isolation defaults to `native`, which preserves the normal provider environment,
-user configuration, and configured provider or session authentication. Any
-source may select stricter `strict` isolation. A
-higher-precedence repository or environment source cannot weaken an already
-selected `strict` value back to `native`.
 
 Web access defaults to off for Codex, Claude, and Grok.
 
@@ -83,21 +75,9 @@ Web access defaults to off for Codex, Claude, and Grok.
   otherwise imply web; omit the untrusted restatement and let the flag-derived
   value apply.
 
-Both isolation modes run the provider from a new empty temporary workspace and
-pass only the already frozen review bundle.
-
-- `strict` replaces home and provider state directories with empty temporary
-  directories and preserves only required system variables, proxy and
-  certificate settings, and supported provider API keys.
-- `native` preserves the normal provider environment, user configuration, and
-  configured authentication.
-- Strict authentication requires the provider's supported API-key environment
-  variable; provider or session authentication belongs to native mode.
-- Grok strict mode uses `XAI_API_KEY`; native mode preserves configured
-  provider or session authentication.
-- Explicit CLI Cursor selection still grants otherwise-unset web access in
-  strict mode; pass `--web-access=false` to reject that capability and fail
-  preflight instead.
+Providers run from a new empty temporary workspace, receive only the already
+frozen review bundle, and inherit the normal provider environment, user
+configuration, and configured provider or session authentication.
 
 ## Effective configuration
 
@@ -110,6 +90,6 @@ slopguard config --engine codex --json
 ```
 
 The diagnostic supports the same typed overrides: `--model`,
-`--reasoning-effort`, `--timeout`, `--retries`, `--max-bytes`, `--isolation`, and
-`--web-access`, and `--telemetry`. Use `--repository` to inspect another
+`--reasoning-effort`, `--timeout`, `--retries`, `--max-bytes`, `--web-access`,
+and `--telemetry`. Use `--repository` to inspect another
 checkout.

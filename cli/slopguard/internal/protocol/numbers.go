@@ -171,7 +171,6 @@ func (metadata *Metadata) UnmarshalJSON(data []byte) error {
 		Provider         *Provider        `json:"provider"`
 		Attempts         []Attempt        `json:"attempts"`
 		DurationMS       wireInt64        `json:"duration_ms"`
-		Isolation        *Isolation       `json:"isolation"`
 		WebAccess        bool             `json:"web_access"`
 		ProtocolRecovery ProtocolRecovery `json:"protocol_recovery"`
 	}
@@ -183,7 +182,6 @@ func (metadata *Metadata) UnmarshalJSON(data []byte) error {
 		Provider:         wire.Provider,
 		Attempts:         wire.Attempts,
 		DurationMS:       int64(wire.DurationMS),
-		Isolation:        wire.Isolation,
 		WebAccess:        wire.WebAccess,
 		ProtocolRecovery: wire.ProtocolRecovery,
 	}

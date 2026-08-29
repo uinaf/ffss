@@ -296,7 +296,6 @@ func TestResultSchemaRejectsIncompleteSuccessMetadata(t *testing.T) {
 	}{
 		{name: "null target", mutate: func(metadata map[string]any) { metadata["target"] = nil }},
 		{name: "null provider", mutate: func(metadata map[string]any) { metadata["provider"] = nil }},
-		{name: "null isolation", mutate: func(metadata map[string]any) { metadata["isolation"] = nil }},
 		{name: "empty attempts", mutate: func(metadata map[string]any) { metadata["attempts"] = []any{} }},
 	}
 	schema := compileSchema(t, "result-v1.schema.json")

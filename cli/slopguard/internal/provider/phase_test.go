@@ -7,7 +7,6 @@ import (
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
 	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
-	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
 func TestProviderPhaseCoverage(t *testing.T) {
@@ -21,28 +20,28 @@ func TestProviderPhaseCoverage(t *testing.T) {
 			name: "codex",
 			setup: func(t *testing.T) (Reviewer, config.Effective) {
 				fake := newFakeCodex(t, fakeCodexOptions{})
-				return NewCodex(CodexOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "OPENAI_API_KEY=secret"}}), codexConfig(protocol.IsolationStrict, false, 5*time.Second)
+				return NewCodex(CodexOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "OPENAI_API_KEY=secret"}}), codexConfig(false, 5*time.Second)
 			},
 		},
 		{
 			name: "claude",
 			setup: func(t *testing.T) (Reviewer, config.Effective) {
 				fake := newFakeClaude(t, fakeClaudeOptions{})
-				return NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}}), claudeConfig(protocol.IsolationStrict, false, 5*time.Second)
+				return NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}}), claudeConfig(false, 5*time.Second)
 			},
 		},
 		{
 			name: "cursor",
 			setup: func(t *testing.T) (Reviewer, config.Effective) {
 				fake := newFakeCursor(t, fakeCursorOptions{})
-				return NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}}), cursorConfig(protocol.IsolationStrict, true, 5*time.Second)
+				return NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}}), cursorConfig(true, 5*time.Second)
 			},
 		},
 		{
 			name: "grok",
 			setup: func(t *testing.T) (Reviewer, config.Effective) {
 				fake := newFakeGrok(t, fakeGrokOptions{})
-				return NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}}), grokConfig(protocol.IsolationStrict, false, 5*time.Second)
+				return NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}}), grokConfig(false, 5*time.Second)
 			},
 		},
 	}

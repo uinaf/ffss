@@ -11,7 +11,7 @@ import (
 var (
 	reportShapeFields   = [...]string{"schema_version", "status", "review", "failure", "metadata"}
 	reviewShapeFields   = [...]string{"findings", "overall_explanation", "overall_confidence"}
-	metadataShapeFields = [...]string{"target", "provider", "attempts", "duration_ms", "isolation", "web_access", "protocol_recovery"}
+	metadataShapeFields = [...]string{"target", "provider", "attempts", "duration_ms", "web_access", "protocol_recovery"}
 )
 
 func DecodeReport(data []byte) (Report, error) {

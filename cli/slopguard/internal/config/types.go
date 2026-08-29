@@ -69,7 +69,6 @@ type Effective struct {
 	Timeout         Value[Duration]              `json:"timeout"`
 	Retries         Value[int]                   `json:"retries"`
 	MaxBytes        Value[int64]                 `json:"max_bytes"`
-	Isolation       Value[protocol.Isolation]    `json:"isolation"`
 	WebAccess       Value[bool]                  `json:"web_access"`
 	Telemetry       Value[bool]                  `json:"telemetry"`
 }
@@ -81,7 +80,6 @@ type Overrides struct {
 	Timeout         *time.Duration
 	Retries         *int
 	MaxBytes        *int64
-	Isolation       *protocol.Isolation
 	WebAccess       *bool
 	Telemetry       *bool
 }
@@ -94,7 +92,6 @@ func defaults() Effective {
 		Timeout:         Value[Duration]{Value: Duration(15 * time.Minute), Source: SourceDefault},
 		Retries:         Value[int]{Value: 1, Source: SourceDefault},
 		MaxBytes:        Value[int64]{Value: target.DefaultMaxBytes, Source: SourceDefault},
-		Isolation:       Value[protocol.Isolation]{Value: protocol.IsolationNative, Source: SourceDefault},
 		WebAccess:       Value[bool]{Value: false, Source: SourceDefault},
 		Telemetry:       Value[bool]{Value: false, Source: SourceDefault},
 	}
@@ -125,11 +122,6 @@ func (effective Effective) Validate() error {
 	}
 	if effective.MaxBytes.Value < 1 || effective.MaxBytes.Value > target.MaximumMaxBytes {
 		return fmt.Errorf("%s max_bytes must be between 1 and %d", effective.MaxBytes.Source, target.MaximumMaxBytes)
-	}
-	switch effective.Isolation.Value {
-	case protocol.IsolationStrict, protocol.IsolationNative:
-	default:
-		return fmt.Errorf("%s isolation: invalid value %q", effective.Isolation.Source, effective.Isolation.Value)
 	}
 	return nil
 }

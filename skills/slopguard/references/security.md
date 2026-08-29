@@ -9,7 +9,7 @@
 - It refuses stale source after provider execution.
 
 - Do not bypass a sensitive-path, size, binary-data, symlink, revision,
-  capability, isolation, or source-change refusal.
+  capability, or source-change refusal.
 - Confirm that the frozen target is authorized for disclosure to the selected
   provider; Slopguard does not scan it for credentials.
 - Do not split an oversized bundle and claim whole-change cleanliness.
@@ -27,7 +27,7 @@ The issue may contain only:
 
 - slopguard version
 - operating system and architecture
-- provider name, isolation mode, and web-access state
+- provider name and web-access state
 - stable failure class
 - sanitized reproduction steps using public or synthetic input
 - expected behavior and high-level actual behavior

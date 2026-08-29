@@ -127,7 +127,6 @@ func runConfig(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		{name: "timeout", value: effective.Timeout.Value.String(), source: effective.Timeout.Source},
 		{name: "retries", value: formatInt(effective.Retries.Value), source: effective.Retries.Source},
 		{name: "max_bytes", value: formatInt64(effective.MaxBytes.Value), source: effective.MaxBytes.Source},
-		{name: "isolation", value: string(effective.Isolation.Value), source: effective.Isolation.Source},
 		{name: "web_access", value: formatBool(effective.WebAccess.Value), source: effective.WebAccess.Source},
 		{name: "telemetry", value: formatBool(effective.Telemetry.Value), source: effective.Telemetry.Source},
 	}

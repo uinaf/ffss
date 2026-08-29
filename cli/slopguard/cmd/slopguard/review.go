@@ -376,8 +376,7 @@ func reviewFlagConsumesNext(argument string) bool {
 		"--reasoning-effort", "-reasoning-effort",
 		"--timeout", "-timeout",
 		"--retries", "-retries",
-		"--max-bytes", "-max-bytes",
-		"--isolation", "-isolation":
+		"--max-bytes", "-max-bytes":
 		return true
 	default:
 		return false

@@ -26,7 +26,7 @@ Implicit PATH discovery checks candidates in order and skips only executables
 that fail the provider capability contract. An explicit executable path stays
 authoritative and never falls back. Successful executable identity, version,
 and capability preparation is cached for the lifetime of one reviewer and one
-isolation/web policy, so a malformed-review retry does not repeat probes.
+web policy, so a malformed-review retry does not repeat probes.
 Credentials, workspaces, processes, prompt/output files, timeout, and cleanup
 state remain fresh for every attempt.
 
@@ -36,8 +36,8 @@ group members after success, failure, timeout, cancellation, or output overflow.
 Diagnostics redact credential-bearing environment values, escape terminal
 control characters, and remain bounded.
 
-See [Configuration and isolation](../CONFIG.md) for configuration precedence,
-strict authentication, and web-access policy.
+See [Configuration](../CONFIG.md) for configuration precedence and web-access
+policy.
 
 Use [`slopguard doctor`](../DOCTOR.md) to run only this executable and policy
 preflight. Doctor never freezes a target or invokes the model.

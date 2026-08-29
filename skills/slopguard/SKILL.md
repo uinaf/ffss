@@ -42,9 +42,9 @@ One provider for the whole review. Honor explicit provider, model, and
 effort choices from the user or trusted config; otherwise use Codex with
 medium reasoning. Read [providers.md](references/providers.md).
 
-Native isolation is the default: it preserves configured provider or session
-authentication in an empty bundle-only workspace. Isolation and web-access
-rules live in [configuration.md](references/configuration.md).
+Reviews preserve configured provider or session authentication and run in an
+empty bundle-only workspace. Web-access rules live in
+[configuration.md](references/configuration.md).
 
 ## Run the review
 

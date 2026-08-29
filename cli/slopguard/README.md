@@ -116,7 +116,7 @@ review to the installed CLI. It does not contain a second runtime.
 
 ## Documentation
 
-- [Configuration and isolation](docs/CONFIG.md)
+- [Configuration](docs/CONFIG.md)
 - [Provider doctor](docs/DOCTOR.md)
 - [Review engines](docs/engines/README.md)
 - [Performance measurement](docs/PERFORMANCE.md)

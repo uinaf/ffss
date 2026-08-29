@@ -42,9 +42,8 @@
 - Successful local recovery is recorded as `cursor_trailing_object`.
 
 - After provider execution metadata is resolved, operational failures preserve
-  the provider, model, harness version, isolation mode, and effective
-  web-access state plus any applicable protocol recovery in the canonical
-  report.
+  the provider, model, harness version, and effective web-access state plus
+  any applicable protocol recovery in the canonical report.
 - Earlier failures keep nullable metadata unset.
 
 After any provider return, slopguard recollects the target. A changed snapshot

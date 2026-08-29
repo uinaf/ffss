@@ -27,7 +27,7 @@ func TestProviderPreparationIsCachedAcrossReviewAttempts(t *testing.T) {
 			name: "Codex",
 			newFixture: func(t *testing.T) (Reviewer, string, string, config.Effective) {
 				fake := newFakeCodex(t, fakeCodexOptions{})
-				return NewCodex(CodexOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "OPENAI_API_KEY=secret"}}), fake.probes, fake.directory, codexConfig(protocol.IsolationStrict, false, 5*time.Second)
+				return NewCodex(CodexOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "OPENAI_API_KEY=secret"}}), fake.probes, fake.directory, codexConfig(false, 5*time.Second)
 			},
 			probes: 3,
 		},
@@ -35,7 +35,7 @@ func TestProviderPreparationIsCachedAcrossReviewAttempts(t *testing.T) {
 			name: "Claude",
 			newFixture: func(t *testing.T) (Reviewer, string, string, config.Effective) {
 				fake := newFakeClaude(t, fakeClaudeOptions{})
-				return NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}}), fake.probes, fake.directory, claudeConfig(protocol.IsolationStrict, false, 5*time.Second)
+				return NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}}), fake.probes, fake.directory, claudeConfig(false, 5*time.Second)
 			},
 			probes: 2,
 		},
@@ -43,7 +43,7 @@ func TestProviderPreparationIsCachedAcrossReviewAttempts(t *testing.T) {
 			name: "Cursor",
 			newFixture: func(t *testing.T) (Reviewer, string, string, config.Effective) {
 				fake := newFakeCursor(t, fakeCursorOptions{})
-				return NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}}), fake.probes, fake.directory, cursorConfig(protocol.IsolationStrict, true, 5*time.Second)
+				return NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}}), fake.probes, fake.directory, cursorConfig(true, 5*time.Second)
 			},
 			probes: 2,
 		},
@@ -51,7 +51,7 @@ func TestProviderPreparationIsCachedAcrossReviewAttempts(t *testing.T) {
 			name: "Grok",
 			newFixture: func(t *testing.T) (Reviewer, string, string, config.Effective) {
 				fake := newFakeGrok(t, fakeGrokOptions{})
-				return NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}}), fake.probes, fake.directory, grokConfig(protocol.IsolationStrict, false, 5*time.Second)
+				return NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}}), fake.probes, fake.directory, grokConfig(false, 5*time.Second)
 			},
 			probes: 2,
 		},
@@ -82,7 +82,7 @@ func TestPreparationCacheCoalescesMissesAndDoesNotCacheFailures(t *testing.T) {
 	t.Parallel()
 
 	cache := &preparationCache{}
-	key := preparationKey{Isolation: protocol.IsolationStrict}
+	key := preparationKey{}
 	var calls atomic.Int32
 	var wait sync.WaitGroup
 	results := make(chan preparedExecutable, 2)
@@ -113,7 +113,7 @@ func TestPreparationCacheCoalescesMissesAndDoesNotCacheFailures(t *testing.T) {
 		}
 	}
 
-	failureKey := preparationKey{Isolation: protocol.IsolationNative}
+	failureKey := preparationKey{WebAccess: true}
 	failedCalls := 0
 	if _, err := cache.resolve(context.Background(), failureKey, func() (preparedExecutable, error) {
 		failedCalls++
@@ -123,24 +123,12 @@ func TestPreparationCacheCoalescesMissesAndDoesNotCacheFailures(t *testing.T) {
 	}
 	if _, err := cache.resolve(context.Background(), failureKey, func() (preparedExecutable, error) {
 		failedCalls++
-		return preparedExecutable{Path: "/native-provider", Version: "1.0.0"}, nil
+		return preparedExecutable{Path: "/web-provider", Version: "1.0.0"}, nil
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if failedCalls != 2 {
 		t.Fatalf("failure preparation calls = %d, want 2", failedCalls)
-	}
-
-	policyCalls := 0
-	webKey := preparationKey{Isolation: protocol.IsolationNative, WebAccess: true}
-	if _, err := cache.resolve(context.Background(), webKey, func() (preparedExecutable, error) {
-		policyCalls++
-		return preparedExecutable{Path: "/web-provider", Version: "1.0.0"}, nil
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if policyCalls != 1 {
-		t.Fatalf("policy preparation calls = %d, want 1", policyCalls)
 	}
 }
 
@@ -173,7 +161,7 @@ func TestPreparationCacheScopesInflightCallsByPolicyAndHonorsWaiterContext(t *te
 	t.Parallel()
 
 	cache := &preparationCache{}
-	slowKey := preparationKey{Isolation: protocol.IsolationStrict}
+	slowKey := preparationKey{}
 	started := make(chan struct{})
 	release := make(chan struct{})
 	finished := make(chan error, 1)
@@ -181,15 +169,15 @@ func TestPreparationCacheScopesInflightCallsByPolicyAndHonorsWaiterContext(t *te
 		_, err := cache.resolve(context.Background(), slowKey, func() (preparedExecutable, error) {
 			close(started)
 			<-release
-			return preparedExecutable{Path: "/strict", Version: "1.0.0"}, nil
+			return preparedExecutable{Path: "/slow", Version: "1.0.0"}, nil
 		})
 		finished <- err
 	}()
 	<-started
 
-	otherKey := preparationKey{Isolation: protocol.IsolationNative}
+	otherKey := preparationKey{WebAccess: true}
 	if _, err := cache.resolve(context.Background(), otherKey, func() (preparedExecutable, error) {
-		return preparedExecutable{Path: "/native", Version: "1.0.0"}, nil
+		return preparedExecutable{Path: "/other", Version: "1.0.0"}, nil
 	}); err != nil {
 		t.Fatalf("independent policy preparation blocked: %v", err)
 	}
@@ -213,7 +201,7 @@ func TestPreparationCacheRetriesAfterLeaderCancellation(t *testing.T) {
 	t.Parallel()
 
 	cache := &preparationCache{}
-	key := preparationKey{Isolation: protocol.IsolationStrict}
+	key := preparationKey{}
 	leaderContext, cancelLeader := context.WithCancel(context.Background())
 	leaderStarted := make(chan struct{})
 	leaderDone := make(chan error, 1)
@@ -257,7 +245,7 @@ func TestPreparationCacheDoesNotRetryCoincidentFailureAfterLeaderCancellation(t 
 	t.Parallel()
 
 	cache := &preparationCache{}
-	key := preparationKey{Isolation: protocol.IsolationStrict}
+	key := preparationKey{}
 	leaderContext, cancelLeader := context.WithCancel(context.Background())
 	leaderStarted := make(chan struct{})
 	leaderDone := make(chan error, 1)
@@ -307,21 +295,21 @@ func TestCodexClaudeAndCursorSkipImplicitIncompatibleCandidate(t *testing.T) {
 				fake := newFakeCodex(t, fakeCodexOptions{})
 				environment := []string{"PATH=" + strings.Join([]string{shimDirectory, filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)), "OPENAI_API_KEY=secret"}
 				reviewer := NewCodex(CodexOptions{Repository: t.TempDir(), Environment: environment})
-				if _, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: codexConfig(protocol.IsolationStrict, false, 5*time.Second)}); err != nil {
+				if _, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: codexConfig(false, 5*time.Second)}); err != nil {
 					t.Fatal(err)
 				}
 			case "claude":
 				fake := newFakeClaude(t, fakeClaudeOptions{})
 				environment := []string{"PATH=" + strings.Join([]string{shimDirectory, filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)), "ANTHROPIC_API_KEY=secret"}
 				reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Environment: environment})
-				if _, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)}); err != nil {
+				if _, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)}); err != nil {
 					t.Fatal(err)
 				}
 			case "cursor-agent":
 				fake := newFakeCursor(t, fakeCursorOptions{})
 				environment := []string{"PATH=" + strings.Join([]string{shimDirectory, filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)), "CURSOR_API_KEY=secret"}
 				reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Environment: environment})
-				if _, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)}); err != nil {
+				if _, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -344,22 +332,22 @@ func TestExplicitProviderExecutableDoesNotFallback(t *testing.T) {
 				fake := newFakeCodex(t, fakeCodexOptions{})
 				arguments = fake.arguments
 				reviewer := NewCodex(CodexOptions{Repository: t.TempDir(), Executable: manager, Environment: []string{"PATH=" + strings.Join([]string{filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)), "OPENAI_API_KEY=secret"}})
-				_, err = reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: codexConfig(protocol.IsolationStrict, false, 5*time.Second)})
+				_, err = reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: codexConfig(false, 5*time.Second)})
 			case "claude":
 				fake := newFakeClaude(t, fakeClaudeOptions{})
 				arguments = fake.arguments
 				reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: manager, Environment: []string{"PATH=" + strings.Join([]string{filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)), "ANTHROPIC_API_KEY=secret"}})
-				_, err = reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(protocol.IsolationStrict, false, 5*time.Second)})
+				_, err = reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)})
 			case "cursor-agent":
 				fake := newFakeCursor(t, fakeCursorOptions{})
 				arguments = fake.arguments
 				reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: manager, Environment: []string{"PATH=" + strings.Join([]string{filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)), "CURSOR_API_KEY=secret"}})
-				_, err = reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+				_, err = reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)})
 			case "grok":
 				fake := newFakeGrok(t, fakeGrokOptions{})
 				arguments = fake.arguments
 				reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: manager, Environment: []string{"PATH=" + strings.Join([]string{filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)), "XAI_API_KEY=secret"}})
-				_, err = reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second)})
+				_, err = reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(false, 5*time.Second)})
 			}
 			_ = assertProviderError(t, err, protocol.FailureCapability)
 			if _, statErr := os.Stat(arguments); !errors.Is(statErr, os.ErrNotExist) {
@@ -381,7 +369,7 @@ func TestImplicitCandidateStopsAfterProviderProbeFailure(t *testing.T) {
 		"OPENAI_API_KEY=secret",
 	}
 	reviewer := NewCodex(CodexOptions{Repository: t.TempDir(), Environment: environment})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: codexConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: codexConfig(false, 5*time.Second)})
 	_ = assertProviderError(t, err, protocol.FailureProvider)
 	if _, statErr := os.Stat(fake.arguments); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("compatible candidate was invoked after provider probe failure: %v", statErr)

@@ -98,9 +98,6 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 		}
 	}()
 	environment := runtime.Environment()
-	if request.Config.Isolation.Value == protocol.IsolationStrict {
-		environment = setEnvironmentValue(environment, "CLAUDE_CODE_DISABLE_AUTO_MEMORY", "1")
-	}
 	if !cached {
 		preparationSpan.End()
 		probeSpan := phase.Start(reviewContext, phase.DependencyProbes)
@@ -108,9 +105,6 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 			candidates, discoverErr := discoverExecutableCandidates(claude.executable, repository, claude.environment)
 			if discoverErr != nil {
 				return preparedExecutable{}, newFailure(protocol.FailureCapability, discoverErr.Error(), claude.environment, nil)
-			}
-			if failure := strictCredentialFailure(request.Config, protocol.ProviderClaude, claude.environment); failure != nil {
-				return preparedExecutable{}, failure
 			}
 			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
 				return claude.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
@@ -121,8 +115,6 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 			return Result{}, err
 		}
 		preparationSpan = phase.Start(reviewContext, phase.ProviderPreparation)
-	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderClaude, claude.environment); failure != nil {
-		return Result{}, failure
 	}
 	executable, version := prepared.Path, prepared.Version
 	providerSchema, err := contractschema.ClaudeReviewV1()
@@ -135,7 +127,6 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	}
 	resolvedExecution := Execution{
 		Provider:  protocol.Provider{Name: protocol.ProviderClaude, Model: model, Version: version},
-		Isolation: request.Config.Isolation.Value,
 		WebAccess: request.Config.WebAccess.Value,
 	}
 	preparationSpan.End()
@@ -167,7 +158,7 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
-		return Result{}, processFailure("Claude review", class, processErr, process, environment, &attempt, strictCredentialRecovery(request.Config, protocol.ProviderClaude)).withExecution(resolvedExecution)
+		return Result{}, processFailure("Claude review", class, processErr, process, environment, &attempt).withExecution(resolvedExecution)
 	}
 	reviewData, err := decodeClaudeEnvelope(process.Stdout)
 	if err != nil {
@@ -195,7 +186,6 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 		Provider:  resolvedExecution.Provider,
 		Attempt:   attempt,
 		Duration:  time.Since(started),
-		Isolation: resolvedExecution.Isolation,
 		WebAccess: resolvedExecution.WebAccess,
 		ProtocolRecovery: protocol.ProtocolRecovery{
 			Applied: false,
@@ -232,9 +222,6 @@ func (claude *Claude) preflight(ctx context.Context, executable, workspace strin
 		return "", probeFailure("Claude --help", err, helpResult, environment, protocol.FailureCapability)
 	}
 	required := []string{"--print", "--no-session-persistence", "--output-format", "--json-schema", "--model", "--effort", "--tools", "--permission-mode", "--no-chrome"}
-	if effective.Isolation.Value == protocol.IsolationStrict {
-		required = append(required, "--safe-mode", "--setting-sources", "--strict-mcp-config", "--disallowedTools")
-	}
 	if effective.WebAccess.Value {
 		required = append(required, "--allowedTools")
 	}
@@ -246,14 +233,6 @@ func (claude *Claude) preflight(ctx context.Context, executable, workspace strin
 
 func claudeArguments(effective config.Effective, schema, model string) []string {
 	arguments := make([]string, 0, 32)
-	if effective.Isolation.Value == protocol.IsolationStrict {
-		arguments = append(arguments,
-			"--safe-mode",
-			"--setting-sources", "user",
-			"--strict-mcp-config",
-			"--disallowedTools", "mcp__*",
-		)
-	}
 	arguments = append(arguments,
 		"--print",
 		"--no-session-persistence",

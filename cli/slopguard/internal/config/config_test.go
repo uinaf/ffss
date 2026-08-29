@@ -24,10 +24,9 @@ func TestLoadUsesDocumentedPrecedenceAndSources(t *testing.T) {
 
 	repository := configRepository(t)
 	home := t.TempDir()
-	writeConfig(t, filepath.Join(home, ".config", "slopguard", "config.yaml"), "engine: codex\nreasoning_effort: low\ntimeout: 5m\nretries: 0\nisolation: native\nweb_access: true\n")
-	writeConfig(t, filepath.Join(repository, ".slopguard.yaml"), "engine: claude\nmodel: repo-model\ntimeout: 6m\nisolation: strict\nweb_access: false\n")
+	writeConfig(t, filepath.Join(home, ".config", "slopguard", "config.yaml"), "engine: codex\nreasoning_effort: low\ntimeout: 5m\nretries: 0\nweb_access: true\n")
+	writeConfig(t, filepath.Join(repository, ".slopguard.yaml"), "engine: claude\nmodel: repo-model\ntimeout: 6m\nweb_access: false\n")
 	timeout := 7 * time.Minute
-	isolation := protocol.IsolationNative
 	web := true
 	effective, err := Load(context.Background(), Options{
 		Repository: repository,
@@ -37,7 +36,7 @@ func TestLoadUsesDocumentedPrecedenceAndSources(t *testing.T) {
 			"SLOPGUARD_REASONING_EFFORT": "medium",
 		}),
 		HomeDir:   func() (string, error) { return home, nil },
-		Overrides: Overrides{Timeout: &timeout, Isolation: &isolation, WebAccess: &web},
+		Overrides: Overrides{Timeout: &timeout, WebAccess: &web},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -59,9 +58,6 @@ func TestLoadUsesDocumentedPrecedenceAndSources(t *testing.T) {
 	}
 	if effective.MaxBytes.Value != 1<<20 || effective.MaxBytes.Source != SourceDefault {
 		t.Fatalf("max_bytes = %+v", effective.MaxBytes)
-	}
-	if effective.Isolation.Value != protocol.IsolationNative || effective.Isolation.Source != SourceFlag {
-		t.Fatalf("isolation = %+v", effective.Isolation)
 	}
 	if !effective.WebAccess.Value || effective.WebAccess.Source != SourceFlag {
 		t.Fatalf("web_access = %+v", effective.WebAccess)
@@ -172,9 +168,6 @@ func TestLoadAppliesProviderDefaults(t *testing.T) {
 			})
 			if err != nil {
 				t.Fatal(err)
-			}
-			if effective.Isolation.Value != protocol.IsolationNative || effective.Isolation.Source != SourceDefault {
-				t.Fatalf("isolation = %+v", effective.Isolation)
 			}
 			if effective.ReasoningEffort.Value != test.effort || effective.ReasoningEffort.Source != SourceDefault {
 				t.Fatalf("reasoning_effort = %+v", effective.ReasoningEffort)
@@ -289,17 +282,14 @@ func TestLoadRejectsUnknownRepositoryKeyWithSource(t *testing.T) {
 	}
 }
 
-func TestUntrustedSourcesCannotWeakenIsolation(t *testing.T) {
+func TestUntrustedSourcesCannotEnableWeb(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range []struct {
 		name        string
-		xdg         string
 		repository  string
 		environment map[string]string
 	}{
-		{name: "repository weakens trusted strict", xdg: "engine: codex\nisolation: strict\n", repository: "isolation: native\n"},
-		{name: "environment weakens repository strict", repository: "engine: codex\nisolation: strict\n", environment: map[string]string{"SLOPGUARD_ISOLATION": "native"}},
 		{name: "repository web", repository: "engine: codex\nweb_access: true\n"},
 		{name: "environment web", repository: "engine: codex\n", environment: map[string]string{"SLOPGUARD_WEB_ACCESS": "true"}},
 	} {
@@ -307,27 +297,24 @@ func TestUntrustedSourcesCannotWeakenIsolation(t *testing.T) {
 			repository := configRepository(t)
 			writeConfig(t, filepath.Join(repository, ".slopguard.yaml"), test.repository)
 			home := t.TempDir()
-			if test.xdg != "" {
-				writeConfig(t, filepath.Join(home, ".config", "slopguard", "config.yaml"), test.xdg)
-			}
 			_, err := Load(context.Background(), Options{
 				Repository: repository,
 				LookupEnv:  envLookup(test.environment),
 				HomeDir:    func() (string, error) { return home, nil },
 			})
-			if err == nil || (!strings.Contains(err.Error(), "cannot weaken strict") && !strings.Contains(err.Error(), "cannot enable web")) {
+			if err == nil || !strings.Contains(err.Error(), "cannot enable web") {
 				t.Fatalf("Load() error = %v", err)
 			}
 		})
 	}
 }
 
-func TestTrustedXDGCanEnableNativeIsolationAndWeb(t *testing.T) {
+func TestTrustedXDGCanEnableWeb(t *testing.T) {
 	t.Parallel()
 
 	repository := configRepository(t)
 	home := t.TempDir()
-	writeConfig(t, filepath.Join(home, ".config", "slopguard", "config.yaml"), "engine: codex\nisolation: native\nweb_access: true\n")
+	writeConfig(t, filepath.Join(home, ".config", "slopguard", "config.yaml"), "engine: codex\nweb_access: true\n")
 	effective, err := Load(context.Background(), Options{
 		Repository: repository,
 		LookupEnv:  envLookup(nil),
@@ -336,8 +323,8 @@ func TestTrustedXDGCanEnableNativeIsolationAndWeb(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if effective.Isolation.Value != protocol.IsolationNative || effective.Isolation.Source != SourceXDG || !effective.WebAccess.Value || effective.WebAccess.Source != SourceXDG {
-		t.Fatalf("effective controls = isolation %+v, web %+v", effective.Isolation, effective.WebAccess)
+	if !effective.WebAccess.Value || effective.WebAccess.Source != SourceXDG {
+		t.Fatalf("web_access = %+v", effective.WebAccess)
 	}
 }
 
@@ -411,23 +398,11 @@ func TestTelemetryEnablementTrustBoundary(t *testing.T) {
 	})
 }
 
-func TestEnvironmentSelectedXDGCanRepeatNativeDefaultButCannotEnableWeb(t *testing.T) {
+func TestEnvironmentSelectedXDGCannotEnableWeb(t *testing.T) {
 	t.Parallel()
 
 	repository := configRepository(t)
 	xdg := t.TempDir()
-	writeConfig(t, filepath.Join(xdg, "slopguard", "config.yaml"), "engine: codex\nisolation: native\n")
-	effective, err := Load(context.Background(), Options{
-		Repository: repository,
-		LookupEnv:  envLookup(map[string]string{"XDG_CONFIG_HOME": xdg}),
-		HomeDir:    func() (string, error) { return t.TempDir(), nil },
-	})
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-	if effective.Isolation.Value != protocol.IsolationNative || effective.Isolation.Source != SourceXDG {
-		t.Fatalf("isolation = %+v", effective.Isolation)
-	}
 	writeConfig(t, filepath.Join(xdg, "slopguard", "config.yaml"), "engine: codex\nweb_access: true\n")
 	if _, err := Load(context.Background(), Options{
 		Repository: repository,
@@ -532,7 +507,7 @@ func TestTrustedAccountHomeXDGRejectsParentSymlinkEscape(t *testing.T) {
 	repository := configRepository(t)
 	home := t.TempDir()
 	outside := t.TempDir()
-	writeConfig(t, filepath.Join(outside, "slopguard", "config.yaml"), "engine: codex\nisolation: native\n")
+	writeConfig(t, filepath.Join(outside, "slopguard", "config.yaml"), "engine: codex\n")
 	if err := os.Symlink(outside, filepath.Join(home, ".config")); err != nil {
 		t.Fatal(err)
 	}
@@ -732,96 +707,11 @@ func TestEffectiveDiagnosticUsesDurationStringAndNoEnvironmentDump(t *testing.T)
 	}
 }
 
-func TestPrepareStrictRuntimeSanitizesStateAndUsesEmptyWorkspace(t *testing.T) {
-	t.Parallel()
-
-	effective := defaults()
-	effective.Engine.Value = protocol.ProviderCodex
-	effective.Isolation.Value = protocol.IsolationStrict
-	runtime, err := PrepareRuntime(effective, []string{
-		"PATH=/usr/bin",
-		"HOME=/private/home",
-		"CODEX_HOME=/private/codex",
-		"OPENAI_API_KEY=secret",
-		"CODEX_API_KEY=codex-secret",
-		"ANTHROPIC_API_KEY=claude-secret",
-		"CURSOR_API_KEY=cursor-secret",
-		"XAI_API_KEY=grok-secret",
-		"ALL_PROXY=socks5://proxy.example:1080",
-		"NODE_EXTRA_CA_CERTS=/etc/company-ca.pem",
-		"no_proxy=localhost,127.0.0.1",
-		"AWS_SECRET_ACCESS_KEY=drop-me",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	root := runtime.root
-	defer func() { _ = runtime.Close() }()
-	entries, err := os.ReadDir(runtime.Workspace)
-	if err != nil || len(entries) != 0 {
-		t.Fatalf("workspace entries = %v, error = %v", entries, err)
-	}
-	environment := strings.Join(runtime.Environment(), "\n")
-	for _, expected := range []string{
-		"PATH=/usr/bin",
-		"OPENAI_API_KEY=secret",
-		"CODEX_API_KEY=codex-secret",
-		"ALL_PROXY=socks5://proxy.example:1080",
-		"NODE_EXTRA_CA_CERTS=/etc/company-ca.pem",
-		"no_proxy=localhost,127.0.0.1",
-		"HOME=" + filepath.Join(root, "home"),
-		"CODEX_HOME=" + filepath.Join(root, "codex"),
-	} {
-		if !strings.Contains(environment, expected) {
-			t.Errorf("strict environment omitted %q: %s", expected, environment)
-		}
-	}
-	for _, forbidden := range []string{"HOME=/private/home", "CODEX_HOME=/private/codex", "ANTHROPIC_API_KEY", "CURSOR_API_KEY", "XAI_API_KEY", "AWS_SECRET_ACCESS_KEY"} {
-		if strings.Contains(environment, forbidden) {
-			t.Errorf("strict environment retained %q: %s", forbidden, environment)
-		}
-	}
-	if err := runtime.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(root); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("runtime root still exists: %v", err)
-	}
-}
-
-func TestPrepareStrictRuntimePreservesOnlyGrokCredential(t *testing.T) {
-	t.Parallel()
-
-	effective := defaults()
-	effective.Engine.Value = protocol.ProviderGrok
-	effective.Isolation.Value = protocol.IsolationStrict
-	runtime, err := PrepareRuntime(effective, []string{
-		"PATH=/usr/bin",
-		"XAI_API_KEY=grok-secret",
-		"OPENAI_API_KEY=drop-openai",
-		"ANTHROPIC_API_KEY=drop-anthropic",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = runtime.Close() }()
-	environment := strings.Join(runtime.Environment(), "\n")
-	if !strings.Contains(environment, "XAI_API_KEY=grok-secret") || !strings.Contains(environment, "GROK_HOME=") {
-		t.Fatalf("strict Grok environment = %s", environment)
-	}
-	for _, forbidden := range []string{"OPENAI_API_KEY", "ANTHROPIC_API_KEY"} {
-		if strings.Contains(environment, forbidden) {
-			t.Errorf("strict Grok environment retained %q: %s", forbidden, environment)
-		}
-	}
-}
-
-func TestPrepareNativeRuntimePreservesEnvironmentWithEmptyWorkspace(t *testing.T) {
+func TestPrepareRuntimePreservesEnvironmentWithEmptyWorkspace(t *testing.T) {
 	t.Parallel()
 
 	effective := defaults()
 	effective.Engine.Value = protocol.ProviderClaude
-	effective.Isolation.Value = protocol.IsolationNative
 	parent := []string{"HOME=/native/home", "CLAUDE_CONFIG_DIR=/native/claude", "TOKEN=secret"}
 	runtime, err := PrepareRuntime(effective, parent)
 	if err != nil {

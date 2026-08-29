@@ -98,11 +98,6 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 		}
 	}()
 	environment := runtime.Environment()
-	if request.Config.Isolation.Value == protocol.IsolationStrict {
-		if err := writeCursorPermissions(environment); err != nil {
-			return Result{}, newFailure(protocol.FailureInternal, err.Error(), environment, nil)
-		}
-	}
 	if !cached {
 		preparationSpan.End()
 		probeSpan := phase.Start(reviewContext, phase.DependencyProbes)
@@ -110,9 +105,6 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 			candidates, discoverErr := discoverExecutableCandidates(cursor.executable, repository, cursor.environment)
 			if discoverErr != nil {
 				return preparedExecutable{}, newFailure(protocol.FailureCapability, discoverErr.Error(), cursor.environment, nil)
-			}
-			if failure := strictCredentialFailure(request.Config, protocol.ProviderCursor, cursor.environment); failure != nil {
-				return preparedExecutable{}, failure
 			}
 			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
 				return cursor.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
@@ -123,8 +115,6 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 			return Result{}, err
 		}
 		preparationSpan = phase.Start(reviewContext, phase.ProviderPreparation)
-	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderCursor, cursor.environment); failure != nil {
-		return Result{}, failure
 	}
 	executable, version := prepared.Path, prepared.Version
 	model := request.Config.Model.Value
@@ -133,7 +123,6 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 	}
 	resolvedExecution := Execution{
 		Provider:  protocol.Provider{Name: protocol.ProviderCursor, Model: model, Version: version},
-		Isolation: request.Config.Isolation.Value,
 		WebAccess: request.Config.WebAccess.Value,
 	}
 	preparationSpan.End()
@@ -165,7 +154,7 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
-		return Result{}, processFailure("Cursor review", class, processErr, process, environment, &attempt, strictCredentialRecovery(request.Config, protocol.ProviderCursor)).withExecution(resolvedExecution)
+		return Result{}, processFailure("Cursor review", class, processErr, process, environment, &attempt).withExecution(resolvedExecution)
 	}
 	inner, err := decodeCursorEnvelope(process.Stdout)
 	if err != nil {
@@ -198,7 +187,6 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 		Provider:         resolvedExecution.Provider,
 		Attempt:          attempt,
 		Duration:         time.Since(started),
-		Isolation:        resolvedExecution.Isolation,
 		WebAccess:        resolvedExecution.WebAccess,
 		ProtocolRecovery: recovery,
 	}, nil
@@ -234,16 +222,10 @@ func (cursor *Cursor) preflight(ctx context.Context, executable, workspace strin
 	}
 	help := string(helpResult.Stdout) + string(helpResult.Stderr)
 	required := []string{"--print", "--output-format", "--mode", "--workspace", "--trust", "--model"}
-	if effective.Isolation.Value == protocol.IsolationStrict {
-		required = append(required, "--sandbox")
-	}
 	if missing := missingCapabilities(help, required); len(missing) != 0 {
 		return "", newFailure(protocol.FailureCapability, "Cursor is missing required flags: "+strings.Join(missing, ", "), environment, nil)
 	}
 	requiredValues := [][2]string{{"--output-format", "json"}, {"--mode", "ask"}}
-	if effective.Isolation.Value == protocol.IsolationStrict {
-		requiredValues = append(requiredValues, [2]string{"--sandbox", "enabled"})
-	}
 	if missing := missingCursorOptionValues(help, requiredValues); len(missing) != 0 {
 		return "", newFailure(protocol.FailureCapability, "Cursor is missing required option values: "+strings.Join(missing, ", "), environment, nil)
 	}
@@ -256,26 +238,11 @@ func cursorArguments(effective config.Effective, workspace, model string) []stri
 		"--output-format", "json",
 		"--mode", "ask",
 	}
-	if effective.Isolation.Value == protocol.IsolationStrict {
-		arguments = append(arguments, "--sandbox", "enabled")
-	}
 	return append(arguments,
 		"--workspace", workspace,
 		"--trust",
 		"--model", model,
 	)
-}
-
-func writeCursorPermissions(environment []string) error {
-	configDirectory := environmentValue(environment, "CURSOR_CONFIG_DIR")
-	if configDirectory == "" {
-		return fmt.Errorf("strict Cursor runtime is missing CURSOR_CONFIG_DIR")
-	}
-	permissions := []byte(`{"version":1,"permissions":{"allow":[],"deny":["Shell(*)","Read(**)","Read(/**)","Write(**)","Write(/**)","Mcp(*)"]}}` + "\n")
-	if err := os.WriteFile(filepath.Join(configDirectory, "cli-config.json"), permissions, 0o600); err != nil {
-		return fmt.Errorf("write strict Cursor permissions: %w", err)
-	}
-	return nil
 }
 
 func decodeCursorEnvelope(output []byte) (string, error) {

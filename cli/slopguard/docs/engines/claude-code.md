@@ -7,15 +7,13 @@ Effort defaults to `high` and must be `low`, `medium`, `high`, `xhigh`, or
 
 ## Runtime contract
 
-The adapter capability-probes the installed CLI before model invocation. Every
-mode requires `--print`, `--no-session-persistence`, JSON-structured output, an
+The adapter capability-probes the installed CLI before model invocation. The run
+requires `--print`, `--no-session-persistence`, JSON-structured output, an
 explicit model and effort, a fixed tool inventory, `dontAsk` permissions, and
-disabled Chrome integration. Strict mode also requires `--safe-mode`, user-only
-setting sources, strict Model Context Protocol (MCP) configuration, and an
-MCP-tool deny rule.
+disabled Chrome integration.
 
-Native mode lets the actual Claude review process resolve authentication from
-the preserved environment and user configuration. A separate auth-status
+The Claude review process resolves authentication from the preserved
+environment and user configuration. A separate auth-status
 surface cannot block a configured session, gateway, helper, or key.
 
 The frozen prompt is delivered on standard input followed by a trusted review
@@ -23,16 +21,13 @@ policy. Each finding location must fit completely within one individual
 reviewed line range; cross-hunk concerns must be narrowed to one establishing
 range or split into separately valid findings.
 
-## Isolation and web access
+## Web access
 
 Web access is off by default. When enabled, `WebSearch` is the only exposed
 tool; filesystem, shell, MCP, browser, and unrestricted fetch tools remain
-unavailable.
-
-| Mode | Authentication and configuration | Isolation controls |
-| --- | --- | --- |
-| `native` (default) | Existing environment, user configuration, and configured provider or session authentication | Empty workspace and explicit safe tool inventory |
-| `strict` | Empty home and Claude state; requires `ANTHROPIC_API_KEY` | Safe mode, disabled auto-memory, strict MCP, and no unsafe tools |
+unavailable. The provider keeps its existing environment, user configuration,
+and configured provider or session authentication, and runs from an empty
+workspace with an explicit safe tool inventory.
 
 ## Output contract
 

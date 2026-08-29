@@ -37,7 +37,6 @@ func reviewDocumentReason(data []byte) protocol.ProtocolReason {
 func (result Result) ResolvedExecution() Execution {
 	return Execution{
 		Provider:         result.Provider,
-		Isolation:        result.Isolation,
 		WebAccess:        result.WebAccess,
 		ProtocolRecovery: result.ProtocolRecovery,
 	}

@@ -107,9 +107,6 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 			if discoverErr != nil {
 				return preparedExecutable{}, newFailure(protocol.FailureCapability, discoverErr.Error(), codex.environment, nil)
 			}
-			if failure := strictCredentialFailure(request.Config, protocol.ProviderCodex, codex.environment); failure != nil {
-				return preparedExecutable{}, failure
-			}
 			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
 				return codex.preflight(reviewContext, candidate, runtime, request.Config)
 			})
@@ -119,8 +116,6 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 			return Result{}, err
 		}
 		preparationSpan = phase.Start(reviewContext, phase.ProviderPreparation)
-	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderCodex, codex.environment); failure != nil {
-		return Result{}, failure
 	}
 	executable, version := prepared.Path, prepared.Version
 	state, err := os.MkdirTemp("", "slopguard-codex-state-")
@@ -161,7 +156,6 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 	}
 	resolvedExecution := Execution{
 		Provider:  protocol.Provider{Name: protocol.ProviderCodex, Model: model, Version: version},
-		Isolation: request.Config.Isolation.Value,
 		WebAccess: request.Config.WebAccess.Value,
 	}
 	arguments := codexArguments(request.Config, runtime.Workspace, schemaPath, outputPath, model)
@@ -194,7 +188,7 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
-		return Result{}, processFailure("Codex review", class, processErr, process, runtime.Environment(), &attempt, strictCredentialRecovery(request.Config, protocol.ProviderCodex)).withExecution(resolvedExecution)
+		return Result{}, processFailure("Codex review", class, processErr, process, runtime.Environment(), &attempt).withExecution(resolvedExecution)
 	}
 	message, err := decodeCodexEnvelope(process.Stdout)
 	if err != nil {
@@ -238,7 +232,6 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		Provider:  resolvedExecution.Provider,
 		Attempt:   attempt,
 		Duration:  time.Since(started),
-		Isolation: resolvedExecution.Isolation,
 		WebAccess: resolvedExecution.WebAccess,
 		ProtocolRecovery: protocol.ProtocolRecovery{
 			Applied: false,
@@ -275,9 +268,6 @@ func (codex *Codex) preflight(ctx context.Context, executable string, runtime *c
 		return "", probeFailure("Codex --help", err, topHelp, runtime.Environment(), protocol.FailureCapability)
 	}
 	requiredTop := []string{"--ask-for-approval"}
-	if effective.Isolation.Value == protocol.IsolationStrict {
-		requiredTop = append(requiredTop, "--strict-config")
-	}
 	if effective.WebAccess.Value {
 		requiredTop = append(requiredTop, "--search")
 	}
@@ -289,9 +279,6 @@ func (codex *Codex) preflight(ctx context.Context, executable string, runtime *c
 		return "", probeFailure("Codex exec --help", err, execHelp, runtime.Environment(), protocol.FailureCapability)
 	}
 	requiredExec := []string{"--ephemeral", "--skip-git-repo-check", "--output-schema", "--output-last-message", "--json", "--cd"}
-	if effective.Isolation.Value == protocol.IsolationStrict {
-		requiredExec = append(requiredExec, "--ignore-user-config", "--ignore-rules", "--sandbox")
-	}
 	if missing := missingCapabilities(string(execHelp.Stdout)+string(execHelp.Stderr), requiredExec); len(missing) != 0 {
 		return "", newFailure(protocol.FailureCapability, "Codex exec is missing required flags: "+strings.Join(missing, ", "), runtime.Environment(), nil)
 	}
@@ -309,29 +296,7 @@ func codexArguments(effective config.Effective, workspace, schemaPath, outputPat
 	} else {
 		arguments = append(arguments, "-c", `web_search="disabled"`)
 	}
-	if effective.Isolation.Value == protocol.IsolationStrict {
-		arguments = append(arguments,
-			"--strict-config",
-			"-c", "project_doc_max_bytes=0",
-			"-c", "features.shell_snapshot=false",
-			"-c", "features.hooks=false",
-			"-c", "features.plugins=false",
-			"-c", "features.multi_agent=false",
-			"-c", "skills.include_instructions=false",
-			"-c", "skills.config=[]",
-			"-c", `shell_environment_policy.inherit="core"`,
-			"-c", "shell_environment_policy.ignore_default_excludes=false",
-			"-c", `shell_environment_policy.set={GIT_CONFIG_GLOBAL="/dev/null",GIT_CONFIG_SYSTEM="/dev/null",GIT_TERMINAL_PROMPT="0"}`,
-			"-c", "shell_environment_policy.experimental_use_profile=false",
-			"-c", "allow_login_shell=false",
-			"-c", `default_permissions="slopguard"`,
-			"-c", `permissions.slopguard.filesystem={":minimal"="read",":workspace_roots"="read"}`,
-		)
-	}
 	arguments = append(arguments, "exec", "--json", "--color", "never", "--ephemeral", "--skip-git-repo-check", "--cd", workspace)
-	if effective.Isolation.Value == protocol.IsolationStrict {
-		arguments = append(arguments, "--sandbox", "read-only", "--ignore-user-config", "--ignore-rules")
-	}
 	arguments = append(arguments, "--output-schema", schemaPath, "--output-last-message", outputPath, "-")
 	return arguments
 }
@@ -464,7 +429,7 @@ func classifyProcessFailure(err error, result processResult) protocol.FailureCla
 	return protocol.FailureProvider
 }
 
-func processFailure(operation string, class protocol.FailureClass, err error, result processResult, environment []string, attempt *protocol.Attempt, authRecovery string) *Error {
+func processFailure(operation string, class protocol.FailureClass, err error, result processResult, environment []string, attempt *protocol.Attempt) *Error {
 	kind := processExit
 	processErr := new(processError)
 	if errors.As(err, &processErr) {
@@ -474,13 +439,13 @@ func processFailure(operation string, class protocol.FailureClass, err error, re
 	if kind == processExit && result.ExitCode >= 0 {
 		message += fmt.Sprintf(" with exit code %d", result.ExitCode)
 	}
-	message += "; " + processRecovery(class, kind, authRecovery)
+	message += "; " + processRecovery(class, kind)
 	failure := newFailure(class, message, environment, attempt)
 	failure.ContextCaused = processErr.ContextCaused
 	return failure
 }
 
-func processRecovery(class protocol.FailureClass, kind processErrorKind, authRecovery string) string {
+func processRecovery(class protocol.FailureClass, kind processErrorKind) string {
 	switch {
 	case kind == processOutputLimit:
 		return "reduce the review target size and retry"
@@ -489,9 +454,6 @@ func processRecovery(class protocol.FailureClass, kind processErrorKind, authRec
 	case kind == processCleanup:
 		return "retry after confirming no provider process is still running"
 	case class == protocol.FailureAuth:
-		if authRecovery != "" {
-			return authRecovery
-		}
 		return "authenticate the provider CLI and retry"
 	case class == protocol.FailureTimeout:
 		return "retry or increase --timeout"
@@ -505,15 +467,11 @@ func processRecovery(class protocol.FailureClass, kind processErrorKind, authRec
 }
 
 func probeFailure(operation string, err error, result processResult, environment []string, fallback protocol.FailureClass) *Error {
-	return probeFailureWithAuthRecovery(operation, err, result, environment, fallback, "")
-}
-
-func probeFailureWithAuthRecovery(operation string, err error, result processResult, environment []string, fallback protocol.FailureClass, authRecovery string) *Error {
 	class := classifyProcessFailure(err, result)
 	if class == protocol.FailureProvider && isCapabilityProbeFailure(err) {
 		class = fallback
 	}
-	return processFailure(operation, class, err, result, environment, nil, authRecovery)
+	return processFailure(operation, class, err, result, environment, nil)
 }
 
 func newFailure(class protocol.FailureClass, message string, environment []string, attempt *protocol.Attempt) *Error {

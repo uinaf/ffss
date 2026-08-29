@@ -44,13 +44,6 @@ const (
 	ProviderGrok   ProviderName = "grok"
 )
 
-type Isolation string
-
-const (
-	IsolationStrict Isolation = "strict"
-	IsolationNative Isolation = "native"
-)
-
 type TargetMode string
 
 const (
@@ -145,7 +138,6 @@ type Metadata struct {
 	Provider         *Provider        `json:"provider"`
 	Attempts         []Attempt        `json:"attempts"`
 	DurationMS       int64            `json:"duration_ms"`
-	Isolation        *Isolation       `json:"isolation"`
 	WebAccess        bool             `json:"web_access"`
 	ProtocolRecovery ProtocolRecovery `json:"protocol_recovery"`
 }

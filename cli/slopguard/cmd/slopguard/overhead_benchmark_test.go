@@ -50,7 +50,7 @@ func TestReviewOverheadSubprocessBudget(t *testing.T) {
 			}
 			arguments := []string{
 				"review", "--repository", repository, "--mode", string(test.mode), "--engine", "codex",
-				"--prompt", "Review the target.", "--isolation", "strict", "--retries", strconv.Itoa(test.retries), "--timeout", "8s", "--output", "json",
+				"--prompt", "Review the target.", "--retries", strconv.Itoa(test.retries), "--timeout", "8s", "--output", "json",
 			}
 			arguments = append(arguments, targetArguments...)
 			var stdout strings.Builder
@@ -127,7 +127,7 @@ func BenchmarkReviewOverhead(b *testing.B) {
 			repository, targetArguments := benchmarkReviewRepository(b, scenario.mode, scenario.size)
 			arguments := []string{
 				"review", "--repository", repository, "--mode", string(scenario.mode),
-				"--engine", "codex", "--prompt", "Review the target.", "--isolation", "strict", "--retries", strconv.Itoa(scenario.retries),
+				"--engine", "codex", "--prompt", "Review the target.", "--retries", strconv.Itoa(scenario.retries),
 				"--timeout", "8s", "--max-bytes", strconv.Itoa(max(scenario.size*2, 1<<20)), "--output", "json",
 			}
 			arguments = append(arguments, targetArguments...)

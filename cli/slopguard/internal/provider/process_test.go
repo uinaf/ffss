@@ -72,7 +72,6 @@ func TestProcessFailurePreservesContextCausality(t *testing.T) {
 		processResult{ExitCode: -1},
 		nil,
 		nil,
-		"",
 	)
 	if !contextFailure.ContextCaused {
 		t.Fatal("context-caused process failure lost causality")
@@ -84,7 +83,6 @@ func TestProcessFailurePreservesContextCausality(t *testing.T) {
 		processResult{ExitCode: 7},
 		nil,
 		nil,
-		"",
 	)
 	if coincidentFailure.ContextCaused {
 		t.Fatal("provider exit was marked context-caused")

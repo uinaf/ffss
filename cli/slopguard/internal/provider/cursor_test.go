@@ -17,22 +17,19 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/reviewpolicy"
 )
 
-func TestCursorReviewStrictUsesAPIKeyWithoutStatusAndDenyConfig(t *testing.T) {
+func TestCursorReviewUsesFrozenStdinAndCanonicalArguments(t *testing.T) {
 	t.Parallel()
 
 	const bundle = "frozen review bundle"
-	helpWithoutStatus := strings.TrimSuffix(cursorHelp("text | json | stream-json", "plan, ask", "enabled, disabled"), "\nstatus")
-	fake := newFakeCursor(t, fakeCursorOptions{help: helpWithoutStatus, authError: "not authenticated"})
+	fake := newFakeCursor(t, fakeCursorOptions{})
 	reviewer := NewCursor(CursorOptions{
 		Repository: t.TempDir(), Executable: fake.path,
 		Environment: []string{
 			"PATH=/usr/bin:/bin",
 			"CURSOR_API_KEY=test-provider-secret",
-			"OPENAI_API_KEY=must-not-pass",
-			"HOME=/private/home",
 		},
 	})
-	result, err := reviewer.Review(context.Background(), Request{Prompt: bundle, Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: bundle, Config: cursorConfig(true, 5*time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +52,7 @@ func TestCursorReviewStrictUsesAPIKeyWithoutStatusAndDenyConfig(t *testing.T) {
 		t.Fatalf("provider stdin omitted trusted review protocol: input bytes=%d, bundle bytes=%d, protocol bytes=%d", len(prompt), len(bundle), len(reviewProtocol))
 	}
 	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
-	for _, required := range []string{"--print", "--output-format", "json", "--mode", "ask", "--sandbox", "enabled", "--workspace", "--trust", "--model", "test-model"} {
+	for _, required := range []string{"--print", "--output-format", "json", "--mode", "ask", "--workspace", "--trust", "--model", "test-model"} {
 		if !contains(arguments, required) {
 			t.Errorf("Cursor arguments omitted %q: %v", required, arguments)
 		}
@@ -64,55 +61,33 @@ func TestCursorReviewStrictUsesAPIKeyWithoutStatusAndDenyConfig(t *testing.T) {
 		t.Fatalf("Cursor arguments = %v", arguments)
 	}
 	environment := readTestFile(t, fake.environment)
-	if !strings.Contains(environment, "CURSOR_API_KEY=test-provider-secret") || strings.Contains(environment, "OPENAI_API_KEY") || strings.Contains(environment, "HOME=/private/home") {
-		t.Fatalf("strict environment = %s", environment)
-	}
-	permissions := readTestFile(t, fake.permissions)
-	var permissionDocument struct {
-		Version     int `json:"version"`
-		Permissions struct {
-			Deny []string `json:"deny"`
-		} `json:"permissions"`
-	}
-	if err := json.Unmarshal([]byte(permissions), &permissionDocument); err != nil {
-		t.Fatalf("strict permissions are not JSON: %v: %s", err, permissions)
-	}
-	if permissionDocument.Version != 1 {
-		t.Fatalf("strict permissions version = %d", permissionDocument.Version)
-	}
-	for _, denied := range []string{"Shell(*)", "Read(**)", "Read(/**)", "Write(**)", "Write(/**)", "Mcp(*)"} {
-		if !contains(permissionDocument.Permissions.Deny, denied) {
-			t.Errorf("strict permissions omitted %q: %s", denied, permissions)
-		}
+	if !strings.Contains(environment, "CURSOR_API_KEY=test-provider-secret") {
+		t.Fatalf("provider environment = %s", environment)
 	}
 }
 
-func TestCursorReviewNativePreservesConfigurationAndOmitsForcedSandbox(t *testing.T) {
+func TestCursorReviewPreservesConfigurationAndOmitsSandbox(t *testing.T) {
 	t.Parallel()
 
-	helpWithoutStatus := strings.TrimSuffix(cursorHelp("text | json | stream-json", "plan, ask", "enabled, disabled"), "\nstatus")
-	fake := newFakeCursor(t, fakeCursorOptions{help: helpWithoutStatus, authError: "not authenticated"})
+	fake := newFakeCursor(t, fakeCursorOptions{})
 	reviewer := NewCursor(CursorOptions{
 		Repository: t.TempDir(), Executable: fake.path,
 		Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home", "CURSOR_CONFIG_DIR=/native/cursor"},
 	})
-	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationNative, true, 5*time.Second)})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.WebAccess || result.Isolation != protocol.IsolationNative {
+	if !result.WebAccess {
 		t.Fatalf("result policy = %+v", result)
 	}
 	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
 	if contains(arguments, "--sandbox") || argumentAfter(arguments, "--mode") != "ask" {
-		t.Fatalf("native arguments = %v", arguments)
+		t.Fatalf("arguments = %v", arguments)
 	}
 	environment := readTestFile(t, fake.environment)
 	if !strings.Contains(environment, "HOME=/native/home") || !strings.Contains(environment, "CURSOR_CONFIG_DIR=/native/cursor") {
-		t.Fatalf("native environment = %s", environment)
-	}
-	if _, err := os.Stat(fake.permissions); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("native mode generated strict permissions: %v", err)
+		t.Fatalf("provider environment = %s", environment)
 	}
 }
 
@@ -121,7 +96,7 @@ func TestCursorReviewRejectsUnsupportedWebPolicyBeforeDiscovery(t *testing.T) {
 
 	fake := newFakeCursor(t, fakeCursorOptions{})
 	reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(false, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureCapability)
 	if !strings.Contains(failure.Message, "web_access=false") {
 		t.Fatalf("failure = %q", failure.Message)
@@ -135,7 +110,7 @@ func TestCursorReviewRejectsCombinedPromptBeforeDiscovery(t *testing.T) {
 	t.Parallel()
 
 	protocolBytes := int64(len(reviewpolicy.CursorReviewProtocol()))
-	effective := cursorConfig(protocol.IsolationStrict, true, 5*time.Second)
+	effective := cursorConfig(true, 5*time.Second)
 	effective.MaxBytes = config.Value[int64]{Value: protocolBytes, Source: config.SourceFlag}
 	maximumPrompt := effective.MaxBytes.Value + providerPromptAllowance
 	prompt := strings.Repeat("x", int(maximumPrompt-protocolBytes+1))
@@ -150,7 +125,7 @@ func TestCursorReviewRejectsCombinedPromptBeforeDiscovery(t *testing.T) {
 func TestCursorReviewRejectsSeparateReasoningConfiguration(t *testing.T) {
 	t.Parallel()
 
-	effective := cursorConfig(protocol.IsolationStrict, true, 5*time.Second)
+	effective := cursorConfig(true, 5*time.Second)
 	effective.ReasoningEffort.Source = config.SourceFlag
 	reviewer := NewCursor(CursorOptions{Repository: t.TempDir()})
 	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: effective})
@@ -162,7 +137,7 @@ func TestCursorReviewFailsCapabilityProbeBeforeInvocation(t *testing.T) {
 
 	fake := newFakeCursor(t, fakeCursorOptions{help: "--print --output-format status"})
 	reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)})
 	_ = assertProviderError(t, err, protocol.FailureCapability)
 	if _, err := os.Stat(fake.arguments); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("model was invoked after failed capability probe: %v", err)
@@ -176,14 +151,13 @@ func TestCursorReviewRejectsMissingCapabilityValues(t *testing.T) {
 		name string
 		help string
 	}{
-		{name: "JSON output", help: cursorHelp("text | stream-json", "plan, ask", "enabled, disabled")},
-		{name: "Ask mode", help: cursorHelp("text | json | stream-json", "plan", "enabled, disabled")},
-		{name: "enabled sandbox", help: cursorHelp("text | json | stream-json", "plan, ask", "disabled")},
+		{name: "JSON output", help: cursorHelp("text | stream-json", "plan, ask")},
+		{name: "Ask mode", help: cursorHelp("text | json | stream-json", "plan")},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fake := newFakeCursor(t, fakeCursorOptions{help: test.help})
 			reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}})
-			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)})
 			_ = assertProviderError(t, err, protocol.FailureCapability)
 			if _, err := os.Stat(fake.arguments); !errors.Is(err, os.ErrNotExist) {
 				t.Fatalf("model was invoked after failed capability value probe: %v", err)
@@ -192,12 +166,12 @@ func TestCursorReviewRejectsMissingCapabilityValues(t *testing.T) {
 	}
 }
 
-func TestCursorReviewNativeReportsProviderAuthenticationFailure(t *testing.T) {
+func TestCursorReviewReportsProviderAuthenticationFailure(t *testing.T) {
 	t.Parallel()
 
 	fake := newFakeCursor(t, fakeCursorOptions{reviewError: "not authenticated"})
 	reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationNative, true, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureAuth)
 	if !strings.Contains(failure.Message, "authenticate the provider CLI") {
 		t.Fatalf("failure = %q", failure.Message)
@@ -205,33 +179,7 @@ func TestCursorReviewNativeReportsProviderAuthenticationFailure(t *testing.T) {
 	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 		t.Fatalf("attempt = %+v", failure.Attempt)
 	}
-	assertExecutionMetadata(t, failure, protocol.ProviderCursor, "2026.07.23-e383d2b", protocol.IsolationNative, true)
-}
-
-func TestCursorReviewStrictExplainsCredentialRequirement(t *testing.T) {
-	t.Parallel()
-
-	fake := newFakeCursor(t, fakeCursorOptions{})
-	reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
-	failure := assertProviderError(t, err, protocol.FailureAuth)
-	if !strings.Contains(failure.Message, "strict isolation requires CURSOR_API_KEY") || !strings.Contains(failure.Message, "--isolation native") {
-		t.Fatalf("failure = %q", failure.Message)
-	}
-	if _, err := os.Stat(fake.arguments); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("provider was probed without a strict credential: %v", err)
-	}
-}
-
-func TestCursorReviewStrictReportsMissingExecutableBeforeCredential(t *testing.T) {
-	t.Parallel()
-
-	reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: "missing-cursor", Environment: []string{"PATH=/usr/bin:/bin"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
-	failure := assertProviderError(t, err, protocol.FailureCapability)
-	if !strings.Contains(failure.Message, "was not found") || strings.Contains(failure.Message, "API_KEY") {
-		t.Fatalf("failure = %q", failure.Message)
-	}
+	assertExecutionMetadata(t, failure, protocol.ProviderCursor, "2026.07.23-e383d2b", true)
 }
 
 func TestCursorReviewRecordsTrailingObjectRecovery(t *testing.T) {
@@ -240,7 +188,7 @@ func TestCursorReviewRecordsTrailingObjectRecovery(t *testing.T) {
 	review := `{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`
 	fake := newFakeCursor(t, fakeCursorOptions{output: cursorEnvelope("Here is the review.\n" + review)})
 	reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}})
-	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,12 +223,12 @@ func TestCursorReviewClassifiesMalformedDocuments(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fake := newFakeCursor(t, fakeCursorOptions{output: cursorEnvelope(test.input)})
 			reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}})
-			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)})
 			failure := assertProviderError(t, err, protocol.FailureProtocol)
 			if failure.Reason != test.reason || !strings.Contains(failure.Message, string(test.reason)) {
 				t.Fatalf("protocol failure = %+v, want reason %q", failure, test.reason)
 			}
-			if failure.Execution == nil || failure.Execution.Provider.Name != protocol.ProviderCursor || failure.Execution.Provider.Model != "test-model" || failure.Execution.Provider.Version != "2026.07.23-e383d2b" || failure.Execution.Isolation != protocol.IsolationStrict || !failure.Execution.WebAccess {
+			if failure.Execution == nil || failure.Execution.Provider.Name != protocol.ProviderCursor || failure.Execution.Provider.Model != "test-model" || failure.Execution.Provider.Version != "2026.07.23-e383d2b" || !failure.Execution.WebAccess {
 				t.Fatalf("execution metadata = %+v", failure.Execution)
 			}
 		})
@@ -305,7 +253,7 @@ func TestCursorReviewRejectsMalformedEnvelope(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fake := newFakeCursor(t, fakeCursorOptions{output: test.output})
 			reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}})
-			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)})
 			failure := assertProviderError(t, err, protocol.FailureProtocol)
 			if strings.Contains(failure.Message, providerOutputSentinel) {
 				t.Fatalf("protocol failure disclosed provider output: %q", failure.Message)
@@ -333,7 +281,7 @@ func TestCursorReviewClassifiesReportedProviderFailure(t *testing.T) {
 				exitAfterOutputError: test.exitAfterOutputError,
 			})
 			reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}})
-			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)})
 			failure := assertProviderError(t, err, protocol.FailureProvider)
 			if strings.Contains(failure.Message, providerOutputSentinel) {
 				t.Fatalf("provider failure disclosed provider output: %q", failure.Message)
@@ -341,7 +289,7 @@ func TestCursorReviewClassifiesReportedProviderFailure(t *testing.T) {
 			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 				t.Fatalf("attempt = %+v", failure.Attempt)
 			}
-			assertExecutionMetadata(t, failure, protocol.ProviderCursor, "2026.07.23-e383d2b", protocol.IsolationStrict, true)
+			assertExecutionMetadata(t, failure, protocol.ProviderCursor, "2026.07.23-e383d2b", true)
 		})
 	}
 }
@@ -351,7 +299,7 @@ func TestCursorReviewOmitsProviderFailureOutput(t *testing.T) {
 
 	fake := newFakeCursor(t, fakeCursorOptions{reviewError: "\033[31m" + providerOutputSentinel + " test-provider-secret\r"})
 	reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=test-provider-secret"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: providerOutputSentinel, Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: providerOutputSentinel, Config: cursorConfig(true, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureProvider)
 	if strings.Contains(failure.Message, providerOutputSentinel) || strings.Contains(failure.Message, "test-provider-secret") || strings.ContainsRune(failure.Message, '\x1b') {
 		t.Fatalf("provider failure = %q", failure.Message)
@@ -386,7 +334,7 @@ func TestCursorReviewDistinguishesTimeoutAndCancellation(t *testing.T) {
 					cancel()
 				}()
 			}
-			_, err := reviewer.Review(ctx, Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, test.timeout)})
+			_, err := reviewer.Review(ctx, Request{Prompt: "bundle", Config: cursorConfig(true, test.timeout)})
 			_ = assertProviderError(t, err, test.class)
 		})
 	}
@@ -397,7 +345,7 @@ func TestCursorReviewEnforcesOutputBounds(t *testing.T) {
 
 	fake := newFakeCursor(t, fakeCursorOptions{output: strings.Repeat("x", int(providerStdoutLimit)+1)})
 	reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(protocol.IsolationStrict, true, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureProvider)
 	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 		t.Fatalf("attempt = %+v", failure.Attempt)
@@ -407,7 +355,7 @@ func TestCursorReviewEnforcesOutputBounds(t *testing.T) {
 func TestCursorReviewUsesExplicitDefaultModel(t *testing.T) {
 	t.Parallel()
 
-	effective := cursorConfig(protocol.IsolationStrict, true, 5*time.Second)
+	effective := cursorConfig(true, 5*time.Second)
 	effective.Model = config.Value[string]{Source: config.SourceDefault}
 	fake := newFakeCursor(t, fakeCursorOptions{})
 	reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}})
@@ -430,8 +378,6 @@ func TestCursorReviewUsesExplicitDefaultModel(t *testing.T) {
 type fakeCursorOptions struct {
 	help                 string
 	version              string
-	loggedOut            bool
-	authError            string
 	output               string
 	reviewError          string
 	exitAfterOutputError string
@@ -443,7 +389,6 @@ type fakeCursor struct {
 	arguments   string
 	prompt      string
 	environment string
-	permissions string
 	probes      string
 	directory   string
 }
@@ -454,11 +399,10 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 	fake := fakeCursor{
 		path: filepath.Join(root, "cursor-agent"), arguments: filepath.Join(root, "arguments.txt"),
 		prompt: filepath.Join(root, "prompt.txt"), environment: filepath.Join(root, "environment.txt"),
-		permissions: filepath.Join(root, "permissions.json"),
-		probes:      filepath.Join(root, "probes.txt"), directory: filepath.Join(root, "directory.txt"),
+		probes: filepath.Join(root, "probes.txt"), directory: filepath.Join(root, "directory.txt"),
 	}
 	if options.help == "" {
-		options.help = cursorHelp("text | json | stream-json", "plan, ask", "enabled, disabled")
+		options.help = cursorHelp("text | json | stream-json", "plan, ask")
 	}
 	if options.version == "" {
 		options.version = "2026.07.23-e383d2b"
@@ -469,14 +413,6 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 	outputPath := filepath.Join(root, "output.json")
 	if err := os.WriteFile(outputPath, []byte(options.output), 0o600); err != nil {
 		t.Fatal(err)
-	}
-	authOutput, err := json.Marshal(map[string]any{"status": "authenticated", "isAuthenticated": !options.loggedOut})
-	if err != nil {
-		t.Fatal(err)
-	}
-	authBlock := "printf '%s' " + shellQuote(string(authOutput)) + "\nexit 0"
-	if options.authError != "" {
-		authBlock = "printf '%s' " + shellQuote(options.authError) + " >&2\nexit 1"
 	}
 	reviewFailure := ""
 	if options.reviewError != "" {
@@ -499,7 +435,6 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 		"  [ \"${1:-}\" = 'json' ] || return 1; shift\n" +
 		"  [ \"${1:-}\" = '--mode' ] || return 1; shift\n" +
 		"  [ \"${1:-}\" = 'ask' ] || return 1; shift\n" +
-		"  if [ \"${1:-}\" = '--sandbox' ]; then shift; [ \"${1:-}\" = 'enabled' ] || return 1; shift; fi\n" +
 		"  [ \"${1:-}\" = '--workspace' ] || return 1; shift\n" +
 		"  [ -d \"${1:-}\" ] || return 1; shift\n" +
 		"  [ \"${1:-}\" = '--trust' ] || return 1; shift\n" +
@@ -509,15 +444,12 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 		"}\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' version >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.version) + "; exit 0; fi\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--help\" ]; then printf '%s\\n' help >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
-		"if [ \"$#\" -eq 2 ] && [ \"$1\" = \"status\" ] && [ \"$2\" = \"--help\" ]; then printf '%s\\n' '--format <format> choices: text, json'; exit 0; fi\n" +
-		"if [ \"$#\" -eq 3 ] && [ \"$1\" = \"status\" ] && [ \"$2\" = \"--format\" ] && [ \"$3\" = \"json\" ]; then " + authBlock + "; fi\n" +
 		"validate_review \"$@\" || fail_contract\n" +
 		"printf '%s\\n' \"$@\" > " + shellQuote(fake.arguments) + "\n" +
 		"cat > " + shellQuote(fake.prompt) + "\n" +
 		"[ -s " + shellQuote(fake.prompt) + " ] || fail_contract\n" +
 		"env > " + shellQuote(fake.environment) + "\n" +
 		"pwd >> " + shellQuote(fake.directory) + "\n" +
-		"if [ -n \"${CURSOR_CONFIG_DIR:-}\" ] && [ -f \"$CURSOR_CONFIG_DIR/cli-config.json\" ]; then cat \"$CURSOR_CONFIG_DIR/cli-config.json\" > " + shellQuote(fake.permissions) + "; fi\n" +
 		reviewFailure + delay +
 		"cat " + shellQuote(outputPath) + "\n" +
 		afterOutputFailure
@@ -525,16 +457,14 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 	return fake
 }
 
-func cursorHelp(outputFormats, modes, sandboxModes string) string {
+func cursorHelp(outputFormats, modes string) string {
 	return strings.Join([]string{
 		"--print",
 		"--output-format <format> " + outputFormats,
 		"--model <model>",
 		"--mode <mode> choices: " + modes,
-		"--sandbox <mode> choices: " + sandboxModes,
 		"--workspace <path>",
 		"--trust",
-		"status",
 	}, "\n")
 }
 
@@ -549,7 +479,7 @@ func cursorEnvelope(result string) string {
 	return string(encoded)
 }
 
-func cursorConfig(isolation protocol.Isolation, web bool, timeout time.Duration) config.Effective {
+func cursorConfig(web bool, timeout time.Duration) config.Effective {
 	return config.Effective{
 		Engine:          config.Value[protocol.ProviderName]{Value: protocol.ProviderCursor, Source: config.SourceFlag},
 		Model:           config.Value[string]{Value: "test-model", Source: config.SourceFlag},
@@ -557,7 +487,6 @@ func cursorConfig(isolation protocol.Isolation, web bool, timeout time.Duration)
 		Timeout:         config.Value[config.Duration]{Value: config.Duration(timeout), Source: config.SourceFlag},
 		Retries:         config.Value[int]{Value: 1, Source: config.SourceDefault},
 		MaxBytes:        config.Value[int64]{Value: 1 << 20, Source: config.SourceDefault},
-		Isolation:       config.Value[protocol.Isolation]{Value: isolation, Source: config.SourceFlag},
 		WebAccess:       config.Value[bool]{Value: web, Source: config.SourceFlag},
 	}
 }

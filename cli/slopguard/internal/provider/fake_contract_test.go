@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 )
 
@@ -29,7 +28,7 @@ func TestFakeProviderCLIsRejectInvalidReviewArguments(t *testing.T) {
 		if err := os.WriteFile(outputPath, nil, 0o600); err != nil {
 			t.Fatal(err)
 		}
-		valid := codexArguments(codexConfig(protocol.IsolationStrict, false, 5*time.Second), workspace, schemaPath, outputPath, "test-model")
+		valid := codexArguments(codexConfig(false, 5*time.Second), workspace, schemaPath, outputPath, "test-model")
 		assertInvalidContracts(t, newFakeCodex(t, fakeCodexOptions{}).path, valid, []string{"--search"})
 	})
 
@@ -39,7 +38,7 @@ func TestFakeProviderCLIsRejectInvalidReviewArguments(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		valid := claudeArguments(claudeConfig(protocol.IsolationStrict, false, 5*time.Second), string(schema), "test-model")
+		valid := claudeArguments(claudeConfig(false, 5*time.Second), string(schema), "test-model")
 		assertInvalidContracts(t, newFakeClaude(t, fakeClaudeOptions{}).path, valid, []string{"--allowedTools", "WebSearch"})
 		t.Run("missing tools value", func(t *testing.T) {
 			toolsIndex := indexOf(valid, "--tools")
@@ -53,8 +52,8 @@ func TestFakeProviderCLIsRejectInvalidReviewArguments(t *testing.T) {
 	t.Run("cursor", func(t *testing.T) {
 		t.Parallel()
 		workspace := t.TempDir()
-		valid := cursorArguments(cursorConfig(protocol.IsolationStrict, true, 5*time.Second), workspace, "test-model")
-		assertInvalidContracts(t, newFakeCursor(t, fakeCursorOptions{}).path, valid, []string{"--sandbox", "disabled"})
+		valid := cursorArguments(cursorConfig(true, 5*time.Second), workspace, "test-model")
+		assertInvalidContracts(t, newFakeCursor(t, fakeCursorOptions{}).path, valid, []string{"--output-format", "text"})
 	})
 
 	t.Run("grok", func(t *testing.T) {
@@ -68,7 +67,7 @@ func TestFakeProviderCLIsRejectInvalidReviewArguments(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		valid := grokArguments(grokConfig(protocol.IsolationStrict, false, 5*time.Second), workspace, promptPath, string(schema), "test-model", "1.0.4")
+		valid := grokArguments(grokConfig(false, 5*time.Second), workspace, promptPath, string(schema), "test-model", "1.0.4")
 		executable := newFakeGrok(t, fakeGrokOptions{}).path
 		mutations := [][]string{
 			appendCopy(valid, "--unknown"),
@@ -94,7 +93,6 @@ func TestFakeProviderCLIsRejectInvalidProbeArguments(t *testing.T) {
 		arguments  []string
 	}{
 		{name: "codex extra version flag", executable: func(t *testing.T) string { return newFakeCodex(t, fakeCodexOptions{}).path }, arguments: []string{"--version", "--json"}},
-		{name: "cursor conflicting status format", executable: func(t *testing.T) string { return newFakeCursor(t, fakeCursorOptions{}).path }, arguments: []string{"status", "--format", "text"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

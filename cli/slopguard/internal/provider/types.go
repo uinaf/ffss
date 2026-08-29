@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -58,14 +57,12 @@ type Result struct {
 	Provider         protocol.Provider
 	Attempt          protocol.Attempt
 	Duration         time.Duration
-	Isolation        protocol.Isolation
 	WebAccess        bool
 	ProtocolRecovery protocol.ProtocolRecovery
 }
 
 type Execution struct {
 	Provider         protocol.Provider
-	Isolation        protocol.Isolation
 	WebAccess        bool
 	ProtocolRecovery protocol.ProtocolRecovery
 }
@@ -89,7 +86,6 @@ type reportedProviderError struct {
 }
 
 type preparationKey struct {
-	Isolation protocol.Isolation
 	WebAccess bool
 }
 
@@ -190,7 +186,7 @@ func preparationFailureCausedByContext(err, contextErr error) bool {
 }
 
 func effectivePreparationKey(effective config.Effective) preparationKey {
-	return preparationKey{Isolation: effective.Isolation.Value, WebAccess: effective.WebAccess.Value}
+	return preparationKey{WebAccess: effective.WebAccess.Value}
 }
 
 func (failure *reportedProviderError) Error() string {
@@ -200,43 +196,6 @@ func (failure *reportedProviderError) Error() string {
 func (failure *Error) withExecution(execution Execution) *Error {
 	failure.Execution = &execution
 	return failure
-}
-
-func strictCredentialFailure(effective config.Effective, provider protocol.ProviderName, environment []string) *Error {
-	if effective.Isolation.Value != protocol.IsolationStrict {
-		return nil
-	}
-	label, names := providerCredentialNames(provider)
-	if len(names) == 0 {
-		return newFailure(
-			protocol.FailureAuth,
-			fmt.Sprintf("%s strict isolation has no configured credential contract; use --isolation native or update the provider adapter", label),
-			environment,
-			nil,
-		)
-	}
-	for _, name := range names {
-		if environmentValue(environment, name) != "" {
-			return nil
-		}
-	}
-	return newFailure(
-		protocol.FailureAuth,
-		fmt.Sprintf("%s strict isolation requires %s; set a supported API key or use --isolation native for provider or session authentication", label, strings.Join(names, " or ")),
-		environment,
-		nil,
-	)
-}
-
-func strictCredentialRecovery(effective config.Effective, provider protocol.ProviderName) string {
-	if effective.Isolation.Value != protocol.IsolationStrict {
-		return ""
-	}
-	_, names := providerCredentialNames(provider)
-	if len(names) == 0 {
-		return "use --isolation native or update the provider adapter credential contract"
-	}
-	return fmt.Sprintf("verify %s or use --isolation native for provider or session authentication", strings.Join(names, " or "))
 }
 
 func providerCredentialNames(name protocol.ProviderName) (string, []string) {

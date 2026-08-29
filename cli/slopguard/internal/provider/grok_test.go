@@ -18,7 +18,7 @@ import (
 	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 )
 
-func TestGrokReviewStrictUsesFrozenPromptAndBoundedPolicy(t *testing.T) {
+func TestGrokReviewUsesFrozenPromptAndBoundedPolicy(t *testing.T) {
 	t.Parallel()
 
 	fake := newFakeGrok(t, fakeGrokOptions{})
@@ -27,11 +27,9 @@ func TestGrokReviewStrictUsesFrozenPromptAndBoundedPolicy(t *testing.T) {
 		Environment: []string{
 			"PATH=/usr/bin:/bin",
 			"XAI_API_KEY=test-provider-secret",
-			"OPENAI_API_KEY=must-not-pass",
-			"HOME=/private/home",
 		},
 	})
-	result, err := reviewer.Review(context.Background(), Request{Prompt: "frozen review bundle", TrustedSuffix: "\nretry", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: "frozen review bundle", TrustedSuffix: "\nretry", Config: grokConfig(false, 5*time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,18 +52,17 @@ func TestGrokReviewStrictUsesFrozenPromptAndBoundedPolicy(t *testing.T) {
 		"--max-turns", "2", "--permission-mode", "dontAsk", "--no-plan", "--no-subagents", "--no-memory", "--verbatim",
 		"--cwd", "--deny", "Bash", "Edit", "Write", "Read", "Grep", "MCPTool", "--tools", "--disallowed-tools",
 		"web_search", "web_search,search_tool,use_tool,Agent", "--disable-web-search", "WebFetch", "WebSearch",
-		"--sandbox", "workspace",
 	} {
 		if !contains(arguments, required) {
 			t.Errorf("Grok arguments omitted %q: %v", required, arguments)
 		}
 	}
 	if argumentAfter(arguments, "--tools") != "web_search" || argumentAfter(arguments, "--disallowed-tools") != "web_search,search_tool,use_tool,Agent" {
-		t.Fatalf("Grok strict tool inventory = %v", arguments)
+		t.Fatalf("Grok tool inventory = %v", arguments)
 	}
 	for _, tool := range []string{"WebFetch", "WebSearch"} {
 		if !containsArgumentPair(arguments, "--deny", tool) || containsArgumentPair(arguments, "--allow", tool) {
-			t.Fatalf("Grok strict web policy for %s = %v", tool, arguments)
+			t.Fatalf("Grok web policy for %s = %v", tool, arguments)
 		}
 	}
 	schema := argumentAfter(arguments, "--json-schema")
@@ -73,12 +70,12 @@ func TestGrokReviewStrictUsesFrozenPromptAndBoundedPolicy(t *testing.T) {
 		t.Fatalf("Grok schema projection = %s", schema)
 	}
 	environment := readTestFile(t, fake.environment)
-	if !strings.Contains(environment, "XAI_API_KEY=test-provider-secret") || !strings.Contains(environment, "GROK_HOME=") || strings.Contains(environment, "OPENAI_API_KEY") || strings.Contains(environment, "HOME=/private/home") {
-		t.Fatalf("strict environment = %s", environment)
+	if !strings.Contains(environment, "XAI_API_KEY=test-provider-secret") {
+		t.Fatalf("provider environment = %s", environment)
 	}
 }
 
-func TestGrokReviewNativeUsesSessionAuthAndExplicitWebPolicy(t *testing.T) {
+func TestGrokReviewUsesSessionAuthAndExplicitWebPolicy(t *testing.T) {
 	t.Parallel()
 
 	fake := newFakeGrok(t, fakeGrokOptions{})
@@ -86,11 +83,11 @@ func TestGrokReviewNativeUsesSessionAuthAndExplicitWebPolicy(t *testing.T) {
 		Repository: t.TempDir(), Executable: fake.path,
 		Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home", "GROK_HOME=/native/grok", "XAI_BASE_URL=https://gateway.invalid"},
 	})
-	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationNative, true, 5*time.Second)})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(true, 5*time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.WebAccess || result.Isolation != protocol.IsolationNative {
+	if !result.WebAccess {
 		t.Fatalf("result policy = %+v", result)
 	}
 	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
@@ -102,14 +99,12 @@ func TestGrokReviewNativeUsesSessionAuthAndExplicitWebPolicy(t *testing.T) {
 	if argumentAfter(arguments, "--tools") != "web_search,web_fetch" || argumentAfter(arguments, "--disallowed-tools") != "search_tool,use_tool,Agent" {
 		t.Fatalf("Grok web tool inventory = %v", arguments)
 	}
-	for _, forbidden := range []string{"--disable-web-search", "--sandbox"} {
-		if contains(arguments, forbidden) {
-			t.Errorf("Grok native web arguments retained %q: %v", forbidden, arguments)
-		}
+	if contains(arguments, "--disable-web-search") {
+		t.Errorf("Grok web arguments retained --disable-web-search: %v", arguments)
 	}
 	environment := readTestFile(t, fake.environment)
 	if !strings.Contains(environment, "HOME=/native/home") || !strings.Contains(environment, "GROK_HOME=/native/grok") || !strings.Contains(environment, "XAI_BASE_URL=https://gateway.invalid") {
-		t.Fatalf("native environment = %s", environment)
+		t.Fatalf("provider environment = %s", environment)
 	}
 }
 
@@ -118,35 +113,27 @@ func TestGrokReviewUsesMemoryEnvironmentWhenFlagIsUnavailable(t *testing.T) {
 
 	for _, test := range []struct {
 		name        string
-		isolation   protocol.Isolation
 		environment []string
 	}{
 		{
-			name:      "native overrides enabled host features",
-			isolation: protocol.IsolationNative,
+			name: "overrides enabled host features",
 			environment: []string{
 				"PATH=/usr/bin:/bin", "HOME=/native/home", "GROK_HOME=/native/grok",
 				"XAI_API_KEY=secret", "GROK_MEMORY=1", "GROK_SUBAGENTS=1",
 			},
 		},
 		{
-			name:      "native clean host",
-			isolation: protocol.IsolationNative,
+			name: "clean host",
 			environment: []string{
 				"PATH=/usr/bin:/bin", "HOME=/native/home", "GROK_HOME=/native/grok", "XAI_API_KEY=secret",
 			},
-		},
-		{
-			name:        "strict key",
-			isolation:   protocol.IsolationStrict,
-			environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret", "GROK_MEMORY=1", "GROK_SUBAGENTS=1"},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			help := strings.Replace(grokHelp(), "--no-memory\n", "", 1)
 			fake := newFakeGrok(t, fakeGrokOptions{version: "1.0.5", help: help})
 			reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: test.environment})
-			result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(test.isolation, false, 5*time.Second)})
+			result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(false, 5*time.Second)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -181,7 +168,7 @@ func TestGrokReviewFailsCapabilityProbeBeforeInvocation(t *testing.T) {
 
 	fake := newFakeGrok(t, fakeGrokOptions{help: "--prompt-file --output-format"})
 	reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(false, 5*time.Second)})
 	_ = assertProviderError(t, err, protocol.FailureCapability)
 	if _, err := os.Stat(fake.arguments); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("model was invoked after failed capability probe: %v", err)
@@ -205,7 +192,7 @@ func TestGrokReviewSkipsIncompatibleToolManagerShim(t *testing.T) {
 			"XAI_API_KEY=secret",
 		},
 	})
-	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(false, 5*time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,40 +204,17 @@ func TestGrokReviewSkipsIncompatibleToolManagerShim(t *testing.T) {
 	}
 }
 
-func TestGrokReviewNativeReportsProviderAuthenticationFailure(t *testing.T) {
+func TestGrokReviewReportsProviderAuthenticationFailure(t *testing.T) {
 	t.Parallel()
 
 	fake := newFakeGrok(t, fakeGrokOptions{reviewError: "Not signed in. To authenticate, run grok login."})
 	reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "HOME=/native/home"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationNative, false, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(false, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureAuth)
 	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 		t.Fatalf("attempt = %+v", failure.Attempt)
 	}
-	assertExecutionMetadata(t, failure, protocol.ProviderGrok, "1.0.4", protocol.IsolationNative, false)
-}
-
-func TestGrokReviewStrictExplainsCredentialRequirement(t *testing.T) {
-	t.Parallel()
-
-	fake := newFakeGrok(t, fakeGrokOptions{})
-	reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second)})
-	failure := assertProviderError(t, err, protocol.FailureAuth)
-	if !strings.Contains(failure.Message, "strict isolation requires XAI_API_KEY") || !strings.Contains(failure.Message, "--isolation native") {
-		t.Fatalf("failure = %q", failure.Message)
-	}
-}
-
-func TestGrokReviewStrictReportsMissingExecutableBeforeCredential(t *testing.T) {
-	t.Parallel()
-
-	reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: "missing-grok", Environment: []string{"PATH=/usr/bin:/bin"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second)})
-	failure := assertProviderError(t, err, protocol.FailureCapability)
-	if !strings.Contains(failure.Message, "was not found") || strings.Contains(failure.Message, "API_KEY") {
-		t.Fatalf("failure = %q", failure.Message)
-	}
+	assertExecutionMetadata(t, failure, protocol.ProviderGrok, "1.0.4", false)
 }
 
 func TestGrokReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
@@ -284,7 +248,7 @@ func TestGrokReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fake := newFakeGrok(t, fakeGrokOptions{output: test.output})
 			reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}})
-			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second)})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(false, 5*time.Second)})
 			if test.name == "valid control" {
 				if err != nil {
 					t.Fatal(err)
@@ -304,7 +268,7 @@ func TestGrokReviewRejectsMalformedEnvelopeAndReview(t *testing.T) {
 			if failure.Attempt == nil || failure.Attempt.Outcome != expectedOutcome {
 				t.Fatalf("attempt = %+v", failure.Attempt)
 			}
-			assertExecutionMetadata(t, failure, protocol.ProviderGrok, "1.0.4", protocol.IsolationStrict, false)
+			assertExecutionMetadata(t, failure, protocol.ProviderGrok, "1.0.4", false)
 			if test.wantMessage != "" && !strings.Contains(failure.Message, test.wantMessage) {
 				t.Fatalf("failure message = %q, want %q", failure.Message, test.wantMessage)
 			}
@@ -346,7 +310,7 @@ func TestGrokReviewRequiresExactPerFileCompletionEvidence(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fake := newFakeGrok(t, fakeGrokOptions{output: test.output})
 			reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}})
-			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second), Target: target})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(false, 5*time.Second), Target: target})
 			failure := assertProviderError(t, err, protocol.FailureProtocol)
 			if failure.Reason != protocol.ProtocolReasonReviewValidation {
 				t.Fatalf("protocol reason = %q, want %q", failure.Reason, protocol.ProtocolReasonReviewValidation)
@@ -457,7 +421,7 @@ func TestGrokReviewDistinguishesTimeoutAndCancellation(t *testing.T) {
 					cancel()
 				}()
 			}
-			_, err := reviewer.Review(ctx, Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, test.timeout)})
+			_, err := reviewer.Review(ctx, Request{Prompt: "bundle", Config: grokConfig(false, test.timeout)})
 			_ = assertProviderError(t, err, test.class)
 		})
 	}
@@ -468,12 +432,12 @@ func TestGrokReviewEnforcesOutputBounds(t *testing.T) {
 
 	fake := newFakeGrok(t, fakeGrokOptions{output: strings.Repeat("x", int(providerStdoutLimit)+1)})
 	reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(false, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureProvider)
 	if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
 		t.Fatalf("attempt = %+v", failure.Attempt)
 	}
-	assertExecutionMetadata(t, failure, protocol.ProviderGrok, "1.0.4", protocol.IsolationStrict, false)
+	assertExecutionMetadata(t, failure, protocol.ProviderGrok, "1.0.4", false)
 }
 
 func TestGrokCompletionEvidenceFitsOutputLimitForMaximumTarget(t *testing.T) {
@@ -496,7 +460,7 @@ func TestGrokCompletionEvidenceFitsOutputLimitForMaximumTarget(t *testing.T) {
 func TestGrokReviewUsesExplicitDefaultModel(t *testing.T) {
 	t.Parallel()
 
-	effective := grokConfig(protocol.IsolationStrict, false, 5*time.Second)
+	effective := grokConfig(false, 5*time.Second)
 	effective.Model = config.Value[string]{Source: config.SourceDefault}
 	fake := newFakeGrok(t, fakeGrokOptions{})
 	reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}})
@@ -521,7 +485,7 @@ func TestGrokReviewOmitsProviderFailureOutput(t *testing.T) {
 
 	fake := newFakeGrok(t, fakeGrokOptions{reviewError: "\033[31m" + providerOutputSentinel + " test-provider-secret\r"})
 	reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=test-provider-secret"}})
-	_, err := reviewer.Review(context.Background(), Request{Prompt: providerOutputSentinel, Config: grokConfig(protocol.IsolationStrict, false, 5*time.Second)})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: providerOutputSentinel, Config: grokConfig(false, 5*time.Second)})
 	failure := assertProviderError(t, err, protocol.FailureProvider)
 	if strings.Contains(failure.Message, providerOutputSentinel) || strings.Contains(failure.Message, "test-provider-secret") || strings.ContainsRune(failure.Message, '\x1b') {
 		t.Fatalf("provider failure = %q", failure.Message)
@@ -597,7 +561,6 @@ func newFakeGrok(t *testing.T, options fakeGrokOptions) fakeGrok {
 		"[ \"${1:-}\" = '--cwd' ] || fail_contract; shift; [ -d \"${1:-}\" ] || fail_contract; shift\n" +
 		"for tool in Bash Edit Write Read Grep MCPTool; do [ \"${1:-}\" = '--deny' ] || fail_contract; shift; [ \"${1:-}\" = \"$tool\" ] || fail_contract; shift; done\n" +
 		"[ \"${1:-}\" = '--tools' ] || fail_contract; shift; if [ \"${1:-}\" = 'web_search,web_fetch' ]; then shift; [ \"${1:-}\" = '--disallowed-tools' ] || fail_contract; shift; [ \"${1:-}\" = 'search_tool,use_tool,Agent' ] || fail_contract; shift; [ \"${1:-}\" = '--allow' ] || fail_contract; shift; [ \"${1:-}\" = 'WebFetch' ] || fail_contract; shift; [ \"${1:-}\" = '--allow' ] || fail_contract; shift; [ \"${1:-}\" = 'WebSearch' ] || fail_contract; shift; else [ \"${1:-}\" = 'web_search' ] || fail_contract; shift; [ \"${1:-}\" = '--disallowed-tools' ] || fail_contract; shift; [ \"${1:-}\" = 'web_search,search_tool,use_tool,Agent' ] || fail_contract; shift; [ \"${1:-}\" = '--disable-web-search' ] || fail_contract; shift; for tool in WebFetch WebSearch; do [ \"${1:-}\" = '--deny' ] || fail_contract; shift; [ \"${1:-}\" = \"$tool\" ] || fail_contract; shift; done; fi\n" +
-		"if [ \"${1:-}\" = '--sandbox' ]; then shift; [ \"${1:-}\" = 'workspace' ] || fail_contract; shift; fi\n" +
 		"[ \"$#\" -eq 0 ] || fail_contract\n" +
 		"cat \"$prompt_path\" > " + shellQuote(fake.prompt) + "\n" +
 		"env > " + shellQuote(fake.environment) + "\n" +
@@ -621,7 +584,7 @@ func grokHelp() string {
 		"--disallowed-tools <tools>",
 		"--allow <rule>",
 		"--deny <rule>",
-		"--no-plan", "--no-subagents", "--no-memory", "--disable-web-search", "--verbatim", "--cwd <path>", "--sandbox <profile>",
+		"--no-plan", "--no-subagents", "--no-memory", "--disable-web-search", "--verbatim", "--cwd <path>",
 	}, "\n")
 }
 
@@ -712,7 +675,7 @@ func containsArgumentPair(arguments []string, flag, value string) bool {
 	return false
 }
 
-func grokConfig(isolation protocol.Isolation, web bool, timeout time.Duration) config.Effective {
+func grokConfig(web bool, timeout time.Duration) config.Effective {
 	return config.Effective{
 		Engine:          config.Value[protocol.ProviderName]{Value: protocol.ProviderGrok, Source: config.SourceFlag},
 		Model:           config.Value[string]{Value: "test-model", Source: config.SourceFlag},
@@ -720,7 +683,6 @@ func grokConfig(isolation protocol.Isolation, web bool, timeout time.Duration) c
 		Timeout:         config.Value[config.Duration]{Value: config.Duration(timeout), Source: config.SourceFlag},
 		Retries:         config.Value[int]{Value: 1, Source: config.SourceDefault},
 		MaxBytes:        config.Value[int64]{Value: 1 << 20, Source: config.SourceDefault},
-		Isolation:       config.Value[protocol.Isolation]{Value: isolation, Source: config.SourceFlag},
 		WebAccess:       config.Value[bool]{Value: web, Source: config.SourceFlag},
 	}
 }

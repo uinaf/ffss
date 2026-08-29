@@ -40,7 +40,6 @@
       }
     ],
     "duration_ms": 1300,
-    "isolation": "strict",
     "web_access": false,
     "protocol_recovery": {
       "applied": false,

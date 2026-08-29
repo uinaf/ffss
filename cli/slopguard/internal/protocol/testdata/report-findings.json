@@ -53,7 +53,6 @@
       }
     ],
     "duration_ms": 2200,
-    "isolation": "native",
     "web_access": false,
     "protocol_recovery": {
       "applied": false,

@@ -9,24 +9,21 @@ The default `cursor-grok-4.6-high-fast` model keeps high reasoning.
 ## Runtime contract
 
 The adapter requires the non-interactive JSON, Ask mode, workspace, trust, and
-model CLI surfaces. Native mode lets the actual Cursor review process resolve
-authentication from the preserved environment and user configuration,
-including API-key wrappers. Strict mode also requires and forces Cursor
-sandboxing. The reviewed source is never mounted in the provider workspace; the
-frozen prompt is delivered on standard input.
+model CLI surfaces. The Cursor review process resolves authentication from the
+preserved environment and user configuration, including API-key wrappers. The
+reviewed source is never mounted in the provider workspace; the frozen prompt
+is delivered on standard input.
 
-## Isolation and web access
+## Web access
 
 Cursor Agent has no documented per-run web-disable flag. Explicit CLI selection
 with `--engine cursor` therefore enables otherwise-unset web access. Engine
 selection from repository, environment, or XDG configuration does not grant web
 access. An explicit `web_access: false` remains authoritative and fails
-capability preflight rather than claiming an unenforceable isolation guarantee.
-
-| Mode | Authentication and configuration | Isolation controls |
-| --- | --- | --- |
-| `native` (default) | Existing environment, user configuration, and configured provider or session authentication | Ask mode in an empty workspace; user sandbox configuration is preserved |
-| `strict` | Empty home and Cursor state; requires `CURSOR_API_KEY` | Ask mode, forced sandbox, and generated deny rules for shell, file, and Model Context Protocol (MCP) access |
+capability preflight rather than claiming an unenforceable web-access
+guarantee. The review keeps the existing environment, user configuration, and
+configured provider or session authentication, and runs in Ask mode in an
+empty workspace with user sandbox configuration preserved.
 
 ## Output contract
 

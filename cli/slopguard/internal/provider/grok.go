@@ -116,9 +116,6 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 			if discoverErr != nil {
 				return preparedExecutable{}, newFailure(protocol.FailureCapability, discoverErr.Error(), grok.environment, nil)
 			}
-			if failure := strictCredentialFailure(request.Config, protocol.ProviderGrok, grok.environment); failure != nil {
-				return preparedExecutable{}, failure
-			}
 			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
 				return grok.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
 			})
@@ -128,8 +125,6 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 			return Result{}, err
 		}
 		preparationSpan = phase.Start(reviewContext, phase.ProviderPreparation)
-	} else if failure := strictCredentialFailure(request.Config, protocol.ProviderGrok, grok.environment); failure != nil {
-		return Result{}, failure
 	}
 	executable, version := prepared.Path, prepared.Version
 	promptPath := filepath.Join(runtime.Workspace, "review.prompt")
@@ -154,7 +149,6 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 	}
 	resolvedExecution := Execution{
 		Provider:  protocol.Provider{Name: protocol.ProviderGrok, Model: model, Version: version},
-		Isolation: request.Config.Isolation.Value,
 		WebAccess: request.Config.WebAccess.Value,
 	}
 	preparationSpan.End()
@@ -176,7 +170,7 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		class := classifyProcessFailure(processErr, process)
 		attempt.Outcome = protocol.AttemptFailed
 		attempt.ErrorClass = &class
-		return Result{}, processFailure("Grok review", class, processErr, process, environment, &attempt, strictCredentialRecovery(request.Config, protocol.ProviderGrok)).withExecution(resolvedExecution)
+		return Result{}, processFailure("Grok review", class, processErr, process, environment, &attempt).withExecution(resolvedExecution)
 	}
 	review, err := decodeGrokEnvelope(process.Stdout, request.Target)
 	if err != nil {
@@ -202,7 +196,6 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		Provider:  resolvedExecution.Provider,
 		Attempt:   attempt,
 		Duration:  time.Since(started),
-		Isolation: resolvedExecution.Isolation,
 		WebAccess: resolvedExecution.WebAccess,
 		ProtocolRecovery: protocol.ProtocolRecovery{
 			Applied: false,
@@ -245,9 +238,6 @@ func (grok *Grok) preflight(ctx context.Context, executable, workspace string, e
 	}
 	if grokNeedsNoMemoryFlag(string(match[1])) {
 		required = append(required, "--no-memory")
-	}
-	if effective.Isolation.Value == protocol.IsolationStrict {
-		required = append(required, "--sandbox")
 	}
 	help := string(helpResult.Stdout) + string(helpResult.Stderr)
 	if missing := missingCapabilities(help, required); len(missing) != 0 {
@@ -299,9 +289,6 @@ func grokArguments(effective config.Effective, workspace, promptPath, schema, mo
 			"--deny", "WebFetch",
 			"--deny", "WebSearch",
 		)
-	}
-	if effective.Isolation.Value == protocol.IsolationStrict {
-		arguments = append(arguments, "--sandbox", "workspace")
 	}
 	return arguments
 }

@@ -27,14 +27,12 @@ reasoning_effort: medium
 timeout: 15m
 retries: 1
 max_bytes: 1048576
-isolation: native
 web_access: false
 ```
 
 Corresponding environment variables are `SLOPGUARD_ENGINE`,
 `SLOPGUARD_MODEL`, `SLOPGUARD_REASONING_EFFORT`, `SLOPGUARD_TIMEOUT`,
-`SLOPGUARD_RETRIES`, `SLOPGUARD_MAX_BYTES`, `SLOPGUARD_ISOLATION`, and
-`SLOPGUARD_WEB_ACCESS`.
+`SLOPGUARD_RETRIES`, `SLOPGUARD_MAX_BYTES`, and `SLOPGUARD_WEB_ACCESS`.
 
 - Unknown keys, loose YAML booleans, multiple documents, retry counts outside
   zero or one, and invalid types fail closed.
@@ -43,16 +41,10 @@ Corresponding environment variables are `SLOPGUARD_ENGINE`,
 - Reasoning effort defaults to `medium` for Codex and `high` for Claude,
   Cursor, and Grok. Explicit configuration still wins.
 
-## Isolation
+## Runtime
 
-- Native is the default. It preserves configured provider or session
-  authentication and runs the review in an empty temporary workspace holding
-  only the frozen bundle.
-- Strict runs with empty provider state and a constrained environment, and
-  requires the provider's supported API-key environment variable. Select it
-  explicitly only when the task needs the harder provider-state boundary.
-- Any source may select `strict`; an untrusted higher-precedence source cannot
-  weaken an already selected strict value.
+- Reviews preserve configured provider or session authentication and run in an
+  empty temporary workspace holding only the frozen bundle.
 
 ## Web access
 

@@ -16,8 +16,8 @@ The adapter always passes an explicit model; an empty model setting resolves to
 The adapter requires the official headless prompt-file, JSON Schema, explicit
 model and effort, bounded-turn, permission, feature-disable, and
 working-directory surfaces. It checks `--version` and `--help` before model
-invocation. Native mode lets the actual Grok review process resolve
-authentication from the preserved environment and user configuration.
+invocation. The Grok review process resolves authentication from the preserved
+environment and user configuration.
 
 - The frozen prompt is written to a private `0600` file inside the empty
   provider workspace and removed with that workspace after the run. The prompt
@@ -34,16 +34,13 @@ authentication from the preserved environment and user configuration.
   It also removes the always-on `search_tool` and `use_tool` MCP meta-tools,
   leaving no tools for the model to call.
 
-## Isolation and web access
+## Web access
 
 Web access is off by default. `web_search` and `web_fetch` are removed when web
-access is off and are the only tools when it is on. MCP meta-tools are removed
-in both modes.
-
-| Mode | Authentication and configuration | Isolation controls |
-| --- | --- | --- |
-| `native` (default) | Existing environment, user configuration, and configured provider or session authentication | Empty workspace and explicit per-run tool and feature policy |
-| `strict` | Empty home and `GROK_HOME`; requires `XAI_API_KEY` | Grok `workspace` sandbox plus the same explicit deny policy |
+access is off and are the only tools when it is on. MCP meta-tools are always
+removed. The review keeps the existing environment, user configuration, and
+configured provider or session authentication, and runs from an empty workspace
+with an explicit per-run tool and feature policy.
 
 ## Output contract
 

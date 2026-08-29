@@ -55,11 +55,11 @@ confidence is below `0.5`.
 ## Metadata
 
 A successful report identifies the frozen target, provider, model, provider
-version, isolation mode, web-access state, attempts, total duration, and any
+version, web-access state, attempts, total duration, and any
 protocol recovery. Once provider execution metadata has been resolved, a
-failure report preserves the same provider, model, version, isolation, and
+failure report preserves the same provider, model, version, and
 web-access values plus any applicable protocol recovery. Failures before that
-boundary leave the nullable provider and isolation fields unset.
+boundary leave the nullable provider field unset.
 
 Target modes are `local`, `branch`, and `commit`. The target carries a snapshot
 hash plus the exact reviewed files and inclusive line ranges. A provider cannot
@@ -79,7 +79,7 @@ expand that boundary by returning another path or line.
   are capped at the signed 64-bit maximum.
 
 The schema requires successful results to include non-null target, provider, and
-isolation metadata plus at least one attempt. Two ordered-array invariants are
+metadata plus at least one attempt. Two ordered-array invariants are
 enforced by the Go decoder because standard JSON Schema cannot address an array
 element by its position from the end: attempt numbers are sequential from one,
 and the final attempt is `valid`.

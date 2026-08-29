@@ -19,7 +19,7 @@ var releaseVersionPattern = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
 
 var eventFields = map[string]bool{
 	"schema_version": true, "cli_version": true, "report_schema_version": true,
-	"provider": false, "target_mode": false, "isolation": false, "web_access": true,
+	"provider": false, "target_mode": false, "web_access": true,
 	"outcome": true, "failure_class": false, "attempt_outcomes": true,
 	"protocol_recovery_applied": true, "protocol_recovery_strategy": false,
 	"bundle_bucket": true, "finding_count_bucket": true, "phase_duration_buckets": true,
@@ -31,7 +31,6 @@ type Event struct {
 	ReportSchemaVersion      string            `json:"report_schema_version"`
 	Provider                 string            `json:"provider,omitempty"`
 	TargetMode               string            `json:"target_mode,omitempty"`
-	Isolation                string            `json:"isolation,omitempty"`
 	WebAccess                bool              `json:"web_access"`
 	Outcome                  string            `json:"outcome"`
 	FailureClass             string            `json:"failure_class,omitempty"`
@@ -92,9 +91,6 @@ func (metrics *Metrics) Event(cliVersion string, report protocol.Report) Event {
 	if report.Metadata.Target != nil {
 		event.TargetMode = string(report.Metadata.Target.Mode)
 	}
-	if report.Metadata.Isolation != nil {
-		event.Isolation = string(*report.Metadata.Isolation)
-	}
 	if report.Failure != nil {
 		event.FailureClass = string(report.Failure.Class)
 	}
@@ -141,13 +137,6 @@ func (event Event) Validate() error {
 		case protocol.TargetLocal, protocol.TargetBranch, protocol.TargetCommit:
 		default:
 			return fmt.Errorf("invalid telemetry target mode")
-		}
-	}
-	if event.Isolation != "" {
-		switch protocol.Isolation(event.Isolation) {
-		case protocol.IsolationNative, protocol.IsolationStrict:
-		default:
-			return fmt.Errorf("invalid telemetry isolation")
 		}
 	}
 	if event.FailureClass != "" {

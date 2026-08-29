@@ -39,7 +39,6 @@ type Diagnostic struct {
 	Provider       protocol.ProviderName   `json:"provider"`
 	Version        string                  `json:"version,omitempty"`
 	Compatible     bool                    `json:"compatible"`
-	Isolation      protocol.Isolation      `json:"isolation"`
 	WebAccess      bool                    `json:"web_access"`
 	Authentication AuthenticationReadiness `json:"authentication"`
 	FailureClass   protocol.FailureClass   `json:"failure_class,omitempty"`
@@ -59,9 +58,8 @@ func Doctor(ctx context.Context, options DoctorOptions) (diagnostic Diagnostic) 
 		SchemaVersion:  DoctorSchemaVersion,
 		Status:         DoctorNotReady,
 		Provider:       options.Config.Engine.Value,
-		Isolation:      options.Config.Isolation.Value,
 		WebAccess:      options.Config.WebAccess.Value,
-		Authentication: authenticationReadiness(options.Config, options.Config.Engine.Value, options.Environment),
+		Authentication: authenticationReadiness(options.Config.Engine.Value, options.Environment),
 	}
 	if err := validateDoctorConfig(options.Config); err != nil {
 		return diagnostic.withFailure(protocol.FailureConfig)
@@ -69,7 +67,7 @@ func Doctor(ctx context.Context, options DoctorOptions) (diagnostic Diagnostic) 
 	environment := options.Environment
 	if environment == nil {
 		environment = os.Environ()
-		diagnostic.Authentication = authenticationReadiness(options.Config, options.Config.Engine.Value, environment)
+		diagnostic.Authentication = authenticationReadiness(options.Config.Engine.Value, environment)
 	}
 	repository, err := filepath.Abs(options.Repository)
 	if err != nil {
@@ -104,9 +102,6 @@ func Doctor(ctx context.Context, options DoctorOptions) (diagnostic Diagnostic) 
 		adapter := NewClaude(ClaudeOptions{Repository: repository, Executable: executable, Environment: environment})
 		executable = adapter.executable
 		providerEnvironment := runtime.Environment()
-		if options.Config.Isolation.Value == protocol.IsolationStrict {
-			providerEnvironment = setEnvironmentValue(providerEnvironment, "CLAUDE_CODE_DISABLE_AUTO_MEMORY", "1")
-		}
 		preflight = func(candidate string) (string, error) {
 			return adapter.preflight(probeContext, candidate, runtime.Workspace, providerEnvironment, options.Config)
 		}
@@ -114,11 +109,6 @@ func Doctor(ctx context.Context, options DoctorOptions) (diagnostic Diagnostic) 
 		adapter := NewCursor(CursorOptions{Repository: repository, Executable: executable, Environment: environment})
 		executable = adapter.executable
 		providerEnvironment := runtime.Environment()
-		if options.Config.Isolation.Value == protocol.IsolationStrict {
-			if err := writeCursorPermissions(providerEnvironment); err != nil {
-				return diagnostic.withFailure(protocol.FailureInternal)
-			}
-		}
 		preflight = func(candidate string) (string, error) {
 			return adapter.preflight(probeContext, candidate, runtime.Workspace, providerEnvironment, options.Config)
 		}
@@ -168,9 +158,6 @@ func (diagnostic Diagnostic) Validate() error {
 	}
 	if diagnostic.Status != DoctorReady && diagnostic.Status != DoctorNotReady {
 		return fmt.Errorf("invalid doctor status")
-	}
-	if diagnostic.Isolation != protocol.IsolationNative && diagnostic.Isolation != protocol.IsolationStrict {
-		return fmt.Errorf("invalid doctor isolation")
 	}
 	if diagnostic.Authentication != AuthenticationReady && diagnostic.Authentication != AuthenticationDelegated && diagnostic.Authentication != AuthenticationMissing {
 		return fmt.Errorf("invalid authentication readiness")
@@ -241,15 +228,12 @@ func validateDoctorConfig(effective config.Effective) error {
 	return nil
 }
 
-func authenticationReadiness(effective config.Effective, name protocol.ProviderName, environment []string) AuthenticationReadiness {
+func authenticationReadiness(name protocol.ProviderName, environment []string) AuthenticationReadiness {
 	_, credentials := providerCredentialNames(name)
 	for _, credential := range credentials {
 		if environmentValue(environment, credential) != "" {
 			return AuthenticationReady
 		}
-	}
-	if effective.Isolation.Value == protocol.IsolationStrict {
-		return AuthenticationMissing
 	}
 	return AuthenticationDelegated
 }

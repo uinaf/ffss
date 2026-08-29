@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
-	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
 func TestGrokLive(t *testing.T) {
 	if os.Getenv("SLOPGUARD_TEST_LIVE_GROK") != "1" {
 		t.Skip("set SLOPGUARD_TEST_LIVE_GROK=1 to run the authenticated Grok smoke test")
 	}
-	effective := grokConfig(protocol.IsolationNative, false, 2*time.Minute)
+	effective := grokConfig(false, 2*time.Minute)
 	effective.Model = config.Value[string]{Source: config.SourceDefault}
 	reviewer := NewGrok(GrokOptions{Repository: t.TempDir()})
 	result, err := reviewer.Review(context.Background(), Request{

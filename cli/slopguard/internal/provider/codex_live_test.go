@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
-	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
 func TestCodexLive(t *testing.T) {
 	if os.Getenv("SLOPGUARD_TEST_LIVE_CODEX") != "1" {
 		t.Skip("set SLOPGUARD_TEST_LIVE_CODEX=1 to run the authenticated Codex smoke test")
 	}
-	effective := codexConfig(protocol.IsolationNative, false, 2*time.Minute)
+	effective := codexConfig(false, 2*time.Minute)
 	effective.Model = config.Value[string]{Source: config.SourceDefault}
 	reviewer := NewCodex(CodexOptions{Repository: t.TempDir()})
 	result, err := reviewer.Review(context.Background(), Request{
