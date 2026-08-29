@@ -6,9 +6,8 @@ disable-model-invocation: true
 
 # Slopprep
 
-Make a repository, its agent operating guide, and its declared runner dependable
-for autonomous work.
-Default target: B. Treat C as a checkpoint only ([references/grading.md](references/grading.md)).
+Default target: B. Treat C as a checkpoint only
+([references/grading.md](references/grading.md)).
 
 ## Boundaries
 

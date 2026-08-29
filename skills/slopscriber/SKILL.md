@@ -22,11 +22,22 @@ Keep the repo legible to agents and humans.
 
 ## Negative-state rule
 
-When rewriting current-state docs, delete every absent, removed, or unprovisioned item, including specific names and category paraphrases, unless it changes a plausible current action. Prior curiosity, old tickets, and "agents ask about it" do not make an absence operational. If a limitation must stay, state one precise boundary and the supported path.
+When rewriting current-state docs, delete every absent, removed, or
+unprovisioned item, specific names and category paraphrases included, unless
+it changes a plausible current action. Prior curiosity, old tickets, and
+"agents ask about it" do not make an absence operational. If a limitation
+must stay, state one precise boundary and the supported path.
 
 ## Boundaries
 
-Not docs work: tactical work planning; epic or tracker-ticket creation; boot/readiness setup; baseline PR, issue, contributor, or security policy templates; independent code review; runtime verification.
+Not docs work:
+
+- tactical work planning
+- epic or tracker-ticket creation
+- boot/readiness setup
+- baseline PR, issue, contributor, or security policy templates
+- independent code review
+- runtime verification
 
 ## Workflow
 

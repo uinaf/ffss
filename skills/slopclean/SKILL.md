@@ -21,30 +21,37 @@ instinct: cut what a machine reflexively adds, keep what carries meaning.
 
 ## Prose mode
 
-Load [prose.md](references/prose.md). Headline moves: cut puffery and
-stock AI vocabulary, name sources or delete vague attributions, delete
-every em dash (banned; banner alt text is the one exception), kill crutch punctuation and
-inline-header lists, split long sentences, tighten verbose UI copy,
-delete chatbot phrases and hedging stacks, and replace feeling-words
-with mechanisms and numbers.
+Load [prose.md](references/prose.md). Headline moves:
+
+- cut puffery and stock AI vocabulary
+- name sources or delete vague attributions
+- delete every em dash (banned; banner alt text is the one exception)
+- kill crutch punctuation and inline-header lists; split long sentences
+- tighten verbose UI copy; delete chatbot phrases and hedging stacks
+- replace feeling-words with mechanisms and numbers
 
 ## Code mode
 
-Load [code.md](references/code.md). Headline moves: delete comments that
-narrate the next line or the change's own history, remove defensive
-boilerplate nobody asked for, collapse abstraction layers with one caller,
-drop dead config and unused escape hatches, and rename hedged identifiers
-to say what the thing is.
+Load [code.md](references/code.md). Headline moves:
+
+- delete comments that narrate the next line or the change's own history
+- remove defensive boilerplate nobody asked for
+- collapse abstraction layers with one caller
+- drop dead config and unused escape hatches
+- rename hedged identifiers to say what the thing is
 
 ## Test mode
 
-Load [tests.md](references/tests.md). Headline moves: delete or replace
-tautological tests (asserting the code against itself, vacuous existence
-checks, self-made snapshots), replace change detectors that pin source shape,
-incidental strings, snapshots, or mock choreography instead of behavior,
-unmock everything that is not a process, network, clock, or randomness
-boundary, collapse repetitive setup into one fixture or a table, and cut
-coverage theater: N happy-path clones with no boundary or failure case.
+Load [tests.md](references/tests.md). Headline moves:
+
+- delete or replace tautological tests: asserting the code against itself,
+  vacuous existence checks, self-made snapshots
+- replace change detectors that pin source shape, incidental strings,
+  snapshots, or mock choreography instead of behavior
+- unmock everything that is not a process, network, clock, or randomness
+  boundary
+- collapse repetitive setup into one fixture or a table
+- cut coverage theater: N happy-path clones with no boundary or failure case
 
 ## Boundaries
 
