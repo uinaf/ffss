@@ -15,10 +15,7 @@ type Runtime struct {
 	closeMu   sync.Mutex
 }
 
-func PrepareRuntime(effective Effective, parentEnvironment []string) (*Runtime, error) {
-	if err := effective.Validate(); err != nil {
-		return nil, err
-	}
+func PrepareRuntime(parentEnvironment []string) (*Runtime, error) {
 	root, err := os.MkdirTemp("", "slopguard-provider-")
 	if err != nil {
 		return nil, fmt.Errorf("create provider runtime: %w", err)

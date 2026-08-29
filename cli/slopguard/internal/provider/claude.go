@@ -84,7 +84,7 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	}
 	key := effectivePreparationKey(request.Config)
 	prepared, cached := claude.preparation.get(key)
-	runtime, err := config.PrepareRuntime(request.Config, claude.environment)
+	runtime, err := config.PrepareRuntime(claude.environment)
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("prepare provider runtime: %v", err), claude.environment, nil)
 	}

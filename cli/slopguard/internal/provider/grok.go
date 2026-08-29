@@ -92,7 +92,7 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 	}
 	key := effectivePreparationKey(request.Config)
 	prepared, cached := grok.preparation.get(key)
-	runtime, err := config.PrepareRuntime(request.Config, grok.environment)
+	runtime, err := config.PrepareRuntime(grok.environment)
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("prepare provider runtime: %v", err), grok.environment, nil)
 	}

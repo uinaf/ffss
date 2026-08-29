@@ -84,7 +84,7 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 	}
 	key := effectivePreparationKey(request.Config)
 	prepared, cached := cursor.preparation.get(key)
-	runtime, err := config.PrepareRuntime(request.Config, cursor.environment)
+	runtime, err := config.PrepareRuntime(cursor.environment)
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("prepare provider runtime: %v", err), cursor.environment, nil)
 	}

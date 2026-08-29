@@ -86,7 +86,7 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 	}
 	key := effectivePreparationKey(request.Config)
 	prepared, cached := codex.preparation.get(key)
-	runtime, err := config.PrepareRuntime(request.Config, codex.environment)
+	runtime, err := config.PrepareRuntime(codex.environment)
 	if err != nil {
 		return Result{}, newFailure(protocol.FailureInternal, fmt.Sprintf("prepare provider runtime: %v", err), codex.environment, nil)
 	}

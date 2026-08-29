@@ -38,7 +38,7 @@ func runDoctor(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	}
 	repositoryContext, err := repositorypkg.Resolve(ctx, repositorypkg.Options{Path: *repository})
 	if err != nil {
-		return writeDoctorResult(stdout, stderr, *output == "json", doctorConfigFailure(providerName(configFlags)), 2)
+		return writeDoctorResult(stdout, stderr, *output == "json", doctorTargetFailure(providerName(configFlags)), 2)
 	}
 	effective, err := config.Load(ctx, config.Options{
 		Context:   repositoryContext,
@@ -73,6 +73,17 @@ func providerName(values configFlagValues) protocol.ProviderName {
 		return name
 	default:
 		return ""
+	}
+}
+
+func doctorTargetFailure(name protocol.ProviderName) provider.Diagnostic {
+	return provider.Diagnostic{
+		SchemaVersion:  provider.DoctorSchemaVersion,
+		Status:         provider.DoctorNotReady,
+		Provider:       name,
+		Authentication: provider.AuthenticationDelegated,
+		FailureClass:   protocol.FailureTarget,
+		Message:        "repository path is not inside a Git worktree",
 	}
 }
 

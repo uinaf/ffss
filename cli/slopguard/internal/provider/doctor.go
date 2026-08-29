@@ -73,7 +73,7 @@ func Doctor(ctx context.Context, options DoctorOptions) (diagnostic Diagnostic) 
 	if err != nil {
 		return diagnostic.withFailure(protocol.FailureConfig)
 	}
-	runtime, err := config.PrepareRuntime(options.Config, environment)
+	runtime, err := config.PrepareRuntime(environment)
 	if err != nil {
 		return diagnostic.withFailure(protocol.FailureInternal)
 	}
@@ -153,7 +153,7 @@ func (diagnostic Diagnostic) Validate() error {
 		default:
 			return fmt.Errorf("invalid doctor provider")
 		}
-	} else if diagnostic.Status != DoctorNotReady || diagnostic.FailureClass != protocol.FailureConfig {
+	} else if diagnostic.Status != DoctorNotReady || (diagnostic.FailureClass != protocol.FailureConfig && diagnostic.FailureClass != protocol.FailureTarget) {
 		return fmt.Errorf("doctor provider is required")
 	}
 	if diagnostic.Status != DoctorReady && diagnostic.Status != DoctorNotReady {
@@ -194,6 +194,8 @@ func doctorFailureMessage(class protocol.FailureClass) (string, bool) {
 	switch class {
 	case protocol.FailureAuth:
 		return "provider authentication is not ready", true
+	case protocol.FailureTarget:
+		return "repository path is not inside a Git worktree", true
 	case protocol.FailureTimeout:
 		return "provider capability probe timed out", true
 	case protocol.FailureCancelled:

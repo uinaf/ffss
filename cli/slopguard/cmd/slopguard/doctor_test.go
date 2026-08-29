@@ -43,6 +43,28 @@ func TestDoctorCommandWritesReadyJSON(t *testing.T) {
 	}
 }
 
+func TestDoctorCommandReportsTargetFailureOutsideGitWorktree(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	exit := run(t.Context(), []string{
+		"doctor", "--repository", t.TempDir(), "--engine", "codex", "--output", "json",
+	}, &stdout, &stderr, dependencies{
+		lookupEnv: func(string) (string, bool) { return "", false },
+		homeDir:   func() (string, error) { return t.TempDir(), nil },
+		doctor: func(context.Context, provider.DoctorOptions) provider.Diagnostic {
+			t.Fatal("doctor must not run without a resolved repository")
+			return provider.Diagnostic{}
+		},
+	})
+	var diagnostic provider.Diagnostic
+	if err := json.Unmarshal(stdout.Bytes(), &diagnostic); err != nil {
+		t.Fatalf("decode diagnostic: %v: %s", err, stdout.String())
+	}
+	if exit != 2 || diagnostic.FailureClass != protocol.FailureTarget || diagnostic.Message != "repository path is not inside a Git worktree" {
+		t.Fatalf("exit=%d diagnostic=%+v stderr=%q", exit, diagnostic, stderr.String())
+	}
+}
+
 func TestDoctorCommandSanitizesConfigurationFailure(t *testing.T) {
 	privatePath := filepath.Join(t.TempDir(), "private-repository")
 	var stdout bytes.Buffer
@@ -54,7 +76,7 @@ func TestDoctorCommandSanitizesConfigurationFailure(t *testing.T) {
 		t.Fatalf("exit=%d stdout=%q stderr=%q", exit, stdout.String(), stderr.String())
 	}
 	var diagnostic provider.Diagnostic
-	if err := json.Unmarshal(stdout.Bytes(), &diagnostic); err != nil || diagnostic.FailureClass != protocol.FailureConfig {
+	if err := json.Unmarshal(stdout.Bytes(), &diagnostic); err != nil || diagnostic.FailureClass != protocol.FailureTarget {
 		t.Fatalf("diagnostic=%+v error=%v", diagnostic, err)
 	}
 }

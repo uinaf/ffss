@@ -710,10 +710,8 @@ func TestEffectiveDiagnosticUsesDurationStringAndNoEnvironmentDump(t *testing.T)
 func TestPrepareRuntimePreservesEnvironmentWithEmptyWorkspace(t *testing.T) {
 	t.Parallel()
 
-	effective := defaults()
-	effective.Engine.Value = protocol.ProviderClaude
 	parent := []string{"HOME=/native/home", "CLAUDE_CONFIG_DIR=/native/claude", "TOKEN=secret"}
-	runtime, err := PrepareRuntime(effective, parent)
+	runtime, err := PrepareRuntime(parent)
 	if err != nil {
 		t.Fatal(err)
 	}
