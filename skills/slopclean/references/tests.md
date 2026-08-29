@@ -2,7 +2,43 @@
 
 The diff's tests are the unit; take the whole suite only when asked. A slop
 test is worse than no test: it adds run time and false confidence while
-proving nothing.
+proving nothing. A useful test fails when an observable contract breaks and
+survives a refactor that preserves that contract.
+
+## Change detectors
+
+A change detector restates the implementation in test syntax. It fails on
+harmless edits without gaining a better chance of catching a defect:
+
+- Reading source, CSS, templates, or generated files and matching private
+  literals, selectors, helper names, or line structure instead of exercising
+  the supported interface.
+- Pinning exact UI copy, error prose, class names, test IDs, serialized order,
+  or an entire object when those details are not the contract.
+- Mocking every collaborator and replaying the function body as call counts,
+  arguments, and ordering. The test proves today's wiring, not the result.
+- Large snapshots whose meaningful fields would fit in a direct assertion.
+  Any unrelated field or formatting change becomes test maintenance.
+
+Use the counterfactual: rename a private helper, extract a function, reorder
+independent work, or change non-contract copy and styling. If behavior stays
+the same but the test fails, replace the test. If behavior can break while it
+still passes, delete or strengthen it.
+
+Fix: drive the public seam and assert the smallest complete set of observable
+outcomes. Prefer error kinds to prose, roles and state to CSS classes, action
+intent to button copy, and relevant fields to whole-value snapshots. Use the
+real collaborator or a small in-memory fake when it is cheap and deterministic.
+Keep exact strings, ordering, serialization, or interaction assertions only
+when that detail is itself the owned contract, such as a protocol value, legal
+copy, audit event, or notifier call.
+
+When source shape really is policy, enforce it with the repository's linter,
+type system, build, or an abstract syntax tree check. Raw substring checks are
+a last resort, not a behavior test.
+
+This is the failure mode described in Alex Eagle's
+[Change-Detector Tests Considered Harmful](https://testing.googleblog.com/2015/01/testing-on-toilet-change-detector-tests.html).
 
 ## Tautology
 
@@ -29,10 +65,11 @@ decoration; delete it.
 - Mocks of pure functions, value objects, or the standard library.
 - Mock return values that mirror the assertion: tautology in disguise.
 
-Fix: use the real collaborator when it is cheap and deterministic; mock only
-process, network, clock, and randomness boundaries; assert outputs and state.
-Interaction assertions stay only where the call itself is the contract
-(a notifier, an audit log).
+Fix: use the real collaborator or an in-memory fake when it is cheap and
+deterministic. Mock only process, network, clock, and randomness boundaries;
+assert outputs and state. Interaction assertions stay only where the call
+itself is the contract (a notifier, an audit log), and cover only the required
+payload or ordering.
 
 ## Repetition
 
@@ -55,7 +92,8 @@ Interaction assertions stay only where the call itself is the contract
 - Conditional assertions (`if (result) expect(...)`) that pass silently on
   the other branch.
 - `try/catch` swallowing the failure, then asserting a boolean.
-- Assertions on log output or exact error prose the contract does not own.
+- Assertions on exact UI copy, log output, or error prose the contract does
+  not own.
 - Debug leftovers: `console.log`, focused tests (`.only`) that shrink the
   suite.
 
@@ -63,5 +101,8 @@ Interaction assertions stay only where the call itself is the contract
 
 - Never weaken a real assertion, and never delete the only coverage of a
   behavior; replace it with a real test in the same pass or report the gap.
+- Before deleting an exact string, ordering, snapshot, or interaction check,
+  state what contract it protects. Preserve it when that detail is the
+  contract; otherwise keep the semantic behavior and drop the incidental pin.
 - Whether the code under test is correct is slopguard's lane; a test that
   reveals a real defect is a finding, not a cleanup.

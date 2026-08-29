@@ -40,10 +40,11 @@ to say what the thing is.
 
 Load [tests.md](references/tests.md). Headline moves: delete or replace
 tautological tests (asserting the code against itself, vacuous existence
-checks, self-made snapshots), unmock everything that is not a process,
-network, clock, or randomness boundary, collapse repetitive setup into one
-fixture or a table, and cut coverage theater: N happy-path clones with no
-boundary or failure case.
+checks, self-made snapshots), replace change detectors that pin source shape,
+incidental strings, snapshots, or mock choreography instead of behavior,
+unmock everything that is not a process, network, clock, or randomness
+boundary, collapse repetitive setup into one fixture or a table, and cut
+coverage theater: N happy-path clones with no boundary or failure case.
 
 ## Boundaries
 

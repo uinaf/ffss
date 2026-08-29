@@ -1,0 +1,36 @@
+{
+  "context": "Tests whether test mode replaces source-shape, incidental-copy, full-object, and snapshot change detectors with assertions on the owned behavior contract.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Source inspection removed",
+      "max_score": 20,
+      "description": "The test no longer reads connection-notice.ts or matches source substrings, private layout, CSS literals, or implementation syntax"
+    },
+    {
+      "name": "Incidental details unpinned",
+      "max_score": 20,
+      "description": "Exact title, body, action-label, and className assertions are removed because the task explicitly excludes copy and CSS from the contract"
+    },
+    {
+      "name": "Owned behavior asserted",
+      "max_score": 25,
+      "description": "A real connectionNotice call asserts kind connection-error, role alert, and retry action intent against independent expected values"
+    },
+    {
+      "name": "Whole-value detectors removed",
+      "max_score": 15,
+      "description": "The full-object equality and inline snapshot are deleted or replaced by focused assertions on the three contract fields"
+    },
+    {
+      "name": "Coverage preserved without duplication",
+      "max_score": 10,
+      "description": "The semantic contract remains covered in a focused test without several copies of the same expectation or vacuous existence checks"
+    },
+    {
+      "name": "Module untouched",
+      "max_score": 10,
+      "description": "src/connection-notice.ts is not modified"
+    }
+  ]
+}
