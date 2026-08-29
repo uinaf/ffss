@@ -96,6 +96,9 @@ payload or ordering.
   not own.
 - Debug leftovers: `console.log`, focused tests (`.only`) that shrink the
   suite.
+- Test additions notably larger or more complex than the change they verify:
+  scope expanded through the suite instead of the source; trim to the changed
+  behavior's contract.
 
 ## Stop conditions
 

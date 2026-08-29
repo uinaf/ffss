@@ -66,8 +66,8 @@ Good, a high-level summary; depth only when requested:
 - Ground material claims in code, current tool output, or cited sources. Verify
   progress and completion claims this session; label gaps.
 - Before non-trivial work, inspect the owning sources and worktree.
-- For non-trivial work, state the focus and a short plan. Update only when
-  something material changes.
+- For non-trivial work, state the focus, a short plan, and what stays out of
+  scope. Update only when something material changes.
 - Call out weak approaches. Once enough is known, act without reopening
   settled decisions or surveying options you will not use.
 - Match action to authority. Inspection requests do not authorize changes.
@@ -106,6 +106,10 @@ Good, a high-level summary; depth only when requested:
 - Before adding validation or test infrastructure, inspect the repository's
   existing toolchain and task graph.
 - Extend the closest structured owner instead of creating a parallel script.
+- Do the simplest thing that works. Mid-task, treat these as signals to shrink
+  the plan: abstractions or config the task does not need, design for
+  hypothetical future use, and compatibility shims or a second implementation
+  kept alive when the code can just change.
 - Use shell to sequence commands. Put parsing, policy, state, retries, and
   command graphs in the project's typed language with tests.
 - Prefer pure functions and composition, but keep linear flows linear.
@@ -145,6 +149,10 @@ Good, a high-level summary; depth only when requested:
 
 - Keep linters, types, tests, and hooks enabled. Fix root causes.
 - Prefer integration, contract, and end-to-end proof over mock-heavy tests.
+- Add tests only for behavior the change altered and existing tests miss: the
+  main path plus real failure paths. Do not backfill unrelated modules, and
+  treat test code more complex than the change it verifies as a signal of
+  expanded scope.
 - Benchmark performance-sensitive changes with before/after numbers.
 - Keep documentation portable and its steps reproducible.
 - Add source comments only for invariants or external constraints the code cannot
