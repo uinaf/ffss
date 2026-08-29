@@ -3,14 +3,16 @@
 # slopmachine
 
 `slopmachine` turns an approved implementation plan into a resumable,
-evidence-gated workflow for coding agents. Humans release the work; the CLI
-then enforces each build, verification, review, and delivery transition.
+evidence-gated workflow for coding agents. A request to run or continue the
+plan authorizes release; the CLI then enforces each build, verification,
+review, and delivery transition.
 
 ```text
-plan  →  /slopmachine  →  clarify  →  human releases  →  machine runs
+plan  →  /slopmachine  →  clarify  →  authorized release  →  machine runs
 ```
 
-- Humans keep scope, release, required reviewers, and recovery explicit.
+- Humans keep scope, required reviewers, and recovery explicit; starting the
+  run is release authorization.
 - A Go state machine decides what can happen next.
 - Structured evidence and an SQLite event log make every transition
   inspectable.
@@ -87,7 +89,9 @@ slopmachine release --revision N --run demo
 ```
 
 Replace `N` with the exact `intake_revision` returned by `status`. Release is
-the human approval boundary: the machine loop cannot begin without it.
+still an explicit state transition, but a request to run, start, execute,
+continue, or resume the matching plan authorizes the agent to perform it. A
+request to prepare, inspect, intake, or dry-run stops before release.
 
 ### 2. Run the machine loop
 

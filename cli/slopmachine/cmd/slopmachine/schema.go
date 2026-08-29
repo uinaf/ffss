@@ -142,7 +142,7 @@ func allCommandSchemas() []commandSchema {
 	commands := []commandSchema{
 		withTelemetry(mutationSchema("init", "Create a run for the current repository.", objectSchema(map[string]jsonSchema{"run": run}), flags("run", "input")), telemetry),
 		withTelemetry(mutationSchema("intake", "Load or update the released-work contract.", intake, flags("file", "run", "input")), telemetry),
-		withTelemetry(mutationSchema("release", "Latch human approval for an intake revision.", objectSchema(map[string]jsonSchema{
+		withTelemetry(mutationSchema("release", "Latch authorization for an intake revision.", objectSchema(map[string]jsonSchema{
 			"run": run, "revision": integerSchema("Exact intake revision to release."),
 		}, "revision"), flags("revision", "run", "input")), telemetry),
 		withTelemetry(mutationSchema("build", "Claim the next ready unit.", objectSchema(map[string]jsonSchema{"run": run}), flags("run", "input")), telemetry),

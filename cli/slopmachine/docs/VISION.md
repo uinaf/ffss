@@ -21,7 +21,7 @@ plan source (issue, spec, planning session)
 intake      task contract: units, acceptance criteria, complexity,
             risk tier, budget · optional plan-review gate
       ▼
-release     human latch: a terminal today, an async approval tomorrow
+release     authorization latch: the start request today, async approval tomorrow
       ▼
 dispatch    route → venue: current session, local worktree, remote lease,
             provider cloud agent, sandbox
@@ -118,11 +118,12 @@ babysitting, QA gates, risk-tiered review) land before parallel dispatch.
 
 ## Human moments
 
-Release, decisions, recovery, and merge stay human. They are CLI verbs, so
-any notifier can front them; the target is asynchronous approval, a
-notification with structured choices, so runs progress without an open
-terminal. Rising autonomy tiers reduce how many human moments a run has,
-never whether a required one happens.
+Release, decisions, recovery, and merge stay human-authorized. A direct request
+to run, start, execute, continue, or resume is release authorization for the
+matching intake; drivers must not ask for the same approval again. Preparation
+requests stop before release, and material intake changes require fresh
+authorization. The verbs remain explicit so asynchronous notifiers can front
+them when no execution request already carries authority.
 
 ## Delivery
 

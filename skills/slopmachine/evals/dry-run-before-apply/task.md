@@ -9,7 +9,8 @@ initialized and its current status document is below.
 The agreed plan: first harden the webhook signature check (reject unsigned
 payloads, covered by an integration test), then add a replay-protection
 nonce, which depends on the signature work. Low-risk change, delivered as a
-held pull request, reviewed by slopguard.
+held pull request, reviewed by slopguard. Prepare the intake only; do not
+release it or start execution yet.
 
 Write the exact commands I should run, in order, with their full stdin
 payloads where a command takes input, to `commands.md`.

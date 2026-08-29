@@ -1,6 +1,6 @@
 ---
 name: slopmachine
-description: "Run a governed, deterministic implementation workflow via the slopmachine CLI: intake, human release gates, build, verify, independent review, delivery. Use for /slopmachine, running a plan, or governed multi-step implementation; not ad-hoc edits or planning."
+description: "Run a governed, deterministic implementation workflow via the slopmachine CLI: intake, user-authorized release, build, verify, independent review, delivery. Use for /slopmachine, running a plan, or governed multi-step implementation; not ad-hoc edits or planning."
 ---
 
 # Slopmachine
@@ -8,7 +8,7 @@ description: "Run a governed, deterministic implementation workflow via the slop
 Slop cannoning, but deterministic and structured.
 
 ```text
-plan → /slopmachine → clarify → human releases → machine runs
+plan → /slopmachine → clarify → authorized release → machine runs
 ```
 
 ## Require the binary
@@ -84,10 +84,21 @@ Put only the intake document in the `--file` payload; pass the run through
 `--run`, exactly as `next_action` prints it. (The raw `--input` shape embeds
 `run` inside the payload instead; do not mix the two.)
 
-Show the human a compact intake summary: units, delivery mode, required
-reviewers, and exact `intake_revision`. Wait for explicit release approval,
-then run the exact `slopmachine release --revision N` command printed by
-`next_action`.
+Release authority comes from the user's request:
+
+- `run`, `start`, `execute`, `continue`, or `resume` authorizes release of the
+  intake that matches the agreed plan. Validate the exact
+  `slopmachine release --revision N` command from `next_action`, apply it, and
+  keep moving without asking again.
+- `prepare`, `inspect`, `draft`, `intake`, or `dry-run` does not authorize
+  release. Stop at `AWAITING_RELEASE` with a compact summary and the exact next
+  action.
+- If the intake materially differs from the agreed plan, show the delta and
+  obtain approval before release. Do not stretch an execution request into new
+  scope.
+
+Summarize units, delivery mode, required reviewers, and `intake_revision` as a
+status update, not a second confirmation prompt.
 
 ## Status leash
 
@@ -108,8 +119,7 @@ then run the exact `slopmachine release --revision N` command printed by
 
 ## Machine loop
 
-After the human releases: build → verify → review → deliver, always driven by
-status.
+After release: build → verify → review → deliver, always driven by status.
 
 When status reports `route_ready: true`, `slopmachine route --json --run ID`
 previews the deterministic route for the current or sole ready unit. Treat it
@@ -157,11 +167,11 @@ Use collaborator voice: short prose plus optional tables. Lead with what
 changed or what you need, never a wall of CLI JSON. Plain words over machine
 dumps.
 
-## Three human moments
+## Authorization and decision moments
 
-1. **Release**: show a confirm table (what/how/review), wait, then run
-   `slopmachine release --revision` with the `intake_revision` from status
-   JSON.
+1. **Release**: a request to run, start, execute, continue, or resume is the
+   human authorization. Release the matching `intake_revision` without a
+   redundant prompt. Preparation-only requests stop before release.
 2. **Required reviewers**: once at intake: pick from the registered
    identities (`slopmachine reviewers` lists them; `slopguard` and `bugbot`
    are built in). Store via intake `required_reviewers`. Do not auto-fire
@@ -224,5 +234,6 @@ surface. Never simulate a reviewer.
 ## Done
 
 Stop when `RUN_DONE` (every unit settled), blocked pending human recovery,
-or waiting at release or decision. `AWAITING_SIGNALS` is not done; report
-which change requests still wait. SQLite holds the canonical event log.
+or waiting for release authorization or a decision. `AWAITING_SIGNALS` is not
+done; report which change requests still wait. SQLite holds the canonical
+event log.

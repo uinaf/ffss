@@ -1,0 +1,31 @@
+{
+  "context": "Tests release authority from the request: an explicit instruction to continue a matching approved intake authorizes release, so the agent must validate and apply the exact current revision without asking for another approval.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Treats continue as release authority",
+      "max_score": 30,
+      "description": "release.md treats the user's explicit continue instruction as release authorization and does not ask for another confirmation"
+    },
+    {
+      "name": "Compact intake summary",
+      "max_score": 22,
+      "description": "release.md summarizes the two units (u1 signature rejection, u2 nonce blocked on u1), delivery mode pr-hold, and required reviewer slopguard as a compact status update rather than a confirmation gate"
+    },
+    {
+      "name": "Release validated then applied",
+      "max_score": 18,
+      "description": "release.md first validates slopmachine release --revision 3 with --dry-run --json, then applies revision 3 without --dry-run; it does not invent another revision"
+    },
+    {
+      "name": "No redundant approval",
+      "max_score": 18,
+      "description": "The response does not ask the user to approve, confirm, or run the release command; it presents release as the agent's authorized next transition"
+    },
+    {
+      "name": "Humane voice",
+      "max_score": 12,
+      "description": "The summary is short prose or a small table, not a dump of the raw status JSON"
+    }
+  ]
+}

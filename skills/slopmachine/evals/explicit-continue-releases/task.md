@@ -2,9 +2,9 @@
 
 ## Problem/Feature Description
 
-Continue the run; the intake was just recorded. Current status is below. The
-machine is offline, so put whatever you produce for me — summaries, questions,
-or exact commands to run — in `release-gate.md`.
+Continue the run now; the intake was just recorded and matches the plan I
+approved. Current status is below. The machine is offline, so put the exact
+commands that continue it, plus any useful status summary, in `release.md`.
 
 ## Input Files
 

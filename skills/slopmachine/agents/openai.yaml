@@ -1,7 +1,7 @@
 interface:
   display_name: "slopmachine"
-  short_description: "Run a plan with human gates and evidence-backed loops"
-  default_prompt: "Use $slopmachine to run the agreed plan through field-masked JSON status, dry-run validation, human release, and evidence-backed build, verify, review, and delivery."
+  short_description: "Run a plan with authorization and evidence-backed loops"
+  default_prompt: "Use $slopmachine to run the agreed plan through field-masked JSON status, dry-run validation, user-authorized release, and evidence-backed build, verify, review, and delivery."
 
 policy:
   allow_implicit_invocation: true

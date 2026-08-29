@@ -1,5 +1,5 @@
 {
-  "context": "Tests intake discipline: stdin-fed payloads with no evidence scratch files, validate with --dry-run --json before applying the identical payload, the run id taken from next_action, concrete dependency-ordered units with acceptance criteria, and no self-release.",
+  "context": "Tests preparation-only intake discipline: stdin-fed payloads with no evidence scratch files, validate with --dry-run --json before applying the identical payload, the run id taken from next_action, concrete dependency-ordered units with acceptance criteria, and no release when the user explicitly said not to start execution.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -28,9 +28,9 @@
       "description": "The payload declares delivery_mode pr-hold, required_reviewers including slopguard, and risk_tier low"
     },
     {
-      "name": "No self-release",
+      "name": "Preparation stops before release",
       "max_score": 18,
-      "description": "The sequence stops after intake (plus at most a status re-read) and asks for explicit human release approval; it does not include slopmachine release"
+      "description": "The sequence stops after intake (plus at most a status re-read), states that execution was not authorized, and does not include slopmachine release or solicit redundant approval"
     }
   ]
 }

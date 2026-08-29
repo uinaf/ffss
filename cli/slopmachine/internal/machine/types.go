@@ -49,7 +49,7 @@ type Budget struct {
 // IsZero reports whether no budget dimension is set.
 func (b Budget) IsZero() bool { return b.Tokens == 0 && b.Minutes == 0 }
 
-// Released reports whether the human release latch is valid for the current intake.
+// Released reports whether the release authorization is valid for the current intake.
 func (r *Run) Released() bool {
 	return r.ReleasedRevision != nil && *r.ReleasedRevision == r.IntakeRevision
 }
