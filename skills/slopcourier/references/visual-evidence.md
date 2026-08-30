@@ -13,6 +13,22 @@
 - Never commit proof assets to any product repository branch (no
   `.github/pr-assets` or similar).
 
+## Recording content
+
+A recording proves an interaction; the reviewer's time starts at frame one.
+
+- Start at (or within ~2 seconds of) the first relevant action and end when
+  the outcome is visible. App launch, setup, and waiting are not evidence.
+- Review the artifact before attaching: check the duration with `ffprobe`
+  and confirm the opening frames show relevant state, not an idle screen.
+- Trim dead time instead of re-recording:
+  `ffmpeg -ss <start> -to <end> -i in.mp4 -c copy out.mp4`.
+- When the wait itself is the behavior (a progress or loading state),
+  compress it: a before/after screenshot pair or a short clip of the
+  transition, never real-time idle footage.
+- Prefer roughly 15 seconds or less; if the flow needs more, a labeled
+  screenshot sequence usually reads better than a long recording.
+
 ## 1. attach: the uinaf uploader (when installed, any forge)
 
 - This rung means the [uinaf attach](https://github.com/uinaf/attach) CLI

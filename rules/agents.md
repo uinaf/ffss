@@ -158,5 +158,6 @@ Good, a high-level summary; depth only when requested:
 - When delivery uses a change request, use the repository's template. Without
   one, open with the problem, then the solution; mention proof only when CI
   cannot show it.
-- For non-trivial user-visible changes, include the clearest visual evidence.
+- For non-trivial user-visible changes, include the clearest visual evidence,
+  trimmed to the behavior it proves; no idle or setup footage.
   Reply to fixed findings with the commit hash.
