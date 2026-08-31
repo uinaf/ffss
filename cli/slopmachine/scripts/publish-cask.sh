@@ -53,26 +53,22 @@ cask "${member}" do
   on_macos do
     on_intel do
       sha256 "${darwin_amd64}"
-      url "${base}/${member}_v#{version}_darwin_amd64.tar.gz",
-        verified: "github.com/uinaf/ffss/"
+      url "${base}/${member}_v#{version}_darwin_amd64.tar.gz"
     end
     on_arm do
       sha256 "${darwin_arm64}"
-      url "${base}/${member}_v#{version}_darwin_arm64.tar.gz",
-        verified: "github.com/uinaf/ffss/"
+      url "${base}/${member}_v#{version}_darwin_arm64.tar.gz"
     end
   end
 
   on_linux do
     on_intel do
       sha256 "${linux_amd64}"
-      url "${base}/${member}_v#{version}_linux_amd64.tar.gz",
-        verified: "github.com/uinaf/ffss/"
+      url "${base}/${member}_v#{version}_linux_amd64.tar.gz"
     end
     on_arm do
       sha256 "${linux_arm64}"
-      url "${base}/${member}_v#{version}_linux_arm64.tar.gz",
-        verified: "github.com/uinaf/ffss/"
+      url "${base}/${member}_v#{version}_linux_arm64.tar.gz"
     end
   end
 
