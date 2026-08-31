@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   changes:
     name: classify changes
@@ -122,7 +126,7 @@ jobs:
   slopguard-darwin:
     name: slopguard Darwin verify
     needs: changes
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.slopguard == 'true'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && needs.changes.outputs.slopguard == 'true')
     runs-on: blacksmith-6vcpu-macos-latest
     timeout-minutes: 20
     defaults:
