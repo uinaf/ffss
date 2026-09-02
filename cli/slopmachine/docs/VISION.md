@@ -194,7 +194,7 @@ maintainer's own profile doubles as the reference integration:
 | Readiness audits | slopprep skill |
 | Delivery media | attach CLI |
 | Memory | [Hindsight](https://github.com/uinaf/hindsight) (optional sink) |
-| Evals / calibration | [slopbench](https://github.com/uinaf/slopbench) |
+| Evals / calibration | slopbench (private, `uinaf/agent-benchmarks`) |
 
 A different environment might bind Copilot code review or GitLab Duo as the
 reviewer, its existing e2e suite as QA, and no memory sink; the spine does
