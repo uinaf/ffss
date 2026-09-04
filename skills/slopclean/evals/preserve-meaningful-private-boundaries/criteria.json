@@ -1,0 +1,26 @@
+{
+  "context": "preserve meaningful private boundaries",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Preserve public shape",
+      "max_score": 30,
+      "description": "Keeps ItemOptions.legacyMode and the accepted second argument; does not rewrite consumers to hide an API break."
+    },
+    {
+      "name": "Keep useful boundary",
+      "max_score": 25,
+      "description": "Preserves parseId as a named validation boundary despite one caller, including invalid_id error and positive-safe-integer constraints."
+    },
+    {
+      "name": "Remove pointless indirection",
+      "max_score": 25,
+      "description": "Inlines the private String forwarding wrapper and removes the narrating comment without changing label output."
+    },
+    {
+      "name": "Stay scoped",
+      "max_score": 20,
+      "description": "Preserves existing contract tests and consumers; no extra framework, behavior change, or invented future abstraction."
+    }
+  ]
+}

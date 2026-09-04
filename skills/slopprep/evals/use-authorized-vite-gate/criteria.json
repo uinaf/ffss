@@ -1,0 +1,26 @@
+{
+  "context": "use authorized vite gate",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Follow Vite owner",
+      "max_score": 30,
+      "description": "Selects vp run verify:changed --base main, tracing manifest and CI delegation to the Vite-owned graph rather than adding a wrapper or assuming npm verify is the only owner."
+    },
+    {
+      "name": "Proportional proof",
+      "max_score": 30,
+      "description": "Uses the owner-approved affected task for the player change; does not require an unconditional full workspace gate or repeat passing checks at handoff."
+    },
+    {
+      "name": "Authority and prerequisites",
+      "max_score": 20,
+      "description": "Recognizes installed local prerequisites without prompting again; excludes publish and customer-account live checks from local authority."
+    },
+    {
+      "name": "Honest offline outcome",
+      "max_score": 20,
+      "description": "States the command is planned, not passed, and identifies relevant player runtime proof separately from static and test gates."
+    }
+  ]
+}

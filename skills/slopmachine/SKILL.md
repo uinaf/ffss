@@ -5,11 +5,8 @@ description: "Run a governed, deterministic implementation workflow via the slop
 
 # Slopmachine
 
-Slop cannoning, but deterministic and structured.
-
-```text
-plan → /slopmachine → clarify → authorized release → machine runs
-```
+Execute the agreed plan through the CLI's durable state and evidence gates.
+The machine owns transitions; the agent implements and supplies real evidence.
 
 ## Require the binary
 
@@ -18,9 +15,10 @@ command -v slopmachine
 slopmachine version
 ```
 
-If missing, stop and ask the user to install the CLI through their approved host
-package or release workflow. Do not download or run installers from this skill.
-Do not invent a second runtime.
+If missing, ask for installation through the approved host workflow. Do not
+download installers or invent a second runtime.
+
+Read [protocol.md](references/protocol.md) before the first mutation.
 
 ## Bind the repo profile
 
@@ -28,8 +26,8 @@ Do not invent a second runtime.
 slopmachine repo show --json
 ```
 
-If the repo is unregistered, register it before the first run; the profile
-is what arms forge-verified (`observed`) evidence and binds reviewers:
+If unregistered, register the repo with its actual forge, verification command,
+delivery policy, and reviewers. For example:
 
 ```bash
 slopmachine repo register --forge github --trust low \
@@ -43,9 +41,8 @@ standard HTTPS; `glab` host selection does not support custom-port URLs.
 - Map forge-resident reviewers (bots that review on the change request) with
   `--forge-reviewer identity=login` so the machine corroborates their evidence
   against the live change request.
-- At low trust the machine only accepts machine-executed verification
-  (`verify --cmd`), and local reviewers must leave a resolvable result
-  artifact.
+- Low trust requires machine-executed `verify --cmd` and resolvable local
+  review artifacts. Registration enables forge-verified (`observed`) evidence.
 
 ## Bootstrap the run
 
@@ -59,11 +56,9 @@ slopmachine status --json --fields state,run_id,next_action,allowed_commands,req
 - `RUN_DONE` plus a request for new work → create a new run; otherwise report
   the completed run.
 
-Turn the agreed plan into intake immediately after init:
-
-- keep units concrete, bounded, and dependency-ordered
-- give each unit verifiable `acceptance_criteria` and declare the run's
-  `risk_tier`
+After init, submit bounded, dependency-ordered units with verifiable acceptance
+criteria and a risk tier. Select required reviewers once from registered
+identities (`slopmachine reviewers`), honoring the agreed review requirement.
 
 ```bash
 slopmachine intake --file - --run run-id-from-status --dry-run --json <<'JSON'
@@ -97,29 +92,30 @@ Release authority comes from the user's request:
   obtain approval before release. Do not stretch an execution request into new
   scope.
 
-Summarize units, delivery mode, required reviewers, and `intake_revision` as a
-status update, not a second confirmation prompt.
+Report units, delivery mode, reviewers, and revision briefly; no second approval
+prompt for the matching authorized intake.
 
 ## Status leash
 
-1. Run the field-masked `slopmachine status --json` command above and obey its
-   next step. See
-   [status.md](references/status.md) for the full status field contract.
-2. Validate every mutation with `--dry-run --json`; apply only when the
-   projection matches intent. Successful `--json` output is the resulting
-   status document.
-3. Advance only through named CLI commands with the evidence status requires.
-   Re-read status after errors or whenever output was not JSON.
-4. Treat placeholders in `next_action` as fields to fill, not literal text.
-   Never materialize intake, review, delivery, or other evidence payloads in
-   the repository; send them through stdin.
-5. Before guessing a payload field or enum, run
-   `slopmachine schema --command <name>`. See
-   [protocol.md](references/protocol.md) for raw input and error handling.
+- Obey `next_action`, `allowed_commands`, and `required_evidence` from the
+  current status. Fill placeholders with real values.
+- Validate each mutation with `--dry-run --json`, then apply the accepted
+  projection without `--dry-run`. A projection is not persisted status.
+- Use the resulting JSON status directly after success; do not immediately
+  poll the same state again. Re-read after errors, plain output, or external
+  changes. [status.md](references/status.md) defines fields and observation.
+- Send payloads through stdin, never repository evidence files. Discover
+  unfamiliar fields/enums with `slopmachine schema --command <name>`;
+  [protocol.md](references/protocol.md) owns input and storage rules.
 
 ## Machine loop
 
-After release: build → verify → review → deliver, always driven by status.
+After release: build → verify → review → deliver, driven by status.
+Iterate with focused checks during BUILD; run the required verification gate
+when the unit is ready, then invoke its required reviewers. Do not add review
+after each edit or repeat an accepted verification/review on unchanged state.
+New changes or machine invalidation require refreshed evidence at the next
+gate; never substitute an earlier result for a required new attempt.
 
 When status reports `route_ready: true`, `slopmachine route --json --run ID`
 previews the deterministic route for the current or sole ready unit. Treat it
@@ -133,9 +129,9 @@ slopmachine review --evidence - --run run-id-from-status --dry-run --json <<'JSO
 JSON
 ```
 
-For a local reviewer, point `artifact_ref` at the reviewer's real result
-file: save the slopguard JSON output and reference it. The machine refuses
-dangling or opaque refs on a forge-bound repo.
+Use the required reviewer's installed tool, never a simulated verdict. For
+local review, save its real result outside the repository and reference it;
+the machine refuses dangling or opaque refs on a forge-bound repo.
 
 Deliver only after every required reviewer is present in `completed_reviewers`.
 Use stdin evidence and match the intake delivery mode:
@@ -150,8 +146,6 @@ Deliver from the built checkout: the machine anchors the change request's
 head to the local head (or an explicit `commit_sha`) and refuses a change
 request that is already merged or closed.
 
-Once you accept a projection, repeat the command without `--dry-run`.
-
 When status shows `evidence_verification: observed`, the binary checks
 deliver and review evidence against the live forge before accepting it.
 
@@ -161,24 +155,6 @@ deliver and review evidence against the live forge before accepting it.
 - Exit 7: the forge was unreachable. Retry, or ask the human before recording
   a bypass with `--unverified --reason`.
 
-## Talk to the human
-
-Use collaborator voice: short prose plus optional tables. Lead with what
-changed or what you need, never a wall of CLI JSON. Plain words over machine
-dumps.
-
-## Authorization and decision moments
-
-1. **Release**: a request to run, start, execute, continue, or resume is the
-   human authorization. Release the matching `intake_revision` without a
-   redundant prompt. Preparation-only requests stop before release.
-2. **Required reviewers**: once at intake: pick from the registered
-   identities (`slopmachine reviewers` lists them; `slopguard` and `bugbot`
-   are built in). Store via intake `required_reviewers`. Do not auto-fire
-   reviewers.
-3. **Decide**: `slopmachine ask --question …`, then
-   `slopmachine decide --answer …`.
-
 ## Error recovery
 
 - Failed verification records `BLOCKED` and exits 6: show the compact
@@ -187,31 +163,20 @@ dumps.
   `slopmachine retry --reason "…"`; never retry silently.
 - For a known external blocker before verification, use
   `slopmachine block --reason "…"` and follow the same recovery rule.
-- With `--json`, failures return `error.kind`, `error.message`, and
-  `error.exit_code`. Malformed input exits 2; illegal transitions or unmet
-  guards exit 3. Fix the input or re-read status instead of bypassing the gate.
+- Malformed input exits 2; illegal transitions or unmet guards exit 3. Use
+  `error.kind`, `error.message`, and `error.exit_code` to correct input or
+  re-read status, never bypass the gate.
+- Record decisions through `slopmachine ask --question …` and
+  `slopmachine decide --answer …` after the human answers.
 - An empty next action means the run is done or needs human inspection.
 
 ## Post-delivery babysit
 
-Delivery opens a change request; the unit is `delivered`, not settled, and
-later units already build while it waits.
-
-- Prefer `slopmachine watch --once`: the binary observes every delivered
-  unit's change request itself and records the signals. Passes are
-  idempotent, so rerun freely; `--interval SECONDS` polls with bounded
-  iterations.
-- `merged` settles the unit; `checks_failed`, `review_feedback`, and
-  `head_moved` pull it back through the build loop with the cause recorded.
-- Two narrow feedback-identity limits: a thread reopened without a new
-  comment is not re-detected (any new comment is), and a change request with
-  more than ten unresolved threads may conservatively re-trigger one extra
-  rework when the sample shifts.
-- For signals the binary cannot observe (no change request URL, foreign
-  forge), record what the forge really shows via `slopmachine observe`,
-  passing `--unit` when several units are delivered.
-- `AWAITING_SIGNALS` means every remaining unit waits on external signals.
-  Never invent a signal.
+Use `slopmachine watch --once` to observe delivered change requests. Delivery
+does not settle the unit; later ready units may build while it waits.
+[status.md](references/status.md#delivered-units) owns signals, observation
+limits, and manual observation. Keep waiting at `AWAITING_SIGNALS`; it is not
+completion.
 
 ## Post-review flow
 
@@ -220,20 +185,9 @@ later units already build while it waits.
   build command.
 - `ambiguous` moves to `NEEDS_DECISION`; ask the human and record the answer.
 
-## Mindful spend
-
-Use a strong model for BUILD and a cheaper reviewer (Bugbot or a lighter
-slopguard). Never default to "most expensive everywhere."
-
-## Companion tools
-
-Run whichever installed tool matches a required reviewer: the `slopguard`
-binary, Cursor `/review-bugbot`, or the registered custom reviewer's own
-surface. Never simulate a reviewer.
-
 ## Done
 
 Stop when `RUN_DONE` (every unit settled), blocked pending human recovery,
-or waiting for release authorization or a decision. `AWAITING_SIGNALS` is not
-done; report which change requests still wait. SQLite holds the canonical
-event log.
+or waiting for release authorization or a decision. Report the outcome or
+blocker in short prose, with waiting change-request URLs where relevant.
+SQLite holds the canonical event log.

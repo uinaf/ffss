@@ -1,5 +1,5 @@
 {
-  "context": "Tests whether the agent restructures monolithic README.md content into the correct top-level doc split (README.md for users, CONTRIBUTING.md for contributors, SECURITY.md for reporters), following the prescribed section order in each file, with README.md linking out rather than duplicating content.",
+  "context": "Tests whether the agent separates a monolithic README by audience: users get installation and first use, contributors get development and verification, and security reporters get the existing private route. Grade discoverability and factual preservation, not a fixed section template.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -8,9 +8,9 @@
       "description": "README.md starts with a one-sentence purpose/description of the project (hero section is first or near-first)"
     },
     {
-      "name": "README install near top",
+      "name": "First use easy to find",
       "max_score": 10,
-      "description": "README.md has Installation section before Architecture or any deep explanatory content"
+      "description": "README.md places installation or quick-start instructions before deep architecture and development detail, so users can reach the first successful command without searching. No particular heading label is required."
     },
     {
       "name": "README links out to CONTRIBUTING",
@@ -28,14 +28,14 @@
       "description": "Contributor setup steps (npm install, branch naming, PR process) appear in CONTRIBUTING.md but NOT duplicated in README.md"
     },
     {
-      "name": "CONTRIBUTING setup first",
+      "name": "Contributor path clear",
       "max_score": 8,
-      "description": "CONTRIBUTING.md has Setup or environment bootstrap section before Pull request or Release notes sections"
+      "description": "CONTRIBUTING.md makes prerequisites and setup easy to find before the reader needs pull-request or release guidance; no exact section template is required."
     },
     {
-      "name": "CONTRIBUTING validation section",
+      "name": "Contributor validation discoverable",
       "max_score": 8,
-      "description": "CONTRIBUTING.md contains a section for running tests/validation with the actual commands (npm test or npm run test:coverage)"
+      "description": "CONTRIBUTING.md clearly identifies the actual tests or validation commands, such as npm test or npm run test:coverage, without requiring a particular section heading."
     },
     {
       "name": "SECURITY private-first",
@@ -45,12 +45,12 @@
     {
       "name": "SECURITY contact present",
       "max_score": 10,
-      "description": "SECURITY.md contains a contact section with the security email address"
+      "description": "SECURITY.md prominently includes the existing security email address as the private reporting route; no particular contact heading is required."
     },
     {
-      "name": "SECURITY short",
+      "name": "SECURITY focused",
       "max_score": 8,
-      "description": "SECURITY.md is at most 50 lines"
+      "description": "SECURITY.md stays focused on private reporting, supported scope, and disclosure boundaries without unrelated product or contributor material; no fixed line count is required."
     },
     {
       "name": "Doc changes summary",

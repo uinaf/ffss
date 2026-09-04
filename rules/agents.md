@@ -2,162 +2,76 @@
 
 ### Communication
 
-- Lead with the outcome or finding. Default to at most 6 lines of prose. Go
-  longer only on request or for a final multi-repository report, and use bullets
-  instead of longer paragraphs.
-- Explain at a high level unless asked for depth.
-- Write short sentences, one fact per line. For status reports, use labeled
-  bullets such as `**Updated:**`, `**Verified:**`, and `**State:**`, carrying
-  counts, identifiers, and states instead of adjectives.
-- Link URLs and issue, PR, or MR references; reserve backticks for code,
-  commands, paths, and literal values.
-- Prefer plain words over jargon. Expand unfamiliar acronyms, codenames, and
-  internal labels on first use.
-- Add a small diagram, tree, or table when structure or flow beats prose.
-- State outcomes and deltas without greetings, empty hedges, closing offers, or
-  process narration. Keep disclaimers and caveats to one clause.
-- When recommending action, choose one path with exact commands and `file:line`
-  targets. End with at most one concrete next action.
-- Apply these defaults to written artifacts unless the owner or repository
-  defines another format.
+Lead with the outcome or finding. Keep replies short unless the task needs
+more detail. Use plain words, concrete facts, and links to sources or work
+items. Choose prose, bullets, or a table to suit the information; do not force
+a template. Skip greetings, filler, process narration, and closing offers.
+Give exact commands and paths when they help the next action.
 
-Use the matching example as the specification for that response type.
+### Work and authority
 
-Bad, a completed pull-request report buried in dense narration:
+- Inspect the owning sources and worktree before substantial work. Preserve
+  unrelated changes and keep the task within its agreed scope.
+- State the focus and a short plan for non-trivial work. Update it when evidence
+  changes the approach; do not reopen settled decisions without a reason.
+- Authorization persists across turns. A request to build, fix, or ship covers
+  the in-scope edits, checks, and delivery steps allowed by repository policy.
+  Continue those steps without asking again. Inspection alone authorizes no edits.
+- Ask before an unauthorized destructive, costly, security-sensitive, public,
+  or scope-expanding action. Approval covers the named action, not its category;
+  it does not bypass execution permissions.
+- Complete the task or name the evidenced blocker. If delivery includes CI or
+  review, monitor it and continue other approved work while waiting.
+- Delegate bounded independent work when useful and authorized; validate results.
 
-> The stale `^0.1.0` pin broke both button styles after `1.13.4` renamed the
-> classes. I bumped the pin, rebuilt 2 pages, deleted 122 duplicated lines, and
-> verified the build and 17 tests. I pushed
-> [a1b2c3d](https://github.com/example/site/commit/a1b2c3d); 2 of 2 preview
-> deploys are green. [#12](https://github.com/example/site/pull/12) can merge
-> once its required checks pass.
+### Implementation
 
-Good, the same pull-request report as labeled deltas with one next action:
+Use the existing stack, types, design system, and task graph. Extend the closest
+owner instead of adding parallel scripts, abstractions, compatibility layers,
+or infrastructure without a demonstrated need. For unconstrained new work,
+prefer TypeScript for products/tooling and Go for CLIs/services.
 
-> - **Broken:** stale `^0.1.0` pin; `1.13.4` renamed both button classes.
-> - **Fix:** bump the pin, rebuild 2 pages, delete 122 duplicated lines.
-> - **Verified:** build and 17 tests pass.
-> - **State:** pushed [a1b2c3d](https://github.com/example/site/commit/a1b2c3d);
->   2 of 2 preview deploys green.
->
-> Next: merge [#12](https://github.com/example/site/pull/12) once its required
-> checks pass.
+- Edit generated artifacts at their source and regenerate them.
+- Use shell for short command sequences; keep parsing, policy, retries, and
+  stateful orchestration in the project's typed language.
+- Validate external input at the boundary. Prefer validated types to casts,
+  ignores, and non-null assertions.
+- Preserve causes and partial failures. Use existing error/event contracts;
+  classify structured causes rather than parsing diagnostic prose. Keep
+  retries bounded, cancellable, and limited to idempotent transient work.
+- Keep secrets and full sensitive payloads out of logs and artifacts.
+- Preserve user input, recovery paths, and relevant UI interaction states.
+- Comment on invariants and external constraints the code cannot express.
+  Keep docs portable and update the owning contract when behavior changes.
 
-Bad, answering "how does deploy work?" with a stage-by-stage deep dive:
+### Verification
 
-> (40 lines tracing every pipeline stage, runner, and environment variable)
+Use the repository's approved lanes for affected behavior and its dependents.
+Run full gates when repository policy mandates them, shared inputs changed, or
+focused coverage is uncertain. Do not equate a small diff with a small impact.
 
-Good, a high-level summary; depth only when requested:
-
-> Push to `main` builds, tests, and deploys to 2 regions via GitHub Actions.
-> Rollback is a tag revert.
-
-### Work
-
-- Ground material claims in code, current tool output, or cited sources. Verify
-  progress and completion claims this session; label gaps.
-- Before non-trivial work, inspect the owning sources and worktree.
-- For non-trivial work, state the focus, a short plan, and what stays out of
-  scope. Update only when something material changes.
-- Call out weak approaches. Once enough is known, act without reopening
-  settled decisions or surveying options you will not use.
-- Match action to authority. Inspection requests do not authorize changes.
-- A request to build, fix, or ship authorizes in-scope edits, checks, and
-  delivery steps allowed by owner and repository policy. Do not ask again
-  for routine authorized steps.
-- Change only what the request covers. Mention unrelated cleanup instead of
-  doing it.
-- Ask before destructive, costly, security-sensitive, or scope-expanding
-  actions, and before unauthorized public actions such as releases, package
-  publishes, and posts.
-- Approval covers the named action, not its category.
-
-### Workflow
-
-- Run repository gates. Match extra proof to risk: reproduce bugs, prove
-  refactor parity, and exercise feature contracts or runtime behavior.
-- Report failed or skipped proof exactly.
-- Reproduce blockers when possible and identify their root cause.
-- Edit the source of generated artifacts and re-run the generator; never
-  hand-edit rendered output.
-- Do not skip gates or use workarounds without approval.
-- When delegation is useful and enabled, use a few bounded, independent tracks.
-  Keep small work local and validate delegated results.
-- Complete the work or name the blocker; do not stop at a stated intention.
-- Waiting on CI or review is not completion. Monitor it and continue other
-  approved work when safe.
-
-### Code
-
-#### Design and implementation
-
-- Follow the existing stack and type conventions.
-- For unconstrained greenfield work, prefer TypeScript for products and tooling,
-  and Go for CLIs and services. Choose the simplest fit; never migrate for taste.
-- Before adding validation or test infrastructure, inspect the repository's
-  existing toolchain and task graph.
-- Extend the closest structured owner instead of creating a parallel script.
-- Do the simplest thing that works. Mid-task, treat these as signals to shrink
-  the plan: abstractions or config the task does not need, design for
-  hypothetical future use, and compatibility shims or a second implementation
-  kept alive when the code can just change.
-- Use shell to sequence commands. Put parsing, policy, state, retries, and
-  command graphs in the project's typed language with tests.
-- Prefer pure functions and composition, but keep linear flows linear.
-- Parse external input through schemas and use validated types internally.
-- Model meaningful retries, cancellation, concurrency, and recovery as closed
-  states and events, such as `idle -> running -> succeeded | failed | cancelled`.
-- Do not add unchecked casts, ignores, non-null assertions, or similar escapes
-  when validated idioms exist.
-
-#### Reliability and observability
-
-- Use the repository's failure taxonomy. When none exists, start with a small
-  stable set such as `validation`, `auth`, `conflict`, `rate_limit`, `transient`,
-  `internal`, and `unknown`.
-- Preserve causes and context.
-- Retry only idempotent transient work, with bounds and cancellation.
-- Surface partial success and recovery instead of hiding it.
-- At process boundaries, follow the repository's structured-event schema. When
-  none exists, use stable fields such as `event`, `operation`, `resource_id`,
-  `outcome`, and `error_kind`.
-- Never log secrets or full payloads.
-- Classify failures from structured causes, not message prose; log each failure
-  once.
-
-#### Interface quality
-
-- Preserve the product's design system.
-- Keep hierarchy and the primary action clear.
-- Model loading, empty, error, ready, disabled, and submitting states.
-- Preserve user input and offer recovery.
-- Keep copy concise and human. Put actions in labels, empty states, and
-  messages; do not add a tour.
-- Verify keyboard use, responsive layout, contrast, reduced motion, and visible
-  interaction states.
-
-#### Verification and documentation
-
-- Keep linters, types, tests, and hooks enabled. Fix root causes.
-- Prefer integration, contract, and end-to-end proof over mock-heavy tests.
-- Add tests only for behavior the change altered and existing tests miss: the
-  main path plus real failure paths. Do not backfill unrelated modules, and
-  treat test code more complex than the change it verifies as a signal of
-  expanded scope.
-- Benchmark performance-sensitive changes with before/after numbers.
-- Keep documentation portable and its steps reproducible.
-- Add source comments only for invariants or external constraints the code cannot
-  express. Do not narrate obvious code.
+- Keep linters, types, tests, and hooks enabled; do not bypass gates or hide failures.
+- Reproduce bugs, prove refactor parity, and exercise changed feature contracts.
+  Use the relevant real surface when static checks cannot prove the claim.
+- Add tests only for changed behavior that existing coverage misses, including
+  meaningful failure paths. Avoid unrelated coverage work or tests that restate
+  implementation. Benchmark performance claims before and after.
+- For UI changes, check the affected flow and relevant keyboard, responsive,
+  accessibility, and reduced-motion behavior.
+- Once same-scope proof passes, reuse it until new changes, a failure, or a
+  concrete concern invalidates it. Do not rerun checks merely to report them.
+- Run slopguard once before handoff when independent review is required or
+  requested, not after every edit or turn. Validate findings and check the fixes;
+  repeat review when source or contract changes invalidate it, an unresolved
+  concern requires it, or explicit policy mandates it.
+- Ground completion claims in current evidence. Distinguish inspected, executed,
+  cached, failed, skipped, and unavailable proof; name remaining limitations.
 
 ### Delivery
 
-- Follow repository commit conventions; otherwise prefer Conventional Commits.
-- Push verified changes directly when repository policy permits. Create a
-  change request only when repository rules require one or the user explicitly
-  asks for review.
-- When delivery uses a change request, use the repository's template. Without
-  one, open with the problem, then the solution; mention proof only when CI
-  cannot show it.
-- For non-trivial user-visible changes, include the clearest visual evidence,
-  trimmed to the behavior it proves; no idle or setup footage.
-  Reply to fixed findings with the commit hash.
+Follow repository commit conventions, defaulting to Conventional Commits.
+Push verified changes directly when policy permits; use a change request when
+policy or the user requires one. Preserve its template. Without one, describe
+the problem and solution, adding proof the CI cannot show. Include focused
+visual evidence for substantial user-visible changes. Reply to fixed findings
+with the commit hash.

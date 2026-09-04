@@ -1,5 +1,5 @@
 {
-  "context": "Tests whether the agent chooses exactly one suitable installed provider without a fixed engine, applies provider-specific web defaults, constructs the branch review command with the task contract, and defines evidence-based completion without fallback or panels.",
+  "context": "Tests default provider selection, branch targeting, task-contract transport, and completion without provider fallback.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -19,7 +19,7 @@
     },
     {
       "name": "Provider choice explained",
-      "description": "The document states why the chosen installed provider fits this review instead of claiming an automatic Codex default",
+      "description": "With no user or trusted-config selection, the document chooses Codex with medium reasoning",
       "max_score": 10
     },
     {

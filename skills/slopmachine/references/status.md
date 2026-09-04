@@ -27,25 +27,7 @@ Before the repository has a run, status returns `state: "UNINITIALIZED"`,
 `allowed_commands: ["init"]`, and `next_action: "slopmachine init"`. Run that
 command, then read status again before submitting intake.
 
-## Parse example
-
-```bash
-slopmachine status --json
-# → {
-#   "schema_version": 3,
-#   "next_action": "slopmachine build --run='demo'",
-#   "allowed_commands": ["intake", "ask", "build"],
-#   "required_evidence": [],
-#   "intake_revision": 1
-# }
-slopmachine build --run demo
-slopmachine status --json
-# → {
-#   "next_action": "slopmachine verify --cmd '<verification command>' --run='demo'",
-#   "required_evidence": ["verify.command", "verify.exit_code"]
-# }
-slopmachine verify --cmd 'go test ./...' --run demo
-```
+## Status freshness
 
 - A successful mutation invoked with `--json` already returns its resulting
   status document.
@@ -63,3 +45,22 @@ slopmachine verify --cmd 'go test ./...' --run demo
 - Delivery requires one clean result from every identity in
   `required_reviewers`. Repeating the same reviewer does not satisfy the
   gate.
+
+## Delivered units
+
+`slopmachine watch --once` observes delivered change requests and records
+signals. Passes are idempotent; `--interval SECONDS` polls with bounded
+iterations. An unchanged observation does not call for new verification or
+review.
+
+- `merged` settles the unit; `checks_failed`, `review_feedback`, and
+  `head_moved` return it to the build loop with the cause recorded.
+- A thread reopened without a new comment is not re-detected; a new comment
+  is. More than ten unresolved threads may conservatively trigger one extra
+  rework when the sample shifts. Honor recorded rework rather than overriding
+  it as a duplicate.
+- For signals the binary cannot observe (no change request URL, foreign
+  forge), use `slopmachine observe` with evidence from the forge. Pass `--unit`
+  when several units are delivered.
+- `AWAITING_SIGNALS` means remaining units need external signals; never invent
+  one or report the run done.

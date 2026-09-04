@@ -1,5 +1,5 @@
 {
-  "context": "Tests that the six-line cap yields to decision-relevant facts: nine repos with PR numbers, states, and three distinct failure causes cannot be compressed into six lines without losing facts, so the rewrite stays labeled and terse but keeps every identifier, dropping only narration.",
+  "context": "Tests that concision preserves nine repos, their PR states, and three distinct failure causes. Six lines is a target; keep every decision-relevant fact in a readable structure and remove narration.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -13,14 +13,14 @@
       "description": "The three distinct causes survive: gateway's dropped createPool export, metrics' two pinned snapshot tests in dashboards.test.ts, scheduler's redis peer-dependency conflict"
     },
     {
-      "name": "Cap exceeded only as needed",
+      "name": "Concision without fact loss",
       "max_score": 14,
-      "description": "The rewrite is longer than six lines only because the facts require it; there is no padding, restatement, or per-repo prose"
+      "description": "The rewrite preserves the necessary facts without padding or restatement. Six lines is a target, not a reason to delete facts or crowd them into unreadable lines."
     },
     {
-      "name": "Labeled structure",
+      "name": "Scannable status",
       "max_score": 14,
-      "description": "Facts are grouped under labeled bullets (e.g. **Merged:**, **Running:**, **Failing:**) rather than a paragraph"
+      "description": "Repo and PR states are easy to distinguish using labeled bullets, a compact table, or another equally clear structure; no exact template is required."
     },
     {
       "name": "Narration deleted",

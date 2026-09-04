@@ -1,11 +1,11 @@
 {
-  "context": "Tests whether a prose cleaning pass removes AI tells (puffery, stock vocabulary, em dashes, hedging, filler, vague attribution, inline-header lists) while preserving every fact, command, and number and keeping a live human voice.",
+  "context": "Tests whether prose cleanup removes filler and repeated scaffolding while preserving facts, commands, numbers, structure, and author voice.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Em dashes deleted",
+      "name": "Punctuation serves the prose",
       "max_score": 12,
-      "description": "The edited README.md contains no em dash characters"
+      "description": "Removes repetitive punctuation scaffolding where it makes prose awkward; does not mechanically ban useful em dashes or replace them with equally repetitive punctuation."
     },
     {
       "name": "Stock vocabulary gone",
@@ -40,7 +40,7 @@
     {
       "name": "Not over-cleaned",
       "max_score": 12,
-      "description": "The result preserves the original Title Case headings, including 'Key Features' and 'Getting Started', and reads like a person wrote it: concrete statements with some rhythm, not a flat spec sheet stripped of every opinion"
+      "description": "Preserves the original Title Case headings, including Key Features and Getting Started, and the author's concrete factual voice without adding opinions or mannerisms."
     }
   ]
 }
