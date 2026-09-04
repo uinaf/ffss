@@ -24,7 +24,7 @@ func optionSupports(help, option, value string) bool {
 		section := line
 		for next := index + 1; next < len(lines); next++ {
 			trimmed := strings.TrimSpace(lines[next])
-			if strings.HasPrefix(trimmed, "-") {
+			if startsHelpOption(trimmed) {
 				break
 			}
 			section += "\n" + lines[next]
@@ -34,6 +34,13 @@ func optionSupports(help, option, value string) bool {
 		}
 	}
 	return false
+}
+
+func startsHelpOption(line string) bool {
+	if strings.HasPrefix(line, "- ") {
+		line = strings.TrimSpace(strings.TrimPrefix(line, "- "))
+	}
+	return strings.HasPrefix(line, "-")
 }
 
 func containsCapability(output, capability string) bool {

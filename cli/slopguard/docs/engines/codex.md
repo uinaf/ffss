@@ -9,15 +9,24 @@ Reasoning effort defaults to `medium`.
 The adapter capability-probes the following installed CLI surfaces before model
 invocation:
 
-- top level: `--ask-for-approval`, plus `--search` when web access is enabled;
+- top level: `--config`, `--model`, `--ask-for-approval`, plus `--search` when
+  web access is enabled;
 - `exec`: `--ephemeral`, `--skip-git-repo-check`, `--output-schema`,
-  `--output-last-message`, `--json`, and `--cd`.
+  `--output-last-message`, `--json`, `--cd`, and `--color`.
+
+The probe also validates the `never` approval and color values used by the
+adapter.
 
 It checks `--version` and both help surfaces before invocation. The actual
 `codex exec` process resolves authentication from the preserved Codex
 configuration, including custom model-provider credential helpers.
 Provider authentication, capability, timeout, cancellation, process, and
 protocol failures remain distinct.
+
+The compatibility contract is capability-based with no numeric upper bound.
+Fixtures cover Codex CLI `0.146.0` through `0.153.2`; versions outside that
+tested range are accepted only when they report a semantic version and expose
+every required surface above.
 
 ## Web access
 
@@ -33,8 +42,17 @@ omits the unsupported `not` path rule. The returned last-message file and JSON L
 then decoded against the complete canonical Go contract; schema projection does
 not make an invalid result acceptable.
 
-Documented `error` and `turn.failed` events are provider failures and do not
-consume the malformed-review retry. Their payloads remain private.
+The JSON Lines (JSONL) decoder accepts the current `thread.started`,
+`turn.started`, `item.started`, `item.updated`, `item.completed`,
+`turn.completed`, `turn.failed`, and top-level `error` events. Item-level error
+notices are non-fatal; top-level `error` and `turn.failed` events are provider
+failures and do not consume the malformed-review retry. Their payloads remain
+private.
+
+Machine-readable stdout remains hard-limited. Stderr is truncated to bounded
+private diagnostic head and tail segments without cancelling a successful
+review. This keeps large Codex hook context or progress output from becoming
+`provider output_limit` while retaining timeout and cancellation bounds.
 
 ## Verify
 

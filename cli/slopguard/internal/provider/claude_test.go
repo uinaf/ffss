@@ -345,6 +345,7 @@ func TestClaudeReviewRejectsUnsupportedEffort(t *testing.T) {
 }
 
 type fakeClaudeOptions struct {
+	version           string
 	help              string
 	output            string
 	reviewError       string
@@ -364,13 +365,16 @@ type fakeClaude struct {
 func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 	t.Helper()
 	root := t.TempDir()
+	if options.version == "" {
+		options.version = "2.1.220"
+	}
 	fake := fakeClaude{
 		path: filepath.Join(root, "claude"), arguments: filepath.Join(root, "arguments.txt"),
 		prompt: filepath.Join(root, "prompt.txt"), environment: filepath.Join(root, "environment.txt"),
 		probes: filepath.Join(root, "probes.txt"), directory: filepath.Join(root, "directory.txt"),
 	}
 	if options.help == "" {
-		options.help = "--print --no-session-persistence --output-format --json-schema --model --effort --tools --allowedTools --permission-mode --no-chrome"
+		options.help = "--print --no-session-persistence --output-format <format> text, json, stream-json\n--json-schema --model\n--effort <level> low, medium, high, xhigh, max\n--tools --allowedTools\n--permission-mode <mode> dontAsk, plan\n--no-chrome"
 	}
 	if options.output == "" {
 		options.output = claudeEnvelope(`{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`)
@@ -414,7 +418,7 @@ func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 		"  case \"${1:-}\" in low|medium|high|xhigh|max) ;; *) return 1 ;; esac; shift\n" +
 		"  [ \"$#\" -eq 0 ]\n" +
 		"}\n" +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' version >> " + shellQuote(fake.probes) + "; printf '%s\\n' '2.1.220 (Claude Code)'; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' version >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.version+" (Claude Code)") + "; exit 0; fi\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--help\" ]; then printf '%s\\n' help >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
 		"validate_review \"$@\" || fail_contract\n" +
 		"printf '%s\\n' \"$@\" > " + shellQuote(fake.arguments) + "\n" +

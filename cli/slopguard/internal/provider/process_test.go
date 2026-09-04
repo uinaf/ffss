@@ -41,6 +41,78 @@ func TestRunProcessBoundsOutput(t *testing.T) {
 	assertMarkerNotWritten(t, marker)
 }
 
+func TestRunProcessRejectsSuccessfulStdoutOverflow(t *testing.T) {
+	t.Parallel()
+
+	script := writeTestExecutable(t, "successful-stdout-flood", "#!/bin/sh\nprintf '0123456789abcdef'\n")
+	result, err := runProcess(context.Background(), processSpec{
+		Path: script, Directory: t.TempDir(), Environment: []string{"PATH=/usr/bin:/bin"},
+		Timeout: 5 * time.Second, StdoutLimit: 8, StderrLimit: 8,
+	})
+	var failure *processError
+	if !errors.As(err, &failure) || failure.Kind != processOutputLimit || string(result.Stdout) != "01234567" {
+		t.Fatalf("result = %+v, error = %v", result, err)
+	}
+}
+
+func TestRunProcessTruncatesStderrWithoutFailing(t *testing.T) {
+	t.Parallel()
+
+	script := writeTestExecutable(t, "stderr-flood", "#!/bin/sh\nprintf '0123456789abcdef' >&2\nprintf 'ok'\n")
+	result, err := runProcess(context.Background(), processSpec{
+		Path: script, Directory: t.TempDir(), Environment: []string{"PATH=/usr/bin:/bin"},
+		Timeout: 5 * time.Second, StdoutLimit: 8, StderrLimit: 8,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(result.Stdout) != "ok" || string(result.Stderr) != "012\ncdef" {
+		t.Fatalf("stdout = %q, stderr = %q", result.Stdout, result.Stderr)
+	}
+}
+
+func TestRunProcessDoesNotSynthesizeAuthenticationMarker(t *testing.T) {
+	t.Parallel()
+
+	script := writeTestExecutable(t, "stderr-join", "#!/bin/sh\nprintf 'abc4MIDDLE01zz' >&2\nexit 7\n")
+	result, err := runProcess(context.Background(), processSpec{
+		Path: script, Directory: t.TempDir(), Environment: []string{"PATH=/usr/bin:/bin"},
+		Timeout: 5 * time.Second, StdoutLimit: 8, StderrLimit: 8,
+	})
+	if class := classifyProcessFailure(err, result); class != protocol.FailureProvider {
+		t.Fatalf("failure class = %q, stderr = %q", class, result.Stderr)
+	}
+}
+
+func TestRunProcessRetainsTrailingAuthenticationFailure(t *testing.T) {
+	t.Parallel()
+
+	script := writeTestExecutable(t, "stderr-auth", "#!/bin/sh\nprintf '0123456789abcdef0123456789abcdef' >&2\nprintf '401 unauthorized' >&2\nexit 7\n")
+	result, err := runProcess(context.Background(), processSpec{
+		Path: script, Directory: t.TempDir(), Environment: []string{"PATH=/usr/bin:/bin"},
+		Timeout: 5 * time.Second, StdoutLimit: 32, StderrLimit: 32,
+	})
+	if class := classifyProcessFailure(err, result); class != protocol.FailureAuth {
+		t.Fatalf("failure class = %q, stderr = %q", class, result.Stderr)
+	}
+}
+
+func TestRunProcessClassifiesAuthenticationFailureOutsideRetainedSegments(t *testing.T) {
+	t.Parallel()
+
+	script := writeTestExecutable(t, "stderr-middle-auth", "#!/bin/sh\nprintf 'xxxx401yyyyyyyy' >&2\nexit 7\n")
+	result, err := runProcess(context.Background(), processSpec{
+		Path: script, Directory: t.TempDir(), Environment: []string{"PATH=/usr/bin:/bin"},
+		Timeout: 5 * time.Second, StdoutLimit: 8, StderrLimit: 8,
+	})
+	if strings.Contains(string(result.Stderr), "401") {
+		t.Fatalf("retained stderr unexpectedly contains marker: %q", result.Stderr)
+	}
+	if class := classifyProcessFailure(err, result); class != protocol.FailureAuth {
+		t.Fatalf("failure class = %q, stderr = %q", class, result.Stderr)
+	}
+}
+
 func TestRunProcessRejectsNegativeOutputLimits(t *testing.T) {
 	t.Parallel()
 
@@ -122,6 +194,18 @@ func TestClassifyProcessFailureUsesProviderStderrForAuthentication(t *testing.T)
 	result := processResult{Stderr: []byte("401 unauthorized")}
 	if class := classifyProcessFailure(errors.New("exit status 1"), result); class != protocol.FailureAuth {
 		t.Fatalf("failure class = %q", class)
+	}
+}
+
+func TestClassifyProcessFailurePrioritizesOutputAndCleanupKinds(t *testing.T) {
+	t.Parallel()
+
+	for _, kind := range []processErrorKind{processOutputLimit, processCleanup} {
+		err := &processError{Kind: kind, Err: errors.New("operation failed")}
+		result := processResult{Stderr: []byte("401 unauthorized"), AuthenticationFailure: true}
+		if class := classifyProcessFailure(err, result); class != protocol.FailureProvider {
+			t.Fatalf("kind = %q, failure class = %q", kind, class)
+		}
 	}
 }
 

@@ -16,6 +16,10 @@ The Claude review process resolves authentication from the preserved
 environment and user configuration. A separate auth-status
 surface cannot block a configured session, gateway, helper, or key.
 
+Compatibility is capability-based with no numeric upper bound. Fixtures cover
+Claude Code `2.1.220` through `2.1.260`; other versions must expose the same
+required flags before Slopguard invokes the model.
+
 The frozen prompt is delivered on standard input followed by a trusted review
 policy. Each finding location must fit completely within one individual
 reviewed line range; cross-hunk concerns must be narrowed to one establishing

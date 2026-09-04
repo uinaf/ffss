@@ -1,0 +1,11 @@
+Options:
+  --allowedTools, --allowed-tools <tools...>
+  --effort <level> low, medium, high, xhigh, max
+  --json-schema <schema>
+  --model <model>
+  --no-chrome
+  --no-session-persistence
+  --output-format <format> text, json, stream-json
+  --permission-mode <mode> acceptEdits, auto, bypassPermissions, manual, dontAsk, plan
+  -p, --print
+  --tools <tools...>

@@ -1,0 +1,22 @@
+Options:
+  --allow <RULE>
+  --cwd <CWD>
+  --deny <RULE>
+  --disable-web-search
+  --disallowed-tools <TOOLS>
+  --json-schema <SCHEMA>
+  --max-turns <N>
+  -m, --model <MODEL>
+  --no-plan
+  --no-subagents
+  --output-format <OUTPUT_FORMAT>
+    - plain
+    - json
+    - streaming-json
+    - streaming-messages-json
+  --permission-mode <MODE>
+    [possible values: default, acceptEdits, auto, dontAsk, bypassPermissions, plan]
+  --prompt-file <PATH>
+  --reasoning-effort <EFFORT>
+  --tools <TOOLS>
+  --verbatim

@@ -1,0 +1,10 @@
+{"type":"thread.started","thread_id":"thread-latest"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item-0","type":"reasoning","text":""}}
+{"type":"item.updated","item":{"id":"item-0","type":"reasoning","text":"Checking the frozen target."}}
+{"type":"item.completed","item":{"id":"item-0","type":"reasoning","text":"Checked the frozen target."}}
+{"type":"item.completed","item":{"id":"item-1","type":"error","message":"non-fatal provider notice"}}
+{"type":"item.started","item":{"id":"item-2","type":"agent_message","text":""}}
+{"type":"item.updated","item":{"id":"item-2","type":"agent_message","text":"{\"findings\":[]"}}
+{"type":"item.completed","item":{"id":"item-2","type":"agent_message","text":"{\"findings\":[],\"overall_explanation\":\"No defects.\",\"overall_confidence\":0.95}"}}
+{"type":"turn.completed","usage":{"input_tokens":100,"cached_input_tokens":80,"cache_write_input_tokens":0,"output_tokens":20,"reasoning_output_tokens":10}}

@@ -7,6 +7,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strconv"
+	"strings"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
@@ -15,13 +17,14 @@ import (
 )
 
 func runDoctor(ctx context.Context, arguments []string, stdout, stderr io.Writer, dependencies dependencies) int {
-	jsonRequested, outputErr := reviewJSONRequested(arguments)
+	jsonRequested, outputErr := doctorJSONRequested(arguments)
 	if outputErr != nil {
 		return writeDoctorResult(stdout, stderr, jsonRequested, doctorConfigFailure(""), 2)
 	}
 	flags := flag.NewFlagSet("slopguard doctor", flag.ContinueOnError)
 	repository := flags.String("repository", ".", "Git repository or path within it")
 	output := flags.String("output", "terminal", "output format: terminal or json")
+	jsonOutput := flags.Bool("json", false, "print diagnostic as JSON")
 	configFlags := bindConfigFlags(flags)
 	if err := parseFlags(flags, arguments, stdout, io.Discard); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -29,16 +32,19 @@ func runDoctor(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		}
 		return writeDoctorResult(stdout, stderr, jsonRequested, doctorConfigFailure(providerName(configFlags)), 2)
 	}
-	if flags.NArg() != 0 || (*output != "terminal" && *output != "json") {
+	explicitOutput := false
+	flags.Visit(func(item *flag.Flag) { explicitOutput = explicitOutput || item.Name == "output" })
+	if flags.NArg() != 0 || (*output != "terminal" && *output != "json") || (*jsonOutput && explicitOutput && *output != "json") {
 		return writeDoctorResult(stdout, stderr, jsonRequested, doctorConfigFailure(providerName(configFlags)), 2)
 	}
+	jsonRequested = *jsonOutput || *output == "json"
 	overrides, err := configFlags.overrides(flags)
 	if err != nil {
-		return writeDoctorResult(stdout, stderr, *output == "json", doctorConfigFailure(providerName(configFlags)), 2)
+		return writeDoctorResult(stdout, stderr, jsonRequested, doctorConfigFailure(providerName(configFlags)), 2)
 	}
 	repositoryContext, err := repositorypkg.Resolve(ctx, repositorypkg.Options{Path: *repository})
 	if err != nil {
-		return writeDoctorResult(stdout, stderr, *output == "json", doctorTargetFailure(providerName(configFlags)), 2)
+		return writeDoctorResult(stdout, stderr, jsonRequested, doctorTargetFailure(providerName(configFlags)), 2)
 	}
 	effective, err := config.Load(ctx, config.Options{
 		Context:   repositoryContext,
@@ -47,7 +53,7 @@ func runDoctor(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		HomeDir:   dependencies.homeDir,
 	})
 	if err != nil {
-		return writeDoctorResult(stdout, stderr, *output == "json", doctorConfigFailure(providerName(configFlags)), 2)
+		return writeDoctorResult(stdout, stderr, jsonRequested, doctorConfigFailure(providerName(configFlags)), 2)
 	}
 	doctor := dependencies.doctor
 	if doctor == nil {
@@ -60,7 +66,38 @@ func runDoctor(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	} else if diagnostic.Status == provider.DoctorReady {
 		exit = 0
 	}
-	return writeDoctorResult(stdout, stderr, *output == "json", diagnostic, exit)
+	return writeDoctorResult(stdout, stderr, jsonRequested, diagnostic, exit)
+}
+
+func doctorJSONRequested(arguments []string) (bool, error) {
+	outputRequested, outputErr := reviewJSONRequested(arguments)
+	jsonRequested := false
+	for index := 0; index < len(arguments); index++ {
+		argument := arguments[index]
+		if argument == "--" {
+			break
+		}
+		switch argument {
+		case "--json", "-json":
+			jsonRequested = true
+		default:
+			value, found := strings.CutPrefix(argument, "--json=")
+			if !found {
+				value, found = strings.CutPrefix(argument, "-json=")
+			}
+			if found {
+				parsed, parseErr := strconv.ParseBool(value)
+				if parseErr != nil {
+					return true, parseErr
+				}
+				jsonRequested = parsed
+			}
+		}
+		if reviewFlagConsumesNext(argument) && index+1 < len(arguments) {
+			index++
+		}
+	}
+	return outputRequested || jsonRequested, outputErr
 }
 
 func providerName(values configFlagValues) protocol.ProviderName {

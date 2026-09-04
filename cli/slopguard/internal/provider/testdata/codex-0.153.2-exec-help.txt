@@ -1,0 +1,9 @@
+Options:
+  -C, --cd <DIR>
+      --skip-git-repo-check
+      --ephemeral
+      --output-schema <FILE>
+      --color <COLOR>
+      [possible values: always, never, auto]
+      --json
+  -o, --output-last-message <FILE>

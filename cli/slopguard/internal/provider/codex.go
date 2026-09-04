@@ -44,6 +44,14 @@ type Codex struct {
 	preparation preparationCache
 }
 
+type codexUsage struct {
+	InputTokens           *int64 `json:"input_tokens"`
+	CachedInputTokens     *int64 `json:"cached_input_tokens"`
+	CacheWriteInputTokens *int64 `json:"cache_write_input_tokens"`
+	OutputTokens          *int64 `json:"output_tokens"`
+	ReasoningOutputTokens *int64 `json:"reasoning_output_tokens"`
+}
+
 func NewCodex(options CodexOptions) *Codex {
 	executable := options.Executable
 	if executable == "" {
@@ -267,20 +275,28 @@ func (codex *Codex) preflight(ctx context.Context, executable string, runtime *c
 	if err != nil {
 		return "", probeFailure("Codex --help", err, topHelp, runtime.Environment(), protocol.FailureCapability)
 	}
-	requiredTop := []string{"--ask-for-approval"}
+	requiredTop := []string{"--ask-for-approval", "--config", "--model"}
 	if effective.WebAccess.Value {
 		requiredTop = append(requiredTop, "--search")
 	}
-	if missing := missingCapabilities(string(topHelp.Stdout)+string(topHelp.Stderr), requiredTop); len(missing) != 0 {
+	topHelpOutput := string(topHelp.Stdout) + string(topHelp.Stderr)
+	if missing := missingCapabilities(topHelpOutput, requiredTop); len(missing) != 0 {
 		return "", newFailure(protocol.FailureCapability, "Codex is missing required top-level flags: "+strings.Join(missing, ", "), runtime.Environment(), nil)
+	}
+	if !optionSupports(topHelpOutput, "--ask-for-approval", "never") {
+		return "", newFailure(protocol.FailureCapability, "Codex is missing required option value: --ask-for-approval=never", runtime.Environment(), nil)
 	}
 	execHelp, err := run("exec", "--help")
 	if err != nil {
 		return "", probeFailure("Codex exec --help", err, execHelp, runtime.Environment(), protocol.FailureCapability)
 	}
-	requiredExec := []string{"--ephemeral", "--skip-git-repo-check", "--output-schema", "--output-last-message", "--json", "--cd"}
-	if missing := missingCapabilities(string(execHelp.Stdout)+string(execHelp.Stderr), requiredExec); len(missing) != 0 {
+	requiredExec := []string{"--ephemeral", "--skip-git-repo-check", "--output-schema", "--output-last-message", "--json", "--cd", "--color"}
+	execHelpOutput := string(execHelp.Stdout) + string(execHelp.Stderr)
+	if missing := missingCapabilities(execHelpOutput, requiredExec); len(missing) != 0 {
 		return "", newFailure(protocol.FailureCapability, "Codex exec is missing required flags: "+strings.Join(missing, ", "), runtime.Environment(), nil)
+	}
+	if !optionSupports(execHelpOutput, "--color", "never") {
+		return "", newFailure(protocol.FailureCapability, "Codex exec is missing required option value: --color=never", runtime.Environment(), nil)
 	}
 	return string(match[1]), nil
 }
@@ -289,12 +305,12 @@ func codexArguments(effective config.Effective, workspace, schemaPath, outputPat
 	arguments := []string{
 		"--ask-for-approval", "never",
 		"--model", model,
-		"-c", fmt.Sprintf("model_reasoning_effort=%q", effective.ReasoningEffort.Value),
+		"--config", fmt.Sprintf("model_reasoning_effort=%q", effective.ReasoningEffort.Value),
 	}
 	if effective.WebAccess.Value {
 		arguments = append(arguments, "--search")
 	} else {
-		arguments = append(arguments, "-c", `web_search="disabled"`)
+		arguments = append(arguments, "--config", `web_search="disabled"`)
 	}
 	arguments = append(arguments, "exec", "--json", "--color", "never", "--ephemeral", "--skip-git-repo-check", "--cd", workspace)
 	arguments = append(arguments, "--output-schema", schemaPath, "--output-last-message", outputPath, "-")
@@ -308,6 +324,8 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 	turnStarted := false
 	turnCompleted := false
 	lastMessage := ""
+	activeItems := make(map[string]string)
+	completedItems := make(map[string]struct{})
 	for scanner.Scan() {
 		line := bytes.TrimSpace(scanner.Bytes())
 		if len(line) == 0 {
@@ -320,15 +338,18 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 			return "", err
 		}
 		var event struct {
-			Type     string `json:"type"`
-			ThreadID string `json:"thread_id"`
-			Message  string `json:"message"`
+			Type     string      `json:"type"`
+			ThreadID string      `json:"thread_id"`
+			Message  string      `json:"message"`
+			Usage    *codexUsage `json:"usage"`
 			Error    *struct {
 				Message string `json:"message"`
 			} `json:"error"`
 			Item *struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
+				ID      string `json:"id"`
+				Type    string `json:"type"`
+				Text    string `json:"text"`
+				Message string `json:"message"`
 			} `json:"item"`
 		}
 		if err := json.Unmarshal(line, &event); err != nil {
@@ -345,15 +366,42 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 				return "", fmt.Errorf("invalid turn.started event")
 			}
 			turnStarted = true
+		case "item.started":
+			if !turnStarted || event.Item == nil || strings.TrimSpace(event.Item.ID) == "" || strings.TrimSpace(event.Item.Type) == "" {
+				return "", fmt.Errorf("invalid %s event", event.Type)
+			}
+			if _, active := activeItems[event.Item.ID]; active {
+				return "", fmt.Errorf("duplicate item.started event")
+			}
+			if _, completed := completedItems[event.Item.ID]; completed {
+				return "", fmt.Errorf("item restarted after completion")
+			}
+			activeItems[event.Item.ID] = event.Item.Type
+		case "item.updated":
+			if !turnStarted || event.Item == nil || strings.TrimSpace(event.Item.ID) == "" || strings.TrimSpace(event.Item.Type) == "" || activeItems[event.Item.ID] != event.Item.Type {
+				return "", fmt.Errorf("invalid item.updated event")
+			}
 		case "item.completed":
-			if !turnStarted || event.Item == nil {
+			if !turnStarted || event.Item == nil || strings.TrimSpace(event.Item.ID) == "" || strings.TrimSpace(event.Item.Type) == "" {
 				return "", fmt.Errorf("invalid item.completed event")
 			}
+			if event.Item.Type == "error" && strings.TrimSpace(event.Item.Message) == "" {
+				return "", fmt.Errorf("invalid item.completed error event")
+			}
+			if activeType, active := activeItems[event.Item.ID]; active {
+				if activeType != event.Item.Type {
+					return "", fmt.Errorf("item type changed before completion")
+				}
+				delete(activeItems, event.Item.ID)
+			} else if _, completed := completedItems[event.Item.ID]; completed {
+				return "", fmt.Errorf("duplicate item.completed event")
+			}
+			completedItems[event.Item.ID] = struct{}{}
 			if event.Item.Type == "agent_message" {
 				lastMessage = event.Item.Text
 			}
 		case "turn.completed":
-			if !turnStarted || turnCompleted {
+			if !turnStarted || turnCompleted || !validCodexUsage(event.Usage) || len(activeItems) != 0 {
 				return "", fmt.Errorf("invalid turn.completed event")
 			}
 			turnCompleted = true
@@ -369,6 +417,8 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 			return "", &reportedProviderError{Class: protocol.FailureProvider, Message: "Codex reported a provider failure"}
 		case "":
 			return "", fmt.Errorf("Codex event is missing type")
+		default:
+			return "", fmt.Errorf("unsupported Codex event type")
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -378,6 +428,21 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 		return "", fmt.Errorf("incomplete Codex JSONL envelope")
 	}
 	return lastMessage, nil
+}
+
+func validCodexUsage(usage *codexUsage) bool {
+	if usage == nil || usage.InputTokens == nil || usage.OutputTokens == nil {
+		return false
+	}
+	for _, tokens := range []*int64{
+		usage.InputTokens, usage.CachedInputTokens, usage.OutputTokens,
+		usage.CacheWriteInputTokens, usage.ReasoningOutputTokens,
+	} {
+		if tokens != nil && *tokens < 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func readProviderResult(file *os.File) ([]byte, error) {
@@ -418,10 +483,15 @@ func classifyProcessFailure(err error, result processResult) protocol.FailureCla
 			return protocol.FailureTimeout
 		case processCancelled:
 			return protocol.FailureCancelled
+		case processOutputLimit, processCleanup:
+			return protocol.FailureProvider
 		}
 	}
+	if result.AuthenticationFailure {
+		return protocol.FailureAuth
+	}
 	detail := strings.ToLower(string(result.Stderr))
-	for _, marker := range []string{"not logged in", "not authenticated", "not signed in", "unauthorized", "authentication", "login required", "401"} {
+	for _, marker := range authenticationFailureMarkers {
 		if strings.Contains(detail, marker) {
 			return protocol.FailureAuth
 		}

@@ -4,7 +4,7 @@ Select this engine with `--engine grok`. Install the official CLI and
 authenticate before the first native review:
 
 ```bash
-npm install --global @xai-official/grok@1.0.4
+npm install --global @xai-official/grok@1.0.13
 grok login
 ```
 
@@ -76,7 +76,8 @@ and paths to one character. The provider-facing projection omits only that
 pattern for Grok. Canonical decoding still enforces non-blank text, length
 bounds, and safe relative paths before a result can succeed.
 
-The compatibility contract covers Grok Build CLI v1.0.4 and v1.0.5. Capability
+The compatibility contract is capability-based with no numeric upper bound.
+Fixtures cover Grok Build CLI `1.0.4`, `1.0.5`, and `1.0.13`. Capability
 discovery checks every trusted PATH candidate, skipping incompatible
 tool-manager targets before selecting a real Grok executable. It fails closed
 when no candidate preserves the version-specific required flags or enumerated

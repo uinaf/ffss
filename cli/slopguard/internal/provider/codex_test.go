@@ -66,6 +66,23 @@ func TestCodexReviewUsesFrozenStdinAndCanonicalResult(t *testing.T) {
 	}
 }
 
+func TestDecodeCodexCurrentEventFormat(t *testing.T) {
+	t.Parallel()
+
+	fixture, err := os.ReadFile(filepath.Join("testdata", "codex-0.153.2-success.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	message, err := decodeCodexEnvelope(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	review, err := protocol.DecodeReview([]byte(message))
+	if err != nil || review.OverallExplanation != "No defects." {
+		t.Fatalf("review = %+v, error = %v", review, err)
+	}
+}
+
 func TestCodexReviewPreservesConfigurationAndEnablesWeb(t *testing.T) {
 	t.Parallel()
 
@@ -93,6 +110,23 @@ func TestCodexReviewPreservesConfigurationAndEnablesWeb(t *testing.T) {
 	environment := readTestFile(t, fake.environment)
 	if !strings.Contains(environment, "HOME=/native/home") || !strings.Contains(environment, "CODEX_HOME=/native/codex") {
 		t.Fatalf("provider environment = %s", environment)
+	}
+}
+
+func TestCodexHighReasoningCompletesWithLargeNonfatalDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	fake := newFakeCodex(t, fakeCodexOptions{stderrFlood: true, version: "0.153.2"})
+	reviewer := NewCodex(CodexOptions{
+		Repository: t.TempDir(), Executable: fake.path,
+		Environment: []string{"PATH=/usr/bin:/bin", "OPENAI_API_KEY=test-provider-secret"},
+	})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: codexConfig(false, 5*time.Second)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Attempt.Outcome != protocol.AttemptValid || result.Provider.Version != "0.153.2" {
+		t.Fatalf("result = %+v", result)
 	}
 }
 
@@ -219,13 +253,64 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 		{name: "error missing message", options: fakeCodexOptions{rawEnvelope: `{"type":"error"}` + "\n"}},
 		{name: "turn failure missing error", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.failed"}` + "\n"}},
 		{name: "turn failure missing message", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.failed","error":{}}` + "\n"}},
+		{name: "unknown event", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.cancelled"}` + "\n"}},
+		{name: "item error missing message", options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
+			`{"type":"thread.started","thread_id":"fake-thread"}`,
+			`{"type":"turn.started"}`,
+			`{"type":"item.completed","item":{"id":"item-0","type":"error"}}`,
+			"",
+		}, "\n")}},
+		{name: "empty usage", options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
+			`{"type":"thread.started","thread_id":"fake-thread"}`,
+			`{"type":"turn.started"}`,
+			`{"type":"turn.completed","usage":{}}`,
+			"",
+		}, "\n")}},
+		{name: "negative usage", options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
+			`{"type":"thread.started","thread_id":"fake-thread"}`,
+			`{"type":"turn.started"}`,
+			`{"type":"turn.completed","usage":{"input_tokens":1,"cached_input_tokens":0,"output_tokens":-1}}`,
+			"",
+		}, "\n")}},
+		{name: "negative optional usage", options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
+			`{"type":"thread.started","thread_id":"fake-thread"}`,
+			`{"type":"turn.started"}`,
+			`{"type":"turn.completed","usage":{"input_tokens":1,"cached_input_tokens":-1,"output_tokens":1}}`,
+			"",
+		}, "\n")}},
+		{name: "item update missing item", options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
+			`{"type":"thread.started","thread_id":"fake-thread"}`,
+			`{"type":"turn.started"}`,
+			`{"type":"item.updated"}`,
+			"",
+		}, "\n")}},
+		{name: "item update before start", options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
+			`{"type":"thread.started","thread_id":"fake-thread"}`,
+			`{"type":"turn.started"}`,
+			`{"type":"item.updated","item":{"id":"item-0","type":"reasoning","text":"partial"}}`,
+			"",
+		}, "\n")}},
+		{name: "item type changes", options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
+			`{"type":"thread.started","thread_id":"fake-thread"}`,
+			`{"type":"turn.started"}`,
+			`{"type":"item.started","item":{"id":"item-0","type":"reasoning","text":""}}`,
+			`{"type":"item.updated","item":{"id":"item-0","type":"agent_message","text":"partial"}}`,
+			"",
+		}, "\n")}},
+		{name: "turn completes with active item", options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
+			`{"type":"thread.started","thread_id":"fake-thread"}`,
+			`{"type":"turn.started"}`,
+			`{"type":"item.started","item":{"id":"item-0","type":"reasoning","text":""}}`,
+			`{"type":"turn.completed","usage":{"input_tokens":1,"cached_input_tokens":0,"output_tokens":1}}`,
+			"",
+		}, "\n")}},
 		{
 			name: "event after completion",
 			options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
 				`{"type":"thread.started","thread_id":"fake-thread"}`,
 				`{"type":"turn.started"}`,
-				`{"type":"turn.completed"}`,
-				`{"type":"item.completed","item":{"type":"agent_message","text":"late"}}`,
+				`{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}`,
+				`{"type":"item.completed","item":{"id":"item-0","type":"agent_message","text":"late"}}`,
 				"",
 			}, "\n")},
 		},
@@ -333,6 +418,8 @@ func TestCodexReviewEnforcesOutputBounds(t *testing.T) {
 }
 
 type fakeCodexOptions struct {
+	version              string
+	stderrFlood          bool
 	topHelp              string
 	execHelp             string
 	result               string
@@ -365,10 +452,13 @@ func newFakeCodex(t *testing.T, options fakeCodexOptions) fakeCodex {
 		probes:      filepath.Join(root, "probes.txt"),
 	}
 	if options.topHelp == "" {
-		options.topHelp = "--ask-for-approval --search"
+		options.topHelp = "--ask-for-approval <policy> on-request, never\n--config <key=value>\n--model <model>\n--search"
+	}
+	if options.version == "" {
+		options.version = "0.146.0"
 	}
 	if options.execHelp == "" {
-		options.execHelp = "--ephemeral --skip-git-repo-check --output-schema --output-last-message --json --cd"
+		options.execHelp = "--ephemeral --skip-git-repo-check --output-schema --output-last-message --json --cd\n--color <color> always, never, auto"
 	}
 	if options.result == "" {
 		options.result = `{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`
@@ -409,6 +499,10 @@ func newFakeCodex(t *testing.T, options fakeCodexOptions) fakeCodex {
 	if options.exitAfterOutputError != "" {
 		afterOutputFailure = "printf '%b' " + shellQuote(options.exitAfterOutputError) + " >&2\nexit 7\n"
 	}
+	stderrFlood := ""
+	if options.stderrFlood {
+		stderrFlood = "dd if=/dev/zero bs=1024 count=300 2>/dev/null | tr '\\000' x >&2\n"
+	}
 	delay := ""
 	if options.delay != "" {
 		delay = "sleep " + options.delay + "\n"
@@ -426,9 +520,9 @@ func newFakeCodex(t *testing.T, options fakeCodexOptions) fakeCodex {
 		"  [ \"${1:-}\" = 'never' ] || return 1; shift\n" +
 		"  [ \"${1:-}\" = '--model' ] || return 1; shift\n" +
 		"  [ -n \"${1:-}\" ] || return 1; case \"$1\" in -*) return 1 ;; esac; shift\n" +
-		"  [ \"${1:-}\" = '-c' ] || return 1; shift\n" +
+		"  [ \"${1:-}\" = '--config' ] || return 1; shift\n" +
 		"  case \"${1:-}\" in 'model_reasoning_effort=\"low\"'|'model_reasoning_effort=\"medium\"'|'model_reasoning_effort=\"high\"'|'model_reasoning_effort=\"xhigh\"'|'model_reasoning_effort=\"max\"') ;; *) return 1 ;; esac; shift\n" +
-		"  if [ \"${1:-}\" = '--search' ]; then shift; elif [ \"${1:-}\" = '-c' ] && [ \"${2:-}\" = 'web_search=\"disabled\"' ]; then shift 2; else return 1; fi\n" +
+		"  if [ \"${1:-}\" = '--search' ]; then shift; elif [ \"${1:-}\" = '--config' ] && [ \"${2:-}\" = 'web_search=\"disabled\"' ]; then shift 2; else return 1; fi\n" +
 		"  [ \"${1:-}\" = 'exec' ] || return 1; shift\n" +
 		"  [ \"${1:-}\" = '--json' ] || return 1; shift\n" +
 		"  [ \"${1:-}\" = '--color' ] || return 1; shift\n" +
@@ -444,7 +538,7 @@ func newFakeCodex(t *testing.T, options fakeCodexOptions) fakeCodex {
 		"  [ \"$#\" -eq 1 ] && [ \"$1\" = '-' ]\n" +
 		"}\n" +
 		probeDelay +
-		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' version >> " + shellQuote(fake.probes) + "; printf '%s\\n' 'codex-cli 0.146.0'; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' version >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote("codex-cli "+options.version) + "; exit 0; fi\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--help\" ]; then printf '%s\\n' help >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.topHelp) + "; exit 0; fi\n" +
 		"if [ \"$#\" -eq 2 ] && [ \"$1\" = \"exec\" ] && [ \"$2\" = \"--help\" ]; then printf '%s\\n' exec-help >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.execHelp) + "; exit 0; fi\n" +
 		"validate_review \"$@\" || fail_contract\n" +
@@ -459,6 +553,7 @@ func newFakeCodex(t *testing.T, options fakeCodexOptions) fakeCodex {
 		"test -n \"$output\"\n" +
 		"cat " + shellQuote(resultPath) + " > \"$output\"\n" +
 		"cat " + shellQuote(envelopePath) + "\n" +
+		stderrFlood +
 		afterOutputFailure
 	writeTestExecutableAt(t, fake.path, script)
 	return fake

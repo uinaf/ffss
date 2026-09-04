@@ -225,8 +225,18 @@ func (claude *Claude) preflight(ctx context.Context, executable, workspace strin
 	if effective.WebAccess.Value {
 		required = append(required, "--allowedTools")
 	}
-	if missing := missingCapabilities(string(helpResult.Stdout)+string(helpResult.Stderr), required); len(missing) != 0 {
+	help := string(helpResult.Stdout) + string(helpResult.Stderr)
+	if missing := missingCapabilities(help, required); len(missing) != 0 {
 		return "", newFailure(protocol.FailureCapability, "Claude is missing required flags: "+strings.Join(missing, ", "), environment, nil)
+	}
+	for _, requiredValue := range [][2]string{
+		{"--output-format", "json"},
+		{"--permission-mode", "dontAsk"},
+		{"--effort", string(effective.ReasoningEffort.Value)},
+	} {
+		if !optionSupports(help, requiredValue[0], requiredValue[1]) {
+			return "", newFailure(protocol.FailureCapability, "Claude is missing required option value: "+requiredValue[0]+"="+requiredValue[1], environment, nil)
+		}
 	}
 	return string(match[1]), nil
 }
