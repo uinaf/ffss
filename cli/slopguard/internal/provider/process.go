@@ -107,6 +107,7 @@ func runProcess(ctx context.Context, spec processSpec) (processResult, error) {
 	if runResult.CommandErr == nil {
 		result.Stdout = nil
 		result.Stderr = nil
+		result.AuthenticationFailure = false
 		return result, &processError{Kind: processCleanup, Result: result, Err: runResult.CleanupErr}
 	}
 	err := errors.Join(runResult.CommandErr, runResult.CleanupErr)
@@ -243,7 +244,11 @@ func (writer *headTailBuffer) match(data []byte) {
 	candidate := make([]byte, 0, len(writer.matchWindow)+len(data))
 	candidate = append(candidate, writer.matchWindow...)
 	candidate = append(candidate, data...)
-	candidate = bytes.ToLower(candidate)
+	for index, value := range candidate {
+		if value >= 'A' && value <= 'Z' {
+			candidate[index] = value + ('a' - 'A')
+		}
+	}
 	for _, marker := range writer.markers {
 		if bytes.Contains(candidate, marker) {
 			writer.matched = true

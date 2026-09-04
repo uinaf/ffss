@@ -197,6 +197,18 @@ func TestClassifyProcessFailureUsesProviderStderrForAuthentication(t *testing.T)
 	}
 }
 
+func TestClassifyProcessFailurePrioritizesOutputAndCleanupKinds(t *testing.T) {
+	t.Parallel()
+
+	for _, kind := range []processErrorKind{processOutputLimit, processCleanup} {
+		err := &processError{Kind: kind, Err: errors.New("operation failed")}
+		result := processResult{Stderr: []byte("401 unauthorized"), AuthenticationFailure: true}
+		if class := classifyProcessFailure(err, result); class != protocol.FailureProvider {
+			t.Fatalf("kind = %q, failure class = %q", kind, class)
+		}
+	}
+}
+
 func TestReadProviderResultUsesOriginalDescriptor(t *testing.T) {
 	t.Parallel()
 

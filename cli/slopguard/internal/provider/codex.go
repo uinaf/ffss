@@ -483,6 +483,8 @@ func classifyProcessFailure(err error, result processResult) protocol.FailureCla
 			return protocol.FailureTimeout
 		case processCancelled:
 			return protocol.FailureCancelled
+		case processOutputLimit, processCleanup:
+			return protocol.FailureProvider
 		}
 	}
 	if result.AuthenticationFailure {
