@@ -31,10 +31,18 @@ Credentials, workspaces, processes, prompt/output files, timeout, and cleanup
 state remain fresh for every attempt.
 
 Every engine runs in an empty temporary workspace and its own process group with
-a fixed timeout and bounded output. The runtime terminates remaining process
-group members after success, failure, timeout, cancellation, or output overflow.
+a fixed timeout and bounded output. Machine-readable stdout has a hard size
+limit. Stderr keeps bounded head and tail segments for private failure
+classification; large non-fatal hook and progress diagnostics do not terminate
+a successful provider run. The runtime terminates remaining process group
+members after success, failure, timeout, cancellation, or stdout overflow.
 Diagnostics redact credential-bearing environment values, escape terminal
 control characters, and remain bounded.
+
+Compatibility is capability-based, not an open-ended version whitelist. Each
+adapter requires a canonical version plus its safety-critical flags and
+enumerated option values. The engine pages record the oldest and newest
+fixture-tested versions.
 
 See [Configuration](../CONFIG.md) for configuration precedence and web-access
 policy.

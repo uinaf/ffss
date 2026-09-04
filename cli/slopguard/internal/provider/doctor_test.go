@@ -83,6 +83,59 @@ func TestDoctorUsesProviderPreflightWithoutModelCalls(t *testing.T) {
 	}
 }
 
+func TestDoctorReportsCurrentProviderVersionsCompatible(t *testing.T) {
+	tests := []struct {
+		name    string
+		version string
+		fixture func(*testing.T) (string, config.Effective)
+	}{
+		{name: "codex", version: "0.153.2", fixture: func(t *testing.T) (string, config.Effective) {
+			return newFakeCodex(t, fakeCodexOptions{
+				version:  "0.153.2",
+				topHelp:  providerHelpFixture(t, "codex-0.153.2-help.txt"),
+				execHelp: providerHelpFixture(t, "codex-0.153.2-exec-help.txt"),
+			}).path, codexConfig(false, 5*time.Second)
+		}},
+		{name: "claude", version: "2.1.260", fixture: func(t *testing.T) (string, config.Effective) {
+			return newFakeClaude(t, fakeClaudeOptions{
+				version: "2.1.260", help: providerHelpFixture(t, "claude-2.1.260-help.txt"),
+			}).path, claudeConfig(false, 5*time.Second)
+		}},
+		{name: "cursor", version: "2026.09.02-c22c1a3", fixture: func(t *testing.T) (string, config.Effective) {
+			return newFakeCursor(t, fakeCursorOptions{
+				version: "2026.09.02-c22c1a3", help: providerHelpFixture(t, "cursor-2026.09.02-c22c1a3-help.txt"),
+			}).path, cursorConfig(true, 5*time.Second)
+		}},
+		{name: "grok", version: "1.0.13", fixture: func(t *testing.T) (string, config.Effective) {
+			return newFakeGrok(t, fakeGrokOptions{
+				version: "1.0.13", help: providerHelpFixture(t, "grok-1.0.13-help.txt"),
+			}).path, grokConfig(false, 5*time.Second)
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			executable, effective := test.fixture(t)
+			diagnostic := Doctor(t.Context(), DoctorOptions{
+				Repository: t.TempDir(), Executable: executable,
+				Environment: []string{"PATH=/usr/bin:/bin"}, Config: effective,
+			})
+			if diagnostic.Status != DoctorReady || !diagnostic.Compatible || diagnostic.Version != test.version {
+				t.Fatalf("diagnostic = %+v", diagnostic)
+			}
+		})
+	}
+}
+
+func providerHelpFixture(t *testing.T, name string) string {
+	t.Helper()
+	content, err := os.ReadFile(filepath.Join("testdata", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(content)
+}
+
 func TestDoctorReportsTimeoutAndCancellationForEveryProvider(t *testing.T) {
 	providers := []struct {
 		name    string

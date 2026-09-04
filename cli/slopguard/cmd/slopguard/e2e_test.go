@@ -300,8 +300,8 @@ func writeFakeReviewTools(t testing.TB, scenario string) (string, string, string
 	malformedEnvelope := fakeCodexEnvelope(t, "not-json")
 	script := "#!/bin/sh\nset -eu\nprintf '%s\\n' codex >> " + shellLiteral(processLog) + "\n" +
 		"if [ \"${1:-}\" = \"--version\" ]; then printf '%s\\n' 'codex-cli 0.146.0'; exit 0; fi\n" +
-		"if [ \"${1:-}\" = \"--help\" ]; then printf '%s\\n' '--ask-for-approval --search'; exit 0; fi\n" +
-		"if [ \"${1:-}\" = \"exec\" ] && [ \"${2:-}\" = \"--help\" ]; then printf '%s\\n' '--ephemeral --skip-git-repo-check --output-schema --output-last-message --json --cd'; exit 0; fi\n" +
+		"if [ \"${1:-}\" = \"--help\" ]; then printf '%s\\n' '--config --model --ask-for-approval <policy> on-request, never --search'; exit 0; fi\n" +
+		"if [ \"${1:-}\" = \"exec\" ] && [ \"${2:-}\" = \"--help\" ]; then printf '%s\\n' '--ephemeral --skip-git-repo-check --output-schema --output-last-message --json --cd --color <color> always, never, auto'; exit 0; fi\n" +
 		"output=''\nprevious=''\nfor argument in \"$@\"; do\n  if [ \"$previous\" = \"--output-last-message\" ]; then output=\"$argument\"; fi\n  previous=\"$argument\"\ndone\n" +
 		"test -n \"$output\"\n/bin/cat >/dev/null\n" +
 		"printf '%s\\n' \"$$\" > " + shellLiteral(providerPID) + "\n" +

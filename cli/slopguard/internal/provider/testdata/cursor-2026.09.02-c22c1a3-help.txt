@@ -1,0 +1,7 @@
+Options:
+  -p, --print
+  --output-format <format> text | json | stream-json
+  --mode <mode> choices: plan, ask
+  --model <model>
+  --workspace <path-or-name>
+  --trust

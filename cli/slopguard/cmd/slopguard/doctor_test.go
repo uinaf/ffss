@@ -43,6 +43,54 @@ func TestDoctorCommandWritesReadyJSON(t *testing.T) {
 	}
 }
 
+func TestDoctorCommandAcceptsJSONAlias(t *testing.T) {
+	repository := reviewRepository(t)
+	var stdout bytes.Buffer
+	exit := run(t.Context(), []string{
+		"doctor", "--repository", repository, "--engine", "codex", "--model", "gpt-5.6-sol", "--reasoning-effort", "high", "--json",
+	}, &stdout, io.Discard, dependencies{
+		lookupEnv: func(string) (string, bool) { return "", false },
+		homeDir:   func() (string, error) { return t.TempDir(), nil },
+		doctor: func(_ context.Context, options provider.DoctorOptions) provider.Diagnostic {
+			return provider.Diagnostic{
+				SchemaVersion: provider.DoctorSchemaVersion, Status: provider.DoctorReady,
+				Provider: options.Config.Engine.Value, Version: "0.153.2", Compatible: true,
+				WebAccess: options.Config.WebAccess.Value, Authentication: provider.AuthenticationDelegated,
+			}
+		},
+	})
+	var diagnostic provider.Diagnostic
+	if err := json.Unmarshal(stdout.Bytes(), &diagnostic); exit != 0 || err != nil || diagnostic.Version != "0.153.2" || !diagnostic.Compatible {
+		t.Fatalf("exit=%d diagnostic=%+v error=%v", exit, diagnostic, err)
+	}
+}
+
+func TestDoctorJSONAliasCoversEarlyFailures(t *testing.T) {
+	for _, arguments := range [][]string{
+		{"doctor", "--json", "--unknown"},
+		{"doctor", "--json", "--output", "terminal"},
+		{"doctor", "--output", "json", "--json=false", "--unknown"},
+		{"doctor", "--output", "terminal", "--output", "yaml", "--json"},
+		{"doctor", "--json=invalid"},
+	} {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+		exit := run(t.Context(), arguments, &stdout, &stderr, dependencies{})
+		var diagnostic provider.Diagnostic
+		if err := json.Unmarshal(stdout.Bytes(), &diagnostic); exit != 2 || err != nil || stderr.Len() != 0 || diagnostic.FailureClass != protocol.FailureConfig {
+			t.Fatalf("arguments=%v exit=%d diagnostic=%+v error=%v stderr=%q", arguments, exit, diagnostic, err, stderr.String())
+		}
+	}
+}
+
+func TestDoctorJSONAliasDoesNotMatchAnotherFlagValue(t *testing.T) {
+	var stdout bytes.Buffer
+	exit := run(t.Context(), []string{"doctor", "--model", "--json", "--unknown"}, &stdout, io.Discard, dependencies{})
+	if exit != 2 || !strings.HasPrefix(stdout.String(), "status: not_ready\n") {
+		t.Fatalf("exit=%d stdout=%q", exit, stdout.String())
+	}
+}
+
 func TestDoctorCommandReportsTargetFailureOutsideGitWorktree(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

@@ -46,6 +46,8 @@ func TestOptionSupportsMatchesExactOptionAndValueTokens(t *testing.T) {
 		want bool
 	}{
 		{name: "exact", help: "--output-format <format>\n  possible values: plain, json", want: true},
+		{name: "bulleted value", help: "--output-format <format>\n  possible values:\n  - plain\n  - json", want: true},
+		{name: "next bulleted option", help: "- --output-format <format>\n  - plain\n- --permission-mode <mode>\n  - json", want: false},
 		{name: "option suffix collision", help: "--output-format-old <format>\n  possible values: json", want: false},
 		{name: "option prefix collision", help: "legacy--output-format <format>\n  possible values: json", want: false},
 		{name: "value suffix collision", help: "--output-format <format>\n  possible values: json-lines", want: false},

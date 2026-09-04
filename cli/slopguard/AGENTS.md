@@ -26,12 +26,3 @@ independent code review.
 - Keep the bundled skill thin and aligned with the released CLI contract.
 - Treat JSON output as a stable machine contract and terminal output as a
   separate renderer.
-
-## Pull Requests
-
-- Work from a GitHub issue and keep each PR focused.
-- Exercise the built CLI while implementing command behavior.
-- Run `mise run verify` before review.
-- Address actionable AI-review feedback and resolve review threads before
-  merging to `main`.
-- Use conventional commits and signed commits.

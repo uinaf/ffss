@@ -1,5 +1,14 @@
 # Releases
 
+## Next release
+
+- Provider processes retain bounded private stderr diagnostics without treating
+  large non-fatal hook or progress output as `provider output_limit`.
+- Codex CLI `0.153.2`, Claude Code `2.1.260`, Cursor Agent
+  `2026.09.02-c22c1a3`, and Grok Build `1.0.13` are covered by compatibility
+  fixtures.
+- `slopguard doctor --json` is an alias for `--output json`.
+
 `slopguard` evaluates a CLI release after every successful push to protected
 `main`. Conventional Commits determine whether that evaluation publishes a
 version; merges that contain no consumer-facing release type stop without a tag.

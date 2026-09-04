@@ -6,6 +6,7 @@ model request:
 ```bash
 slopguard doctor --engine codex
 slopguard doctor --engine claude --output json
+slopguard doctor --engine codex --json
 ```
 
 The command uses the same executable discovery, version, help-capability, and
