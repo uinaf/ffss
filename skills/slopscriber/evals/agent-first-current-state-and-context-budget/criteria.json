@@ -43,9 +43,9 @@
       "description": "docs/runtime.md states that live log streaming is unsupported and pairs the boundary with paging `GET /v2/runs/:id/logs?after=<cursor>` every 5 seconds"
     },
     {
-      "name": "Agent-first structure and budget",
+      "name": "Agent-first structure",
       "max_score": 10,
-      "description": "docs/runtime.md has at most 45 non-empty lines and uses task-shaped headings, bullets or mappings, and compact command blocks instead of novel-like paragraphs"
+      "description": "docs/runtime.md makes start, health, recovery, and integration facts easy to locate without repeated explanations or irrelevant background. Task headings, compact prose, lists, tables, or command blocks are acceptable; do not grade a fixed line count."
     },
     {
       "name": "Report and factual restraint",

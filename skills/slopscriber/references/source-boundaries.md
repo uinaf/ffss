@@ -1,30 +1,27 @@
-# Source Boundaries
+# Source boundaries
 
-Document only contracts the target repo owns.
+Checked-in docs describe contracts their repository owns.
 
-## Evidence Routing
+| Evidence | Treatment |
+| --- | --- |
+| Target code, config, or scripts | Verify and document the owned contract |
+| Upstream API or product | Cite its maintained source |
+| Another repository | Link the owner or describe the dependency generically |
+| Private workspace, local helper, account, host, or one-off observation | Keep out of repo policy unless explicitly adopted by the owner |
 
-| Source | Durable action |
-|---|---|
-| Target repo file, config, or script | Write the current contract; verify the path or command |
-| Upstream product or API docs | Link or cite the upstream source |
-| Another workspace repo | Link the owner or state the dependency generically |
-| Local machine, private workspace, credential, account, host, or one-off tool | Keep it in the work report unless the user makes it repo policy |
-| User-approved recurring rule, prompt, specification, or decision | Write it in the owning durable documentation surface |
-| Tactical plan, backlog item, epic, or ticket | Use the repository's preferred tracker or the user's selected destination |
+Do not reproduce sensitive identifiers in reports merely to explain their
+exclusion. Describe the category. Owner approval to adopt a recurring contract
+does not authorize publishing its private values.
 
-## Durable Homes
+## Durable homes
 
-- `docs/decisions/`: why a choice was made
-- `docs/specs/`: long-lived behavioral contracts
-- `AGENTS.md` or scoped guidance: behavior future agents must repeat
-- repository work tracker: tactical execution, ownership, dependencies, and resumable status
-- an existing local plan directory: only when the repository explicitly uses it as the work tracker
-- work report: transient, machine-local, private, or one-off evidence
+Use existing repository conventions. Common homes are:
 
-Before promotion, confirm:
+- Agent guidance: recurring operating behavior.
+- Specs: long-lived requirements and acceptance.
+- Decisions: consequential choices and rationale.
+- Tracker: tactical work, dependencies, and resumable status.
+- Local plan directory: only when established as the tracker.
+- Work report: transient evidence safe for its audience.
 
-- the target repo owns the fact
-- the fact is stable enough to maintain
-- the wording exposes no private workspace or machine detail
-- the destination matches the fact's lifetime
+Before saving a fact, check ownership, lifetime, audience, and maintenance path.

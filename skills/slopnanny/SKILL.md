@@ -5,9 +5,8 @@ description: "Babysit an open change request through review and CI: verify bot c
 
 # Slopnanny
 
-Walk one delivered change request to a settled outcome. Respond to what the
-forge shows; never invent signals, review your own work, or widen the
-change.
+Settle one delivered change request from real forge evidence. Keep rework
+within its contract; independent review belongs to the required reviewer.
 
 ## Observe
 
@@ -24,33 +23,29 @@ change.
   requested reviewer is still pending, including an automated reviewer
   still working. After it submits, re-read verdicts, comments, and threads
   before deciding.
-- Act only on checks, reviews, and comments newer than the latest push;
-  everything older was already answered by that push.
+- Require checks and head-specific review evidence for the latest commit.
+  Do not reprocess findings already answered by a push, but do not assume a
+  push resolved older feedback: assess remaining blocking verdicts and open
+  threads against the current code.
+- Unchanged observations need no new tests, review invocation, or reply.
 
 ## Triage findings
 
-1. Treat every bot or reviewer claim as a hypothesis. Verify it against the
-   exact code and the change's contract before acting; bots are helpful and
-   sometimes wrong.
-2. Fix a real finding with the smallest change at the owning boundary, rerun
-   the repository's own gates, push, and reply on the thread with the commit
-   hash. Never force-push without explicit approval, even when rework
-   after `head_moved` tempts a rebase.
-3. Reject an incorrect or out-of-scope finding in a thread reply with
-   concrete evidence (file, line, invariant); never fix-to-appease.
-4. Never let feedback expand the change beyond its original goal. Real
-   shortcomings outside the goal become tracker items, not commits.
-5. Attach visual proof only when it is the clearest evidence; use the
+1. Validate claims against current code, the task contract, and any stronger
+   invariant. Reject incorrect or out-of-scope findings with concrete evidence;
+   real shortcomings outside the goal become tracker items, not commits.
+2. Batch accepted findings into one scoped rework pass. Run focused checks
+   during editing, then the repository's required gates and affected runtime
+   proof once the batch is ready. Refresh required independent review for the
+   final changed target at its prescribed gate, not after each thread fix.
+3. Push verified fixes and reply on each addressed thread with its commit hash.
+   Never force-push without explicit approval. Let requested forge reviewers
+   finish on the new head; do not start duplicate reviews while they work.
+4. Attach visual proof only when it is the clearest evidence; use the
    [slopcourier visual-evidence ladder](../slopcourier/references/visual-evidence.md).
 
-## Reply voice
-
-Your replies post under the authenticated account and are that identity
-speaking:
-
-- first-person neutral voice, never third-person self-reference
-- structured markdown: short paragraphs, backticked identifiers
-- only content that advances the thread
+Replies speak as the authenticated account: first person, concise evidence,
+and commit hashes. Post only content that advances the thread.
 
 ## Quiet discipline
 

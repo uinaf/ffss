@@ -1,18 +1,7 @@
 interface:
   display_name: "slopcourier"
   short_description: "Deliver finished work as a change request"
-  default_prompt: |
-    Use $slopcourier to deliver the completed, verified change as one change
-    request on this repository's forge: confirm the gates passed, the change
-    is proven (behavior ran and was observed, a covering test fails on
-    revert), and delivery is authorized, dispatch on the remote host to the
-    installed forge CLI
-    (github → gh, gitlab → glab, otherwise stop and report), branch, commit
-    conventionally, push, open the change request from the repository's
-    template, attach the single clearest visual evidence without committing
-    proof assets, and return the URL. Never merge, review, or batch
-    unrelated work, and never force-push without explicit approval; when a slopmachine run asked for the delivery,
-    hand the URL back through its deliver evidence.
+  default_prompt: "Use $slopcourier to deliver this completed change as one change request. Require applicable passing gates and proof appropriate to the change, preserve unrelated work, follow forge and template contracts, and return the URL. Preparation-only requests stop at the draft."
 
 policy:
   allow_implicit_invocation: true

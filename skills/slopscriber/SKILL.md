@@ -1,150 +1,40 @@
 ---
 name: slopscriber
-description: "Audit, compress, and update documentation and durable agent-facing artifacts such as AGENTS.md, docs, specs, and runbooks. Use when changes risk doc drift or docs need agent-first cleanup; not for plans, tickets, or code review."
+description: "Update and compress repository docs, agent guidance, specs, and runbooks against current sources. Use for documentation drift or cleanup; not tactical planning, implementation, or code review."
 ---
 
 # Slopscriber
 
-Keep the repo legible to agents and humans.
+Keep documentation accurate, easy to find, and worth reading. Edit the affected
+surfaces; a local change does not require a repository-wide audit.
 
-## Principles
-
-- Docs rot silently; every code change is a possible doc change
-- Optimize for decision-relevant, repo-owned truth per token
-- Describe current state; keep history only in migration notes, changelogs, and decisions
-- Lead with supported capabilities and next actions
-- Prefer short, task-shaped sections and structured facts over narrative prose
-- Enforce the [house style](references/style.md) on every artifact touched; it
-  is a gate, not a suggestion
-- Keep routing docs short and point to deeper docs instead of duplicating them
-- Use repo-relative links for in-repo docs
-- Keep repo docs, agent guidance, and work tracking linked but distinct
+Verify claims against their owning code, configuration, or cited source.
+Preserve current commands, invariants, boundaries, and recovery paths while
+removing stale facts, repetition, and history that belongs elsewhere. Keep one
+canonical home for each contract and link to it with a task-shaped label.
 
 ## Negative-state rule
 
-When rewriting current-state docs, delete every absent, removed, or
-unprovisioned item, specific names and category paraphrases included, unless
-it changes a plausible current action. Prior curiosity, old tickets, and
-"agents ask about it" do not make an absence operational. If a limitation
-must stay, state one precise boundary and the supported path.
+Remove absent or retired capabilities unless the limitation changes a current
+action. Keep actionable limits precise and pair them with the supported path.
 
-## Boundaries
+## Choose the reference
 
-Not docs work:
+- Agent guidance or retrieval structure: [agent-first.md](references/agent-first.md).
+- README, contributor, security, or deep-doc placement: [documentation.md](references/documentation.md).
+- Private, cross-repo, or machine-local evidence; saving a durable rule:
+  [source-boundaries.md](references/source-boundaries.md).
+- Long-lived feature contracts or decisions: [specifications.md](references/specifications.md).
+- Writing defaults when the owner has no stronger convention:
+  [style.md](references/style.md).
 
-- tactical work planning
-- epic or tracker-ticket creation
-- boot/readiness setup
-- baseline PR, issue, contributor, or security policy templates
-- independent code review
-- runtime verification
+Do not invent contributor/security policy, create a second backlog, implement
+missing readiness infrastructure, or turn docs cleanup into runtime verification.
+When the request also includes those tasks, keep their ownership distinct and
+continue separately authorized work.
 
-## Workflow
-
-### 1. Audit the doc surface
-
-Check the files agents and humans actually rely on:
-
-- `AGENTS.md`
-- `CLAUDE.md`
-- `README.md`
-- `CONTRIBUTING.md`
-- `SECURITY.md`
-- `docs/`
-- durable specs, runbooks, and decision docs
-
-Flag:
-
-- stale commands, dead paths, and duplicate guidance
-- routing failures and narrative history
-- exhaustive negative inventories
-- repo-internal details leaking into reader-facing docs
-- every [house style](references/style.md) violation: paragraph-shaped
-  guidance the reader must mine for facts, references trapped in code spans,
-  adjective-carried claims, and unexplained jargon
-
-Before editing:
-
-- classify the target as repo docs, agent guidance, or a durable spec or decision
-- identify the decision or task each section supports
-- preserve commands, paths, invariants, boundaries, and recovery steps
-
-Use [references/source-boundaries.md](references/source-boundaries.md) before writing cross-repo, private workspace, or local-machine facts into checked-in docs.
-
-### 2. Update routing docs
-
-Keep top-level docs terse and navigational.
-
-- Keep `AGENTS.md` a compact operating contract and map, not a wiki
-- If the repo uses `AGENTS.md`, normalize `CLAUDE.md` per the symlink-or-import rule in [references/agent-first.md](references/agent-first.md#agentsmd)
-- Lead `README.md` with value, quick use, and links to deeper docs
-- Refresh `CONTRIBUTING.md` and `SECURITY.md` when they already exist or when moving existing policy out of an overloaded `README.md`; do not invent baseline policy from scratch
-- For workspace repos, keep one canonical setup doc and let `README.md` point to it
-- Use the concrete top-level split and section order in [references/documentation.md](references/documentation.md)
-- Use reader-facing labels in routing lists; use raw filenames only when the filename matters
-
-### 3. Update deep docs and specs
-
-Refresh the detailed documents that carry the knowledge.
-
-- architecture and API docs
-- task guides and runbooks
-- durable feature specs and decision records
-- readiness infrastructure docs after boot, smoke, observability, or isolation changes
-
-Write each updated section as the reader's current source of truth.
-
-For agent-facing or internal docs, follow the selection, structure, and progressive-disclosure guidance in [references/agent-first.md](references/agent-first.md).
-
-When the user asks to save a durable rule, prompt, specification, or decision, choose its [durable home](references/source-boundaries.md#durable-homes).
-
-Tactical implementation plans, epics, tracker tickets, and session handoffs are a separate work-tracking operation. When requested alongside docs cleanup, keep the surfaces linked and report the planning work as a distinct next action instead of inventing a checked-in plan home.
-
-For durable feature contracts and decisions, use the selection rules and
-templates in [references/specifications.md](references/specifications.md).
-
-### 4. Clean up drift
-
-- deduplicate repeated facts
-- delete or archive stale docs
-- fix cross-links and moved paths
-- keep naming, labels, casing, commands, and section order consistent
-- keep one canonical home for setup or install commands and replace copied command blocks with pointers
-- prefer reader-facing link text over raw paths unless the path is the point
-- apply the [agent-first cleanup filters](references/agent-first.md#select-information)
-- rewrite every remaining [house style](references/style.md) violation; do not
-  ship a paragraph a bullet list would beat
-
-### 5. Validate reality
-
-Verify prose against the repo.
-
-Concrete checks:
-
-- `rg -n "old/path|stale-command" AGENTS.md CLAUDE.md README.md docs/` when paths or commands moved
-- `rg -n "<new command|new path|decision keyword>" AGENTS.md CLAUDE.md README.md docs/` to find duplicate or conflicting homes
-- `test -e <path-from-docs>` before keeping a file reference
-- `test ! -e AGENTS.md || { test -L CLAUDE.md && test "$(readlink CLAUDE.md)" = "AGENTS.md"; }` when normalizing agent entrypoints
-- for claims sourced from outside the repo, cite or verify the upstream source before making the claim durable
-- compare the before and after facts; every current command, invariant, boundary, and recovery path must remain represented
-- apply the negative-state rule above to the final rewrite
-
-## Output
-
-After docs work, report a compact docs footer:
-
-- files updated
-- verified: command names or path checks, not output logs
-- removed or rewritten: only if stale or duplicated docs changed
-- gaps: remaining doc gaps, or `none`
-- next: work planning, readiness setup, independent review, runtime verification, or `none`
-
-Keep the footer to 5 labeled lines or fewer. List changed files once.
-
-## References
-
-- [references/style.md](references/style.md): the house writing shape: outcome first, bullets over paragraphs, links over code spans, examples as spec
-- [references/agent-first.md](references/agent-first.md): agent-first writing, positive state, progressive disclosure, AGENTS.md shape
-- [references/documentation.md](references/documentation.md): README, contributing, security, and repository-doc shapes
-- [references/source-boundaries.md](references/source-boundaries.md): durable ownership and private/local evidence boundaries
-- [references/specifications.md](references/specifications.md): when to create specs or decisions, compact templates, acceptance coverage, and drift
+Check changed links, commands, and moved references against current sources.
+Use the relevant repository doc checks; running a documented command is a
+separate action whose scope and side effects still need authorization.
+Report what changed, what was verified, and any remaining gap. Do not create a
+report file unless requested or required by the repository.

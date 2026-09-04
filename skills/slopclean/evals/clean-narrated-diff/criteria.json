@@ -1,5 +1,5 @@
 {
-  "context": "Tests whether a code-mode cleaning pass deletes narrating and change-history comments, removes unused escape hatches, collapses single-caller wrappers, and renames hedged identifiers, all without changing behavior or the exported API.",
+  "context": "Tests a scoped cleaning pass that removes narration and pointless private forwarding while preserving exported options and behavior.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -13,9 +13,9 @@
       "description": "The 'Updated to use the new retry approach as discussed' header and similar session-history narration are removed"
     },
     {
-      "name": "Dead options removed",
+      "name": "Public options preserved",
       "max_score": 14,
-      "description": "The unused 'strategy' ('Reserved for future use') and 'legacyMode' ('kept just in case') options are deleted from RetryOptions"
+      "description": "RetryOptions retains strategy and legacyMode so the typed consumer remains valid; apparent dead public options are reported instead of removed."
     },
     {
       "name": "Wrapper collapsed",
@@ -30,7 +30,7 @@
     {
       "name": "Behavior unchanged",
       "max_score": 22,
-      "description": "retryFetch keeps the same signature, default of 3 retries, exponential backoff timing, ok-check, and final throw; the error swallow-and-retry semantics in the catch are not altered (removing the console.log is fine, changing what is caught or rethrown is not)"
+      "description": "retryFetch keeps its exported signature, default retries, backoff timing, ok-check, final throw, and catch behavior, including the existing console.log side effect."
     },
     {
       "name": "No new slop",

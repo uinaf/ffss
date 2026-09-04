@@ -9,18 +9,24 @@ alone unless asked.
 - Change-history narration ("// updated to use the new API", "// fix for
   review feedback"): delete; git owns history.
 - Reviewer-directed justifications ("// this is safe because the caller
-  checks"): move the invariant into an assertion or a name; keep a comment
-  only for constraints the code cannot express.
+  checks"): prefer a precise name; keep comments for constraints the code
+  cannot express. Adding an assertion is not cleanup if it changes reachable
+  behavior.
 - Doc comments that restate the signature: write the contract or delete.
 
 ## Structure
 
-- Abstraction with one caller and no second use in sight: inline it.
+- Call count alone does not make an abstraction wasteful. Keep a helper that
+  names a domain operation, validates input, or owns resource cleanup; inline
+  private indirection when it only forwards and removing it simplifies the flow.
 - Defensive checks for states the type system or an upstream gate already
-  excludes: delete, or turn into an explicit invariant failure.
+  excludes: remove only after proving the state unreachable; preserve runtime
+  validation at external input boundaries.
 - Pass-through wrappers, needless interfaces, single-variant enums added
   "for flexibility": collapse to the concrete thing.
-- Config flags, options, and escape hatches nothing reads: delete.
+- Proven-unused private flags, options, and escape hatches: delete. An exported
+  option or accepted input remains a public contract even when this module
+  ignores it; preserve it and report removal as separate scope.
 - Abstractions that contradict themselves or the module around them (a name,
   type, or doc promising one shape while callers pass another): reconcile
   the contract or report the mismatch.

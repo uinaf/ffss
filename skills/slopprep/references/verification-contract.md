@@ -22,40 +22,32 @@ endpoint unless that exact surface ran.
 
 ## Task Instruments
 
-If you have to ask a human to check your work, you're missing an instrument.
-Name it and build it before you iterate.
+Name the instrument missing from a proof claim. Build it before iterating when
+improvement is authorized; during inspection, report the gap and its owner.
 
 | Claim | Instrument |
 | --- | --- |
 | faster | benchmark harness with a recorded baseline on representative input |
 | matches a design or reference | repeatable capture (screenshot, render, output dump) plus direct inspection of the rendered properties, compared against the source until no discrepancy remains |
-| correct behavior | a test that fails before the fix and fails again on revert |
+| bug fixed | a regression test that fails before the fix or on revert |
+| feature works | checks of the changed contract, including relevant failure paths |
+| behavior preserved | the same behavioral or contract checks before and after the refactor |
+| documentation corrected | checks against the owning source, links, or rendered output as applicable |
 | lower cost, size, or token count | per-unit measurement on a real sample workload, with candidates that shrink the billed unit itself |
 | best of several approaches | fixture set plus a scoring script that sweeps every candidate |
 
-- Measure the baseline before the first edit; without one, "improved" is an
-  adjective.
-- Diagnose before editing: rank the measured bottlenecks and write a
-  cause-and-fix hypothesis for each.
-- Outside a scored sweep, change one variable at a time and attribute each
-  gain; report before/after numbers.
-- Commit each verified improvement separately, so a failed hypothesis reverts
-  cleanly and wins survive on their own.
-- When no best path is obvious, define the quality score first, sweep real
-  samples, and pick by score; report losing candidates and failed hypotheses,
-  not only the winner
-  ([laboratory pattern](https://brianlovin.com/writing/give-your-agent-a-laboratory-pt-ii-KjFnCW9)).
-- Refine the winning parameter to the quality frontier: push until the score
-  degrades and keep the last value that holds it.
-- Build, preview, fixture, rollback, and observation paths are readiness
-  capabilities; grade their absence.
-- Put an instrument contributors and CI will reuse in the repository's task
-  graph; a one-task lab stays attempt-scoped scratch, never committed
-  leftovers.
+For optimization, record a representative baseline before editing, identify the
+bottleneck and hypothesis, and attribute the measured change. Use a scored sweep
+only when choosing among competing approaches warrants one. Report failed
+hypotheses as well as gains. Reusable instruments belong in the existing task
+graph; one-task experiments stay in attempt-scoped scratch.
 
 ## Repository Contract
 
-Prefer one repository-owned verification entrypoint reused by local work and CI.
+Use the repository-owned verification surface shared by local work and CI.
+For changed-code proof, prefer its affected lanes; expand for shared inputs,
+uncertain coverage, or an explicit owner requirement. Repeat passing checks only
+after relevant changes, failures, or unresolved concerns.
 That entrypoint may be a manifest script, build task, framework command, or
 typed CLI; it doesn't need a wrapper file.
 Make it:
@@ -97,9 +89,8 @@ Choose the smallest check set that can honestly disprove the claim:
 ## Failure Quality
 
 Exercise at least one representative failure when the task class touches input,
-IO, authentication, network, configuration, or external dependencies. Prefer a
-worst-case input over a mild one, and record the intended off-path behavior,
-not only that a failure occurred. Require:
+IO, authentication, network, configuration, or external dependencies. Choose a relevant
+failure case and record the expected off-path behavior. Require:
 
 - a non-zero or explicitly failed terminal state
 - a stable error class, code, or machine-readable status when appropriate

@@ -64,3 +64,10 @@ export async function retryFetch(
   throw new Error(`retryFetch: all ${retries + 1} attempts failed for ${url}`);
 }
 =============== END FILE ===============
+
+=============== FILE: test/consumer.ts ===============
+import { retryFetch, type RetryOptions } from "../src/retryFetch";
+const options: RetryOptions = { strategy: "legacy", legacyMode: true };
+void retryFetch("/item", options);
+void retryFetch("/item", { strategy: "legacy", legacyMode: false });
+=============== END FILE ===============

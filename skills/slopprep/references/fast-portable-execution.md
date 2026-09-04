@@ -26,6 +26,10 @@ provider, local agent, or developer shell carry separate validation logic.
 
 ## Selection and caching
 
+Use the owner's affected lanes for changed-code proof. Run the exhaustive path
+when required by that owner, shared-input changes, or uncertain coverage; its
+availability does not make every local iteration or handoff a full rerun.
+
 - Select affected work from explicit inputs, and exercise every change case
   the local contract claims to support, including deletions, renames, and
   untracked files. When freshness cannot safely represent a case, keep a

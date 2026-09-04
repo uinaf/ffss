@@ -1,0 +1,26 @@
+{
+  "context": "Tests unresolved feedback across a later push and batched rework with final review.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Older unresolved finding remains relevant",
+      "description": "The documentation push is not treated as having answered the reproduced cancellation defect",
+      "max_score": 30
+    },
+    {
+      "name": "Merge held for blocking review",
+      "description": "The plan does not merge despite green checks because the blocking review and thread remain unresolved",
+      "max_score": 30
+    },
+    {
+      "name": "Rework checked and reviewed at completion",
+      "description": "The plan fixes the scoped defect, checks affected behavior, and refreshes required review for the final target without review after every edit",
+      "max_score": 25
+    },
+    {
+      "name": "Reply carries proof",
+      "description": "The addressed thread is answered with the fixing commit hash and evidence before settlement",
+      "max_score": 15
+    }
+  ]
+}

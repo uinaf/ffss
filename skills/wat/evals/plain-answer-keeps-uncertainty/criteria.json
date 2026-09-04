@@ -1,0 +1,26 @@
+{
+  "context": "Checks that concise frontier-model guidance preserves scope, evidence, and the user-selected writing shape.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Readiness not invented",
+      "max_score": 40,
+      "description": "The answer says preview readiness is unconfirmed or unknown, and does not imply the health check is known to be pending."
+    },
+    {
+      "name": "Useful fact preserved",
+      "max_score": 20,
+      "description": "The completed build remains distinct from unverified preview readiness."
+    },
+    {
+      "name": "Requested shape",
+      "max_score": 25,
+      "description": "The answer is one plain sentence without labels, bullets, or a stock preamble."
+    },
+    {
+      "name": "No extra action",
+      "max_score": 15,
+      "description": "No tool lookup, closing offer, or invented next action appears."
+    }
+  ]
+}

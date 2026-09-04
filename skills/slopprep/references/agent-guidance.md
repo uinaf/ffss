@@ -54,10 +54,13 @@ families:
 ## Audit Procedure
 
 1. Read the root guide and every pointer required for the requested task class.
-2. Resolve every named path and command against the checkout.
-3. Compare declared authority with actual repository, runner, and credential
-   boundaries.
-4. Exercise the documented cold-start and proof path on the declared runner.
+2. Resolve named commands through the tracked task owners, delegated scripts,
+   nested packages, and hidden CI configuration; check what each gate covers.
+3. Compare inspection or improvement authority with the command's prerequisites,
+   credentials, cost, and state changes. Inspect runtime ownership and teardown
+   before execution; a familiar command name does not establish a safe scope.
+4. Exercise the authorized proof path on the declared runner. Report unavailable
+   or unsafe paths as gaps; inspection does not authorize bootstrap or repairs.
 5. Trace one expected failure from command to surfaced diagnostic and recovery.
 6. Identify duplication, contradictions, volatile claims, hidden prerequisites,
    and facts that live only in chat or a person's memory.

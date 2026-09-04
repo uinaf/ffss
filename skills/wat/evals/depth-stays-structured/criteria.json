@@ -1,11 +1,11 @@
 {
-  "context": "Tests that a depth request wins over the line cap without reverting to narration: the answer opens with the terse what-happened rewrite, then explains the race mechanism step by step in structured form, keeping every identifier and adding no filler.",
+  "context": "Tests that requested depth takes priority over the length target: summarize the outcome, then explain the race step by step with all relevant identifiers and no filler. Preserve clear structure without prescribing labels or paragraph bans.",
   "type": "weighted_checklist",
   "checklist": [
     {
       "name": "Terse summary first",
       "max_score": 18,
-      "description": "The answer opens with a compact labeled rewrite of what happened (root cause found, fix in PR #250, 20/20 staging deploys clean) before the deep dive"
+      "description": "The answer opens with a compact account of what happened: root cause found, fix in PR #250, and 20/20 staging deploys clean. Labels are optional."
     },
     {
       "name": "Step-by-step mechanism",
@@ -13,9 +13,9 @@
       "description": "The depth section walks the race in ordered steps: deploy job in release.yml references a cached layer, nightly cleanup evicts it in the overlap window, the deploy then hits manifest-unknown"
     },
     {
-      "name": "Structured, not novelized",
+      "name": "Clear sequence",
       "max_score": 18,
-      "description": "The explanation uses numbered steps or labeled bullets, not paragraph storytelling; no 'fascinating interplay' style returns"
+      "description": "The explanation makes each step of the race and its consequence clear. Numbered steps, bullets, or concise sequential paragraphs are acceptable; no narrative padding or forced labels."
     },
     {
       "name": "Identifiers preserved",
@@ -30,7 +30,7 @@
     {
       "name": "No filler or offers",
       "max_score": 10,
-      "description": "No hedging, feelings, or 'walk you through sometime' offers; the vague 'other small things' is either dropped or turned into concrete facts"
+      "description": "No performative feelings, unsupported speculation, or 'walk you through sometime' offers. Keep any decision-relevant uncertainty; drop the vague 'other small things' rather than inventing details."
     }
   ]
 }

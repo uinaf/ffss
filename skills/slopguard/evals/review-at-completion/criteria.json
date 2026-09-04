@@ -1,0 +1,31 @@
+{
+  "context": "Tests final-review timing and valid unchanged-result reuse without skipping review of changed source.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Intermediate work stays in build",
+      "description": "Snapshot 1 continues implementation and focused checks without invoking independent review",
+      "max_score": 20
+    },
+    {
+      "name": "Completed target gets review",
+      "description": "Snapshot 2 invokes one independent review before delivery or handoff",
+      "max_score": 20
+    },
+    {
+      "name": "Unchanged valid result reused",
+      "description": "Snapshot 3 reuses the existing clean result without repeating tests or review solely because a new turn began",
+      "max_score": 20
+    },
+    {
+      "name": "Fixes batched before refreshed review",
+      "description": "Snapshot 4 completes both fixes, refreshes affected checks and proof, then reviews the final target once",
+      "max_score": 20
+    },
+    {
+      "name": "Stale evidence cannot close out",
+      "description": "The earlier clean review cannot support final handoff after the target changes",
+      "max_score": 20
+    }
+  ]
+}

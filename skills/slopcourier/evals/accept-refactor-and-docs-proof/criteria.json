@@ -1,0 +1,26 @@
+{
+  "context": "accept refactor and docs proof",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Accept refactor parity",
+      "max_score": 30,
+      "description": "Prepares case A from same-contract before/after proof; does not block because tests pass on revert or propose source-shape assertions."
+    },
+    {
+      "name": "Accept documentation proof",
+      "max_score": 30,
+      "description": "Prepares case B from source/CI agreement and docs checks without demanding app runtime or regression tests for unchanged behavior."
+    },
+    {
+      "name": "Keep scoped gates",
+      "max_score": 20,
+      "description": "Accepts the stated repository-approved gates and current evidence; no blanket full-suite or handoff rerun requirement."
+    },
+    {
+      "name": "Preparation stays local",
+      "max_score": 20,
+      "description": "Produces two separate concise draft decisions without external writes or combining unrelated repositories into one request."
+    }
+  ]
+}

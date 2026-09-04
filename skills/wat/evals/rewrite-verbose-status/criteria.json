@@ -1,5 +1,5 @@
 {
-  "context": "Tests the terse rewrite: the narrated status becomes at most six lines of labeled facts that lead with what happened, keep every identifier and count, end with at most one next action, and drop all narration, hedging, and closing offers.",
+  "context": "Tests a concise status rewrite that leads with the outcome, preserves identifiers, counts, and unconfirmed test state, and ends with at most one next action. Six lines is a target, not a rigid format requirement.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -8,14 +8,14 @@
       "description": "The rewrite opens with the outcome (fix pushed / tests corrected, PR moving), not with process or preamble"
     },
     {
-      "name": "Labeled facts",
+      "name": "Scannable facts",
       "max_score": 16,
-      "description": "Facts appear as labeled bullets (e.g. **Pushed:**, **Fixed:**, **Running:**, **Next:**) with one fact per line"
+      "description": "The rewrite makes outcomes, current state, and the next action easy to distinguish. Labeled bullets suit this status report, but equivalent concise structure is acceptable."
     },
     {
-      "name": "Six lines or fewer",
+      "name": "Concise rewrite",
       "max_score": 14,
-      "description": "The rewrite is at most six lines"
+      "description": "The rewrite aims for six lines or fewer without losing decision-relevant facts or uncertainty. A small justified overrun is acceptable; filler, repeated facts, or crowded unreadable lines are not."
     },
     {
       "name": "Identifiers and counts kept",
@@ -28,9 +28,9 @@
       "description": "At most one next action (re-request review once CI is green) and no 'let me know if…' closing offer"
     },
     {
-      "name": "Narration and hedging deleted",
+      "name": "Narration removed, uncertainty preserved",
       "max_score": 12,
-      "description": "No 'rabbit hole', 'long story short', 'hopefully', 'as we speak', or other process narration and hedging survives"
+      "description": "No 'rabbit hole', 'long story short', or other process narration remains. Remove empty optimism such as 'hopefully', while preserving that the suite is still running and its outcome is not yet known."
     },
     {
       "name": "No adjectival padding",

@@ -5,7 +5,7 @@
     {
       "name": "Compact product contract",
       "max_score": 10,
-      "description": "AGENTS.md is at most 120 lines and briefly explains what the payments service does, its critical Stripe and database responsibilities, and the outcomes a change must preserve"
+      "description": "AGENTS.md briefly explains what the payments service does, its critical Stripe and database responsibilities, and the outcomes a change must preserve. It avoids repeated or irrelevant guidance; no fixed line count is required."
     },
     {
       "name": "Boot command present",
