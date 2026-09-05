@@ -1,9 +1,12 @@
 # Claude Code engine
 
 Select this engine with `--engine claude`. The adapter always passes an explicit
-model; an empty model setting resolves to `claude-opus-5`, with no fallback.
-Effort defaults to `high` and must be `low`, `medium`, `high`, `xhigh`, or
+model; an empty model setting resolves to `claude-fable-5-1`, with no fallback.
+Effort defaults to `medium` and must be `low`, `medium`, `high`, `xhigh`, or
 `max`.
+
+If Fable 5.1 is unavailable on your account, select `--model claude-opus-5`
+with the same medium effort.
 
 ## Runtime contract
 

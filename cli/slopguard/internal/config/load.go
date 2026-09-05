@@ -358,9 +358,9 @@ func applyRaw(effective *Effective, raw rawConfig, source Source, allowCapabilit
 func applyProviderDefaults(effective *Effective) {
 	if effective.ReasoningEffort.Source == SourceDefault {
 		switch effective.Engine.Value {
-		case protocol.ProviderCodex:
+		case protocol.ProviderCodex, protocol.ProviderClaude:
 			effective.ReasoningEffort.Value = ReasoningMedium
-		case protocol.ProviderClaude, protocol.ProviderCursor, protocol.ProviderGrok:
+		case protocol.ProviderCursor, protocol.ProviderGrok:
 			effective.ReasoningEffort.Value = ReasoningHigh
 		}
 	}

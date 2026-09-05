@@ -14,6 +14,7 @@ func TestClaudeLive(t *testing.T) {
 		t.Skip("set SLOPGUARD_TEST_LIVE_CLAUDE=1 to run the authenticated Claude smoke test")
 	}
 	effective := claudeConfig(false, 2*time.Minute)
+	effective.ReasoningEffort = config.Value[config.ReasoningEffort]{Value: config.ReasoningMedium, Source: config.SourceDefault}
 	effective.Model = config.Value[string]{Source: config.SourceDefault}
 	reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir()})
 	result, err := reviewer.Review(context.Background(), Request{

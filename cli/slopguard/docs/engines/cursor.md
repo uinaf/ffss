@@ -1,10 +1,10 @@
 # Cursor Agent engine
 
 Select this engine with `--engine cursor`. The adapter always passes an explicit
-model; an empty model setting resolves to `cursor-grok-4.6-high-fast`, with no
+model; an empty model setting resolves to `cursor-grok-4.6-high`, with no
 fallback. Cursor model IDs encode effort, so a separate non-default
 `reasoning_effort` is rejected.
-The default `cursor-grok-4.6-high-fast` model keeps high reasoning.
+The default `cursor-grok-4.6-high` model keeps high reasoning.
 
 ## Runtime contract
 

@@ -1,8 +1,11 @@
 # Codex CLI engine
 
 Select this engine with `--engine codex`. The adapter always passes an explicit
-model; an empty model setting resolves to `gpt-5.6-sol`, with no fallback.
+model; an empty model setting resolves to `gpt-6-astra`, with no fallback.
 Reasoning effort defaults to `medium`.
+
+If Astra is unavailable on your account, select `--model gpt-5.6-sol` with
+the same medium effort.
 
 ## Runtime contract
 
