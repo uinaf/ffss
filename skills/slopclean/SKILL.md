@@ -1,6 +1,6 @@
 ---
 name: slopclean
-description: "Strip AI tells from prose, code, or tests and rewrite with a human voice. Use to unslop, de-slop, humanize, or clean up an artifact before it ships. Not correctness review (slopguard's lane)."
+description: "Remove AI tells from prose, code, or tests when asked to unslop or humanize an artifact; preserve its meaning and behavior."
 ---
 
 # Slopclean

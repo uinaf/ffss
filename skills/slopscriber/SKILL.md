@@ -1,6 +1,6 @@
 ---
 name: slopscriber
-description: "Update and compress repository docs, agent guidance, specs, and runbooks against current sources. Use for documentation drift or cleanup; not tactical planning, implementation, or code review."
+description: "Update repository documentation and agent guidance against current sources when fixing drift or cleaning up docs."
 ---
 
 # Slopscriber

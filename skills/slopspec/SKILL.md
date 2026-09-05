@@ -1,6 +1,6 @@
 ---
 name: slopspec
-description: "Save agreed future work as a resumable plan in the repository's tracker. Use for durable planning, epics, or tickets; not implementation or in-session checklists."
+description: "Save agreed future work in the repository tracker as issues, epics, or durable plans; not an in-session checklist."
 disable-model-invocation: true
 ---
 

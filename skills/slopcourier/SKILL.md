@@ -1,6 +1,6 @@
 ---
 name: slopcourier
-description: "Deliver a completed, verified change as one change request on the repository's forge and return the URL. Use to deliver, ship, or file finished work, or at slopmachine DELIVER; never to implement, review, or merge."
+description: "Open or update a change request for completed, verified work. Use for change-request delivery, including slopmachine DELIVER."
 ---
 
 # Slopcourier
@@ -44,8 +44,9 @@ no implementation, review, merge, or second workflow runtime.
    headings or implementation inventory. Prefer outcomes over mechanisms.
 5. For non-trivial changes, use the clearest review aid from
    [visual-evidence.md](references/visual-evidence.md); skip filler.
-6. Return the change-request URL. Don't merge, enable auto-merge, delete branches,
-   or address review feedback without a request; babysitting is slopnanny's lane.
+6. Return the change-request URL. If the user also requested babysitting or
+   merge, continue that authorized work with slopnanny. Delivery alone does
+   not authorize merge, auto-merge, branch deletion, or review rework.
 
 ## Slopmachine handoff
 

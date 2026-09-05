@@ -1,6 +1,6 @@
 ---
 name: wat
-description: "Rewrite a rambling reply as concise facts. Use on /wat, tl;dr, or wall-of-text complaints; applies to replies for the rest of the session, not committed artifacts."
+description: "Shorten a rambling reply on /wat, tl;dr, or a wall-of-text complaint; keep subsequent replies concise without changing files."
 disable-model-invocation: true
 ---
 

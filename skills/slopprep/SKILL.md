@@ -1,6 +1,6 @@
 ---
 name: slopprep
-description: "Make a repository, its agent guide, and its declared runner dependable for autonomous work. Use when agents cannot boot, verify, or finish unsupervised, or gates are slow or ad hoc; not for diff review or ordinary self-checks."
+description: "Inspect or improve repository and runner readiness for autonomous work, including boot, verification, and recovery."
 disable-model-invocation: true
 ---
 
@@ -10,77 +10,49 @@ Make the declared repository and runner dependable for the requested task.
 Default improvement target: B; C is a checkpoint. Inspection reports the current
 state and gaps without expanding into repairs.
 
-## Inspect before executing
+## Establish scope and evidence
 
-1. Establish inspection or improvement authority, task classes (`implementation`,
-   `qa`, or both), runner, and target grade. Read the repository guide and its
-   task-relevant contracts; use [agent-guidance.md](references/agent-guidance.md)
-   to check orientation, routing, authority, proof, and recovery.
-2. Discover tracked task owners, including hidden CI configuration, and trace
-   delegation through manifests and nested packages. A package `verify` may
-   check only tooling while mise, Vite+, or another graph owns product proof.
-3. Inspect applicable commands' coverage, prerequisites, credentials, cost, and
-   state changes before execution. Read
-   [setup-patterns.md](references/setup-patterns.md#runtime-resource-ownership)
-   before starting or stopping resources. Discovery alone never authorizes
-   bootstrap, live or paid checks, repairs, or broad teardown.
-4. Run authorized cheap checks without asking again. For changed-code proof,
-   use the owner's affected lanes; broaden when shared inputs, uncertain
-   coverage, or repository policy require it. Do not repeat passing checks
-   without new changes, failures, or unresolved concerns.
-5. Record exercised outcomes and exit codes. Unsafe or unavailable checks are
-   gaps, not failed executions. Grade repository, runner, and evidence separately
-   with [grading.md](references/grading.md#required-output); the lowest applicable
-   capability sets the grade.
+Identify the requested task classes (`implementation`, `qa`, or both), runner,
+and target grade. Trace the relevant lifecycle through tracked task owners,
+including hidden CI and delegated packages: a package `verify` may cover only
+tooling while another task graph owns product proof.
 
-## Improve within scope
+Check prerequisites, cost, credentials, and state changes before unfamiliar
+commands. Run authorized checks without asking again; inspection alone does
+not authorize bootstrap, live or paid checks, repairs, or teardown. Read
+[resource ownership](references/setup-patterns.md#runtime-resource-ownership)
+before starting or stopping resources.
 
-Work from legibility and runner prerequisites through cold start, real-surface
-feedback, enforcement, isolation, and recovery. Extend the existing manifest,
-compiler, test framework, or typed CLI; no parallel agent-only wrapper or new
-orchestrator. A plain repository script may be the complete solution.
+Grade repository, runner, and exercised evidence separately with
+[grading.md](references/grading.md#required-output). Unavailable or unsafe
+checks are gaps, not failed executions.
 
-Use the relevant contract:
+## Choose the relevant guidance
 
-- [verification-contract.md](references/verification-contract.md): proof matched
-  to the change, real surfaces, failure quality, and honest reporting.
-- [fast-portable-execution.md](references/fast-portable-execution.md): task graphs,
-  affected selection, and cache correctness. Read before changing verification
-  performance or CI selection; measure unchanged, relevant-change, warm-full,
-  and cold-full paths.
-- [setup-patterns.md](references/setup-patterns.md): missing lifecycle, doctor,
-  resource ownership, machine identity, isolation, and recovery. Authentication
-  and network access are runner capabilities; never copy or print secrets.
-- [autonomy-evidence.md](references/autonomy-evidence.md): representative repeated
-  trials, graders, and reliability claims. Read for E3/E4 or A-grade work.
+- Agent guide structure, routing, authority, and cross-model behavior:
+  [agent-guidance.md](references/agent-guidance.md).
+- Verification coverage, real surfaces, and useful failure evidence:
+  [verification-contract.md](references/verification-contract.md).
+- Slow gates, affected selection, or caching:
+  [fast-portable-execution.md](references/fast-portable-execution.md). Measure
+  unchanged, relevant-change, warm-full, and cold-full paths before optimizing.
+- Boot, doctor, resource ownership, identity, isolation, or recovery:
+  [setup-patterns.md](references/setup-patterns.md).
+- Unattended workflow proof, repeated trials, or A-grade reliability claims:
+  [autonomy-evidence.md](references/autonomy-evidence.md).
 
-Keep `AGENTS.md` the model-neutral guide to commands and proof boundaries;
-normalize `CLAUDE.md` through agent-guidance's symlink-or-import rule. Keep
-private human context and harness settings with their owners.
+## Improve and finish
 
-## Prove the claimed outcome
+Extend the existing manifest, compiler, test framework, or typed CLI; a plain
+repository script may be sufficient. Keep private human context and harness
+settings with their owners; never copy or print secrets.
 
-Exercise the changed lifecycle on success and a safe failure. Preserve primary
-status, classified diagnostics, recovery instructions, and task/attempt artifacts.
-Grade final state and side effects, not the agent's completion claim.
+Continue authorized repairs through proof of the changed lifecycle on success
+and a safe failure. Preserve primary status, classified diagnostics, recovery
+instructions, and task/attempt artifacts. Use the owner's affected checks and
+reuse passing proof until a change, failure, or concrete concern invalidates it.
 
-For unattended work, trace:
-`triage → dispatch → provision → execute → prove → submit → reconcile → complete`.
-Record input, output, owner, and terminal condition at each applicable stage,
-including recovery to retry, escalation, or failure. No-diff QA declares its
-result, evidence, target, and allowed side effects; it need not create a branch.
-
-For repeated trials, record task class, scenario, result, human interventions,
-duration, retries, failure class, and artifacts as JSON. Aggregate success,
-intervention, duration, resource, retry, and failure metrics for autonomy claims;
-exercise parallel isolation and crash/stall recovery where claimed.
-
-## Finish
-
-Report repository/runner grades before and after, evidence level and strongest
-outcome, first missing automation transition, changed files, and remaining gaps
-with owners. Give exact commands for reproduction or on request.
-
-Stop at the requested result or an evidenced blocker. Source-diff review,
-ordinary self-checks of an already-ready repo, prose-only cleanup, ship decisions,
-and unauthorized submissions remain outside this skill.
+Report repository/runner grades before and after, evidence level, strongest
+outcome, first missing automation transition, and remaining gaps with owners.
+Finish at the requested outcome or an evidenced blocker; readiness work alone
+does not authorize shipping or submitting changes.

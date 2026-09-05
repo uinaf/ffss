@@ -22,6 +22,11 @@ Keep common requirements near the entrypoint and specialized rules near their
 scope. Split by task, not file length: another link adds a lookup, so avoid
 fragmenting material the same task always needs together.
 
+For skills, keep discovery descriptions short and specific to the requested
+capability. Avoid broad triggers that pull routine work into a specialized
+workflow. Keep essential constraints in `SKILL.md`; route setup, recovery, and
+mode-specific detail to references when those are not needed on every use.
+
 Use task-shaped headings and stable terms. Preserve literal commands, paths,
 and diagnostic identifiers for search. Runbooks need observable outcomes and
 recovery guidance, not a narration of the operator's intentions.
@@ -39,6 +44,13 @@ The root is a compact operating contract, not merely a contents page. Inline
 facts that affect many tasks or would cause a material error if missed; link
 deep architecture and local conventions. A useful completeness matrix earns
 its space when omissions across clients, providers, or modes recur.
+
+Make completion and authority concrete: name the requested outcome and the
+actions that need a user decision. Preserve existing authorization across
+checks, fixes, and delivery; avoid mandatory reading lists, repeated testing
+reminders, and review checkpoints without a task-specific reason. Keep shared
+guidance model-neutral and revisit constraints when their rationale no longer
+holds.
 
 Keep one authored source. When a repository uses AGENTS.md, use a CLAUDE.md
 symlink or supported `@AGENTS.md` import rather than a copy. Preserve an existing

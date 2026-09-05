@@ -3,6 +3,19 @@
 Readiness infrastructure and observed autonomy are different claims. Use this
 scale to show how strongly you exercised a repository and runner grade.
 
+## Trace the unattended workflow
+
+Trace the applicable stages of
+`triage → dispatch → provision → execute → prove → submit → reconcile → complete`.
+Record input, output, owner, and terminal condition at each stage, including
+recovery to retry, escalation, or failure. No-diff QA declares its result,
+evidence, target, and allowed side effects; it need not create a branch.
+
+For repeated trials, record task class, scenario, result, human interventions,
+duration, retries, failure class, and artifacts as JSON. Aggregate success,
+intervention, duration, resource, retry, and failure metrics for autonomy claims;
+exercise parallel isolation and crash/stall recovery where claimed.
+
 ## Evidence Levels
 
 E0 through E2 are defined by the scale in [grading.md](grading.md); this file

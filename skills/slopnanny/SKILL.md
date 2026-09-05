@@ -1,6 +1,6 @@
 ---
 name: slopnanny
-description: "Babysit an open change request through review and CI: verify bot claims, fix real findings, answer threads with commit hashes, merge once green unless asked to hold. Not for creating change requests or reviewing."
+description: "Resolve review feedback and CI on an open change request, then merge when green unless asked to hold. Use for babysitting delivered work."
 ---
 
 # Slopnanny
