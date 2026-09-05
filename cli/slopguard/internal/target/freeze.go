@@ -250,11 +250,6 @@ func (collector *Collector) collect(ctx context.Context, root string, request Re
 	if !diffOutput.Exceeded() && (!utf8.Valid(diff) || bytes.IndexByte(diff, 0) >= 0) {
 		return nil, fmt.Errorf("diff contains binary or invalid UTF-8 input")
 	}
-	if !diffOutput.Exceeded() {
-		if err := validateEnvironmentTemplateDiff(diff, changed); err != nil {
-			return nil, err
-		}
-	}
 
 	paths := append([]string(nil), changed...)
 	budget := newByteBudget(request.MaxBytes)

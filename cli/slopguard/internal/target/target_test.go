@@ -449,12 +449,42 @@ func TestFreezeRejectsUnsafeInputs(t *testing.T) {
 	})
 }
 
-func TestFreezeAllowsPlaceholderOnlyEnvironmentTemplates(t *testing.T) {
+func TestFreezeAllowsEnvironmentTemplates(t *testing.T) {
 	t.Parallel()
+
+	t.Run("branch preserves defaults and deleted preimage", func(t *testing.T) {
+		repository := newRepository(t)
+		before := "# Set the service address for your network.\nSERVICE_HOST=\"192.168.0.10\"\nCLIENT_CONFIG=\".client/<profile-name>.json\"\n"
+		after := "# Select a profile before starting the client.\nSERVICE_HOST=\"192.168.0.20\"\nCLIENT_CONFIG=\".client/<other-profile>.json\"\n"
+		writeFile(t, repository, ".env.example", before)
+		writeFile(t, repository, ".env.sample", before)
+		gitCommand(t, repository, "add", ".")
+		gitCommand(t, repository, "commit", "-m", "base templates")
+		base := gitCommand(t, repository, "rev-parse", "HEAD")
+		writeFile(t, repository, ".env.example", after)
+		if err := os.Remove(filepath.Join(repository, ".env.sample")); err != nil {
+			t.Fatal(err)
+		}
+		gitCommand(t, repository, "add", "-A")
+		gitCommand(t, repository, "commit", "-m", "update templates")
+
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: strings.TrimSpace(base)})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		for _, content := range []string{before, "-SERVICE_HOST=\"192.168.0.10\"", "+SERVICE_HOST=\"192.168.0.20\"", "+CLIENT_CONFIG=\".client/<other-profile>.json\""} {
+			if !strings.Contains(bundle.Payload(), content) {
+				t.Errorf("payload omitted template content %q", content)
+			}
+		}
+		if err := bundle.VerifyUnchanged(context.Background()); err != nil {
+			t.Fatalf("VerifyUnchanged() error = %v", err)
+		}
+	})
 
 	t.Run("commit", func(t *testing.T) {
 		repository := newRepository(t)
-		writeFile(t, repository, ".env.example", "EXAMPLE_KEY=\n")
+		writeFile(t, repository, ".env.example", "# Development defaults\nSERVICE_PORT=8080\nEXAMPLE_KEY=\n")
 		gitCommand(t, repository, "add", ".")
 		gitCommand(t, repository, "commit", "-m", "template")
 
@@ -462,7 +492,7 @@ func TestFreezeAllowsPlaceholderOnlyEnvironmentTemplates(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Freeze() error = %v", err)
 		}
-		if !strings.Contains(bundle.Payload(), "EXAMPLE_KEY=") {
+		if !strings.Contains(bundle.Payload(), "SERVICE_PORT=8080") {
 			t.Fatal("payload omitted committed environment template material")
 		}
 	})
@@ -472,33 +502,35 @@ func TestFreezeAllowsPlaceholderOnlyEnvironmentTemplates(t *testing.T) {
 		writeFile(t, repository, ".env.example", "API_KEY=\n")
 		gitCommand(t, repository, "add", ".")
 		gitCommand(t, repository, "commit", "-m", "template")
-		writeFile(t, repository, ".env.example", "API_KEY=<your-api-key>\n")
+		writeFile(t, repository, ".env.example", "API_KEY=<your-api-key>\nENABLED=true\n")
 
 		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 		if err != nil {
 			t.Fatalf("Freeze() error = %v", err)
 		}
-		if !strings.Contains(bundle.Payload(), "API_KEY=<your-api-key>") {
+		if !strings.Contains(bundle.Payload(), "API_KEY=<your-api-key>") || !strings.Contains(bundle.Payload(), "ENABLED=true") {
 			t.Fatal("payload omitted tracked environment template material")
 		}
 	})
 
 	t.Run("untracked", func(t *testing.T) {
 		repository := committedRepository(t)
-		writeFile(t, repository, ".env.production.sample", "export API_KEY=${API_KEY}\nEMPTY=\"\"\n")
+		content := "# Configure the client\nexport API_KEY=${API_KEY}\nEMPTY=\"\"\nDEVICE_TARGET=192.168.0.10\nCLIENT_CONFIG=.client/<profile-name>.json\n"
+		writeFile(t, repository, ".env.production.sample", content)
 
 		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 		if err != nil {
 			t.Fatalf("Freeze() error = %v", err)
 		}
-		if !strings.Contains(bundle.Payload(), "export API_KEY=${API_KEY}") {
+		if !strings.Contains(bundle.Payload(), content) {
 			t.Fatal("payload omitted untracked environment template material")
 		}
 	})
 
 	t.Run("deleted", func(t *testing.T) {
 		repository := newRepository(t)
-		writeFile(t, repository, ".env.template", "API_KEY='${API_KEY}'\n")
+		content := "# Development client\nAPI_KEY='${API_KEY}'\nCLIENT_CONFIG=.client/<profile-name>.json\n"
+		writeFile(t, repository, ".env.template", content)
 		gitCommand(t, repository, "add", ".")
 		gitCommand(t, repository, "commit", "-m", "template")
 		if err := os.Remove(filepath.Join(repository, ".env.template")); err != nil {
@@ -509,68 +541,14 @@ func TestFreezeAllowsPlaceholderOnlyEnvironmentTemplates(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Freeze() error = %v", err)
 		}
-		if !strings.Contains(bundle.Payload(), "API_KEY='${API_KEY}'") {
+		if !strings.Contains(bundle.Payload(), content) {
 			t.Fatal("payload omitted deleted environment template material")
 		}
 	})
 }
 
-func TestFreezeRejectsEnvironmentTemplateValues(t *testing.T) {
+func TestFreezeRejectsEnvironmentTemplateContext(t *testing.T) {
 	t.Parallel()
-
-	for _, test := range []struct {
-		name  string
-		setup func(*testing.T) string
-	}{
-		{
-			name: "tracked",
-			setup: func(t *testing.T) string {
-				repository := committedRepository(t)
-				writeFile(t, repository, ".env.example", "API_KEY=live-credential-value\n")
-				return repository
-			},
-		},
-		{
-			name: "untracked",
-			setup: func(t *testing.T) string {
-				repository := committedRepository(t)
-				writeFile(t, repository, ".env.sample", "API_KEY=live-credential-value\n")
-				return repository
-			},
-		},
-		{
-			name: "deleted",
-			setup: func(t *testing.T) string {
-				repository := newRepository(t)
-				writeFile(t, repository, ".env.template", "API_KEY=live-credential-value\n")
-				gitCommand(t, repository, "add", ".")
-				gitCommand(t, repository, "commit", "-m", "template")
-				if err := os.Remove(filepath.Join(repository, ".env.template")); err != nil {
-					t.Fatal(err)
-				}
-				return repository
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			repository := test.setup(t)
-			_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
-			if err == nil || !strings.Contains(err.Error(), "non-placeholder environment template content") {
-				t.Fatalf("Freeze() error = %v", err)
-			}
-		})
-	}
-
-	t.Run("commit", func(t *testing.T) {
-		repository := newRepository(t)
-		writeFile(t, repository, ".env.example", "API_KEY=live-credential-value\n")
-		gitCommand(t, repository, "add", ".")
-		gitCommand(t, repository, "commit", "-m", "template")
-		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD"})
-		if err == nil || !strings.Contains(err.Error(), "non-placeholder environment template content") {
-			t.Fatalf("Freeze() error = %v", err)
-		}
-	})
 
 	t.Run("explicit context", func(t *testing.T) {
 		repository := newRepository(t)
