@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -26,29 +25,30 @@ import (
 func TestRunShellCancellationReapsProcessGroup(t *testing.T) {
 	pidFile := filepath.Join(t.TempDir(), "pids")
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	type result struct {
 		code int
 		err  error
 	}
 	done := make(chan result, 1)
-	command := fmt.Sprintf(`trap '' TERM; sh -c 'trap "" TERM; printf "%%s %%s\n" "$PPID" "$$" > "$1"; while :; do sleep 1; done' child %q & wait`, pidFile)
+	command := fmt.Sprintf(`trap '' TERM; sh -c 'trap "" TERM; sleep 30 & printf "%%s %%s %%s\n" "$PPID" "$$" "$!" > "$1"; wait' child %q & wait`, pidFile)
 	go func() {
 		code, _, err := runShell(ctx, command, true)
 		done <- result{code: code, err: err}
 	}()
 
-	var groupPID, childPID int
+	var groupPID, childPID, grandchildPID int
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
 		contents, err := os.ReadFile(pidFile)
 		if err == nil {
-			if n, _ := fmt.Sscanf(string(contents), "%d %d", &groupPID, &childPID); n == 2 {
+			if n, _ := fmt.Sscanf(string(contents), "%d %d %d", &groupPID, &childPID, &grandchildPID); n == 3 {
 				break
 			}
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	if groupPID == 0 || childPID == 0 {
+	if groupPID == 0 || childPID == 0 || grandchildPID == 0 {
 		t.Fatal("verification descendants did not start")
 	}
 	cancel()
@@ -61,13 +61,8 @@ func TestRunShellCancellationReapsProcessGroup(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("runShell did not finish cancellation")
 	}
-	if shellGroupAlive(groupPID) {
-		t.Fatalf("process group %d remains alive", groupPID)
-	}
-	for _, pid := range []int{groupPID, childPID} {
-		if err := syscall.Kill(pid, 0); !errors.Is(err, syscall.ESRCH) {
-			t.Fatalf("process %d remains: %v", pid, err)
-		}
+	for _, pid := range []int{groupPID, childPID, grandchildPID} {
+		waitVerificationProcessTerminated(t, pid)
 	}
 }
 
