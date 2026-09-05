@@ -39,7 +39,9 @@ Corresponding environment variables are `SLOPGUARD_ENGINE`,
 - There are no profiles or local override files.
 - `max_bytes` defaults to 1 MiB and cannot exceed 128 MiB.
 - Reasoning effort defaults to `medium` for Codex and Claude and `high` for
-  Cursor and Grok. Explicit configuration still wins.
+  Cursor and Grok. Explicit configuration overrides these defaults for Codex,
+  Claude, and Grok. Cursor encodes effort in the model ID and rejects a separate
+  `reasoning_effort` setting; choose its effort with `--model` instead.
 
 ## Runtime
 
