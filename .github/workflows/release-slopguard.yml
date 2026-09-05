@@ -22,7 +22,7 @@ concurrency:
 jobs:
   verify:
     name: verify slopguard
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
       contents: read
@@ -50,7 +50,7 @@ jobs:
 
   verify-darwin:
     name: verify slopguard on Darwin
-    runs-on: blacksmith-6vcpu-macos-latest
+    runs-on: macos-26
     timeout-minutes: 20
     permissions:
       contents: read
@@ -77,7 +77,7 @@ jobs:
   release:
     name: release slopguard
     needs: [verify, verify-darwin]
-    runs-on: blacksmith-6vcpu-macos-latest
+    runs-on: macos-26
     timeout-minutes: 45
     environment:
       name: release
