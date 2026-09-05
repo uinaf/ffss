@@ -16,7 +16,7 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
 )
 
-const retryHeader = "\nSLOPGUARD-TRUSTED-PROTOCOL-RETRY-V1\nThe previous response did not satisfy the required review protocol. "
+const retryHeader = "\nSLOPGUARD-TRUSTED-PROTOCOL-RETRY-V1\nApply this protocol correction to the review. "
 
 type ReviewerFactory func(protocol.ProviderName, string) provider.Reviewer
 

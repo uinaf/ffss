@@ -18,11 +18,9 @@
   repository-relative location.
 - The local validator rejects paths or line ranges outside the frozen target.
 
-- Failure classes are `config`, `target`, `secret_scan`, `capability`,
-  `authentication`, `timeout`, `cancelled`, `provider`, `protocol`,
-  `source_changed`, and `internal`.
-- `secret_scan` is retained for historical result-v1 compatibility; current
-  Slopguard builds do not emit it.
+- Failure classes are `config`, `target`, `capability`, `authentication`,
+  `timeout`, `cancelled`, `provider`, `protocol`, `source_changed`, and
+  `internal`.
 - Do not reinterpret an operational failure as a clean review.
 
 - Slopguard performs at most one configured retry, only for a malformed

@@ -49,7 +49,9 @@ and commit hashes. Post only content that advances the thread.
 
 ## Quiet discipline
 
-- Nothing changed → say nothing. No filler comments, no status noise.
+- Nothing changed → post nothing on the change request; filler comments and
+  status noise cost reviewer attention. Your report to the user still states
+  what was observed.
 - When required checks are green on the latest commit, no review request is
   pending, and reviewers and threads are green, merge with the repository's
   merge method and report the merged commit; the babysit request carries merge

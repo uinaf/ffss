@@ -13,8 +13,8 @@ failures, and uncertainty. Cut narration, filler, repeated context, and closing
 offers. Use labeled bullets for status; ordinary answers may need only a
 sentence. End with at most one next action.
 
-Aim for six lines or fewer. The facts and explicit requests for depth take
-priority over that cap. Keep longer explanations structured and useful without
-forcing every sentence into a label.
+Keep it to the lines the facts need: a status update is usually a handful of
+labeled bullets, and an explicit request for depth gets a structured longer
+answer rather than one squeezed into labels.
 
 This changes replies, not files, commits, or tracker artifacts.

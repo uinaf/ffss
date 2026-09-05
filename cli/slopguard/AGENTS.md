@@ -14,8 +14,8 @@ independent code review.
 
 ## Boundaries
 
-- Keep the runtime entirely in Go. Do not add Python files, Python workflow
-  steps, shell-based runtime helpers, or Go-to-Python wrappers.
+- Keep the runtime entirely in Go: no shell or other-language runtime helpers
+  or wrappers around the binary.
 - Runtime dependencies are Git and the selected review harness.
 - The CLI reviews and reports; it never edits reviewed source, runs tests,
   commits, pushes, or invokes nested review workflows.

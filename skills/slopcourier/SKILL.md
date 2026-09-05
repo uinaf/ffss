@@ -40,8 +40,9 @@ no implementation, review, merge, or second workflow runtime.
    organization defaults such as `<owner>/.github`. Lead with the problem and
    solution, include actual risks, and add proof only when CI cannot show it.
    With no template, use the concise
-   [house style](../slopscriber/references/style.md): problem-first, no invented
-   headings or implementation inventory. Prefer outcomes over mechanisms.
+   [house style](../slopscriber/references/style.md): problem-first, headings
+   only when the body is long enough to need them, and no implementation
+   inventory. Prefer outcomes over mechanisms.
 5. For non-trivial changes, use the clearest review aid from
    [visual-evidence.md](references/visual-evidence.md); skip filler.
 6. Return the change-request URL. If the user also requested babysitting or

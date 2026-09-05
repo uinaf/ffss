@@ -6,7 +6,7 @@
   text.
 - Skip visual evidence for trivial or text-only changes rather than
   manufacturing filler.
-- Pick the first APPLICABLE rung.
+- Pick the first applicable rung.
 - The `attach` tool works on any forge when installed; the forge-specific
   rungs apply only to the forge the delivery dispatched to (never upload
   through the other forge's API just because its CLI is installed).
