@@ -46,12 +46,12 @@ boundary without first distilling and authorizing it.
 - Binary data, invalid UTF-8, sensitive paths, gitlinks (mode 160000 /
   submodules), symlink escapes, merge commits, unsafe revisions, FIFOs and
   other special files, context-path symlinks, and incomplete file reads fail
-  closed. Environment templates ending in `.example`, `.sample`, or
-  `.template` are the narrow exception: only empty assignments or explicit
-  `<placeholder>` and shell-variable values may enter the review bundle.
-  Non-placeholder values fail before provider execution even when secret
-  scanning is skipped. Explicit context files remain subject to the ordinary
-  sensitive-path rejection.
+  closed. Files whose names start with `.env.` and end in `.example`,
+  `.sample`, or `.template` are the narrow sensitive-path exception for changed
+  source templates. Their content, including comments, literal defaults,
+  placeholders, and deleted preimages, enters the bundle without value
+  classification. Explicit context files remain subject to the ordinary
+  sensitive-path rejection, including these template names.
 - Tracked symlink changes are included as Git's text representation of the
   link target; collectors never follow those links when reading worktree,
   untracked, or context bytes.
@@ -93,8 +93,10 @@ review fan-out above that limit.
 
 - Slopguard sends the complete frozen payload to the selected provider,
   including deleted bytes and appended context.
-- Slopguard rejects known sensitive paths and non-placeholder environment
-  templates, but it does not scan the payload for credentials.
+- Slopguard rejects known sensitive paths except changed environment templates
+  with the names described above. It does not scan the payload for credentials
+  or determine whether template defaults are safe to disclose. A template name
+  is not proof that its content is free of secrets.
 - Operators are responsible for authorizing the frozen content for disclosure
   to the selected provider. Repository-wide secret scanning belongs in the
   repository's normal local or continuous-integration gates.
