@@ -809,7 +809,10 @@ func cmdVerify(st *store.Store, args []string, opts runOptions) int {
 			err = errVerificationCommandCancelled
 		}
 		if err != nil {
-			cancelCode := 130
+			cancelCode := 1
+			if errors.Is(err, errVerificationCommandCancelled) {
+				cancelCode = 130
+			}
 			if unixSignal, ok := received.(syscall.Signal); ok {
 				cancelCode = 128 + int(unixSignal)
 			}
@@ -1788,6 +1791,7 @@ var errVerificationCommandCancelled = errors.New("verification command cancelled
 func runShell(ctx context.Context, command string, jsonOut bool) (int, string, error) {
 	cmd := exec.Command("sh", "-c", command)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.WaitDelay = 2 * time.Second
 	stdoutDigest := newOutputDigester()
 	stderrDigest := newOutputDigester()
 	if jsonOut {
@@ -1800,41 +1804,37 @@ func runShell(ctx context.Context, command string, jsonOut bool) (int, string, e
 	if err := cmd.Start(); err != nil {
 		return 1, digestOutputs(stdoutDigest, stderrDigest), nil
 	}
-	waited := make(chan error, 1)
-	go func() { waited <- cmd.Wait() }()
-
-	select {
-	case err := <-waited:
-		return shellExitCode(err), digestOutputs(stdoutDigest, stderrDigest), nil
-	case <-ctx.Done():
-		select {
-		case err := <-waited:
-			return shellExitCode(err), digestOutputs(stdoutDigest, stderrDigest), nil
-		default:
-		}
-	}
-
+	// Keep the exited leader unreaped until cleanup is complete: its PID
+	// reserves the process-group identity while descendants are signalled.
 	pid := cmd.Process.Pid
-	_ = signalShellGroup(pid, syscall.SIGTERM)
-	timer := time.NewTimer(verificationTerminationGrace)
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer timer.Stop()
-	defer ticker.Stop()
-	waitComplete := false
-	for {
-		if waitComplete && !shellGroupAlive(pid) {
-			return 130, digestOutputs(stdoutDigest, stderrDigest), errVerificationCommandCancelled
-		}
-		select {
-		case <-waited:
-			waitComplete = true
-		case <-timer.C:
-			if shellGroupAlive(pid) {
-				_ = signalShellGroup(pid, syscall.SIGKILL)
-			}
-		case <-ticker.C:
+	watchErr := waitForExit(ctx, pid)
+	cancelled := errors.Is(watchErr, context.Canceled) || errors.Is(watchErr, context.DeadlineExceeded)
+	var cleanupErr error
+	if cancelled {
+		cleanupErr = signalShellGroup(pid, syscall.SIGTERM)
+		// The leader remains reserved for the whole grace period, including
+		// when it exits before a descendant finishes its TERM handler.
+		time.Sleep(verificationTerminationGrace)
+	}
+	killErr := signalShellGroup(pid, syscall.SIGKILL)
+	if ignoreCleanupErrorAfterExit(pid, killErr) {
+		killErr = nil
+	}
+	cleanupErr = errors.Join(cleanupErr, killErr)
+	if watchErr != nil {
+		if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			cleanupErr = errors.Join(cleanupErr, err)
 		}
 	}
+	waitErr := cmd.Wait()
+	digest := digestOutputs(stdoutDigest, stderrDigest)
+	if cancelled || ctx.Err() != nil {
+		return 130, digest, errors.Join(errVerificationCommandCancelled, cleanupErr)
+	}
+	if watchErr != nil || cleanupErr != nil {
+		return 1, digest, fmt.Errorf("verification process cleanup: %w", errors.Join(watchErr, cleanupErr))
+	}
+	return shellExitCode(waitErr), digest, nil
 }
 
 func shellExitCode(err error) int {
@@ -1854,11 +1854,6 @@ func signalShellGroup(pid int, sig syscall.Signal) error {
 		return nil
 	}
 	return err
-}
-
-func shellGroupAlive(pid int) bool {
-	err := syscall.Kill(-pid, 0)
-	return err == nil || errors.Is(err, syscall.EPERM)
 }
 
 func randomID() (string, error) {

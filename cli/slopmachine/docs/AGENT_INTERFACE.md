@@ -107,6 +107,12 @@ hashed stdout and stderr streams. The final SHA-256 hashes the labeled text
 `stdout=sha256:<hex>\nstderr=sha256:<hex>`. JSON mode streams both child
 channels to stderr so stdout remains machine-readable; plain mode preserves
 the child's stdout and stderr.
+Verification owns its shell process group and terminates remaining group members
+before reaping the shell. Cancellation gives them 500 ms after SIGTERM before
+SIGKILL. Output pipes drain for at most two seconds after shell exit; an escaped
+helper holding a pipe causes failed verification when that limit expires. Helpers
+that create a separate session are outside the owned group.
+
 A non-dry `verify --cmd` intentionally invokes the local shell; never
 construct it from untrusted text.
 
