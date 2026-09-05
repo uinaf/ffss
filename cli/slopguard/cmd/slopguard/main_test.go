@@ -878,7 +878,7 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 		webSource config.Source
 	}{
 		{name: "Codex medium", arguments: []string{"config", "--repository", repository, "--engine", "codex", "--json"}, effort: config.ReasoningMedium, webSource: config.SourceDefault},
-		{name: "Claude high", arguments: []string{"config", "--repository", repository, "--engine", "claude", "--json"}, effort: config.ReasoningHigh, webSource: config.SourceDefault},
+		{name: "Claude medium", arguments: []string{"config", "--repository", repository, "--engine", "claude", "--json"}, effort: config.ReasoningMedium, webSource: config.SourceDefault},
 		{name: "Cursor high with implicit web", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--json"}, effort: config.ReasoningHigh, web: true, webSource: config.SourceFlag},
 		{name: "Cursor high with explicit false", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--web-access=false", "--json"}, effort: config.ReasoningHigh, webSource: config.SourceFlag},
 		{name: "Grok high", arguments: []string{"config", "--repository", repository, "--engine", "grok", "--json"}, effort: config.ReasoningHigh, webSource: config.SourceDefault},

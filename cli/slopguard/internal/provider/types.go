@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	DefaultCodexModel  = "gpt-5.6-sol"
-	DefaultClaudeModel = "claude-opus-5"
-	DefaultCursorModel = "cursor-grok-4.6-high-fast"
+	DefaultCodexModel  = "gpt-6-astra"
+	DefaultClaudeModel = "claude-fable-5-1"
+	DefaultCursorModel = "cursor-grok-4.6-high"
 	DefaultGrokModel   = "grok-4.6"
 )
 

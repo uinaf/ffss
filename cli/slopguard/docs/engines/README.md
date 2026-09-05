@@ -6,9 +6,9 @@ trusted configuration source.
 
 | Engine | Harness | Default model | Default effort | Runtime details |
 | --- | --- | --- | --- | --- |
-| `codex` | Codex CLI | `gpt-5.6-sol` | `medium` | [Codex CLI](codex.md) |
-| `claude` | Claude Code | `claude-opus-5` | `high` | [Claude Code](claude-code.md) |
-| `cursor` | Cursor Agent | `cursor-grok-4.6-high-fast` | `high` in model ID | [Cursor Agent](cursor.md) |
+| `codex` | Codex CLI | `gpt-6-astra` | `medium` | [Codex CLI](codex.md) |
+| `claude` | Claude Code | `claude-fable-5-1` | `medium` | [Claude Code](claude-code.md) |
+| `cursor` | Cursor Agent | `cursor-grok-4.6-high` | `high` in model ID | [Cursor Agent](cursor.md) |
 | `grok` | Grok Build | `grok-4.6` | `high` | [Grok Build](grok-build.md) |
 
 ## Shared runtime boundary

@@ -154,7 +154,7 @@ func TestLoadAppliesProviderDefaults(t *testing.T) {
 		web    bool
 	}{
 		{name: "Codex medium with web disabled", engine: protocol.ProviderCodex, effort: ReasoningMedium},
-		{name: "Claude high with web disabled", engine: protocol.ProviderClaude, effort: ReasoningHigh},
+		{name: "Claude medium with web disabled", engine: protocol.ProviderClaude, effort: ReasoningMedium},
 		{name: "Cursor high with web enabled", engine: protocol.ProviderCursor, effort: ReasoningHigh, web: true},
 		{name: "Grok high with web disabled", engine: protocol.ProviderGrok, effort: ReasoningHigh},
 	} {
