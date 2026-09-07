@@ -62,10 +62,8 @@ asking at each step; live or paid checks still need appropriate scope.
 - For UI changes, exercise the affected flow and relevant keyboard, responsive,
   accessibility, and reduced-motion behavior.
 - Reuse passing proof until changes, failures, or a concrete concern invalidate
-  it. Run slopguard when independent review is requested or required, once at
-  the applicable gate. Validate findings and refresh affected proof after fixes;
-  repeat review only when invalidated, required by policy, or needed to resolve
-  a concrete concern.
+  it. Run independent review once when requested or required, validate its
+  findings, and refresh affected proof after fixes.
 - Report what was actually verified and any failed, skipped, cached, or
   unavailable proof. Do not hide failures or claim unexecuted checks passed.
 
@@ -73,7 +71,9 @@ asking at each step; live or paid checks still need appropriate scope.
 
 Follow repository commit conventions, defaulting to Conventional Commits.
 Push verified changes directly when policy permits; use a change request when
-required. Preserve its template. Without one, describe the problem and solution
-and add proof CI cannot show. Include focused visual evidence for substantial
-user-visible changes. Reply to fixed findings with the commit hash; keep
-review history, finding counts, and fix hashes out of the change-request body.
+required. Preserve its template. Without one, state the problem and the
+solution, and add proof only when CI cannot show it. Include focused visual
+evidence for substantial user-visible changes. The body describes the change
+as it stands; review history, finding counts, fix hashes, and iteration
+narrative never go in it. Reply to fixed findings in their threads with the
+commit hash.
