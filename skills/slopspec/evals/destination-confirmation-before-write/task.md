@@ -2,9 +2,9 @@
 
 ## Problem/Feature Description
 
-The user and agent have agreed on a medium-sized cache invalidation change. The user says: "make this a durable plan for later." The repository has a GitHub remote but no work-tracking guidance, issue templates, issue references, or existing source issue. The user did not ask to publish or create an issue.
+The user and agent agreed on a medium-sized cache invalidation change. The user says: "make this a durable plan for later." The repository has a GitHub remote but no work-tracking guidance, issue templates, issue references, or existing source issue. The user did not ask to publish or create an issue.
 
-Respond with the next action. Keep it concise and do not implement anything or write repository files.
+Respond with the next action, concisely. Do not implement anything or write repository files.
 
 ## Input Files
 

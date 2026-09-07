@@ -5,10 +5,10 @@ the binary validates them, applies the state machine, and stores the resulting
 event. Do not reproduce transition logic in a skill, prompt, or script.
 
 The agent is not a trusted operator: the CLI validates strict JSON and
-resource IDs at its boundary, then applies state transitions through revision
-and guard checks. The dry-run guarantees, the `verify --cmd` shell rule, and
-the repository-local state rules in this contract are that boundary's
-enforcement points. Report suspected vulnerabilities through the repo's
+resource IDs at its boundary, then applies transitions through revision and
+guard checks. The dry-run guarantees, the `verify --cmd` shell rule, and the
+repository-local state rules in this contract are that boundary's enforcement
+points. Report suspected vulnerabilities through the repo's
 [security policy](../../../SECURITY.md), never a public issue.
 
 ## Harness conformance
@@ -17,9 +17,9 @@ The protocol is harness-independent. Any agent that can run shell commands,
 pipe JSON through stdin, and read stdout completes a full run using
 `status --json --fields`, `schema`, and the executable commands `next_action`
 returns: no bundled skill, no harness features. `next_action` never names a
-harness capability; placeholders in angle brackets are fields for the caller
-to fill. `scripts/test-conformance.sh` proves this bar with a skill-less
-shell driver and runs inside `mise run verify`.
+harness capability; angle-bracket placeholders are fields for the caller to
+fill. `scripts/test-conformance.sh` proves this with a skill-less shell driver
+and runs inside `mise run verify`.
 
 ## Discover the live contract
 
@@ -41,14 +41,14 @@ slopmachine status --json \
   --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification,route_ready,routing_policy_version
 ```
 
-Run only a command named in `allowed_commands`, satisfy
-`required_evidence`, and re-read status after plain output or an error. A
-successful JSON mutation already returns the resulting status document.
+Run only a command named in `allowed_commands`, satisfy `required_evidence`,
+and re-read status after plain output or an error. A successful JSON mutation
+already returns the resulting status document.
 
 ## Send structured input through stdin
 
-Every mutation accepts a strict raw JSON object through `--input PATH`. Use
-`--input -` for stdin:
+Every mutation accepts a strict raw JSON object through `--input PATH`; `-`
+is stdin:
 
 ```bash
 slopmachine intake --input - --dry-run --json <<'JSON'
@@ -67,7 +67,7 @@ JSON
 ```
 
 Raw input cannot be mixed with convenience flags such as `--run`; the payload
-carries those values. Human-oriented convenience inputs also accept stdin:
+carries those values. Convenience inputs also accept stdin:
 
 ```bash
 slopmachine intake --file - --run demo
@@ -82,7 +82,7 @@ When `-` selects stdin, pipe or redirect JSON. An interactive terminal fails
 immediately with a pointer to `slopmachine schema` instead of waiting for EOF.
 
 Raw JSON is fail-closed: unknown, duplicate, and `null` fields are rejected.
-Run and unit IDs are at most 64 bytes, start with an ASCII letter or digit, and
+Run and unit IDs are at most 64 bytes, start with an ASCII letter or digit,
 then contain only ASCII letters, digits, `.`, `_`, or `-`. Put prose in title,
 question, answer, or reason fields.
 
@@ -95,26 +95,25 @@ slopmachine release --revision 1 --run demo --dry-run --json
 ```
 
 A valid projection contains `dry_run: true` and `validated_command`. Confirm
-the projected state and `next_action`, then repeat the same command without
-`--dry-run`. Dry runs open existing state read-only and never create, migrate,
-or update the database. `verify --cmd --dry-run` also skips shell execution.
-Because its exit code is unknown, that response keeps the current state and
-sets `outcome_undetermined: true`; validate the command, not a guessed
-transition outcome.
+the projected state and `next_action`, then repeat without `--dry-run`. Dry
+runs open existing state read-only and never create, migrate, or update the
+database. `verify --cmd --dry-run` also skips shell execution; because its
+exit code is unknown, the response keeps the current state and sets
+`outcome_undetermined: true`. Validate the command, not a guessed outcome.
 
-A real `verify --cmd` always records one deterministic digest from separately
-hashed stdout and stderr streams. The final SHA-256 hashes the labeled text
+A real `verify --cmd` records one deterministic digest from separately hashed
+stdout and stderr streams: the final SHA-256 hashes the labeled text
 `stdout=sha256:<hex>\nstderr=sha256:<hex>`. JSON mode streams both child
-channels to stderr so stdout remains machine-readable; plain mode preserves
-the child's stdout and stderr.
-Verification owns its shell process group and terminates remaining group members
-before reaping the shell. Cancellation gives them 500 ms after SIGTERM before
-SIGKILL. Output pipes drain for at most two seconds after shell exit; an escaped
-helper holding a pipe causes failed verification when that limit expires. Helpers
+channels to stderr so stdout stays machine-readable; plain mode preserves the
+child's stdout and stderr.
+Verification owns its shell process group and terminates remaining group
+members before reaping the shell. Cancellation gives them 500 ms after SIGTERM
+before SIGKILL. Output pipes drain for at most two seconds after shell exit;
+an escaped helper holding a pipe past that limit fails verification. Helpers
 that create a separate session are outside the owned group.
 
-A non-dry `verify --cmd` intentionally invokes the local shell; never
-construct it from untrusted text.
+A non-dry `verify --cmd` invokes the local shell; never construct it from
+untrusted text.
 
 ## Observe external signals
 
@@ -142,7 +141,7 @@ Delivery does not settle a unit.
 
 ## Verified evidence
 
-Status states the mode plainly in `evidence_verification`: `observed` when a
+Status states the mode in `evidence_verification`: `observed` when a
 registered repo profile binds a forge kind, `recorded` otherwise. In observed
 mode the binary checks evidence before accepting it and stamps a
 `verification` field into it; never supply that field yourself.
@@ -160,7 +159,7 @@ mode the binary checks evidence before accepting it and stamps a
   exit 7 with `error_kind` `observation_auth`, `observation_rate_limit`, or
   `observation_transient`. Retry, or record an explicit bypass with
   `--unverified --reason TEXT` (raw input: `"unverified": true` plus
-  `"unverified_reason"`); the bypass is itself recorded in the evidence as
+  `"unverified_reason"`); the bypass is recorded in the evidence as
   `verification: "overridden"`. `--unverified` is rejected when nothing
   would be verified.
 
@@ -170,8 +169,8 @@ Transitions accept optional recorded telemetry (`--telemetry PATH|-` or a
 `telemetry` object in `--input` payloads): `duration_ms`, `tokens`,
 `cost_cents`, and `route` (venue, harness, role→model map). Record real
 numbers only; omit what was not measured. `verify --cmd` measures its own
-wall clock. Totals appear in status as `total_duration_ms`,
-`total_tokens`, `total_cost_cents`, and `telemetry_events`.
+wall clock. Totals appear in status as `total_duration_ms`, `total_tokens`,
+`total_cost_cents`, and `telemetry_events`.
 
 ## Resolve declared routes
 
@@ -183,10 +182,10 @@ slopmachine route --json --run demo --unit u2
 ```
 
 The resolver reads only the released task contract and the repository profile.
-It selects an exact first-attempt or rework rule and fails closed when the rule,
-registry entry, complexity, risk tier, or budget is missing or incompatible.
-The command never starts an executor. Repository owners replace the policy with
-`slopmachine repo update --routing PATH|-`; the JSON shape is demonstrated in
+It selects an exact first-attempt or rework rule and fails closed when the
+rule, registry entry, complexity, risk tier, or budget is missing or
+incompatible. It never starts an executor. Repository owners replace the
+policy with `slopmachine repo update --routing PATH|-`; the JSON shape is in
 [`examples/routing.example.json`](../examples/routing.example.json).
 
 ## Treat SQLite as canonical state
@@ -208,8 +207,8 @@ export SLOPMACHINE_DB="$sandbox_dir/slopmachine.sqlite"
 ```
 
 - There is no automatic repository-local fallback.
-- If a constrained environment requires repository-local state, explicitly
-  point `SLOPMACHINE_DB` at `.slopmachine/slopmachine.sqlite`. Relative values
+- If a constrained environment requires repository-local state, point
+  `SLOPMACHINE_DB` at `.slopmachine/slopmachine.sqlite`. Relative values
   resolve from the Git worktree root.
 - The CLI refuses repository-local state unless the database, `-wal`, and
   `-shm` paths are untracked and ignored.
@@ -248,10 +247,9 @@ input, or re-read status after an illegal transition, unmet guard, ambiguous
 run, revision conflict, or verification failure. Never bypass the state
 machine because a suggested transition failed.
 
-- `run_exists` identifies a caller-selected run ID collision.
-- `invalid_state_config` identifies a malformed XDG or relative database
-  selection.
-- `state_unavailable` identifies a resolved state location that cannot be
-  prepared, such as an unwritable directory; its message names the resolved
-  path and the recovery is a writable `SLOPMACHINE_DB`.
+- `run_exists`: a caller-selected run ID collision.
+- `invalid_state_config`: a malformed XDG or relative database selection.
+- `state_unavailable`: a resolved state location that cannot be prepared,
+  such as an unwritable directory; the message names the resolved path and
+  the recovery is a writable `SLOPMACHINE_DB`.
 - All three exit 2 and are recoverable by changing caller input.

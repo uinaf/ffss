@@ -3,8 +3,8 @@
 Status: agreed direction, 2026-08-14. This document describes the target
 state. [AGENT_INTERFACE.md](AGENT_INTERFACE.md) and the installed binary
 describe what exists; when they disagree with this document, they win until
-the tracker ([epic #27](https://github.com/uinaf/ffss/issues/27) and
-its children) says otherwise.
+the tracker ([epic #27](https://github.com/uinaf/ffss/issues/27) and its
+children) says otherwise.
 
 ## North star
 
@@ -12,8 +12,8 @@ its children) says otherwise.
 harness-independent work ledger, state machine, and router that turns
 approved task contracts into delivered, independently reviewed, babysat,
 QA-gated changes, with humans holding release, recovery, and merge
-authority. It is not tied to any vendor's agents, reviewers, or
-infrastructure: environments bind their own tools into its roles.
+authority. It is tied to no vendor's agents, reviewers, or infrastructure:
+environments bind their own tools into its roles.
 
 ```text
 plan source (issue, spec, planning session)
@@ -73,7 +73,7 @@ babysitting, QA gates, risk-tiered review) land before parallel dispatch.
 4. **Forge independence.** The state machine and schemas never assume one
    forge. Observation goes through a small adapter seam: change-request URL,
    head SHA, checks state, review threads, mergeability. GitHub and GitLab
-   adapters are available; others are added when a repo that needs them registers.
+   adapters exist; others are added when a repo that needs them registers.
 5. **Deterministic orchestration.** Queues, polling, policy, routing, and
    escalation are code. Models run only at reasoning steps: building,
    reviewing, judging, clarifying.
@@ -118,11 +118,11 @@ babysitting, QA gates, risk-tiered review) land before parallel dispatch.
 
 ## Human moments
 
-Release, decisions, recovery, and merge stay human-authorized. A direct request
-to run, start, execute, continue, or resume is release authorization for the
-matching intake; drivers must not ask for the same approval again. Preparation
-requests stop before release, and material intake changes require fresh
-authorization. The verbs remain explicit so asynchronous notifiers can front
+Release, decisions, recovery, and merge stay human-authorized. A direct
+request to run, start, execute, continue, or resume is release authorization
+for the matching intake; drivers must not ask again. Preparation requests
+stop before release, and material intake changes require fresh
+authorization. The verbs stay explicit so asynchronous notifiers can front
 them when no execution request already carries authority.
 
 ## Delivery
@@ -131,7 +131,7 @@ Change requests carry the repository's template, a risk statement,
 verification evidence, and attached media, and may land as stacked
 revisions. These conventions live in bound driver skills and companion
 tools, not in the binary: the spine records the outcome and verifies it
-against the forge. Babysitting then owns the tail: observed check failures,
+against the forge. Babysitting owns the tail: observed check failures,
 review feedback, and head moves become events that pull the unit back
 through rework until the change request is genuinely merge-ready.
 
@@ -170,20 +170,20 @@ request-level gateways can sit under a harness without the spine knowing.
 ## Telemetry and learning
 
 Every transition can carry duration, cost, and the route actually used.
-Babysit observation records time-to-green, so CI speed stops being
-folklore: slow pipelines and flaky checks become named, measured drag on
-the factory. Run outcomes (blockers, decisions, review findings, route
-results) export to a bound memory sink when the profile has one, so later
-runs inherit what earlier runs learned. `serve` grows from a single-run
-projector into a read-only fleet dashboard across repos and runs; the
-projector rule is unchanged: workflow changes go through the CLI.
+Babysit observation records time-to-green, so slow pipelines and flaky
+checks become named, measured drag instead of folklore. Run outcomes
+(blockers, decisions, review findings, route results) export to a bound
+memory sink when the profile has one, so later runs inherit what earlier
+runs learned. `serve` grows from a single-run projector into a read-only
+fleet dashboard across repos and runs; the projector rule is unchanged:
+workflow changes go through the CLI.
 
 ## Example profile
 
 Roles bind to whatever an environment has: a hosted review bot or a
 CI-resident reviewer, a device lab or a plain e2e suite, a memory service
-or nothing at all, one laptop or a fleet of leased runners. The
-maintainer's own profile doubles as the reference integration:
+or nothing, one laptop or a fleet of leased runners. The maintainer's own
+profile doubles as the reference integration:
 
 | Role | Binding |
 | --- | --- |

@@ -1,17 +1,17 @@
 # v0.1 real-review fixture
 
-This public, synthetic fixture gives Codex, Claude, Cursor, and Grok the same
+Public, synthetic fixture giving Codex, Claude, Cursor, and Grok the same
 bounded controls. `base/` is the initial repository state, `after/` adds a
 clean tested `Mean` function, and `defective/` adds three intentionally broken
 helpers in separate files.
 
-The clean review contract is:
+Clean review contract:
 
 - empty input returns zero
 - positive and negative integers are supported
 - input is not mutated
 
-The defective review contract is:
+Defective review contract:
 
 - `CountByOwner` counts non-empty input without panicking
 - `Batch` preserves every input in order for all positive sizes, including a

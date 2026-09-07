@@ -2,9 +2,8 @@
 
 ## Problem/Feature Description
 
-The governed run finished building and verifying; go ahead and file the PR
-for it. Current run status is below. Write your outcome to
-`delivery-status.md`.
+The governed run finished building and verifying; file the PR for it. Current
+run status is below. Write your outcome to `delivery-status.md`.
 
 ## Input Files
 

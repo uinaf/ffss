@@ -7,8 +7,8 @@ Status: implemented
 Agents follow `next_action` literally. When it suggests repository paths such
 as `<review.json>`, transport payloads can survive the command and be swept
 into a commit. Moving canonical state into every repository would reduce
-sandbox friction, but would also fragment runs across checkouts, introduce
-SQLite sidecars into worktrees, and make accidental commits more likely.
+sandbox friction but fragment runs across checkouts, put SQLite sidecars in
+worktrees, and make accidental commits more likely.
 
 ## Requirements
 
@@ -39,25 +39,25 @@ slopmachine review --evidence - --run='<run>'
 slopmachine deliver --evidence - --run='<run>'
 ```
 
-Raw machine callers may continue to use `--input -`. Accepted evidence is
-canonicalized into the SQLite event log. The CLI and skill never create or
-recommend `intake.json`, `review.json`, `deliver.json`, or
-`*.evidence.json` transport artifacts.
+Raw machine callers may use `--input -`. Accepted evidence is canonicalized
+into the SQLite event log. The CLI and skill never create or recommend
+`intake.json`, `review.json`, `deliver.json`, or `*.evidence.json` transport
+artifacts.
 
 When `-` selects stdin and stdin is an interactive terminal, the CLI fails
-immediately with `invalid_input`. The message says to pipe or redirect JSON and
-points to the command schema; it does not wait indefinitely for terminal EOF.
+immediately with `invalid_input`. The message says to pipe or redirect JSON
+and points to the command schema; it does not wait for terminal EOF.
 
 ### Resolve one explicit database
 
-The database path resolves in this order:
+Resolution order:
 
 1. Non-empty `SLOPMACHINE_DB`.
 2. `$XDG_DATA_HOME/slopmachine/slopmachine.sqlite`.
 3. `~/.local/share/slopmachine/slopmachine.sqlite` when `XDG_DATA_HOME` is
    unset.
 
-`XDG_DATA_HOME`, when set, must be absolute as required by the XDG contract.
+`XDG_DATA_HOME`, when set, must be absolute as the XDG contract requires.
 
 Relative `SLOPMACHINE_DB` values resolve from the Git worktree root, not the
 caller's current subdirectory. The resolved absolute path is fixed for the
@@ -68,8 +68,8 @@ Scope checks use the physical location of the nearest existing ancestor, so a
 symlink cannot make a worktree path appear external or an external path appear
 repository-local.
 
-`XDG_STATE_HOME` is a reasonable semantic alternative, but it remains outside
-the contract.
+`XDG_STATE_HOME` is a reasonable semantic alternative but outside the
+contract.
 
 ### Inspect storage without mutation
 
@@ -94,9 +94,9 @@ required recovery in one compact block.
 
 ### Fail closed inside a worktree
 
-When the resolved database is inside the Git worktree, the CLI checks the
-following paths with Git's normal exclusion rules before creating or opening
-the database:
+When the resolved database is inside the Git worktree, the CLI checks these
+paths with Git's normal exclusion rules before creating or opening the
+database:
 
 ```text
 <database>
@@ -114,24 +114,24 @@ export SLOPMACHINE_DB=.slopmachine/slopmachine.sqlite
 ```
 
 If any path is not ignored, the command fails with structured kind
-`unsafe_state_path`. Its message identifies the path and offers two recoveries:
-choose a writable path outside the worktree, or select
+`unsafe_state_path`. Its message identifies the path and offers two
+recoveries: choose a writable path outside the worktree, or select
 `.slopmachine/slopmachine.sqlite` after adding `/.slopmachine/` to the
 repository-local Git exclude file.
 
 The CLI does not edit `.gitignore`, `$GIT_COMMON_DIR/info/exclude`, or global
-Git configuration. Exclusion is a repository or user decision, and an
-explicit `SLOPMACHINE_DB` remains required on every process that uses the local
+Git configuration. Exclusion is a repository or user decision, and an explicit
+`SLOPMACHINE_DB` remains required on every process that uses the local
 database.
 
 ### Preserve dry-run and output guarantees
 
-Dry runs use the same resolved path as the real command. They never create,
-migrate, or update canonical database state. SQLite may create write-ahead log (WAL)
-coordination sidecars for a read-only snapshot; repository-local safety therefore requires
-the database, WAL, and shared-memory paths to be ignored before any open.
-`init --dry-run` succeeds when the selected path does not exist; other dry runs
-report that canonical state is unavailable.
+Dry runs use the same resolved path as the real command and never create,
+migrate, or update canonical database state. SQLite may create write-ahead
+log (WAL) coordination sidecars for a read-only snapshot, so repository-local
+safety requires the database, WAL, and shared-memory paths to be ignored
+before any open. `init --dry-run` succeeds when the selected path does not
+exist; other dry runs report that canonical state is unavailable.
 
 With `--json`, storage and state-location failures use the standard error
 envelope and keep stdout machine-readable. Plain errors include the resolved
@@ -195,22 +195,22 @@ a fallback database.
 - The [XDG Base Directory specification](https://specifications.freedesktop.org/basedir/)
   supports an application-owned user data directory and a stable fallback,
   matching the existing global default. It also distinguishes state data;
-  changing categories requires an explicit migration rather than implicit
-  discovery of two locations.
-- Git documents `$GIT_COMMON_DIR/info/exclude` as the correct home for
+  changing categories requires an explicit migration, not implicit discovery
+  of two locations.
+- Git documents `$GIT_COMMON_DIR/info/exclude` as the home for
   repository-specific, user-local auxiliary files that should not be shared.
   A project `.gitignore` is appropriate only when every clone should carry the
   rule. See [gitignore](https://git-scm.com/docs/gitignore).
-- Terraform demonstrates the valid alternative: per-working-directory data
-  can default to a repository-local directory, with an environment override
-  that must remain consistent across commands. Slopmachine differs because its
+- Terraform shows the valid alternative: per-working-directory data can
+  default to a repository-local directory, with an environment override that
+  must stay consistent across commands. Slopmachine differs because its
   SQLite event log is canonical audit state, not a reproducible working cache.
   See [`TF_DATA_DIR`](https://developer.hashicorp.com/terraform/cli/config/environment-variables#tf_data_dir).
 - SQLite WAL mode can create persistent `-wal` and `-shm` files beside the
   database and requires compatible directory permissions and same-host shared
-  memory. Ignoring only the main `.sqlite` file is therefore incomplete. See
+  memory. Ignoring only the main `.sqlite` file is incomplete. See
   [SQLite WAL](https://sqlite.org/wal.html).
 - Hosted automation exposes explicit workspace, home, and temporary locations
-  rather than making tools infer a fallback. Callers should route
-  `SLOPMACHINE_DB` to the environment's intended writable storage. See
+  rather than making tools infer a fallback. Route `SLOPMACHINE_DB` to the
+  environment's intended writable storage. See
   [GitHub-hosted runner filesystems](https://docs.github.com/en/actions/reference/runners/github-hosted-runners#file-systems).

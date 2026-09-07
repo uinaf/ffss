@@ -3,9 +3,9 @@
 ## Problem/Feature Description
 
 The fix is done and verified on branch `fix/ws-compression`: the repository's
-gate (`npm test`, 214 passed) ran fresh and green, and staging measurements
-are attached below. The remote is `git@github.com:example/dashboard.git` and
-`gh auth status` is green for github.com.
+gate (`npm test`, 214 passed) ran fresh and green, and staging measurements are
+below. The remote is `git@github.com:example/dashboard.git` and `gh auth status`
+is green for github.com.
 
 I want to review the change request before it goes up. Write the exact title
 and complete body you will submit to `delivery.md`, then stop; do not push or
@@ -17,8 +17,8 @@ permessage-deflate on the websocket server. Staging measurement against the
 busiest feed: median frame size down from 41 KB to 11 KB.
 
 Slopguard ran twice on this branch. The first pass raised a missing
-`Sec-WebSocket-Extensions` echo, fixed in `a1f2c3d`; the second pass was
-clean. The verification transcript is in the session log.
+`Sec-WebSocket-Extensions` echo, fixed in `a1f2c3d`; the second pass was clean.
+The verification transcript is in the session log.
 
 The last three merged change requests in this repository were titled:
 

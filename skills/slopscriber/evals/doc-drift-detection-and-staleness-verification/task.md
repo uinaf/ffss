@@ -2,21 +2,20 @@
 
 ## Problem/Feature Description
 
-The backend team at Fieldstone Labs recently completed a major refactor of their `invoicing-service`. Over three sprints they renamed scripts, moved configuration files, restructured the API, and removed a feature. The code is in good shape, but nobody updated the docs. Now the DevOps team is getting paged because new engineers are running commands from `AGENTS.md` and `README.md` that no longer exist, and the on-call runbook references an endpoint that was deleted in the refactor.
+The backend team at Fieldstone Labs refactored `invoicing-service` over three sprints: renamed scripts, moved configuration files, restructured the API, and removed a feature. Nobody updated the docs. New engineers run commands from `AGENTS.md` and `README.md` that no longer exist, and the on-call runbook references a deleted endpoint.
 
-Your job is to audit the documentation against the actual repository state, identify every stale reference, and fix the documentation so it accurately reflects what's really in the codebase. Be systematic — don't just fix what looks obviously wrong, check every command and file path mentioned in the docs against what actually exists.
+Audit the documentation against the actual repository state and fix every stale reference. Check every command and file path in the docs against what exists, not just what looks wrong.
 
 ## Output Specification
 
-Produce the following:
-- Updated versions of any documentation files that need changes (overwrite them in place)
-- `doc-audit.md` — a structured report listing every stale reference found, what it pointed to, what it actually should point to (or that it should be removed), and confirmation that you verified the correct target exists
+- Updated documentation files, overwritten in place
+- `doc-audit.md`: a structured report listing every stale reference found, what it pointed to, what it should point to (or that it should be removed), and confirmation that the correct target was verified to exist
 
-Do not fix anything you haven't verified — if you're not sure whether a path is correct, say so in the audit report.
+Do not fix anything you have not verified; if a path is uncertain, say so in the audit report.
 
 ## Input Files
 
-The following files are provided as inputs. Extract them before beginning.
+Extract the following files before beginning.
 
 =============== FILE: inputs/AGENTS.md ===============
 # Invoicing Service — Agent Guide

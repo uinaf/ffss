@@ -18,7 +18,7 @@ slopguard config --repository . --engine "$engine"
 slopguard config --repository . --engine "$engine" --json
 ```
 
-The YAML schema is:
+YAML schema:
 
 ```yaml
 engine: codex
@@ -30,27 +30,27 @@ max_bytes: 1048576
 web_access: false
 ```
 
-Corresponding environment variables are `SLOPGUARD_ENGINE`,
-`SLOPGUARD_MODEL`, `SLOPGUARD_REASONING_EFFORT`, `SLOPGUARD_TIMEOUT`,
-`SLOPGUARD_RETRIES`, `SLOPGUARD_MAX_BYTES`, and `SLOPGUARD_WEB_ACCESS`.
+Environment variables: `SLOPGUARD_ENGINE`, `SLOPGUARD_MODEL`,
+`SLOPGUARD_REASONING_EFFORT`, `SLOPGUARD_TIMEOUT`, `SLOPGUARD_RETRIES`,
+`SLOPGUARD_MAX_BYTES`, `SLOPGUARD_WEB_ACCESS`.
 
 - Unknown keys, loose YAML booleans, multiple documents, retry counts outside
   zero or one, and invalid types fail closed.
-- There are no profiles or local override files.
-- `max_bytes` defaults to 1 MiB and cannot exceed 128 MiB.
-- Reasoning effort defaults to `medium` for Codex and Claude and `high` for
-  Cursor and Grok. Explicit configuration overrides these defaults for Codex,
-  Claude, and Grok. Cursor encodes effort in the model ID and rejects a separate
-  `reasoning_effort` setting; choose its effort with `--model` instead.
+- No profiles or local override files.
+- `max_bytes` defaults to 1 MiB; maximum 128 MiB.
+- Reasoning effort defaults to `medium` for Codex and Claude, `high` for Cursor
+  and Grok. Explicit configuration overrides it for Codex, Claude, and Grok.
+  Cursor encodes effort in the model ID and rejects a separate
+  `reasoning_effort`; choose its effort with `--model`.
 
 ## Runtime
 
-- Reviews preserve configured provider or session authentication and run in an
-  empty temporary workspace holding only the frozen bundle.
+Reviews preserve configured provider or session authentication and run in an
+empty temporary workspace holding only the frozen bundle.
 
 ## Web access
 
-- Web access defaults off for Codex, Claude, and Grok.
+- Defaults off for Codex, Claude, and Grok.
 - Explicit CLI `--engine cursor` enables otherwise-unset web access implicitly
   because Cursor cannot guarantee a per-run web disable.
 - Repository, environment, or XDG engine selection does not grant web access.

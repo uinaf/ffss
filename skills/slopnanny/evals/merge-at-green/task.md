@@ -2,10 +2,10 @@
 
 ## Problem/Feature Description
 
-Babysit pull request #42 on `example/api` until it is settled. This sandbox
-has no network, so the forge state below is what your polling just returned;
-treat it as live. Write the actions you take — every command you run against
-the forge and any replies you post — to `actions.md`.
+Babysit pull request #42 on `example/api` until it is settled. This sandbox has
+no network; the forge state below is what your polling just returned; treat it
+as live. Write the actions you take — every forge command and any replies you
+post — to `actions.md`.
 
 ## Input Files
 

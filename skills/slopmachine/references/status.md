@@ -6,8 +6,6 @@ Use a field mask as your leash:
 slopmachine status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification,route_ready,routing_policy_version
 ```
 
-Prefer these fields:
-
 | Field | Use |
 | --- | --- |
 | `next_action` | Preferred next CLI invocation (e.g. `slopmachine build`) |
@@ -24,27 +22,23 @@ Prefer these fields:
 | `decision_question` | Pending ask; answer via `slopmachine decide` |
 
 Before the repository has a run, status returns `state: "UNINITIALIZED"`,
-`allowed_commands: ["init"]`, and `next_action: "slopmachine init"`. Run that
-command, then read status again before submitting intake.
+`allowed_commands: ["init"]`, and `next_action: "slopmachine init"`. Run it,
+then read status again before submitting intake.
 
 ## Status freshness
 
-- A successful mutation invoked with `--json` already returns its resulting
-  status document.
-- A dry-run projection additionally includes `dry_run: true` and
-  `validated_command`; it does not represent persisted state.
-- Re-read status after plain output or an error before choosing the next
-  step.
+- A successful mutation with `--json` returns its resulting status document.
+- A dry-run projection adds `dry_run: true` and `validated_command`; it is not
+  persisted state.
+- Re-read status after plain output or an error before choosing the next step.
 
 - Arrays are always present, including when empty.
-- `next_action` contains a usable command template; replace angle-bracket
+- `next_action` is a usable command template; replace angle-bracket
   placeholders with real values.
-- Field masks validate every requested name and omit optional fields that are
-  not present in the canonical status document; they never synthesize `null`
-  values.
+- Field masks validate every requested name and omit optional fields absent
+  from the canonical status document; they never synthesize `null`.
 - Delivery requires one clean result from every identity in
-  `required_reviewers`. Repeating the same reviewer does not satisfy the
-  gate.
+  `required_reviewers`. Repeating the same reviewer does not satisfy the gate.
 
 ## Delivered units
 

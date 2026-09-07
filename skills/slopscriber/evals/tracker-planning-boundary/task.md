@@ -2,9 +2,9 @@
 
 ## Problem/Feature Description
 
-The repository tracks engineering work in Linear. Its README contains a stale setup command, and an agreed multi-session rollout plan is still present only in the conversation. The user asks: "Clean up the README and make sure the rollout plan is saved somewhere durable."
+The repository tracks engineering work in Linear. Its README has a stale setup command, and an agreed multi-session rollout plan exists only in the conversation. The user asks: "Clean up the README and make sure the rollout plan is saved somewhere durable."
 
-Perform only the documentation work in scope. Produce:
+Do only the documentation work in scope. Produce:
 
 - an updated `README.md` using the current setup command
 - `doc-report.md` describing the documentation change, verification, and the distinct next action needed to persist the tactical plan

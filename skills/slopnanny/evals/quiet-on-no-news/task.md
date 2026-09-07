@@ -2,11 +2,10 @@
 
 ## Problem/Feature Description
 
-You are babysitting pull request #85 on `example/gateway`. Your last action
-was a push at 14:02 answering the previous review round. Any update? The
-sandbox has no network; your poll just returned the state below. Write any
-forge actions you take (or that none are needed) and your status for me to
-`actions.md`.
+You are babysitting pull request #85 on `example/gateway`. Your last action was
+a push at 14:02 answering the previous review round. Any update? The sandbox has
+no network; your poll just returned the state below. Write any forge actions you
+take (or that none are needed) and your status for me to `actions.md`.
 
 ## Input Files
 

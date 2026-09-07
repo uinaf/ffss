@@ -2,12 +2,11 @@
 
 ## Problem/Feature Description
 
-The retry fix on branch `fix/backoff-jitter` is ready as far as I'm
-concerned; please deliver it as a pull request. The remote is
+The retry fix on branch `fix/backoff-jitter` is ready as far as I'm concerned;
+deliver it as a pull request. The remote is
 `git@github.com:example/queueworker.git` and `gh` is authenticated.
 
-For the record, here is the fresh run of the repository's gate from a minute
-ago:
+For the record, the fresh run of the repository's gate from a minute ago:
 
 ```
 $ npm test

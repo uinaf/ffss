@@ -2,14 +2,12 @@
 
 - Give a non-trivial change one clear review aid, chosen by what the change
   shows best: a labeled UI screenshot, a short recording for interaction or
-  motion, a focused diagram, or sanitized contract input/output as fenced
-  text.
-- Skip visual evidence for trivial or text-only changes rather than
-  manufacturing filler.
+  motion, a focused diagram, or sanitized contract input/output as fenced text.
+- Skip visual evidence for trivial or text-only changes.
 - Pick the first applicable rung.
-- The `attach` tool works on any forge when installed; the forge-specific
-  rungs apply only to the forge the delivery dispatched to (never upload
-  through the other forge's API just because its CLI is installed).
+- The `attach` tool works on any forge when installed; forge-specific rungs
+  apply only to the forge the delivery dispatched to (never upload through the
+  other forge's API because its CLI happens to be installed).
 - Never commit proof assets to any product repository branch (no
   `.github/pr-assets` or similar).
 
@@ -19,21 +17,21 @@ A recording proves an interaction; the reviewer's time starts at frame one.
 
 - Start at (or within ~2 seconds of) the first relevant action and end when
   the outcome is visible. App launch, setup, and waiting are not evidence.
-- Review the artifact before attaching: check the duration with `ffprobe`
-  and confirm the opening frames show relevant state, not an idle screen.
+- Review the artifact before attaching: check the duration with `ffprobe` and
+  confirm the opening frames show relevant state, not an idle screen.
 - Trim dead time instead of re-recording:
   `ffmpeg -ss <start> -to <end> -i in.mp4 -c copy out.mp4`.
-- When the wait itself is the behavior (a progress or loading state),
-  compress it: a before/after screenshot pair or a short clip of the
-  transition, never real-time idle footage.
-- Prefer roughly 15 seconds or less; if the flow needs more, a labeled
-  screenshot sequence usually reads better than a long recording.
+- When the wait itself is the behavior (a progress or loading state), compress
+  it: a before/after screenshot pair or a short clip of the transition, never
+  real-time idle footage.
+- Prefer roughly 15 seconds or less; beyond that, a labeled screenshot
+  sequence usually reads better.
 
 ## 1. attach: the uinaf uploader (when installed, any forge)
 
 - This rung means the [uinaf attach](https://github.com/uinaf/attach) CLI
-  specifically, not any binary that happens to be named `attach`.
-- Verify the identity before trusting it: `attach help` must show the
+  specifically, not any binary named `attach`.
+- Verify the identity first: `attach help` must show the
   `attach put <file> [--repo <owner/name>] [--pr <n>]` command shape (or
   `gh extension list` shows `gh attach` from `uinaf/gh-attach`).
 - Anything else on PATH under that name is not this rung; fall through.
@@ -53,14 +51,14 @@ Upload through the project uploads API and embed the returned markdown:
 glab api "projects/:id/uploads" --form "file=@evidence.png"
 ```
 
-- The response carries a `markdown` field (`![…](/uploads/…)`); paste it
-  into the change-request description or a comment.
+- The response carries a `markdown` field (`![…](/uploads/…)`); paste it into
+  the change-request description or a comment.
 - Uploads inherit project visibility.
 
 ## 3. github.com deliveries (`gh` + user-attachments endpoint)
 
-Upload images and video to the same CDN the web drag-drop uses; the asset
-inherits repository visibility and needs no browser:
+Upload images and video to the CDN the web drag-drop uses; the asset inherits
+repository visibility and needs no browser:
 
 ```bash
 repo_id=$(gh api repos/{owner}/{repo} -q .id)
@@ -74,16 +72,14 @@ Accept: application/json
 EOF
 ```
 
-- The heredoc keeps the token out of the process argument list, where other
-  local processes could read it.
+- The heredoc keeps the token out of the process argument list.
 - Embed the returned `.url` as markdown.
 - Failure modes: 422 = unsupported content type; 404 = bad repository id or
   no push permission.
 
-Video: same endpoint with `content_type` `video/mp4` or `video/webm`, and
-embed the returned URL on its own bare line; GitHub renders a player there,
-while `![]()` image syntax does not. Transcode Playwright's webm for broad
-playback first:
+Video: same endpoint with `content_type` `video/mp4` or `video/webm`; embed
+the returned URL on its own bare line, where GitHub renders a player (`![]()`
+image syntax does not). Transcode Playwright's webm for broad playback first:
 
 ```bash
 ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4
@@ -93,8 +89,8 @@ ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4
 
 Structure the evidence; never paste bare images that take over the page:
 
-- Constrain size with an HTML img tag; mobile screenshots especially
-  (`<img src="…" width="300">`), or they occupy the whole page.
+- Constrain size with an HTML img tag, especially mobile screenshots
+  (`<img src="…" width="300">`).
 - Put comparisons side by side in a table (before/after, light/dark,
   breakpoints), one labeled column each.
 - Collapse anything long or secondary in `<details><summary>…</summary>`.
@@ -106,5 +102,4 @@ Structure the evidence; never paste bare images that take over the page:
 - Fall back to the change request itself: paste the decisive excerpt as
   fenced, sanitized text (contract input/output, log lines), or link an
   artifact the forge already hosts, such as a CI job artifact or check run.
-- If no honest attachment path exists, deliver without the aid and say so
-  instead of inventing one.
+- If no honest attachment path exists, deliver without the aid and say so.

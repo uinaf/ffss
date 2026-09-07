@@ -1,8 +1,8 @@
 # Performance measurement
 
-Slopguard records internal spans for the work around a model call. These spans
-are not part of result schema v1 and are not emitted unless an in-process
-observer is configured.
+Slopguard records internal spans for the work around a model call. They are not
+part of result schema v1 and are emitted only when an in-process observer is
+configured.
 
 | Phase | Work |
 | --- | --- |
@@ -15,13 +15,14 @@ observer is configured.
 | `source_revalidation` | post-attempt frozen-source check |
 | `report_write` | terminal or JSON rendering and output |
 
-The clock and observer are injectable. Deterministic tests use a stepped clock;
-production uses Go's monotonic `time.Time` component. Total `duration_ms` starts
-before config loading, so config and dependency failures retain elapsed work.
+The clock and observer are injectable: deterministic tests use a stepped clock;
+production uses Go's monotonic `time.Time` component. Total `duration_ms`
+starts before config loading, so config and dependency failures retain elapsed
+work.
 
-The hermetic benchmark uses controlled Git and Codex wrappers and
-reports p50/p95 total time, p50/p95 non-provider overhead, each phase's p50, and
-the median subprocess count:
+The hermetic benchmark uses controlled Git and Codex wrappers and reports
+p50/p95 total time, p50/p95 non-provider overhead, each phase's p50, and the
+median subprocess count:
 
 ```bash
 go test ./cmd/slopguard -run '^$' \
@@ -29,4 +30,4 @@ go test ./cmd/slopguard -run '^$' \
 ```
 
 Shared CI enforces subprocess budgets for cold local, branch, commit, and
-malformed-retry paths. It does not enforce host-specific millisecond limits.
+malformed-retry paths, not host-specific millisecond limits.

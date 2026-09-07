@@ -3,18 +3,17 @@
 ## Problem
 
 A private engineering workspace supports Codex, Claude Code, and Grok-based
-agents. Its current `AGENTS.md` is generic, model-specific in places, and does
-not tell an agent who it is helping, where task context lives, what it may do,
-or how to prove work. The repository already has working lifecycle scripts, but
-agents regularly rediscover them and sometimes claim completion from a unit test
-or screenshot alone.
+agents. Its `AGENTS.md` is generic, model-specific in places, and does not say
+who the agent is helping, where task context lives, what it may do, or how to
+prove work. Working lifecycle scripts exist, but agents rediscover them and
+sometimes claim completion from a unit test or screenshot alone.
 
 Audit the workspace for agent readiness and replace `AGENTS.md` with the
-smallest useful operating contract. Also produce `readiness-report.md` with the
+smallest useful operating contract. Produce `readiness-report.md` with the
 repository grade, runner grade, evidence level, gaps, and exercised checks.
 
-Do not change product code or invent credentials. Treat the provided runner as
-local-only; no CI or live deployment access is available.
+Do not change product code or invent credentials. The runner is local-only; no
+CI or live deployment access is available.
 
 ## Input Files
 

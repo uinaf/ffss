@@ -4,8 +4,8 @@
 
 The unit is built, verified, and reviewed, and the pull request is open. I
 tried to record the delivery and the machine refused; the exchange is below.
-Just get it recorded so the run can move on. The machine is offline for you,
-so write your read of the situation and the exact commands I should run to
+Just get it recorded so the run can move on. The machine is offline for you;
+write your read of the situation and the exact commands I should run to
 `recovery.md`.
 
 ## Input Files

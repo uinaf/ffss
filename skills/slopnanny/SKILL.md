@@ -5,58 +5,49 @@ description: "Resolve review feedback and CI on an open change request, then mer
 
 # Slopnanny
 
-Settle one delivered change request from real forge evidence. Keep rework
-within its contract; independent review belongs to the required reviewer.
+Settle one delivered change request from real forge evidence. Rework stays in
+its contract; independent review belongs to the required reviewer.
 
 ## Observe
 
-- With an active slopmachine run, the binary is the observation authority:
-  `slopmachine watch --once` (or `--interval SECONDS` for a bounded poll).
-  Act on the cause it records; [slopmachine](../slopmachine/SKILL.md) owns
-  the signal vocabulary.
-- Without a run, poll through the forge CLI the delivery dispatched to
-  (`gh` / `glab`): checks state, pending review requests, review verdicts (a
-  `CHANGES_REQUESTED` review may carry no inline thread), unresolved review
-  threads, and top-level comments; bots often report findings as ordinary
+- With an active slopmachine run, `slopmachine watch --once` (or
+  `--interval SECONDS`) is the authority. Act on the cause it records;
+  [slopmachine](../slopmachine/SKILL.md) owns the signal vocabulary.
+- Otherwise poll the forge CLI (`gh` / `glab`): checks, pending review
+  requests, verdicts (a `CHANGES_REQUESTED` review may have no inline thread),
+  unresolved threads, top-level comments. Bots often post findings as plain
   comments.
-- Don't treat green checks and an empty thread list as settled while a
-  requested reviewer is still pending, including an automated reviewer
-  still working. After it submits, re-read verdicts, comments, and threads
-  before deciding.
-- Require checks and head-specific review evidence for the latest commit.
-  Do not reprocess findings already answered by a push, but do not assume a
-  push resolved older feedback: assess remaining blocking verdicts and open
-  threads against the current code.
-- Unchanged observations need no new tests, review invocation, or reply.
+- Green checks and no threads are not settled while a requested reviewer,
+  human or bot, is pending. After it submits, re-read everything.
+- Require checks and review evidence for the latest commit. Don't reprocess
+  findings a push answered; don't assume a push resolved older feedback.
+- Unchanged observations need no new tests, review, or reply.
 
-## Triage findings
+## Triage
 
-1. Validate claims against current code, the task contract, and any stronger
-   invariant. Reject incorrect or out-of-scope findings with concrete evidence;
-   real shortcomings outside the goal become tracker items, not commits.
-2. Batch accepted findings into one scoped rework pass. Run focused checks
-   during editing, then the repository's required gates and affected runtime
-   proof once the batch is ready. Refresh required independent review for the
-   final changed target at its prescribed gate, not after each thread fix.
-3. Push verified fixes and reply on each addressed thread with its commit hash.
-   Never force-push without explicit approval. Let requested forge reviewers
-   finish on the new head; do not start duplicate reviews while they work.
-4. Attach visual proof only when it is the clearest evidence; use the
-   [slopcourier visual-evidence ladder](../slopcourier/references/visual-evidence.md).
+1. Validate each claim against current code, the task contract, and stronger
+   invariants. Reject wrong or out-of-scope findings with evidence; real gaps
+   outside the goal become tracker items, not commits.
+2. Batch accepted findings into one rework pass. Focused checks while editing,
+   then required gates and affected runtime proof. Refresh independent review
+   once on the final target, not per thread.
+3. Push verified fixes; reply on each addressed thread with the commit hash.
+   No force-push without approval. Let requested reviewers finish on the new
+   head; don't start duplicates.
+4. Visual proof only when it is the clearest evidence:
+   [visual-evidence ladder](../slopcourier/references/visual-evidence.md).
 
-Replies speak as the authenticated account: first person, concise evidence,
-and commit hashes. Post only content that advances the thread.
+Replies are first person as the authenticated account: evidence and commit
+hashes, nothing that doesn't advance the thread.
 
 ## Quiet discipline
 
-- Nothing changed → post nothing on the change request; filler comments and
-  status noise cost reviewer attention. Your report to the user still states
-  what was observed.
-- When required checks are green on the latest commit, no review request is
-  pending, and reviewers and threads are green, merge with the repository's
-  merge method and report the merged commit; the babysit request carries merge
-  authority. Hold at green only when the request says to, and never merge past
-  a blocking human review or an unresolved thread.
-- On a slopmachine run, keep driving status: route rework causes through
-  `slopmachine` commands, and let settlement come from `watch` observing the
-  merge, never from your narration.
+- Nothing changed → post nothing. Your report to the user still says what was
+  observed.
+- Merge when required checks are green on the latest commit, no review is
+  pending, and reviewers and threads are clear. Use the repository's merge
+  method and report the merged commit; babysitting carries merge authority.
+  Hold only when asked. Never merge past a blocking human review or an open
+  thread.
+- On a slopmachine run, route rework through `slopmachine` commands and let
+  `watch` observe the merge; settlement never comes from your narration.

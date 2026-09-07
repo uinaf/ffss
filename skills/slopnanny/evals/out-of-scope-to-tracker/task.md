@@ -3,11 +3,10 @@
 ## Problem/Feature Description
 
 You are babysitting pull request #71 on `example/ingest`, whose whole goal is
-fixing a typo'd environment variable name (`INJEST_BUCKET` →
-`INGEST_BUCKET`). A human reviewer left the comment below, newer than the
-latest push. Checks are green. This sandbox has no network, so write
-everything you would do — commands, replies, and any tracker items — to
-`actions.md`.
+fixing a typo'd environment variable name (`INJEST_BUCKET` → `INGEST_BUCKET`).
+A human reviewer left the comment below, newer than the latest push. Checks are
+green. This sandbox has no network, so write everything you would do —
+commands, replies, and any tracker items — to `actions.md`.
 
 ## Input Files
 

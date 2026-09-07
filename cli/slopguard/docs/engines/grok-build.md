@@ -1,7 +1,7 @@
 # Grok Build engine
 
-Select this engine with `--engine grok`. Install the official CLI and
-authenticate before the first native review:
+Select with `--engine grok`. Install the official CLI and authenticate before
+the first native review:
 
 ```bash
 npm install --global @xai-official/grok@1.0.13
@@ -15,32 +15,32 @@ The adapter always passes an explicit model; an empty model setting resolves to
 
 The adapter requires the official headless prompt-file, JSON Schema, explicit
 model and effort, bounded-turn, permission, feature-disable, and
-working-directory surfaces. It checks `--version` and `--help` before model
+working-directory surfaces, and checks `--version` and `--help` before model
 invocation. The Grok review process resolves authentication from the preserved
 environment and user configuration.
 
 - The frozen prompt is written to a private `0600` file inside the empty
-  provider workspace and removed with that workspace after the run. The prompt
-  never appears in process arguments.
+  provider workspace and removed with it after the run. It never appears in
+  process arguments.
 - Every run disables plan mode, subagents, memory, shell, edits, file reads,
   grep, and Model Context Protocol (MCP) tools. Grok 1.0.4 receives
   `--no-memory`; 1.0.5 and newer receive the documented `GROK_MEMORY=0` and
   `GROK_SUBAGENTS=0` environment controls because the per-run memory flag was
   removed.
-- The `dontAsk` permission mode silently denies tools without an explicit
-  allow rule and prevents interactive approval prompts.
-- Tool filtering uses Grok's documented internal IDs. With web off, the
-  adapter starts from `web_search` and removes it with `--disallowed-tools`.
-  It also removes the always-on `search_tool` and `use_tool` MCP meta-tools,
-  leaving no tools for the model to call.
+- `dontAsk` permission mode silently denies tools without an explicit allow
+  rule and prevents interactive approval prompts.
+- Tool filtering uses Grok's documented internal IDs. With web off, the adapter
+  starts from `web_search` and removes it with `--disallowed-tools`. It also
+  removes the always-on `search_tool` and `use_tool` MCP meta-tools, leaving no
+  tools for the model to call.
 
 ## Web access
 
-Web access is off by default. `web_search` and `web_fetch` are removed when web
-access is off and are the only tools when it is on. MCP meta-tools are always
-removed. The review keeps the existing environment, user configuration, and
-configured provider or session authentication, and runs from an empty workspace
-with an explicit per-run tool and feature policy.
+Off by default. `web_search` and `web_fetch` are removed when web access is off
+and are the only tools when it is on. MCP meta-tools are always removed. The
+review keeps the existing environment, user configuration, and configured
+provider or session authentication, and runs from an empty workspace with an
+explicit per-run tool and feature policy.
 
 ## Output contract
 
@@ -48,22 +48,22 @@ The adapter fixes `--max-turns 2`; the supported CLI can exit successfully with
 a cancelled, missing structured result when bounded to one turn. Success
 requires `stopReason: end_turn`, non-empty session and request identifiers, no
 structured-output error, and complete canonical review objects in both `text`
-and `structuredOutput`. Those decoded objects must agree exactly. Prose
-extraction and engine-local protocol recovery are not accepted.
+and `structuredOutput` that agree exactly. Prose extraction and engine-local
+protocol recovery are not accepted.
 
 Grok also receives a trusted single-shot completion policy after the frozen
 bundle. Its provider-only schema wraps the canonical review with completion
 evidence: at least 160 characters of overall explanation and one inclusive
-zero-based range covering the complete frozen file order exactly once. Findings
-remain linked to reviewed files by the canonical review location.
+zero-based range covering the complete frozen file order exactly once.
+Findings stay linked to reviewed files by the canonical review location.
 
 - Because Grok can mechanically populate that shape while still describing
-  future review work, the provider contract also requires at least 0.7 overall
+  future review work, the contract also requires at least 0.7 overall
   confidence that the entire review is complete.
-- This threshold does not filter individual findings: every finding is
+- This threshold does not filter individual findings; every finding is
   retained regardless of its own confidence.
 - The local decoder validates the range against the exact frozen file count,
-  checks every finding path against that file set, and then discards the private
+  checks every finding path against that file set, then discards the private
   evidence before rendering the stable public result.
 - These checks also reject explicit progress commitments such as starting,
   interim, or future review work in the overall explanation.
@@ -74,24 +74,22 @@ Grok treats the schema's unanchored non-whitespace string pattern as a
 full-string constraint and otherwise truncates explanations, titles, bodies,
 and paths to one character. The provider-facing projection omits only that
 pattern for Grok. Canonical decoding still enforces non-blank text, length
-bounds, and safe relative paths before a result can succeed.
+bounds, and safe relative paths.
 
-The compatibility contract is capability-based with no numeric upper bound.
-Fixtures cover Grok Build CLI `1.0.4`, `1.0.5`, and `1.0.13`. Capability
-discovery checks every trusted PATH candidate, skipping incompatible
-tool-manager targets before selecting a real Grok executable. It fails closed
-when no candidate preserves the version-specific required flags or enumerated
-values.
+Compatibility is capability-based with no numeric upper bound. Fixtures cover
+Grok Build CLI `1.0.4`, `1.0.5`, and `1.0.13`. Capability discovery checks
+every trusted PATH candidate, skipping incompatible tool-manager targets before
+selecting a real Grok executable, and fails closed when no candidate preserves
+the version-specific required flags or enumerated values.
 
 Each attempt invokes the selected xAI model and may consume plan or API quota.
-The one configured protocol retry invokes it again only after malformed output;
-authentication, capability, timeout, cancellation, and process failures are not
-retried.
+The one configured protocol retry runs again only after malformed output;
+authentication, capability, timeout, cancellation, and process failures are
+not retried.
 
 ## Verify
 
-Default tests use a controlled fake executable. Run the optional authenticated
-smoke explicitly:
+Default tests use a controlled fake executable. Optional authenticated smoke:
 
 ```bash
 SLOPGUARD_TEST_LIVE_GROK=1 go test ./internal/provider -run '^TestGrokLive$' -count=1 -v

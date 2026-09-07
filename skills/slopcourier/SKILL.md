@@ -5,55 +5,51 @@ description: "Open or update a change request for completed, verified work. Use 
 
 # Slopcourier
 
-Deliver finished, verified work as one change request. Delivery mechanics only:
-no implementation, review, merge, or second workflow runtime.
+Deliver finished, verified work as one change request. Delivery only: no
+implementation, review, merge, or second workflow runtime.
 
 ## Preconditions
 
-- Delivery is authorized by the user or an active slopmachine status allowing
-  `deliver`. Preparation-only requests produce a draft artifact and stop.
-- The intended change is complete and its applicable repository gates passed
-  for this revision. Use owner-approved affected checks; don't repeat passing
-  proof without new changes, failures, or unresolved concerns. Report missing
-  or failing required gates instead of delivering.
-- Proof fits the change: bug fixes have a regression check failing before the
-  fix or on revert; features exercise the changed contract; refactors run the
-  same behavioral checks before and after; performance claims have a measured
-  baseline; docs are checked against sources, links, or rendering as applicable.
-  Don't manufacture source-shape tests to make a refactor fail on revert.
-- Check the worktree and `git log <default>..HEAD` for unrelated changes. Deliver
-  only the intended scope and explain every hunk.
-- `delivery_mode: direct-trunk` is outside this lane. Its delivered trunk commit
-  is recorded through `slopmachine deliver` with `commit_sha`, not a change request.
+- Authorized by the user or a slopmachine status allowing `deliver`.
+  Preparation-only requests produce a draft and stop.
+- The change is complete and its required gates passed on this revision. Don't
+  repeat passing proof without new changes or concerns. Report missing or
+  failing gates instead of delivering.
+- Proof fits the change: bug fixes have a regression check that fails before
+  the fix or on revert; features exercise the changed contract; refactors run
+  the same checks before and after; performance claims have a measured
+  baseline; docs are checked against sources, links, or rendering. Never
+  manufacture source-shape tests to make a refactor fail on revert.
+- Check the worktree and `git log <default>..HEAD` for unrelated changes.
+  Deliver only the intended scope and explain every hunk.
+- `delivery_mode: direct-trunk` is out of lane; its trunk commit is recorded
+  through `slopmachine deliver` with `commit_sha`.
 
-## Dispatch and deliver
+## Deliver
 
-1. Read `git remote get-url origin`: github.com uses `gh`; a GitLab host uses
-   `glab`; unsupported hosts stop. Verify auth for that exact host with
-   `GH_HOST=github.com gh auth status` or `glab auth status --hostname <host>`.
-   Report missing tooling or auth; don't install or switch identities.
-2. Create or reuse one task branch, never commit to the default branch. Commit
-   conventionally and push with upstream tracking. No force-push without approval.
-3. Find an existing change request for the branch and update it rather than
-   filing a duplicate. Open ready for review unless the user requested a draft.
-4. Follow recent merged titles and the repository template, including shared
-   organization defaults such as `<owner>/.github`. Lead with the problem and
-   solution, include actual risks, and add proof only when CI cannot show it.
-   With no template, use the concise
-   [house style](../slopscriber/references/style.md): problem-first, headings
-   only when the body is long enough to need them, and no implementation
-   inventory. Prefer outcomes over mechanisms. The body describes the change
-   as it is now, never how it got there: no review history, finding counts,
-   fix-commit hashes, reviewer names, or iteration narrative. Review results
-   go to the user report and to thread replies on the findings themselves.
-5. For non-trivial changes, use the clearest review aid from
-   [visual-evidence.md](references/visual-evidence.md); skip filler.
-6. Return the change-request URL. If the user also requested babysitting or
-   merge, continue that authorized work with slopnanny. Delivery alone does
-   not authorize merge, auto-merge, branch deletion, or review rework.
+1. `git remote get-url origin`: github.com uses `gh`, GitLab uses `glab`, other
+   hosts stop. Verify auth for that host (`GH_HOST=github.com gh auth status`
+   or `glab auth status --hostname <host>`). Report missing tooling or auth;
+   never install or switch identities.
+2. One task branch, never the default. Conventional commits, push with
+   upstream tracking, no force-push without approval.
+3. Update the branch's existing change request instead of filing a duplicate.
+   Open ready for review unless a draft was requested.
+4. Follow recent merged titles and the repository template, including
+   `<owner>/.github` defaults. Without one, use the
+   [house style](../slopscriber/references/style.md): problem, solution, real
+   risks, proof only when CI cannot show it, headings only when needed. No
+   implementation inventory. The body describes the change as it stands: no
+   review history, finding counts, fix hashes, reviewer names, or iteration
+   narrative. Review results go to the user and to thread replies.
+5. Non-trivial changes get one review aid from
+   [visual-evidence.md](references/visual-evidence.md).
+6. Return the URL. Babysitting or merge, if requested, continues with
+   slopnanny. Delivery alone authorizes no merge, auto-merge, branch deletion,
+   or rework.
 
 ## Slopmachine handoff
 
-Read `delivery_mode` from status. Send the URL and delivered head as `commit_sha`
-through `slopmachine deliver` stdin evidence, following its
+Read `delivery_mode` from status. Send the URL and delivered head as
+`commit_sha` through `slopmachine deliver` stdin evidence, per its
 [validate-then-apply protocol](../slopmachine/SKILL.md).

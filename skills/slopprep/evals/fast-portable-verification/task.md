@@ -9,10 +9,10 @@ different subset of those commands. A clean local run takes 20 seconds, OpenTofu
 downloads providers into a disposable data directory every time, and the secret
 scanner walks `.git` and generated provider binaries.
 
-Make verification fast for developers and agents without binding its contract
-to a CI vendor. Preserve the existing `mise` tool owner. CI systems may select
-lanes and restore caches, but local work, GitHub Actions, and GitLab CI must call
-the same repository-owned tasks.
+Make verification fast without binding its contract to a CI vendor. Preserve
+the existing `mise` tool owner. CI systems may select lanes and restore caches,
+but local work, GitHub Actions, and GitLab CI must call the same
+repository-owned tasks.
 
 Keep OpenTofu backend isolation, credential handling, secret verification,
 policy application, deployment, and live acceptance unchanged and exhaustive.
@@ -32,8 +32,8 @@ Produce:
 5. Removal of `scripts/verify-changed.sh`.
 6. `verification-results.md` containing unchanged, relevant-change, warm-full,
    cold-full, and slowest-lane measurements. This prompt provides no executable
-   checkout, so label timings unverified instead of inventing them; include the
-   exact benchmark cases to run against the implemented repository.
+   checkout: label timings unverified and include the exact benchmark cases to
+   run against the implemented repository.
 
 Do not add another task runner, a Git-aware shell selector, or CI-specific
 validation commands. Cache misses must remain correct.

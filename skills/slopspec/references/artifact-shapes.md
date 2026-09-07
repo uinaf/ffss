@@ -13,14 +13,13 @@ keeps work independently verifiable and resumable.
 A canonical item carries the outcome, supporting evidence, settled decisions,
 acceptance, boundaries, relevant verification, and material risks or stop
 conditions. A parent adds child outcomes and dependencies; each child names its
-parent and the proof of its own delivered behavior. Omit empty sections and
-avoid an epic whose only purpose is holding one issue.
+parent and the proof of its own delivered behavior. Omit empty sections; no
+epic exists to hold one issue.
 
 Slice through the layers needed to deliver behavior. Size work for one fresh
 agent context, including verification. Do not split code, docs, and tests into
-independent tickets when none can land alone. For broad migrations, expand,
-migrate in reviewable batches, then contract when independent vertical slices
-cannot remain valid.
+tickets when none can land alone. For broad migrations where vertical slices
+cannot stay valid: expand, migrate in reviewable batches, then contract.
 
 A blocking edge means the dependent cannot start or verify without its blocker.
 Shared topic or preferred order is insufficient. Keep independent work parallel.
@@ -28,4 +27,4 @@ Verify included paths and record the revision when drift matters.
 
 A fresh agent must be able to identify scope, settled choices, completion proof,
 finished work, blockers, and what is ready now. Keep current requirements and
-status in the canonical body/fields; comments may retain progress history.
+status in the canonical body/fields; comments may hold progress history.

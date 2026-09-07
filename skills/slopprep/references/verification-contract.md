@@ -1,8 +1,7 @@
 # Verification Contract
 
-You own the infrastructure for proving work. That doesn't replace the ordinary
-responsibility to self-check each completed change, and it doesn't give you an
-independent ship decision.
+You own the infrastructure for proving work. That does not replace
+self-checking each completed change or grant an independent ship decision.
 
 ## Proof Layers
 
@@ -16,9 +15,9 @@ Keep these claims separate:
 | CI | configured remote checks passed for the relevant revision |
 | live or deploy | the configured production-like surface was exercised |
 
-A build does not prove a browser flow. A screenshot does not prove an end-to-end
-transition. Green CI does not prove a provider, account, device, or deployed
-endpoint unless that exact surface ran.
+A build does not prove a browser flow. A screenshot does not prove an
+end-to-end transition. Green CI does not prove a provider, account, device, or
+deployed endpoint unless that exact surface ran.
 
 ## Task Instruments
 
@@ -36,21 +35,20 @@ improvement is authorized; during inspection, report the gap and its owner.
 | lower cost, size, or token count | per-unit measurement on a real sample workload, with candidates that shrink the billed unit itself |
 | best of several approaches | fixture set plus a scoring script that sweeps every candidate |
 
-For optimization, record a representative baseline before editing, identify the
-bottleneck and hypothesis, and attribute the measured change. Use a scored sweep
-only when choosing among competing approaches warrants one. Report failed
-hypotheses as well as gains. Reusable instruments belong in the existing task
-graph; one-task experiments stay in attempt-scoped scratch.
+For optimization, record a representative baseline before editing, identify
+the bottleneck and hypothesis, and attribute the measured change. Use a scored
+sweep only when choosing among competing approaches. Report failed hypotheses
+as well as gains. Reusable instruments belong in the existing task graph;
+one-task experiments stay in attempt-scoped scratch.
 
 ## Repository Contract
 
 Use the repository-owned verification surface shared by local work and CI.
 For changed-code proof, prefer its affected lanes; expand for shared inputs,
-uncertain coverage, or an explicit owner requirement. Repeat passing checks only
-after relevant changes, failures, or unresolved concerns.
-That entrypoint may be a manifest script, build task, framework command, or
-typed CLI; it doesn't need a wrapper file.
-Make it:
+uncertain coverage, or an explicit owner requirement. Repeat passing checks
+only after relevant changes, failures, or unresolved concerns. The entrypoint
+may be a manifest script, build task, framework command, or typed CLI; it
+needs no wrapper file. Make it:
 
 - run noninteractively with a finite bound
 - preserve a primary failure or signal status and concise, inspectable output;
@@ -68,10 +66,10 @@ command contributors and CI already use.
 
 Choose the smallest check set that can honestly disprove the claim:
 
-- UI: navigate the changed flow, inspect interaction and console state, capture
-  a labeled screenshot only as supporting evidence.
-- API or service: start the real process, send representative success and error
-  requests, and inspect response plus structured logs.
+- UI: navigate the changed flow, inspect interaction and console state,
+  capture a labeled screenshot only as supporting evidence.
+- API or service: start the real process, send representative success and
+  error requests, inspect response plus structured logs.
 - CLI: invoke the shipped or packaged entrypoint with representative arguments
   and inspect exit code, stdout, and stderr.
 - State or config: prove write/read round trips, restart behavior, and invalid
@@ -79,18 +77,16 @@ Choose the smallest check set that can honestly disprove the claim:
 - Deploy wiring: exercise the actual configured surface when the claim extends
   beyond local health.
 
-- Exercise the real user path and capture both the action and the resulting
-  state; a command transcript without its observed outcome is not real-surface
-  evidence.
-- Prefer integration, contract, smoke, and end-to-end checks over mock-heavy
-  unit tests at the seam being claimed.
-- Mocked tests remain useful supporting evidence.
+Capture both the action and the resulting state; a command transcript without
+its observed outcome is not real-surface evidence. Prefer integration,
+contract, smoke, and end-to-end checks over mock-heavy unit tests at the seam
+being claimed; mocked tests remain supporting evidence.
 
 ## Failure Quality
 
-Exercise at least one representative failure when the task class touches input,
-IO, authentication, network, configuration, or external dependencies. Choose a relevant
-failure case and record the expected off-path behavior. Require:
+Exercise at least one representative failure when the task class touches
+input, IO, authentication, network, configuration, or external dependencies.
+Record the expected off-path behavior. Require:
 
 - a non-zero or explicitly failed terminal state
 - a stable error class, code, or machine-readable status when appropriate
@@ -99,8 +95,9 @@ failure case and record the expected off-path behavior. Require:
 - preserved artifacts or logs for unattended diagnosis
 
 Swallowed errors, vague success, raw secret output, unbounded waits, cleanup
-that only runs on success, global teardown that destroys unowned resources, and
-owned resources left running without an explicit handoff are readiness failures.
+that only runs on success, global teardown that destroys unowned resources,
+and owned resources left running without an explicit handoff are readiness
+failures.
 
 ## Reporting
 
@@ -111,8 +108,8 @@ Report outcomes, not command theater:
 - include exact commands and relevant output for failure reproduction
 - label unavailable proof as unverified and name the missing repository or
   runner capability
-- grade final state and side effects rather than trusting an agent's completion
-  message
+- grade final state and side effects rather than trusting an agent's
+  completion message
 
 If the repository already provides this contract, use it during ordinary work;
 don't start readiness work just to repeat the builder's final checks.

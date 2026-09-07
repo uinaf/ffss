@@ -9,13 +9,13 @@ Checked-in docs describe contracts their repository owns.
 | Another repository | Link the owner or describe the dependency generically |
 | Private workspace, local helper, account, host, or one-off observation | Keep out of repo policy unless explicitly adopted by the owner |
 
-Do not reproduce sensitive identifiers in reports merely to explain their
-exclusion. Describe the category. Owner approval to adopt a recurring contract
-does not authorize publishing its private values.
+Do not reproduce sensitive identifiers in reports to explain their exclusion;
+describe the category. Owner approval to adopt a recurring contract does not
+authorize publishing its private values.
 
 ## Durable homes
 
-Use existing repository conventions. Common homes are:
+Use existing repository conventions. Common homes:
 
 - Agent guidance: recurring operating behavior.
 - Specs: long-lived requirements and acceptance.

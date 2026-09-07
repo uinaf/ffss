@@ -15,7 +15,7 @@ Ships slop; checks receipts.
 
 ## Skills
 
-Each skill has one job.
+One job each.
 
 | Skill | Use it for |
 | --- | --- |
@@ -33,7 +33,7 @@ Each skill has one job.
 
 ### CLIs
 
-On macOS, install both signed CLIs from the `uinaf/tap` Homebrew tap:
+macOS, from the `uinaf/tap` Homebrew tap (signed):
 
 ```bash
 brew install --cask uinaf/tap/slopmachine uinaf/tap/slopguard
@@ -41,8 +41,7 @@ slopmachine version
 slopguard --version
 ```
 
-On Linux, or on macOS without Homebrew, install the latest amd64 or arm64
-releases:
+Linux, or macOS without Homebrew (amd64 or arm64):
 
 ```bash
 curl --proto '=https' --tlsv1.2 -fsSL \
@@ -53,9 +52,8 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 ~/.local/bin/slopguard --version
 ```
 
-The installers verify release checksums and use `~/.local/bin` by default.
-See the detailed installation and verification guides for
-[slopmachine](cli/slopmachine/README.md#install) and
+The installers verify release checksums and default to `~/.local/bin`.
+Verification details: [slopmachine](cli/slopmachine/README.md#install),
 [slopguard](cli/slopguard/README.md#install).
 
 ### Plugin

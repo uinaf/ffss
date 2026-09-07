@@ -2,10 +2,10 @@
 
 ## Problem/Feature Description
 
-We plan to have an agent make `parseEvents` in this log tool faster,
-unsupervised. Prepare the repository so that work can happen without a human
-in the loop. Do not optimize the parser itself; that is the follow-up task.
-Record what you changed and any measurements in `readiness.md`.
+An agent will make `parseEvents` in this log tool faster, unsupervised.
+Prepare the repository so that work can happen without a human in the loop. Do
+not optimize the parser itself; that is the follow-up task. Record what you
+changed and any measurements in `readiness.md`.
 
 ## Input Files
 

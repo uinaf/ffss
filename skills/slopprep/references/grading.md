@@ -182,6 +182,6 @@ agent to hand-create `.env` files or follow a wiki.
   dead-code tool, worktrees, containers, or a port algorithm without a
   repository-owned reason.
 - Keep task classes explicit: a repo may be B for dependency updates, C for UI
-  changes, B for scripted QA, and D for exploratory device QA all at once.
+  changes, B for scripted QA, and D for exploratory device QA at once.
 - Record model, harness, runner, toolchain revision, and evidence date for
   empirical claims; capability and scaffolding drift.

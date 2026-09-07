@@ -2,9 +2,9 @@
 
 ## Problem/Feature Description
 
-The team plans to connect this repository to a Symphony-style orchestrator.
-Requests will be triaged into typed tasks and dispatched to isolated devbox
-workspaces. The same system must support two result paths without babysitting:
+This repository will connect to a Symphony-style orchestrator. Requests are
+triaged into typed tasks and dispatched to isolated devbox workspaces. The
+system must support two result paths without babysitting:
 
 - `implementation`: set up the environment, implement and verify a change, run
   independent review, reconcile the pull request, CI, and review state, and
@@ -21,8 +21,8 @@ target. Humans own identity provisioning, rotation, revocation,
 and emergency recovery. The repository must consume those capabilities without
 interactive login, profile switching, copying secret files, or printing tokens.
 
-The current repository incorrectly asks every agent to run `infisical login`,
-create `.env.local`, choose a branch name even for QA, and watch external state
+The repository currently asks every agent to run `infisical login`, create
+`.env.local`, choose a branch name even for QA, and watch external state
 manually. Prepare the repository-side contract for the future orchestrator. Do
 not build or call a real orchestrator, authenticate to external services, push a
 branch, open a PR, upload artifacts, or submit a report.

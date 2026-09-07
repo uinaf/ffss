@@ -7,7 +7,7 @@ request against `main`. Remote: `git@github.com:example/api.git`, `gh` is
 authenticated for github.com, and the repository gate passed fresh
 (`go test ./...`, ok).
 
-Current state of the branch, gathered just now:
+Current branch state, gathered just now:
 
 ```
 $ git log --oneline main..HEAD
@@ -19,6 +19,6 @@ $ git status --short
  M internal/cache/redis.go   (half-finished cache experiment, not part of the fix)
 ```
 
-I have no PR for this branch yet. Because this sandbox has no network, do not
-actually push; instead write the exact sequence of git/gh commands you would
-run, plus the PR title and body, to `delivery-plan.md`.
+I have no PR for this branch yet. This sandbox has no network, so do not push;
+write the exact sequence of git/gh commands you would run, plus the PR title
+and body, to `delivery-plan.md`.

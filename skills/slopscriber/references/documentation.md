@@ -1,7 +1,7 @@
 # Repository documentation
 
-Keep each document responsible for one reader need. Preserve the repository's
-established layout; use these defaults when redistributing overloaded docs.
+Each document serves one reader need. Preserve the repository's established
+layout; use these defaults when redistributing overloaded docs.
 
 | File | Content |
 | --- | --- |
@@ -16,13 +16,13 @@ with ownership, quick start, and their source-of-truth registry.
 
 Move established contributor or security policy out of an overloaded README,
 but never invent contacts, support promises, or governance. Security guidance
-should direct reporters to the verified private route instead of public issues.
+directs reporters to the verified private route, not public issues.
 
-Deep docs explain architecture, API contracts, operations, deployment, and
-recovery. Put consequential rationale in decision records and stable behavior
-in specs. Tactical status belongs in the tracker. Link these owners without
-copying their contents or duplicating navigation lists.
+Deep docs cover architecture, API contracts, operations, deployment, and
+recovery. Consequential rationale goes in decision records, stable behavior in
+specs, tactical status in the tracker. Link these owners without copying their
+contents or duplicating navigation lists.
 
-After a rename, removal, or behavior change, search the affected reader and
-agent docs for old paths, commands, and claims. Verify replacements against
-the source; retain valid links and unrelated content.
+After a rename, removal, or behavior change, search reader and agent docs for
+old paths, commands, and claims. Verify replacements against the source; keep
+valid links and unrelated content.

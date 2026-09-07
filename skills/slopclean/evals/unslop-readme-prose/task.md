@@ -2,10 +2,10 @@
 
 ## Problem/Feature Description
 
-The README below was drafted by a code assistant and it shows. Clean it up so
-it reads like a person wrote it on purpose. Do not change what it says: the
-commands, numbers, and supported platforms must survive exactly. Edit
-`README.md` in place.
+The README below was drafted by a code assistant and it shows. Clean it so it
+reads like a person wrote it on purpose. Do not change what it says: commands,
+numbers, and supported platforms must survive exactly. Edit `README.md` in
+place.
 
 ## Input Files
 

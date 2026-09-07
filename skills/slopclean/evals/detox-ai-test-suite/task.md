@@ -3,10 +3,9 @@
 ## Problem/Feature Description
 
 An agent generated the test file below for our cart module. It pads coverage
-numbers but tests almost nothing. Clean it up. Real coverage must not get
-weaker: every behavior that has an assertion today must still be covered when
-you are done, by a better test if not the same one. Edit
-`tests/cart.test.ts` in place. The module under test is provided for
+numbers but tests almost nothing. Clean it up without weakening real coverage:
+every behavior asserted today must still be covered, by a better test if not
+the same one. Edit `tests/cart.test.ts` in place. The module under test is for
 reference and must not be modified.
 
 ## Input Files

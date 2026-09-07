@@ -1,10 +1,9 @@
 # Cursor Agent engine
 
-Select this engine with `--engine cursor`. The adapter always passes an explicit
-model; an empty model setting resolves to `cursor-grok-4.6-high`, with no
-fallback. Cursor model IDs encode effort, so a separate non-default
-`reasoning_effort` is rejected.
-The default `cursor-grok-4.6-high` model keeps high reasoning.
+Select with `--engine cursor`. The adapter always passes an explicit model; an
+empty model setting resolves to `cursor-grok-4.6-high`, with no fallback.
+Cursor model IDs encode effort, so a separate non-default `reasoning_effort`
+is rejected; the default model keeps high reasoning.
 
 ## Runtime contract
 
@@ -20,14 +19,14 @@ builds must expose the same required flags and enumerated option values.
 
 ## Web access
 
-Cursor Agent has no documented per-run web-disable flag. Explicit CLI selection
-with `--engine cursor` therefore enables otherwise-unset web access. Engine
-selection from repository, environment, or XDG configuration does not grant web
-access. An explicit `web_access: false` remains authoritative and fails
-capability preflight rather than claiming an unenforceable web-access
-guarantee. The review keeps the existing environment, user configuration, and
-configured provider or session authentication, and runs in Ask mode in an
-empty workspace with user sandbox configuration preserved.
+Cursor Agent has no documented per-run web-disable flag, so explicit CLI
+selection with `--engine cursor` enables otherwise-unset web access. Engine
+selection from repository, environment, or XDG configuration does not. An
+explicit `web_access: false` is authoritative and fails capability preflight
+rather than claiming an unenforceable guarantee. The review keeps the existing
+environment, user configuration, and configured provider or session
+authentication, and runs in Ask mode in an empty workspace with user sandbox
+configuration preserved.
 
 ## Output contract
 
@@ -55,7 +54,7 @@ malformed protocol output. Provider result text remains private.
 ## Verify
 
 Default tests use a controlled fake executable and a complete recovery matrix.
-Run the optional authenticated smoke explicitly:
+Optional authenticated smoke:
 
 ```bash
 SLOPGUARD_TEST_LIVE_CURSOR=1 go test ./internal/provider -run '^TestCursorLive$' -count=1 -v

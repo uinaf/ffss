@@ -2,21 +2,19 @@
 
 ## Problem/Feature Description
 
-The payments team at Meridian Corp has recently started using AI coding agents (Claude Code, OpenAI Codex) to help maintain their backend services. The agents keep going off-track: one recently overwrote a migration file because it couldn't find the correct setup steps; another spent 20 minutes exploring directory structure before writing a single line of code.
+The payments team at Meridian Corp uses AI coding agents (Claude Code, OpenAI Codex) on their Node.js/TypeScript payments service. The agents go off-track: one overwrote a migration file because it could not find the setup steps; another spent 20 minutes exploring the directory structure before writing code.
 
-The team has identified that their `AGENTS.md` file is either missing or poorly written — it either dumps too much information (full architecture tours, every lint rule, directory tree dumps) or too little (no boot command, no test command). They need a well-structured `AGENTS.md` that gives agents exactly what they need to get oriented quickly without overwhelming them.
-
-The codebase is a Node.js/TypeScript payments service. Currently the repo has a rough `AGENTS.md` that needs to be completely rewritten based on what agents actually need.
+The current `AGENTS.md` dumps too much (architecture tours, every lint rule, directory tree) and buries what agents need. Rewrite it completely.
 
 ## Output Specification
 
-Produce a replacement `AGENTS.md` file for this payments service repository. The file should orient an AI agent to the project efficiently. Each pointer to deeper documentation must say what task or question should cause an agent to follow it.
+Produce a replacement `AGENTS.md` that orients an agent efficiently. Each pointer to deeper documentation must say what task or question should cause an agent to follow it.
 
-Also produce a short `doc-report.md` explaining what you changed and why — noting any content you removed, what you kept, and the reasoning.
+Also produce a short `doc-report.md` explaining what you removed, what you kept, and why.
 
 ## Input Files
 
-The following files are provided as inputs. Extract them before beginning.
+Extract the following files before beginning.
 
 =============== FILE: inputs/AGENTS.md ===============
 # Payments Service — Agent Guide

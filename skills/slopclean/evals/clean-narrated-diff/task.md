@@ -3,9 +3,9 @@
 ## Problem/Feature Description
 
 This module came out of an agent session and is full of machine tells. Clean
-it up before I ship it. Behavior and the exported API must not change: the
-module must still export `retryFetch` with the same signature and the same
-retry semantics. Edit `src/retryFetch.ts` in place.
+it before I ship it. Behavior and the exported API must not change: the module
+must still export `retryFetch` with the same signature and retry semantics.
+Edit `src/retryFetch.ts` in place.
 
 ## Input Files
 

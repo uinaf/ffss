@@ -2,18 +2,16 @@
 
 ## Problem
 
-The runtime guide is accurate but expensive to use. Agents struggle to identify the facts that matter for current operation and sometimes investigate irrelevant parts of the document.
+The runtime guide is accurate but expensive to use: agents cannot quickly find the facts that matter for current operation and investigate irrelevant parts.
 
-Rewrite the guide for agents that need to start, inspect, repair, or integrate with the current runtime. Keep the operational contract complete. Remove context that does not help those tasks.
+Rewrite it for agents that need to start, inspect, repair, or integrate with the current runtime. Keep the operational contract complete; remove context that does not serve those tasks.
 
 ## Output
 
-Produce:
+- `docs/runtime.md`: the rewritten source of truth, concise and structured
+- `doc-report.md`: a compact account of what changed and how it was verified
 
-- `docs/runtime.md`: the rewritten source of truth
-- `doc-report.md`: a compact account of what changed and how the rewrite was verified
-
-Keep `docs/runtime.md` concise and structured. Do not invent capabilities, commands, paths, or configuration.
+Do not invent capabilities, commands, paths, or configuration.
 
 ## Input
 

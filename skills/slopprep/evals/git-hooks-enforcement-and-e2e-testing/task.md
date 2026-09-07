@@ -8,34 +8,34 @@ never runs the built CLI. The team wants one repository-owned verification
 entrypoint, a pre-push hook that delegates to it, honest end-to-end coverage,
 and dead-code detection.
 
-Use the project's existing package scripts and Jest surface instead of building
-a second validation framework in shell. The Git hook may be a tiny executable
-adapter, but it must not duplicate the command graph or implement assertions,
-parsing, retries, or policy.
+Use the existing package scripts and Jest surface, not a second validation
+framework in shell. The Git hook may be a tiny executable adapter but must not
+duplicate the command graph or implement assertions, parsing, retries, or
+policy.
 
 ## Output Specification
 
 Produce the following files:
 
-1. `package.json` — Keep the existing commands and add repository-owned,
-   version-pinned dead-code detection plus one canonical verification command.
-2. `.git-hooks/pre-push` — An executable thin adapter that delegates to the
-   canonical verification command.
-3. `e2e/cli.test.ts` — A Jest integration test that invokes the actual built CLI
-   as a child process against real files and compares structured output with the
-   expected fixture. Do not import or mock `parseCsv`.
-4. `e2e/fixtures/sample.csv` — Sample CSV input used by the end-to-end test.
+1. `package.json` — Keep the existing commands; add repository-owned,
+   version-pinned dead-code detection and one canonical verification command.
+2. `.git-hooks/pre-push` — Executable thin adapter delegating to the canonical
+   verification command.
+3. `e2e/cli.test.ts` — Jest integration test that invokes the actual built CLI
+   as a child process against real files and compares structured output with
+   the expected fixture. Do not import or mock `parseCsv`.
+4. `e2e/fixtures/sample.csv` — Sample CSV input for the end-to-end test.
 5. `e2e/fixtures/expected.json` — Expected JSON output for the sample.
 6. Any focused Jest or TypeScript configuration required to run the test.
-7. `setup-notes.md` — Briefly explain hook activation, the canonical gate, the
-   dead-code owner, and what the real-process test proves.
+7. `setup-notes.md` — Hook activation, the canonical gate, the dead-code owner,
+   and what the real-process test proves.
 
-Do not create a shell test, a second command graph, or a wrapper whose only job
-is to replay package scripts.
+Do not create a shell test, a second command graph, or a wrapper that only
+replays package scripts.
 
 ## Input Files
 
-The following files represent the current state of the project. Extract them before beginning.
+Current state of the project. Extract before beginning.
 
 =============== FILE: package.json ===============
 {

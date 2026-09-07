@@ -21,7 +21,7 @@ plan  →  /slopmachine  →  clarify  →  authorized release  →  machine run
 
 ### macOS
 
-Install the signed CLI from the `uinaf/tap` Homebrew tap:
+Signed CLI from the `uinaf/tap` Homebrew tap:
 
 ```bash
 brew install --cask uinaf/tap/slopmachine
@@ -30,8 +30,7 @@ slopmachine version
 
 ### Linux and macOS without Homebrew
 
-Install the latest amd64 or arm64 release without Go, Homebrew, `jq`, or
-`sudo`:
+Latest amd64 or arm64 release; needs no Go, Homebrew, `jq`, or `sudo`:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -fsSL \
@@ -39,28 +38,28 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 ~/.local/bin/slopmachine version
 ```
 
-- To pin a release or choose an install directory, pass `--version "$TAG"`
-  or `--dest /chosen/bin` after `sh -s --`.
+- Pin a release or choose an install directory with `--version "$TAG"` or
+  `--dest /chosen/bin` after `sh -s --`.
 - The installer verifies the archive against the release checksum before
   atomically replacing the binary.
 - Installer-managed binaries upgrade in place with `slopmachine selfupdate`
   (`--check` probes without touching the binary); brew-managed installs
-  upgrade through `brew upgrade` instead.
+  upgrade through `brew upgrade`.
 - See [Release verification](docs/RELEASES.md#installer-trust-boundary)
   for independent Cosign and GitHub attestation checks.
 
-The installer finishes with a non-fatal `PATH` check: it warns when `PATH`
+The installer ends with a non-fatal `PATH` check: it warns when `PATH`
 resolves a different `slopmachine` than the install destination and names
 the winning copy.
 
 To build from source without replacing the packaged CLI on `PATH`, see
 [Run locally](CONTRIBUTING.md#run-locally).
 
-- State is stored at `$XDG_DATA_HOME/slopmachine/slopmachine.sqlite`, or
+- State lives at `$XDG_DATA_HOME/slopmachine/slopmachine.sqlite`, or
   `~/.local/share/slopmachine/slopmachine.sqlite` when `XDG_DATA_HOME` is
   unset. The CLI creates the state directory and database on first use with
   private permissions.
-- Set `SLOPMACHINE_DB` to use a different writable database path; relative
+- Set `SLOPMACHINE_DB` for a different writable database path; relative
   overrides resolve from the Git worktree root.
 - Inspect the selected location with `slopmachine storage --json`;
   repository-local databases are rejected unless the database and its SQLite
@@ -89,9 +88,9 @@ slopmachine release --revision N --run demo
 ```
 
 Replace `N` with the exact `intake_revision` returned by `status`. Release is
-still an explicit state transition, but a request to run, start, execute,
-continue, or resume the matching plan authorizes the agent to perform it. A
-request to prepare, inspect, intake, or dry-run stops before release.
+an explicit state transition, but a request to run, start, execute, continue,
+or resume the matching plan authorizes the agent to perform it. A request to
+prepare, inspect, intake, or dry-run stops before release.
 
 ### 2. Run the machine loop
 
@@ -112,14 +111,14 @@ Delivery opens the change request; the unit settles only when an observed
 signal closes it. `checks_failed` and `review_feedback` return the unit to
 the build loop while later units keep building.
 
-`status` is the compass. Its default output is one compact line with an
-executable `next_action`; `--json` exposes the full contract for agents. Check
-it after every transition instead of guessing the next command.
+`status` is the compass: default output is one compact line with an
+executable `next_action`; `--json` exposes the full contract. Check it after
+every transition instead of guessing the next command.
 
 ## Agent interface
 
-Agents should discover the live schema, keep status reads narrow, and validate
-each mutation before applying it:
+Discover the live schema, keep status reads narrow, and validate each
+mutation before applying it:
 
 ```bash
 slopmachine schema --command intake
@@ -128,13 +127,13 @@ slopmachine release --revision N --run demo --dry-run --json
 ```
 
 Pass raw command payloads with `--input -` and convenience evidence with
-`--evidence -`; do not leave transport JSON in the repository. See the
-[agent CLI contract](docs/AGENT_INTERFACE.md) for structured input and output,
-dry runs, state storage, sandbox overrides, and error recovery.
+`--evidence -`; do not leave transport JSON in the repository. The
+[agent CLI contract](docs/AGENT_INTERFACE.md) covers structured input and
+output, dry runs, state storage, sandbox overrides, and error recovery.
 
-For multi-unit intake, start with
+For multi-unit intake, start from
 [`examples/intake.multi.example.json`](examples/intake.multi.example.json).
-Every command also has focused help, such as `slopmachine review --help`.
+Every command has focused help, e.g. `slopmachine review --help`.
 
 ## Common operations
 
@@ -156,8 +155,8 @@ Every command also has focused help, such as `slopmachine review --help`.
 | Record transition telemetry | `slopmachine COMMAND --telemetry tel.json` |
 | Inspect all runs in a browser | `slopmachine serve` |
 
-Commands that act on a run accept `--run ID`. When the repository has exactly
-one open run, the CLI selects it automatically.
+Commands that act on a run accept `--run ID`. With exactly one open run in
+the repository, the CLI selects it automatically.
 
 ## Repo profiles
 
@@ -175,7 +174,7 @@ slopmachine repo register \
   --forge-reviewer 'slopzapper=slopzapper'
 ```
 
-Use `--forge gitlab` for GitLab.com or self-hosted GitLab merge requests on
+`--forge gitlab` covers GitLab.com or self-hosted GitLab merge requests on
 standard HTTPS. The adapter uses the authenticated `glab` CLI and derives the
 host from each merge request URL; custom-port URLs fail closed because `glab`
 does not accept ports in host selection.
@@ -187,7 +186,7 @@ profile-less behavior.
 - `next_action` names the canonical verify command verbatim.
 - Release fails closed when a required reviewer holds no review binding.
 
-A forge-bound profile also moves evidence from narrated to observed (status
+A forge-bound profile moves evidence from narrated to observed (status
 states the mode in `evidence_verification`):
 
 - Deliver evidence must name a change request that exists and matches the
@@ -200,8 +199,8 @@ states the mode in `evidence_verification`):
 
 ### Routing policy
 
-Repository profiles may also declare a versioned venue and executor registry
-plus an exact route table:
+Profiles may also declare a versioned venue and executor registry plus an
+exact route table:
 
 ```bash
 slopmachine repo update --routing examples/routing.example.json
@@ -209,10 +208,10 @@ slopmachine route --json --run demo
 ```
 
 `route` resolves from the released risk tier, unit complexity, and whether the
-unit is on its first or a later attempt. The returned tuple includes venue,
-harness, role-to-model bindings, parallelism, review depth, and its budget.
-Missing rules, unknown registry entries, and routes above the released budget
-fail closed. Resolution is read-only. It never launches a worker or reads model
+unit is on its first or a later attempt. The tuple includes venue, harness,
+role-to-model bindings, parallelism, review depth, and budget. Missing rules,
+unknown registry entries, and routes above the released budget fail closed.
+Resolution is read-only: it never launches a worker or reads model
 credentials.
 
 ## Telemetry
@@ -224,14 +223,14 @@ credentials.
 - `verify --cmd` measures its own duration.
 - Absent telemetry is always valid; wrong shapes fail closed.
 - `status --json` exposes per-run totals (`total_duration_ms`,
-  `total_tokens`, `total_cost_cents`, `telemetry_events`) and `serve` shows
+  `total_tokens`, `total_cost_cents`, `telemetry_events`); `serve` shows
   them per run.
 - This is recorded input for the routing ledger; the machine never enforces
   spend and never handles model keys.
 
 ## Browser view
 
-Project the same SQLite state in a read-only local browser view:
+Read-only local projection of the same SQLite state:
 
 ```bash
 slopmachine serve                 # http://127.0.0.1:7780
@@ -239,18 +238,18 @@ slopmachine serve --addr 127.0.0.1:9000
 ```
 
 The browser is a projector, not a second state authority; workflow changes
-still go through the CLI.
+go through the CLI.
 
 ## Agent skill
 
-The family [agent skill](../../skills/slopmachine/SKILL.md) teaches agents to drive
-the installed CLI and obey `next_action`. It is intentionally thin: the binary
+The [agent skill](../../skills/slopmachine/SKILL.md) teaches agents to drive
+the installed CLI and obey `next_action`. It is thin by design: the binary
 owns the state machine, schemas, and store.
 
-Independent review remains a companion step.
+Independent review is a companion step.
 
 - Reviewer identities are registered, not hardcoded: `slopguard` and
-  `bugbot` are built in, and `slopmachine reviewers --add NAME` registers
+  `bugbot` are built in; `slopmachine reviewers --add NAME` registers
   others (a hosted bot such as slopzapper, a CI reviewer, a QA provider).
 - The intake's `required_reviewers` selects among them; run the matching
   installed tool, such as the

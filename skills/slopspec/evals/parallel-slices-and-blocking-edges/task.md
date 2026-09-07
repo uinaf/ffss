@@ -5,8 +5,8 @@
 The repository tracks work in Jira project `TEAM`. The user approved a parent epic and three independently reviewable end-to-end slices:
 
 1. Create and send an invitation from the admin UI through the API.
-2. Accept an invitation and join the team; this requires invitation creation.
-3. Revoke a pending invitation from the admin UI; this requires invitation creation but not acceptance.
+2. Accept an invitation and join the team; requires invitation creation.
+3. Revoke a pending invitation from the admin UI; requires invitation creation but not acceptance.
 
 The user says: "Publish the epic and tickets with the real dependency graph so agents can work in parallel."
 

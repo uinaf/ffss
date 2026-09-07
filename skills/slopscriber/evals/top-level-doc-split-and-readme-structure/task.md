@@ -2,25 +2,22 @@
 
 ## Problem/Feature Description
 
-`grok-cli` is a command-line tool that parses and pretty-prints structured log files. It was written by a solo developer who crammed everything into a single `README.md` — install instructions, contributor setup, security contact, architecture notes, and usage examples are all mixed together. Now that the project is gaining traction and accepting outside contributions, the maintainer wants to split the documentation into proper separate files so that users, contributors, and security researchers can each find what they need quickly.
+`grok-cli` parses and pretty-prints structured log files. Its solo developer put everything in one 280-line `README.md`: install instructions, contributor setup, security contact, architecture notes, lint rules, and usage examples. The project now accepts outside contributions; contributors cannot find the setup steps, users give up before the quickstart, and the security contact sits at the bottom.
 
-The current README.md is 280 lines and serves too many audiences at once: it explains how to install the tool, walks through the full source architecture, describes how to set up a dev environment, lists every lint rule enforced in CI, and buries the security contact at the very bottom. Contributors complain they can't find the setup steps; users give up before reaching the quickstart.
-
-Your job is to restructure the documentation. The maintainer has no strong opinions about exact formatting — they just want each file to have a clear, single responsibility and for users to be able to get to their first successful `grok` command as quickly as possible.
+Split the documentation so users, contributors, and security researchers each find what they need. The maintainer has no formatting opinions beyond one clear responsibility per file and the fastest possible path to a first successful `grok` command.
 
 ## Output Specification
 
-Produce the following files:
-- `README.md` — restructured for end users
-- `CONTRIBUTING.md` — for contributors
-- `SECURITY.md` — for vulnerability reporters
-- `doc-changes.md` — a brief summary of what moved where and why
+- `README.md`: for end users
+- `CONTRIBUTING.md`: for contributors
+- `SECURITY.md`: for vulnerability reporters
+- `doc-changes.md`: a brief summary of what moved where and why
 
-Do not delete content — redistribute it. All information from the original README should appear in exactly one of the output files.
+Do not delete content; redistribute it. Every fact from the original README must appear in exactly one output file.
 
 ## Input Files
 
-The following files are provided as inputs. Extract them before beginning.
+Extract the following files before beginning.
 
 =============== FILE: inputs/README.md ===============
 # grok-cli

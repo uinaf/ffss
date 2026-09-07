@@ -22,4 +22,4 @@ formatter checked 4 tooling files. No boot, live, model, or teardown command ran
 
 Assess what this proves, identify unavailable evidence and unsafe lifecycle
 commands, and give the next scoped action. Do not substitute a tooling-only gate
-for native proof or run additional checks just to repeat the observed output.
+for native proof or rerun checks just to repeat the observed output.

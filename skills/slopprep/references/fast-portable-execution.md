@@ -2,22 +2,22 @@
 
 The repository owns verification. CI providers only provision a checkout,
 restore safe caches, inject scoped runner capabilities, select
-repository-owned lanes, invoke them, and aggregate results. Never let a
-provider, local agent, or developer shell carry separate validation logic.
+repository-owned lanes, invoke them, and aggregate results. No provider, local
+agent, or developer shell carries separate validation logic.
 
 ## Task graph
 
 - Extend the existing task graph or manifest before adding a runner or
   wrapper. For heterogeneous repositories, `mise` tasks with explicit
-  dependencies and sources are a suitable surface; use another established
-  runner when it already owns the graph.
+  dependencies and sources are suitable; use another established runner when
+  it already owns the graph.
 - Keep each command, dependency set, and test-file list in one live task
   owner. Compatibility scripts delegate to that task; contract tests inspect
   or execute the task the graph actually uses, never an unused wrapper.
-- Give independent checks separate tasks and run them in parallel, output
-  attributable per lane, every failure preserved. Tasks that write the same
-  generated directory or cache are not independent; isolate that state or
-  encode an ordering edge.
+- Give independent checks separate tasks run in parallel, output attributable
+  per lane, every failure preserved. Tasks that write the same generated
+  directory or cache are not independent; isolate that state or encode an
+  ordering edge.
 - Model generated artifacts as outputs of one task and dependencies of every
   consumer. Unless the runner hashes dependencies, each cached consumer must
   also fingerprint the generated files it reads. Prove the graph once without
@@ -27,15 +27,15 @@ provider, local agent, or developer shell carry separate validation logic.
 ## Selection and caching
 
 Use the owner's affected lanes for changed-code proof. Run the exhaustive path
-when required by that owner, shared-input changes, or uncertain coverage; its
+when that owner, shared-input changes, or uncertain coverage require it; its
 availability does not make every local iteration or handoff a full rerun.
 
 - Select affected work from explicit inputs, and exercise every change case
   the local contract claims to support, including deletions, renames, and
   untracked files. When freshness cannot safely represent a case, keep a
   forced full command and make merge-diff CI authoritative for it.
-- Treat task-runner freshness as an optimization, never as Git-equivalent
-  affected detection.
+- Task-runner freshness is an optimization, never Git-equivalent affected
+  detection.
 - Keep affected-input policy in one repository-owned map. When a CI adapter
   cannot consume it, run the exhaustive gate there instead of copying path
   filters into provider configuration.
@@ -60,8 +60,7 @@ availability does not make every local iteration or handoff a full rerun.
 
 - Exclude `.git`, dependency directories, build output, generated state, and
   large binaries from filesystem scans unless the scanner's policy explicitly
-  owns them; don't narrow detectors or disable verification just to improve
-  timing.
+  owns them; don't narrow detectors or disable verification to improve timing.
 - Check task-runner install behavior in clean CI: cache the auto-install
   once, or disable it and install the selected lane's declared tools.
 - Keep policy application, deployment, release, migration, and live
@@ -72,7 +71,6 @@ availability does not make every local iteration or handoff a full rerun.
   is authorized.
 
 Record four timings after a material change: unchanged, relevant-change,
-warm-full, and cold-full. Report the slowest lane and
-separate task time from provisioning, tool install, cache restore, and
-runner queue time. Optimize measured ownership boundaries, not total
-duration by guesswork.
+warm-full, and cold-full. Report the slowest lane and separate task time from
+provisioning, tool install, cache restore, and runner queue time. Optimize
+measured ownership boundaries, not total duration by guesswork.

@@ -6,6 +6,5 @@ tests and browser smoke passed. The command
 returned exit 0 with status `clean`, one valid attempt, web access off, and no
 findings.
 
-Write the final `closeout.md` for the user. Keep it concise but include enough
-evidence for another maintainer to understand what was reviewed and why the
-review is complete.
+Write the final `closeout.md` for the user: concise, with enough evidence for
+another maintainer to see what was reviewed and why the review is complete.

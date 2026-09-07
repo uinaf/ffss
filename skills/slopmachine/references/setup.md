@@ -9,7 +9,7 @@ slopmachine repo show --json
 ```
 
 If unregistered, register the repo with its actual forge, verification command,
-delivery policy, and reviewers. For example:
+delivery policy, and reviewers:
 
 ```bash
 slopmachine repo register --forge github --trust low \
@@ -17,8 +17,8 @@ slopmachine repo register --forge github --trust low \
   --bind review=slopguard
 ```
 
-Use `--forge gitlab` for GitLab.com or self-hosted GitLab repositories on
-standard HTTPS; `glab` host selection does not support custom-port URLs.
+Use `--forge gitlab` for GitLab.com or self-hosted GitLab on standard HTTPS;
+`glab` host selection does not support custom-port URLs.
 
 - Map forge-resident reviewers (bots that review on the change request) with
   `--forge-reviewer identity=login` so the machine corroborates their evidence

@@ -3,8 +3,8 @@
 ## Problem/Feature Description
 
 Clean the machine tells out of this config loader. Behavior must not change.
-Edit `src/loadConfig.ts` in place. The caller is shown for reference only;
-do not modify it.
+Edit `src/loadConfig.ts` in place. The caller is for reference only; do not
+modify it.
 
 ## Input Files
 

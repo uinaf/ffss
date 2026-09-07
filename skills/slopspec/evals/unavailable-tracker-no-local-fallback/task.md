@@ -2,7 +2,7 @@
 
 ## Problem/Feature Description
 
-The repository explicitly tracks all engineering work in Jira project `PAY`. The user says: "Save the agreed billing retry plan for the next session." This environment has authenticated GitHub access but no Jira connector, API credentials, or browser session.
+The repository tracks all engineering work in Jira project `PAY`. The user says: "Save the agreed billing retry plan for the next session." This environment has authenticated GitHub access but no Jira connector, API credentials, or browser session.
 
 Produce `planning-result.md` with the intended destination, a paste-ready Jira artifact, the exact publication blocker, and the next action. Do not create a GitHub issue, local plan file, or implementation change.
 

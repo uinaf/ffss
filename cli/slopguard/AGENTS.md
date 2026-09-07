@@ -14,8 +14,8 @@ independent code review.
 
 ## Boundaries
 
-- Keep the runtime entirely in Go: no shell or other-language runtime helpers
-  or wrappers around the binary.
+- Keep the runtime entirely in Go: no shell or other-language helpers or
+  wrappers around the binary.
 - Runtime dependencies are Git and the selected review harness.
 - The CLI reviews and reports; it never edits reviewed source, runs tests,
   commits, pushes, or invokes nested review workflows.
@@ -24,5 +24,5 @@ independent code review.
 - Parse provider output at the boundary and fail closed on ambiguous or invalid
   results.
 - Keep the bundled skill thin and aligned with the released CLI contract.
-- Treat JSON output as a stable machine contract and terminal output as a
-  separate renderer.
+- JSON output is a stable machine contract; terminal output is a separate
+  renderer.

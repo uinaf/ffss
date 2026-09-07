@@ -3,9 +3,9 @@
 ## Problem/Feature Description
 
 An agent added tests for our connection notice by copying its implementation
-into assertions. Copy and CSS changes now break the suite even though the
-product behavior has not changed. Clean `tests/connection-notice.test.ts` in
-place without weakening the actual contract. Do not modify the module.
+into assertions, so copy and CSS changes break the suite without any behavior
+change. Clean `tests/connection-notice.test.ts` in place without weakening the
+actual contract. Do not modify the module.
 
 The stable contract is deliberately small: an offline connection notice is an
 alert with kind `connection-error` and offers a `retry` action. Product copy,

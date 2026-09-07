@@ -2,9 +2,9 @@
 
 ## Problem/Feature Description
 
-The repository is hosted on GitHub, but its agent guidance says product work is tracked in Linear under team `SDK`. The current conversation began from Linear issue `SDK-41`, whose URL and existing body are provided below. The user has agreed on two additional acceptance criteria and says: "save this plan so another agent can pick it up."
+The repository is hosted on GitHub, but its agent guidance tracks product work in Linear team `SDK`. The conversation began from Linear issue `SDK-41`, whose URL and body are below. The user agreed on two additional acceptance criteria and says: "save this plan so another agent can pick it up."
 
-Prepare `planning-result.md` describing the durable destination, whether to update or create artifacts, the content that should change, and the verified resume point. Do not implement the feature.
+Produce `planning-result.md` describing the durable destination, whether to update or create artifacts, the content that should change, and the verified resume point. Do not implement the feature.
 
 ## Input Files
 

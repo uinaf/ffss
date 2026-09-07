@@ -2,8 +2,8 @@
 
 ## Problem/Feature Description
 
-The docs update on branch `docs/runbook-oncall` is complete and the repo's
-lint gate passed fresh (`make lint`, exit 0). Please open the change request.
+The docs update on branch `docs/runbook-oncall` is complete and the repo's lint
+gate passed fresh (`make lint`, exit 0). Open the change request.
 
 Repository facts, gathered a minute ago:
 
