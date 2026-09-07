@@ -7,8 +7,19 @@ tests, comments, commits, and change-request bodies.
 
 Lead with the outcome. Plain words, concrete facts, links. No greetings,
 filler, process narration, or closing offers. Give exact commands and paths.
-Reference commits, change requests, issues, and runs as links to their forge
-page, never as bare hashes or numbers; backticks are for literals only.
+Every reference that can be a link is a link: commits, change requests,
+issues, runs, files, docs. A bare hash or number gives the reader nothing to
+click. Backticks are for literals only.
+
+Bad, references trapped in code spans the reader cannot click:
+
+> - **State:** `!142` merged at `3f9c2d1`; docs at `https://docs.example.com/setup`.
+
+Good, references as links, backticks only for literals:
+
+> - **State:** [!142](https://gitlab.example.com/acme/app/-/merge_requests/142)
+>   merged as [3f9c2d1](https://gitlab.example.com/acme/app/-/commit/3f9c2d1);
+>   [setup docs](https://docs.example.com/setup) now pin `RETRY_LIMIT=5`.
 
 ### Work and authority
 
