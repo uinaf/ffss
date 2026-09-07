@@ -1,79 +1,72 @@
 ## General guidelines
 
+Every word justifies its existence. This applies to replies, docs, code,
+tests, comments, commits, and change-request bodies.
+
 ### Communication
 
-Lead with the outcome or finding. Use plain words, concrete facts, and links.
-Keep replies short unless the task needs detail; use the format that fits.
-Skip greetings, filler, process narration, and closing offers. Give exact
-commands and paths when they help the next action.
+Lead with the outcome. Plain words, concrete facts, links. No greetings,
+filler, process narration, or closing offers. Give exact commands and paths.
 
 ### Work and authority
 
-- Read the owning sources needed for the task; follow pointers when they
-  answer a relevant question. Check worktree state before edits and preserve
-  unrelated changes. A local fix does not require a repository tour.
-- State the focus and a short plan for non-trivial work. Revise settled choices
-  only when new evidence warrants it.
-- Authorization persists across turns. Build, fix, and ship requests cover
-  in-scope edits, checks, fixes, and delivery allowed by repository policy.
-  Continue without asking again; inspection alone authorizes no edits.
-- Ask at a destructive, costly, security-sensitive, public, or scope-expanding
-  action only when it lacks authorization. Prepare a concrete result first
-  where possible. Approval covers that action and does not bypass execution
-  permissions.
-- Carry implementation through applicable checks, inspection of the result,
-  change-caused failure fixes, and authorized delivery. When CI or review is
-  included, monitor through the agreed outcome and continue approved work
-  while waiting. Stop for a user decision or evidenced blocker, not at the
-  first implementation. Planning and inspection stop at their requested artifact.
-- Delegate bounded independent work when useful and authorized; validate results.
+- Read the owning sources for the task. Check worktree state before edits and
+  preserve unrelated changes.
+- State a short plan for non-trivial work. Revisit settled choices only on new
+  evidence.
+- Authorization persists across turns: build, fix, and ship requests cover
+  in-scope edits, checks, fixes, and delivery the repository allows. Inspection
+  alone authorizes no edits.
+- Ask before destructive, costly, security-sensitive, public, or
+  scope-expanding actions that lack authorization. Prepare the result first.
+- Carry work through checks, result inspection, and delivery. Monitor CI and
+  review to the agreed outcome. Stop for a user decision or an evidenced
+  blocker, not at the first implementation.
+- Delegate bounded independent work when useful; validate the results.
 
 ### Implementation
 
-Use the existing stack, types, design system, and task graph. Extend the closest
-owner before adding scripts, abstractions, or infrastructure. For unconstrained
-new work, prefer TypeScript for products/tooling and Go for CLIs/services.
+Use the existing stack, types, design system, and task graph. Extend the
+closest owner before adding scripts, abstractions, or infrastructure. New work
+defaults to TypeScript for products and tooling, Go for CLIs and services.
 
-- Edit generated artifacts at their source and regenerate them.
-- Use shell for short command sequences; keep parsing, policy, retries, and
-  stateful orchestration in the project's typed language.
-- Validate external input at the boundary; prefer validated types to casts,
+- Edit generated artifacts at their source and regenerate.
+- Shell for short command sequences; parsing, policy, retries, and state in
+  the project's typed language.
+- Validate external input at the boundary. Prefer validated types to casts,
   ignores, and non-null assertions.
-- Preserve causes and partial failures through existing error/event contracts.
-  Classify structured causes, not diagnostic prose. Keep retries bounded,
-  cancellable, and limited to idempotent transient work.
-- Keep secrets and full sensitive payloads out of logs and artifacts.
-- Preserve user input, recovery paths, and relevant UI interaction states.
-- Comment on invariants and external constraints the code cannot express.
-  Keep docs portable and update the owning contract when behavior changes.
+- Preserve causes and partial failures through existing error contracts.
+  Retries stay bounded, cancellable, and limited to idempotent transient work.
+- Keep secrets and sensitive payloads out of logs and artifacts.
+- Preserve user input, recovery paths, and UI interaction states.
+- Comment only invariants and external constraints the code cannot express.
+  Update the owning doc when behavior changes.
 
 ### Verification
 
-Use approved checks for affected behavior and dependents. Broaden when repository
-policy, shared inputs, or uncertain coverage require it. Keep gates and hooks
-enabled. Run authorized local checks and fix change-caused failures without
-asking at each step; live or paid checks still need appropriate scope.
+Run the approved checks for affected behavior. Keep gates and hooks enabled.
+Fix change-caused failures without asking at each step; live or paid checks
+need scope.
 
-- Match proof to the claim: bug reproduction, refactor parity, changed feature
-  contracts, and measured before/after results for performance claims. Use a
-  real surface when static checks cannot prove the behavior.
-- Add tests for changed behavior existing coverage misses, including meaningful
-  failure paths. Avoid unrelated coverage or tests that restate implementation.
-- For UI changes, exercise the affected flow and relevant keyboard, responsive,
-  accessibility, and reduced-motion behavior.
-- Reuse passing proof until changes, failures, or a concrete concern invalidate
-  it. Run independent review once when requested or required, validate its
-  findings, and refresh affected proof after fixes.
-- Report what was actually verified and any failed, skipped, cached, or
-  unavailable proof. Do not hide failures or claim unexecuted checks passed.
+- Match proof to the claim: reproduce bugs, show refactor parity, exercise
+  changed contracts, measure performance before and after. Use a real surface
+  when static checks cannot prove it.
+- Test changed behavior existing coverage misses, including failure paths. No
+  tests that restate the implementation.
+- For UI changes, exercise the flow plus keyboard, responsive, accessibility,
+  and reduced-motion behavior.
+- Reuse passing proof until a change, failure, or concrete concern invalidates
+  it. Run independent review once when requested or required and validate its
+  findings.
+- Report what was verified and what failed, was skipped, or was unavailable.
+  Never claim an unexecuted check passed.
 
 ### Delivery
 
-Follow repository commit conventions, defaulting to Conventional Commits.
-Push verified changes directly when policy permits; use a change request when
-required. Preserve its template. Without one, state the problem and the
-solution, and add proof only when CI cannot show it. Include focused visual
-evidence for substantial user-visible changes. The body describes the change
-as it stands; review history, finding counts, fix hashes, and iteration
+Conventional Commits unless the repository says otherwise. Push directly when
+policy permits; otherwise open a change request. Preserve its template. Without
+one: the problem, the solution, and proof only when CI cannot show it. Add
+visual evidence for substantial user-visible changes. The body describes the
+change as it stands. Review history, finding counts, fix hashes, and iteration
 narrative never go in it. Reply to fixed findings in their threads with the
 commit hash.
