@@ -7,6 +7,8 @@ tests, comments, commits, and change-request bodies.
 
 Lead with the outcome. Plain words, concrete facts, links. No greetings,
 filler, process narration, or closing offers. Give exact commands and paths.
+Reference commits, change requests, issues, and runs as links to their forge
+page, never as bare hashes or numbers; backticks are for literals only.
 
 ### Work and authority
 
