@@ -16,6 +16,10 @@ every websocket frame shipped uncompressed. The change negotiates
 permessage-deflate on the websocket server. Staging measurement against the
 busiest feed: median frame size down from 41 KB to 11 KB.
 
+Slopguard ran twice on this branch. The first pass raised a missing
+`Sec-WebSocket-Extensions` echo, fixed in `a1f2c3d`; the second pass was
+clean. The verification transcript is in the session log.
+
 The last three merged change requests in this repository were titled:
 
 - `fix(api): stop dropping auth renewals under clock skew`

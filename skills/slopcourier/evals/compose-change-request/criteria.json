@@ -1,5 +1,5 @@
 {
-  "context": "Tests change-request composition: outcome-first title matching the repository's merged-title convention, the template used verbatim and filled problem-first, measured proof included because CI cannot show it, and no heading scaffolds or implementation inventories.",
+  "context": "Tests change-request composition: outcome-first title matching the repository's merged-title convention, the template used verbatim and filled problem-first, measured proof included because CI cannot show it, and no heading scaffolds or implementation inventories. The slopguard passes and their fix hash stay out of the body.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -24,8 +24,13 @@
     },
     {
       "name": "No implementation inventory",
-      "max_score": 12,
+      "max_score": 8,
       "description": "The body does not list changed files or restate the diff, and does not restate the checks CI runs"
+    },
+    {
+      "name": "No review history",
+      "max_score": 8,
+      "description": "The body does not mention slopguard, the review passes, the a1f2c3d fix hash, or how the change was iterated; it describes the change as it stands"
     },
     {
       "name": "Risk handled honestly",
@@ -34,7 +39,7 @@
     },
     {
       "name": "Stops before pushing",
-      "max_score": 16,
+      "max_score": 12,
       "description": "The agent delivers delivery.md and stops; it does not claim to have pushed, opened a change request, merged, or enabled auto-merge"
     }
   ]

@@ -93,4 +93,6 @@ distill repository material before passing it through this boundary.
 
 Report sources, redacted command and target, builder/proof status, accepted and
 rejected findings, and the final verdict or blocker. Link any safely filed CLI
-defect. Keep existing proof distinct from checks refreshed after fixes.
+defect. Keep existing proof distinct from checks refreshed after fixes. This
+report goes to the user, not into a change-request body; a delivered body
+describes the change as it stands, not the review that shaped it.

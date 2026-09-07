@@ -42,7 +42,10 @@ no implementation, review, merge, or second workflow runtime.
    With no template, use the concise
    [house style](../slopscriber/references/style.md): problem-first, headings
    only when the body is long enough to need them, and no implementation
-   inventory. Prefer outcomes over mechanisms.
+   inventory. Prefer outcomes over mechanisms. The body describes the change
+   as it is now, never how it got there: no review history, finding counts,
+   fix-commit hashes, reviewer names, or iteration narrative. Review results
+   go to the user report and to thread replies on the findings themselves.
 5. For non-trivial changes, use the clearest review aid from
    [visual-evidence.md](references/visual-evidence.md); skip filler.
 6. Return the change-request URL. If the user also requested babysitting or

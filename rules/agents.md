@@ -75,4 +75,5 @@ Follow repository commit conventions, defaulting to Conventional Commits.
 Push verified changes directly when policy permits; use a change request when
 required. Preserve its template. Without one, describe the problem and solution
 and add proof CI cannot show. Include focused visual evidence for substantial
-user-visible changes. Reply to fixed findings with the commit hash.
+user-visible changes. Reply to fixed findings with the commit hash; keep
+review history, finding counts, and fix hashes out of the change-request body.
