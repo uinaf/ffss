@@ -1,5 +1,5 @@
-name: slopshipper bug report
-description: Report a reproducible slopshipper defect with sanitized diagnostics
+name: ffss bug report
+description: Report a reproducible ffss defect with sanitized diagnostics
 title: "bug: "
 labels:
   - bug
@@ -32,7 +32,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: slopshipper version
-      placeholder: slopshipper vX.Y.Z
+      label: Affected component and version
+      description: Name the CLI or skill and its release version or commit.
+      placeholder: slopguard vX.Y.Z or slopmachine skill at commit abc1234
     validations:
       required: true
