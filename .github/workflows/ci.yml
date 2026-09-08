@@ -206,6 +206,10 @@ jobs:
       - name: Require selected checks
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
+          CLILIB_SELECTED: ${{ github.event_name == 'workflow_dispatch' && 'true' || needs.changes.outputs.clilib }}
+          SLOPMACHINE_SELECTED: ${{ github.event_name == 'workflow_dispatch' && 'true' || needs.changes.outputs.slopmachine }}
+          SLOPGUARD_SELECTED: ${{ github.event_name == 'workflow_dispatch' && 'true' || needs.changes.outputs.slopguard }}
+          SKILLS_SELECTED: ${{ github.event_name == 'workflow_dispatch' && 'true' || needs.changes.outputs.skills }}
           CLILIB_RESULT: ${{ needs.clilib.result }}
           CLILIB_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.clilib == 'true') && 'success' || 'skipped' }}
           SLOPMACHINE_RESULT: ${{ needs.slopmachine.result }}
@@ -219,6 +223,10 @@ jobs:
           SKILLS_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.skills == 'true') && 'success' || 'skipped' }}
         run: |
           test "$CHANGES_RESULT" = success
+          test "$CLILIB_SELECTED" = true || test "$CLILIB_SELECTED" = false
+          test "$SLOPMACHINE_SELECTED" = true || test "$SLOPMACHINE_SELECTED" = false
+          test "$SLOPGUARD_SELECTED" = true || test "$SLOPGUARD_SELECTED" = false
+          test "$SKILLS_SELECTED" = true || test "$SKILLS_SELECTED" = false
           test "$CLILIB_RESULT" = "$CLILIB_EXPECTED"
           test "$SLOPMACHINE_RESULT" = "$SLOPMACHINE_EXPECTED"
           test "$SLOPGUARD_RESULT" = "$SLOPGUARD_EXPECTED"
