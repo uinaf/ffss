@@ -195,3 +195,33 @@ jobs:
       - name: Lint every skill package
         run: npm run lint
         working-directory: tools/skill-evals
+
+  verify:
+    name: Repository checks
+    if: always()
+    needs: [changes, clilib, slopmachine, slopguard, slopguard-darwin, slopguard-integration, skills]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require selected checks
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CLILIB_RESULT: ${{ needs.clilib.result }}
+          CLILIB_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.clilib == 'true') && 'success' || 'skipped' }}
+          SLOPMACHINE_RESULT: ${{ needs.slopmachine.result }}
+          SLOPMACHINE_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.slopmachine == 'true') && 'success' || 'skipped' }}
+          SLOPGUARD_RESULT: ${{ needs.slopguard.result }}
+          SLOPGUARD_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.slopguard == 'true') && 'success' || 'skipped' }}
+          DARWIN_RESULT: ${{ needs.slopguard-darwin.result }}
+          DARWIN_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && needs.changes.outputs.slopguard == 'true')) && 'success' || 'skipped' }}
+          INTEGRATION_RESULT: ${{ needs.slopguard-integration.result }}
+          SKILLS_RESULT: ${{ needs.skills.result }}
+          SKILLS_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.skills == 'true') && 'success' || 'skipped' }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          test "$CLILIB_RESULT" = "$CLILIB_EXPECTED"
+          test "$SLOPMACHINE_RESULT" = "$SLOPMACHINE_EXPECTED"
+          test "$SLOPGUARD_RESULT" = "$SLOPGUARD_EXPECTED"
+          test "$DARWIN_RESULT" = "$DARWIN_EXPECTED"
+          test "$INTEGRATION_RESULT" = "$SLOPGUARD_EXPECTED"
+          test "$SKILLS_RESULT" = "$SKILLS_EXPECTED"
