@@ -10,10 +10,7 @@ its contract; independent review belongs to the required reviewer.
 
 ## Observe
 
-- With an active slopmachine run, `slopmachine watch --once` (or
-  `--interval SECONDS`) is the authority. Act on the cause it records;
-  [slopmachine](../slopmachine/SKILL.md) owns the signal vocabulary.
-- Otherwise poll the forge CLI (`gh` / `glab`): checks, pending review
+- Poll the forge CLI (`gh` / `glab`): checks, pending review
   requests, verdicts (a `CHANGES_REQUESTED` review may have no inline thread),
   unresolved threads, top-level comments. Bots often post findings as plain
   comments.
@@ -30,7 +27,10 @@ its contract; independent review belongs to the required reviewer.
    outside the goal become tracker items, not commits.
 2. Batch accepted findings into one rework pass. Focused checks while editing,
    then required gates and affected runtime proof. Refresh independent review
-   once on the final target, not per thread.
+   when [slopguard](../slopguard/SKILL.md#when) or repository policy requires it,
+   on the final target rather than per thread. Apply
+   [slopguard's convergence rule](../slopguard/SKILL.md#convergence) to repeated
+   findings; an unresolved blocking review still prevents merge.
 3. Push verified fixes; reply on each addressed thread with the commit hash.
    No force-push without approval. Let requested reviewers finish on the new
    head; don't start duplicates.
@@ -49,5 +49,3 @@ hashes, nothing that doesn't advance the thread.
   method and report the merged commit; babysitting carries merge authority.
   Hold only when asked. Never merge past a blocking human review or an open
   thread.
-- On a slopmachine run, route rework through `slopmachine` commands and let
-  `watch` observe the merge; settlement never comes from your narration.

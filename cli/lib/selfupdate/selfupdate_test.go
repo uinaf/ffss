@@ -98,12 +98,12 @@ func options(t *testing.T, member, current string, server bool) Options {
 
 func forEachMember(t *testing.T, run func(*testing.T, string)) {
 	t.Helper()
-	for _, member := range []string{"slopguard", "slopmachine"} {
+	for _, member := range []string{"slopguard", "example-cli"} {
 		t.Run(member, func(t *testing.T) { run(t, member) })
 	}
 }
 
-func TestRunUpdatesBothMembers(t *testing.T) {
+func TestRunUpdatesMembers(t *testing.T) {
 	forEachMember(t, func(t *testing.T, member string) {
 		opts := options(t, member, "v1.0.0", true)
 		result, err := Run(t.Context(), opts)
@@ -281,14 +281,14 @@ func TestTransportRails(t *testing.T) {
 }
 
 func TestNoPublishedMemberRelease(t *testing.T) {
-	opts := options(t, "slopmachine", "v1.0.0", false)
+	opts := options(t, "example-cli", "v1.0.0", false)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `[{"tag_name":"slopguard/v9.9.9"}]`)
 	}))
 	t.Cleanup(server.Close)
 	opts.APIBase = server.URL + "/releases-api"
 	opts.DownloadBase = server.URL
-	if _, err := Run(t.Context(), opts); err == nil || !strings.Contains(err.Error(), "no published slopmachine release") {
+	if _, err := Run(t.Context(), opts); err == nil || !strings.Contains(err.Error(), "no published example-cli release") {
 		t.Fatalf("error = %v", err)
 	}
 }

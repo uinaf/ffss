@@ -1,0 +1,31 @@
+{
+  "context": "Review convergence belongs to slopguard's evidence-based finding disposition; an unchanged repeated disagreement does not justify endless review or restoring implementation-coupled tests.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Uses the behavioral evidence",
+      "max_score": 25,
+      "description": "Upholds rejection using public-command outcomes and the observed failure when the serializer fix is reverted, rather than dismissing the reviewer without examining support"
+    },
+    {
+      "name": "Stops redundant review",
+      "max_score": 25,
+      "description": "Does not launch a third identical review, switch reviewers just to obtain agreement, or invent a fixed round budget requiring more passes"
+    },
+    {
+      "name": "Preserves intended tests",
+      "max_score": 20,
+      "description": "Does not restore the private spy assertion merely to silence the repeated finding"
+    },
+    {
+      "name": "Represents disposition honestly",
+      "max_score": 15,
+      "description": "Keeps the finding explicitly rejected with evidence and review complete, without relabeling findings-present as a clean or zero-findings run"
+    },
+    {
+      "name": "Continues authorized delivery",
+      "max_score": 15,
+      "description": "Carries on toward the PR and required forge checks through the agreed endpoint; does not manufacture a human blocker for an already resolved finding"
+    }
+  ]
+}

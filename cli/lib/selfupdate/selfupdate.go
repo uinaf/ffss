@@ -29,7 +29,7 @@ import (
 // Options configures one selfupdate pass. Zero-value fields take the
 // production defaults.
 type Options struct {
-	// Member is the lowercase released product name, for example "slopmachine".
+	// Member is the lowercase released product name, for example "slopguard".
 	Member string
 	// CurrentVersion is the running binary's release version (vX.Y.Z);
 	// anything else is a non-release build, which selfupdate refuses.

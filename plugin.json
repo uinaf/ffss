@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ffss",
-  "description": "The flipflopslopstack skill set: drive slopmachine governed runs, slopguard reviews, delivery, babysitting, planning, docs, repo prep, and de-slopping.",
+  "description": "The flipflopslopstack skill set: execute agreed plans, review with slopguard, deliver, babysit, plan, maintain docs, prepare repos, and de-slop.",
   "author": {
     "name": "uinaf",
     "url": "https://github.com/uinaf/ffss"

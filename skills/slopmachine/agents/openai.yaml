@@ -1,7 +1,7 @@
 interface:
   display_name: "slopmachine"
-  short_description: "Run a plan with authorization and evidence-backed loops"
-  default_prompt: "Use $slopmachine to execute the agreed plan through its required verification, review, and delivery gates."
+  short_description: "Carry an agreed plan through implementation and delivery"
+  default_prompt: "Use $slopmachine to complete the agreed plan through implementation, verification, review, and delivery, honoring the requested hold or merge endpoint."
 
 policy:
   allow_implicit_invocation: true

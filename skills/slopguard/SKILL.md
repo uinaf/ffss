@@ -13,14 +13,15 @@ rules: [security.md](references/security.md).
 ## When
 
 - Once, after the completed change passes its checks and before delivery or
-  handoff; in slopmachine, at the unit's review gate. Not per edit, test run,
-  thread fix, or turn.
+  handoff. Not per edit, test run, thread fix, or turn.
 - An explicit request may target unfinished work; report missing verification
   without calling it closeout.
 - Reuse a valid result while target, base, contract, and requirements are
   unchanged. Never rerun for a cleaner verdict.
-- After post-review changes: batch fixes, rerun affected checks, review the
-  final target once.
+- After post-review changes: batch fixes and rerun affected checks. Review the
+  final target when behavior, contracts, or review-relevant risk changed, or
+  repository policy requires it. Inspect clerical edits directly; keep the
+  prior review's revision and scope explicit.
 
 ## Prepare
 
@@ -72,18 +73,30 @@ before passing it.
 ## Validate and close
 
 1. Findings are hypotheses. Check each against the contract, the exact code,
-   and sibling cases in scope.
+   and sibling cases in scope. Accept only with evidence of a defect or unmet
+   requirement; plausibility or low fix cost is insufficient.
 2. Reject incorrect, out-of-scope, or invariant-prevented findings with a short
    reason. Apply accepted fixes together at their owning boundaries.
 3. Fixes must land in the next frozen target: worktree for local, a commit on
    the branch for branch, an amended commit for commit mode. Without commit
    authority, report the blocker.
-4. After fixes, refresh affected checks and review the final target with the
-   same provider and mode. `source_changed` invalidates the result; freeze a
-   new run once edits stop.
+4. After fixes, refresh affected checks. When re-review is warranted, use the
+   same provider and mode on the final target. `source_changed` invalidates
+   the result; freeze a new run once edits stop. Never present an earlier
+   frozen result as covering later edits.
 5. Done at exit 0 with no findings, or exit 1 with every finding explicitly
    rejected. Exit 1 is findings, never clean. Exit 2 is an operational
    failure: [results.md](references/results.md).
+
+## Convergence
+
+Carry accepted fixes and evidence-backed rejections forward. A repeated finding
+needs new evidence to reopen it; another model verdict alone is not new
+evidence. If the same disagreement returns after a fix or reasoned rejection,
+compare the evidence once. Reject a disproven claim; if a material uncertainty
+remains, state the decision needed and pause that part of delivery. Continue
+independent work. Never rerun unchanged inputs or alternate fixes merely to
+obtain agreement, and never treat an unresolved required review as passed.
 
 ## Report
 
