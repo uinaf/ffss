@@ -1,0 +1,11 @@
+{
+  "context": "Decision-only counterexample: comparable measurements with a substantial gain and valid correctness proof should be accepted without ritual reruns.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {"name": "Gain calculated correctly", "max_score": 25, "description": "Reports baseline mean 100 ms and candidate mean 80 ms, a 20% latency reduction on the measured workload"},
+    {"name": "Comparability recognized", "max_score": 20, "description": "Recognizes that command, input, environment, cache state, and measurement budget match, with interleaved repeated samples"},
+    {"name": "Evidence accepted proportionally", "max_score": 25, "description": "Accepts the 10% local benchmark target as met: the 20 ms difference is clearly larger than the observed sample variation and output-equivalence proof passed"},
+    {"name": "Proof reused", "max_score": 20, "description": "Does not require fresh runs, more repetitions, a universal statistical threshold, or new instruments without identifying a concrete unresolved concern"},
+    {"name": "Claim scoped", "max_score": 10, "description": "Limits the conclusion to this workload and observed evidence; does not infer production gains, certify the entire unattended lifecycle, or authorize shipping"}
+  ]
+}

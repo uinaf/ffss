@@ -1,0 +1,11 @@
+{
+  "context": "Planning counterexample: consequential-assumption guidance must not invent discovery gates or reopen established feasibility.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {"name": "One ready issue", "max_score": 25, "description": "Drafts one cohesive issue, without a parent hierarchy, blocking spike, discovery phase, or separate code/docs/test tickets"},
+    {"name": "Settled proof reused", "max_score": 25, "description": "Uses the existing alias capability and passing current-base contract tests without requiring another feasibility investigation or renewed approval"},
+    {"name": "Acceptance preserves decisions", "max_score": 30, "description": "Captures the new and old names, one-release compatibility, warning, new-key precedence, documentation, and relevant compatibility tests"},
+    {"name": "Changed behavior still verified", "max_score": 10, "description": "Retains verification of the actual rename and precedence behavior rather than treating existing loader tests as proof the future change is complete"},
+    {"name": "Draft scope held", "max_score": 10, "description": "Does not publish, implement, create a second backlog, or claim the change is already delivered"}
+  ]
+}

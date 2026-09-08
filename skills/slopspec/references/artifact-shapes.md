@@ -16,6 +16,11 @@ conditions. A parent adds child outcomes and dependencies; each child names its
 parent and the proof of its own delivered behavior. Omit empty sections; no
 epic exists to hold one issue.
 
+When an unresolved assumption could invalidate dependent work, record the
+assumption, smallest bounded validation, and result that permits or stops that
+work. Make validation a blocker only where its answer is needed; preserve
+settled evidence and keep independent work ready.
+
 Slice through the layers needed to deliver behavior. Size work for one fresh
 agent context, including verification. Do not split code, docs, and tests into
 tickets when none can land alone. For broad migrations where vertical slices
