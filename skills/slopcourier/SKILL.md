@@ -1,6 +1,6 @@
 ---
 name: slopcourier
-description: "Open or update a change request for completed, verified work. Use for change-request delivery, including slopmachine DELIVER."
+description: "Open or update a change request for completed, verified work. Use for change-request delivery."
 ---
 
 # Slopcourier
@@ -10,7 +10,7 @@ implementation, review, merge, or second workflow runtime.
 
 ## Preconditions
 
-- Authorized by the user or a slopmachine status allowing `deliver`.
+- Authorized by the user's request or agreed execution plan.
   Preparation-only requests produce a draft and stop.
 - The change is complete and its required gates passed on this revision. Don't
   repeat passing proof without new changes or concerns. Report missing or
@@ -22,8 +22,8 @@ implementation, review, merge, or second workflow runtime.
   manufacture source-shape tests to make a refactor fail on revert.
 - Check the worktree and `git log <default>..HEAD` for unrelated changes.
   Deliver only the intended scope and explain every hunk.
-- `delivery_mode: direct-trunk` is out of lane; its trunk commit is recorded
-  through `slopmachine deliver` with `commit_sha`.
+- Authorized direct delivery to the default branch is outside this skill's
+  change-request lane; follow repository policy and verify the pushed commit.
 
 ## Deliver
 
@@ -44,12 +44,6 @@ implementation, review, merge, or second workflow runtime.
    narrative. Review results go to the user and to thread replies.
 5. Non-trivial changes get one review aid from
    [visual-evidence.md](references/visual-evidence.md).
-6. Return the URL. Babysitting or merge, if requested, continues with
-   slopnanny. Delivery alone authorizes no merge, auto-merge, branch deletion,
-   or rework.
-
-## Slopmachine handoff
-
-Read `delivery_mode` from status. Send the URL and delivered head as
-`commit_sha` through `slopmachine deliver` stdin evidence, per its
-[validate-then-apply protocol](../slopmachine/SKILL.md).
+6. Return the URL and delivered commit. Babysitting or merge, if requested,
+   continues with slopnanny. Delivery alone authorizes no merge, auto-merge,
+   branch deletion, or rework.

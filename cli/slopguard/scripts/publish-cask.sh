@@ -33,7 +33,6 @@ done
 # Ruby #{version} interpolation keeps `brew audit` treating the URL as versioned.
 base='https://github.com/uinaf/ffss/releases/download/'"${member}"'%2Fv#{version}'
 case "$member" in
-  slopmachine) description="Deterministic and structured approach to slop cannoning" ;;
   slopguard) description="Structured independent code review as a CLI and agent skill" ;;
   *) description="$member" ;;
 esac
@@ -89,8 +88,7 @@ CASK
 
 content_b64=$(base64 < "$rendered" | tr -d '\n')
 
-# Both member releases write to the tap; a stale sha means a concurrent
-# write, so refetch and retry instead of failing the release.
+# A stale sha means a concurrent tap write; refetch and retry.
 for attempt in 1 2 3; do
   existing_sha=
   existing_version=

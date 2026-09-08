@@ -1,0 +1,31 @@
+{
+  "context": "A matching approved plan authorizes execution through repository-permitted delivery without another release gate or a workflow binary.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Continues within existing authority",
+      "max_score": 25,
+      "description": "Proceeds with implementation without asking the user to reconfirm the plan, authorize continuation, or install slopmachine"
+    },
+    {
+      "name": "Completes the actual scope",
+      "max_score": 20,
+      "description": "Includes the JSON flag and its output contract docs in dependency order, existing integration proof, and the requested slopguard review"
+    },
+    {
+      "name": "Carries delivery to the endpoint",
+      "max_score": 30,
+      "description": "Includes PR delivery and babysitting required CI/review through squash merge, with actual forge confirmation before reporting merged; does not stop at a commit or open PR"
+    },
+    {
+      "name": "Uses existing workflow owners",
+      "max_score": 15,
+      "description": "Routes review, PR delivery, and babysitting to slopguard, slopcourier, and slopnanny without inventing a database, state protocol, or replacement CLI"
+    },
+    {
+      "name": "Evidence remains truthful",
+      "max_score": 10,
+      "description": "Presents proposed actions, not fabricated implementation, passing checks, review, PR, or merge results"
+    }
+  ]
+}

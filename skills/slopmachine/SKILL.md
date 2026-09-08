@@ -1,47 +1,76 @@
 ---
 name: slopmachine
-description: "Execute an agreed plan through the slopmachine CLI when its governed workflow is requested. Not for ordinary edits or planning."
+description: "Execute an agreed plan through implementation, verification, review, and delivery. Use when asked to run a plan end to end or work slopmachine-style; not for planning or assessment alone."
 ---
 
 # Slopmachine
 
-The CLI owns state and transitions; you implement and supply real evidence.
+Carry the agreed plan to its requested outcome. Use the current coding harness
+and repository workflow; this skill needs no slopmachine binary or database.
 
-Use the installed binary (`command -v slopmachine`, `slopmachine version`).
-If missing, report it and use the approved host installation; never invent a
-second runtime.
+## Establish the contract
 
-## Select the work
+Read the agreed plan, repository rules, and current worktree. Identify the
+acceptance criteria, dependencies, required checks and reviewers, and delivery
+endpoint from the conversation and owning sources. Use an existing plan or
+harness task list for progress; don't create a second tracking system.
 
-`slopmachine repo show --json` for the profile, then:
+A request to run, start, continue, or resume authorizes the matching work.
+Preserve that authorization across turns. Make routine implementation choices
+yourself; ask only when missing information materially changes scope, authority,
+or correctness. Complete independent work while a decision is pending.
+Assessment and preparation requests authorize only those deliverables.
 
-```bash
-slopmachine status --json --fields state,run_id,next_action,allowed_commands,required_evidence,intake_revision,required_reviewers,completed_reviewers,delivered_units,delivery_mode,blocker,decision_question,evidence_verification,route_ready,routing_policy_version
-```
+User instructions take precedence over skill guidance. If a skill would stop
+authorized work, identify its exact instruction and check whether it applies
+before treating it as a blocker. Respect an explicit hold or narrower endpoint.
 
-- Unregistered repo, new run, or intake awaiting release:
-  [setup.md](references/setup.md). Several open runs and no task match: ask
-  which to resume; never replace a blocked run.
-- Before the first mutation: [protocol.md](references/protocol.md) for
-  dry-run validation, stdin payloads, and storage rules.
-- After release or on resume: [execution.md](references/execution.md) for
-  verification, review, delivery, recovery; [status.md](references/status.md)
-  for field meanings and delivered-unit signals.
+## Execute
 
-## Authority and continuation
+- Work in dependency order. Batch independent reads and checks. Delegate
+  bounded independent work when useful and permitted, keep working alongside
+  it, and inspect the results before integrating them. After a dependency lands,
+  reconcile dependent branches with the new base before verifying and merging.
+- Implement the full requested behavior with focused edits. Fix nearby issues
+  only when they prevent the requested outcome; report unrelated findings
+  separately. Reopen settled choices only when new evidence warrants it.
+- Run repository-approved checks and exercise changed behavior. Keep permanent
+  tests proportional to the contract and existing coverage. Passing checks
+  need repeating only after relevant changes, failures, or concrete concerns.
+- Fix change-caused failures and rerun affected checks. For external failures,
+  diagnose the cause; retry only transient operations with a bounded strategy.
+  Respect provider cooldowns; authentication and approval failures need their
+  actual remedy.
+  Preserve failing proof and continue other ready work when one part is blocked.
+- After checks pass, use [slopguard](../slopguard/SKILL.md) for independent
+  review and honor any other required reviewers. Validate findings against the
+  contract; follow slopguard's convergence rule instead of chasing a clean
+  verdict through repeated calls.
 
-Run, start, execute, continue, or resume releases the intake matching the
-agreed plan. Preparation or inspection stops at `AWAITING_RELEASE`. Ask before
-releasing a materially different intake; never re-ask for an authorized one.
+## Deliver and settle
 
-Obey `next_action`, `allowed_commands`, and `required_evidence`. Validate each
-mutation with `--dry-run --json`, then apply. Use the returned status; re-read
-after errors, plain output, or external changes. A dry-run is not persisted.
+Deliver through the repository's permitted path after required proof and review.
+For a change request, use [slopcourier](../slopcourier/SKILL.md), then
+[slopnanny](../slopnanny/SKILL.md) through review, CI, and merge unless the user
+requested a hold or delivery-only endpoint. For authorized direct delivery,
+verify the pushed commit and required remote checks. Creating a change request
+is not completion when the agreed outcome includes merge.
 
-Continue build, verification, review, rework, and delivery as status permits.
-Reuse accepted evidence on unchanged state; refresh when invalidated.
-`AWAITING_SIGNALS` is active: observe the forge and work other ready units.
+Verify delivery against the forge's actual head and status. A missing tool,
+unavailable check, or inaccessible forge is a specific limitation to resolve or
+report, never passing evidence. Don't bypass a required gate to finish.
 
-Finish at `RUN_DONE`. Stop earlier only for missing release authority, a
-pending decision, or a blocker needing human recovery. Report the outcome or
-exact blocker with waiting change-request URLs.
+## Continue and report
+
+Give brief updates when findings, decisions, or blockers change. Before
+compaction or a handoff, preserve the agreed scope, authorization, decisions,
+completed work, valid proof and its revision, delivery URLs, and outstanding
+work in the existing tracking surface. On resume, reconcile that record with
+the worktree and forge; reuse valid proof and continue from the actual state.
+Keep user and repository requirements distinct from earlier agent suggestions;
+review history must not become a new mandatory gate in the handoff.
+
+End when the requested outcome is verified, or remaining work needs a user
+decision or external recovery. Report the result, proof, delivery links, and
+anything incomplete with its cause. A promised next step within scope is work
+to perform before ending the turn.

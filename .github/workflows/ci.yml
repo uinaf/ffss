@@ -19,7 +19,6 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       clilib: ${{ steps.filter.outputs.clilib }}
-      slopmachine: ${{ steps.filter.outputs.slopmachine }}
       slopguard: ${{ steps.filter.outputs.slopguard }}
       skills: ${{ steps.filter.outputs.skills }}
     steps:
@@ -32,10 +31,6 @@ jobs:
           filters: |
             clilib:
               - 'cli/lib/**'
-            slopmachine:
-              - 'cli/slopmachine/**'
-              - 'cli/lib/**'
-              - 'skills/slopmachine/**'
             slopguard:
               - 'cli/slopguard/**'
               - 'cli/lib/**'
@@ -69,32 +64,6 @@ jobs:
           key: go-clilib-${{ runner.os }}-${{ hashFiles('cli/lib/go.mod', 'cli/lib/go.sum', 'cli/lib/mise.toml') }}
           restore-keys: |
             go-clilib-${{ runner.os }}-
-      - run: mise run verify
-
-  slopmachine:
-    name: slopmachine verify
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.slopmachine == 'true'
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: cli/slopmachine
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
-        with:
-          working_directory: cli/slopmachine
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-            ~/Library/Caches/go-build
-          key: go-slopmachine-${{ runner.os }}-${{ hashFiles('cli/slopmachine/go.sum', 'cli/slopmachine/mise.toml') }}
-          restore-keys: |
-            go-slopmachine-${{ runner.os }}-
       - run: mise run verify
 
   slopguard:
@@ -199,7 +168,7 @@ jobs:
   verify:
     name: Repository checks
     if: always()
-    needs: [changes, clilib, slopmachine, slopguard, slopguard-darwin, slopguard-integration, skills]
+    needs: [changes, clilib, slopguard, slopguard-darwin, slopguard-integration, skills]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -207,13 +176,10 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           CLILIB_SELECTED: ${{ github.event_name == 'workflow_dispatch' && 'true' || needs.changes.outputs.clilib }}
-          SLOPMACHINE_SELECTED: ${{ github.event_name == 'workflow_dispatch' && 'true' || needs.changes.outputs.slopmachine }}
           SLOPGUARD_SELECTED: ${{ github.event_name == 'workflow_dispatch' && 'true' || needs.changes.outputs.slopguard }}
           SKILLS_SELECTED: ${{ github.event_name == 'workflow_dispatch' && 'true' || needs.changes.outputs.skills }}
           CLILIB_RESULT: ${{ needs.clilib.result }}
           CLILIB_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.clilib == 'true') && 'success' || 'skipped' }}
-          SLOPMACHINE_RESULT: ${{ needs.slopmachine.result }}
-          SLOPMACHINE_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.slopmachine == 'true') && 'success' || 'skipped' }}
           SLOPGUARD_RESULT: ${{ needs.slopguard.result }}
           SLOPGUARD_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.slopguard == 'true') && 'success' || 'skipped' }}
           DARWIN_RESULT: ${{ needs.slopguard-darwin.result }}
@@ -224,11 +190,9 @@ jobs:
         run: |
           test "$CHANGES_RESULT" = success
           test "$CLILIB_SELECTED" = true || test "$CLILIB_SELECTED" = false
-          test "$SLOPMACHINE_SELECTED" = true || test "$SLOPMACHINE_SELECTED" = false
           test "$SLOPGUARD_SELECTED" = true || test "$SLOPGUARD_SELECTED" = false
           test "$SKILLS_SELECTED" = true || test "$SKILLS_SELECTED" = false
           test "$CLILIB_RESULT" = "$CLILIB_EXPECTED"
-          test "$SLOPMACHINE_RESULT" = "$SLOPMACHINE_EXPECTED"
           test "$SLOPGUARD_RESULT" = "$SLOPGUARD_EXPECTED"
           test "$DARWIN_RESULT" = "$DARWIN_EXPECTED"
           test "$INTEGRATION_RESULT" = "$SLOPGUARD_EXPECTED"

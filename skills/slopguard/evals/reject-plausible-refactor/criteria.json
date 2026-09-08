@@ -1,0 +1,31 @@
+{
+  "context": "Reject a plausible but invariant-prevented finding without a cheap scope-expanding refactor, and inspect a later clerical edit directly while preserving the frozen review's actual revision.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Rejects using the actual invariant",
+      "max_score": 30,
+      "description": "Rejects the finding because the sole call receives the schema-validated integer limit with default 20 and maximum 100; cites the omitted-limit HTTP result as supporting evidence rather than accepting plausibility or low fix cost"
+    },
+    {
+      "name": "Preserves scope",
+      "max_score": 20,
+      "description": "Does not propose a shared normalizer, migrate sibling endpoints, add redundant guards or tests, or otherwise change working code merely to accommodate the finding"
+    },
+    {
+      "name": "Inspects clerical change proportionately",
+      "max_score": 20,
+      "description": "Inspects the complete receive-spelling diff directly and does not request another reviewer pass or rerun passing checks solely because that comment changed"
+    },
+    {
+      "name": "Keeps review evidence precise",
+      "max_score": 20,
+      "description": "Records exit 1 with the finding explicitly rejected, preserves a31dc70 as the frozen independent review target, and identifies the b82e104 comment edit as separately inspected; does not claim zero findings or that the earlier reviewer covered b82e104"
+    },
+    {
+      "name": "Continues authorized delivery",
+      "max_score": 10,
+      "description": "Considers the review disposition complete and continues the existing delivery path without asking for permission to reject the disproven finding, seeking a cleaner verdict, or claiming unobserved delivery"
+    }
+  ]
+}

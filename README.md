@@ -2,15 +2,14 @@
 
 # uinaf/ffss
 
-**ffss**, the flipflopslopstack. A state machine that doesn't believe the
-agent, a reviewer that doesn't like the agent, and skills so the agent behaves.
+**ffss**, the flipflopslopstack. A reviewer that doesn't like the agent,
+and skills so the agent finishes the job.
 Ships slop; checks receipts.
 
-## CLIs
+## CLI
 
 | CLI | What it does |
 | --- | --- |
-| [`slopmachine`](cli/slopmachine/) | Evidence-gated implementation workflow with resumable state and forge-verified delivery |
 | [`slopguard`](cli/slopguard/) | Independent second-model code review with stable terminal and JSON output |
 
 ## Skills
@@ -19,7 +18,7 @@ One job each.
 
 | Skill | Use it for |
 | --- | --- |
-| [`slopmachine`](skills/slopmachine/) | Running an agreed plan through build, verification, review, and delivery |
+| [`slopmachine`](skills/slopmachine/) | Completing an agreed plan through implementation, verification, review, and delivery |
 | [`slopguard`](skills/slopguard/) | Reviewing one completed change with an independent model |
 | [`slopcourier`](skills/slopcourier/) | Opening a change request for completed, verified work |
 | [`slopnanny`](skills/slopnanny/) | Monitoring a change request through review, CI, and merge |
@@ -31,13 +30,12 @@ One job each.
 
 ## Installation
 
-### CLIs
+### CLI
 
 macOS, from the `uinaf/tap` Homebrew tap (signed):
 
 ```bash
-brew install --cask uinaf/tap/slopmachine uinaf/tap/slopguard
-slopmachine version
+brew install --cask uinaf/tap/slopguard
 slopguard --version
 ```
 
@@ -45,16 +43,12 @@ Linux, or macOS without Homebrew (amd64 or arm64):
 
 ```bash
 curl --proto '=https' --tlsv1.2 -fsSL \
-  https://raw.githubusercontent.com/uinaf/ffss/main/cli/slopmachine/install.sh | sh
-curl --proto '=https' --tlsv1.2 -fsSL \
   https://raw.githubusercontent.com/uinaf/ffss/main/cli/slopguard/install.sh | sh
-~/.local/bin/slopmachine version
 ~/.local/bin/slopguard --version
 ```
 
-The installers verify release checksums and default to `~/.local/bin`.
-Verification details: [slopmachine](cli/slopmachine/README.md#install),
-[slopguard](cli/slopguard/README.md#install).
+The installer verifies release checksums and defaults to `~/.local/bin`.
+Verification details: [slopguard](cli/slopguard/README.md#install).
 
 ### Plugin
 
