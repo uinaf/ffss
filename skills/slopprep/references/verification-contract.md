@@ -36,10 +36,13 @@ improvement is authorized; during inspection, report the gap and its owner.
 | best of several approaches | fixture set plus a scoring script that sweeps every candidate |
 
 For optimization, record a representative baseline before editing, identify
-the bottleneck and hypothesis, and attribute the measured change. Use a scored
-sweep only when choosing among competing approaches. Report failed hypotheses
-as well as gains. Reusable instruments belong in the existing task graph;
-one-task experiments stay in attempt-scoped scratch.
+the bottleneck and hypothesis, and attribute the measured change. Compare the
+same command, inputs, environment, cache state, and measurement budget. Use
+enough repeated samples to distinguish a gain from run-to-run variation;
+otherwise report it as unproven. Use a scored sweep only when choosing among
+competing approaches. Report failed hypotheses as well as gains. Reusable
+instruments belong in the existing task graph; one-task experiments stay in
+attempt-scoped scratch.
 
 ## Repository Contract
 

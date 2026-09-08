@@ -1,0 +1,11 @@
+{
+  "context": "Planning artifact: an unverified replay capability can invalidate dependent work, while an independent accessibility change remains ready.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {"name": "Assumption explicit", "max_score": 20, "description": "Names the unproven 72-hour replay guarantee and explains why cursor recovery depends on it"},
+    {"name": "Bounded validation", "max_score": 25, "description": "Defines a small validation using the allowed docs and local fixture, including what evidence is needed; does not pretend a fixture alone proves the provider's retention guarantee"},
+    {"name": "Proceed and stop outcomes", "max_score": 25, "description": "States that verified 72-hour replay permits dependent implementation, while unsupported or unresolved retention blocks that design for a decision rather than treating uncertainty as success"},
+    {"name": "Dependencies reflect necessity", "max_score": 20, "description": "Makes cursor recovery depend on validation but keeps the keyboard-focus issue independently ready; does not split code and tests into separate dependent tickets"},
+    {"name": "Tracker and authority preserved", "max_score": 10, "description": "Produces only the requested GitHub issue drafts and links, without another local backlog, implementation, publication, paid calls, or production checks"}
+  ]
+}

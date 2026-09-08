@@ -1,0 +1,11 @@
+{
+  "context": "Decision-only finding validation: distinguish equivalent behavioral coverage and an owned platform exception from weakened proof.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {"name": "Equivalent coverage accepted", "max_score": 30, "description": "Rejects finding A using the replacement HTTP outcomes and observed failure when authorization is reverted; does not demand restoring private mock assertions"},
+    {"name": "Owned exception accepted", "max_score": 25, "description": "Rejects finding B because the Linux-only exception is approved and required hardware coverage passed on the reviewed commit"},
+    {"name": "Verdict represented honestly", "max_score": 20, "description": "Records both findings as explicitly rejected and considers review complete without calling exit 1 a clean or zero-findings result"},
+    {"name": "Valid proof reused", "max_score": 15, "description": "Does not prescribe new tests or another review merely to replace this unchanged valid result with a clean verdict"},
+    {"name": "Scope preserved", "max_score": 10, "description": "Does not remove the platform exception, restore implementation-coupled tests, change gates, or claim unperformed edits or executions"}
+  ]
+}

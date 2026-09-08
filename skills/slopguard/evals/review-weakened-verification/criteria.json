@@ -1,0 +1,11 @@
+{
+  "context": "Decision-only review preparation: green CI may conceal weaker verification. Grade the proposed review contract, not an unexecuted review.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {"name": "Security enforcement compared", "max_score": 25, "description": "The review contract asks whether removing scan:security from verify reduces required scanning, comparing with the base rather than trusting green CI"},
+    {"name": "Coverage enforcement compared", "max_score": 25, "description": "The review contract identifies the 90-to-50 changed-line threshold reduction and checks it against the agreed no-reduction requirement"},
+    {"name": "Evidence governs findings", "max_score": 20, "description": "The reviewer is asked to establish whether equivalent enforcement exists before deciding findings; the plan does not categorically ban every verification edit"},
+    {"name": "Review target preserved", "max_score": 15, "description": "The proposed command uses slopguard review with branch mode, base origin/main, engine codex, JSON output, and the distilled contract via --prompt-file -"},
+    {"name": "Preparation remains preparation", "max_score": 15, "description": "The report distinguishes passing configured checks from preserved proof and does not claim the independent review ran or returned clean"}
+  ]
+}

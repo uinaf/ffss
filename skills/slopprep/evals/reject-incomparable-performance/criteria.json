@@ -1,0 +1,11 @@
+{
+  "context": "Decision-only readiness assessment: reject confounded and noise-sized performance claims without unnecessary implementation or benchmarks.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {"name": "Confounded claim withheld", "max_score": 25, "description": "Does not accept A's claimed gain; identifies changed fixture, cache state, environment, and measurement budget as confounders"},
+    {"name": "Noise-sized claim withheld", "max_score": 25, "description": "Labels B's improvement unproven because the reported mean difference is not distinguished from variation; does not declare the candidate certainly slower or equivalent"},
+    {"name": "Comparable proof specified", "max_score": 25, "description": "Proposes using the same repository-owned command, inputs, environment, cache state, and budget for baseline and candidate, with sufficient repeated samples to assess variation"},
+    {"name": "Existing instruments retained", "max_score": 15, "description": "Keeps the benchmark and output-equivalence checks with their existing owner; does not add an agent-only runner or require a broad benchmark campaign"},
+    {"name": "Inspection remains inspection", "max_score": 10, "description": "Reports missing proof without claiming new measurements, implementing optimizations, automatically reverting candidates, or changing gates"}
+  ]
+}
