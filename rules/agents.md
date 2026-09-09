@@ -36,6 +36,15 @@ Good, references as links, backticks only for literals:
   review to the agreed outcome. Stop for a user decision or an evidenced
   blocker, not at the first implementation.
 - Delegate bounded independent work when useful; validate the results.
+- Let delegated work reach you through work you were doing anyway; a harness
+  appends completion to your next tool result. Block only when nothing else is
+  left to do, and never wait by sleeping in a loop — each wake re-sends the
+  whole context to learn one bit.
+- Poll external state that reports to nobody: it is the only wait that cannot
+  silently drop a terminal state. Bound it with a deadline and a failure exit,
+  and match the interval to how fast that state changes.
+- Keep transcripts append-only. Never buy a cheaper wait by rewriting earlier
+  turns; some models invalidate their own reasoning when history is edited.
 
 ### Implementation
 
