@@ -38,8 +38,12 @@ Good, references as links, backticks only for literals:
 - Delegate bounded independent work when useful; validate the results.
 - Let delegated work reach you through work you were doing anyway; a harness
   appends completion to your next tool result. Block only when nothing else is
-  left to do, and never wait by sleeping in a loop — each wake re-sends the
+  left to do, and then block on the harness wait with its ceiling. Never sleep
+  and re-check, and never spawn an agent only to watch: each wake re-sends the
   whole context to learn one bit.
+- Return a receipt, not a transcript: status, one-line summary, changes, risks,
+  unverified items, evidence references, next action. Bound each item; put the
+  full output in an artifact and reference it. Reviewers read the real diff.
 - Poll external state that reports to nobody: it is the only wait that cannot
   silently drop a terminal state. Bound it with a deadline and a failure exit,
   and match the interval to how fast that state changes.
