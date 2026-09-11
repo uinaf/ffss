@@ -166,7 +166,6 @@ jobs:
         working-directory: tools/skill-evals
 
   verify:
-    name: Repository checks
     if: always()
     needs: [changes, clilib, slopguard, slopguard-darwin, slopguard-integration, skills]
     runs-on: ubuntu-24.04
