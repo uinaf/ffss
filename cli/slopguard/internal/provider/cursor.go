@@ -107,7 +107,7 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 				return preparedExecutable{}, newFailure(protocol.FailureCapability, discoverErr.Error(), cursor.environment, nil)
 			}
 			return selectCompatibleExecutable(candidates, func(candidate string) (string, error) {
-				return cursor.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config)
+				return cursor.preflight(reviewContext, candidate, runtime.Workspace, environment, request.Config, true)
 			})
 		})
 		probeSpan.End()
@@ -192,7 +192,9 @@ func (cursor *Cursor) Review(ctx context.Context, request Request) (result Resul
 	}, nil
 }
 
-func (cursor *Cursor) preflight(ctx context.Context, executable, workspace string, environment []string, effective config.Effective) (string, error) {
+// probeAuthentication is set for a review and clear for Doctor, which stays an
+// offline diagnostic and must not spend a provider call.
+func (cursor *Cursor) preflight(ctx context.Context, executable, workspace string, environment []string, effective config.Effective, probeAuthentication bool) (string, error) {
 	timeout := 10 * time.Second
 	if time.Duration(effective.Timeout.Value) < timeout {
 		timeout = time.Duration(effective.Timeout.Value)
@@ -228,6 +230,16 @@ func (cursor *Cursor) preflight(ctx context.Context, executable, workspace strin
 	requiredValues := [][2]string{{"--output-format", "json"}, {"--mode", "ask"}}
 	if missing := missingCursorOptionValues(help, requiredValues); len(missing) != 0 {
 		return "", newFailure(protocol.FailureCapability, "Cursor is missing required option values: "+strings.Join(missing, ", "), environment, nil)
+	}
+	// --version and --help answer identically whether or not the CLI holds a
+	// credential, so every check above passes on a logged-out binary and the
+	// failure would otherwise surface only after the review prompt was spent.
+	// models is the cheapest call that has to authenticate.
+	if probeAuthentication {
+		modelsResult, err := run("models")
+		if err != nil {
+			return "", probeFailure("Cursor models", err, modelsResult, environment, protocol.FailureAuth)
+		}
 	}
 	return string(match[1]), nil
 }

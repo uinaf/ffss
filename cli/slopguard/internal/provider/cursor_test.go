@@ -381,6 +381,7 @@ type fakeCursorOptions struct {
 	output               string
 	reviewError          string
 	exitAfterOutputError string
+	modelsError          string
 	delay                string
 }
 
@@ -426,6 +427,10 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 	if options.delay != "" {
 		delay = "sleep " + options.delay + "\n"
 	}
+	modelsProbe := "printf '%s\\n' 'auto'; exit 0;"
+	if options.modelsError != "" {
+		modelsProbe = "printf '%b' " + shellQuote(options.modelsError) + " >&2; exit 1;"
+	}
 	script := "#!/bin/sh\n" +
 		"set -eu\n" +
 		"fail_contract() { printf '%s\\n' 'unexpected Cursor CLI arguments' >&2; exit 64; }\n" +
@@ -444,6 +449,7 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 		"}\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--version\" ]; then printf '%s\\n' version >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.version) + "; exit 0; fi\n" +
 		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"--help\" ]; then printf '%s\\n' help >> " + shellQuote(fake.probes) + "; printf '%s\\n' " + shellQuote(options.help) + "; exit 0; fi\n" +
+		"if [ \"$#\" -eq 1 ] && [ \"$1\" = \"models\" ]; then printf '%s\\n' models >> " + shellQuote(fake.probes) + "; " + modelsProbe + " fi\n" +
 		"validate_review \"$@\" || fail_contract\n" +
 		"printf '%s\\n' \"$@\" > " + shellQuote(fake.arguments) + "\n" +
 		"cat > " + shellQuote(fake.prompt) + "\n" +
@@ -455,6 +461,27 @@ func newFakeCursor(t *testing.T, options fakeCursorOptions) fakeCursor {
 		afterOutputFailure
 	writeTestExecutableAt(t, fake.path, script)
 	return fake
+}
+
+// --version and --help answer identically on a logged-out binary, so without an
+// authentication probe the failure surfaces only after the prompt is spent.
+func TestCursorRejectsUnauthenticatedExecutableBeforeReviewing(t *testing.T) {
+	t.Parallel()
+
+	fake := newFakeCursor(t, fakeCursorOptions{modelsError: "Error: Authentication required. Run 'agent login', pass --api-key/--auth-token, or set CURSOR_API_KEY/CURSOR_AUTH_TOKEN.\n"})
+	reviewer := NewCursor(CursorOptions{
+		Repository:  t.TempDir(),
+		Executable:  fake.path,
+		Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"},
+	})
+	_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)})
+	_ = assertProviderError(t, err, protocol.FailureAuth)
+	if _, statErr := os.Stat(fake.arguments); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("review prompt was sent to an unauthenticated executable: %v", statErr)
+	}
+	if probes := readTestFile(t, fake.probes); !strings.Contains(probes, "models") {
+		t.Fatalf("executable was never asked to authenticate: %q", probes)
+	}
 }
 
 func cursorHelp(outputFormats, modes string) string {

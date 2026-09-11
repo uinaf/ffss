@@ -110,7 +110,7 @@ func Doctor(ctx context.Context, options DoctorOptions) (diagnostic Diagnostic) 
 		executable = adapter.executable
 		providerEnvironment := runtime.Environment()
 		preflight = func(candidate string) (string, error) {
-			return adapter.preflight(probeContext, candidate, runtime.Workspace, providerEnvironment, options.Config)
+			return adapter.preflight(probeContext, candidate, runtime.Workspace, providerEnvironment, options.Config, false)
 		}
 	case protocol.ProviderGrok:
 		adapter := NewGrok(GrokOptions{Repository: repository, Executable: executable, Environment: environment})
