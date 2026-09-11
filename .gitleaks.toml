@@ -1,10 +1,20 @@
-# Fixture and historical test data; no live credentials.
 [extend]
 useDefault = true
 
-[allowlist]
-description = "eval scratch manifests and historical test fixtures"
-paths = [
-  '''tools/skill-evals/scratch/''',
-  '''autoreview/internal/config/config_test.go''',
-]
+# Skill-eval scratch manifests record file content by SHA-256 digest, which
+# `generic-api-key` cannot tell from a token, and the autoreview config test
+# pins a placeholder environment assignment. Allow those values only in those
+# files: each condition is AND, and the regexes match the finding's secret
+# rather than its line, so a credential sharing a line with a digest or with
+# the placeholder is still reported.
+[[allowlists]]
+description = "Skill-eval scratch manifest content digests"
+condition = "AND"
+paths = ['''tools/skill-evals/scratch/.*/manifest\.json$''']
+regexes = ['''^[0-9a-f]{64}$''']
+
+[[allowlists]]
+description = "autoreview config test placeholder environment assignment"
+condition = "AND"
+paths = ['''autoreview/internal/config/config_test\.go$''']
+regexes = ['''^ANTHROPIC_API_KEY=claude-secret$''']
