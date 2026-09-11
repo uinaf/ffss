@@ -17,6 +17,11 @@ Compatibility is capability-based with no date or build upper bound. Fixtures
 cover Cursor Agent `2026.07.23-e383d2b` through `2026.09.02-c22c1a3`; other
 builds must expose the same required flags and enumerated option values.
 
+Review preflight also runs `models`. Cursor answers `--version` and `--help`
+identically whether or not it holds a credential, so a logged-out executable
+clears every capability check and would otherwise fail only after the prompt was
+spent. `doctor` skips this probe and stays offline.
+
 ## Web access
 
 Cursor Agent has no documented per-run web-disable flag, so explicit CLI

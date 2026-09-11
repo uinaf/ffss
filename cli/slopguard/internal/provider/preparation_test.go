@@ -45,7 +45,7 @@ func TestProviderPreparationIsCachedAcrossReviewAttempts(t *testing.T) {
 				fake := newFakeCursor(t, fakeCursorOptions{})
 				return NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}}), fake.probes, fake.directory, cursorConfig(true, 5*time.Second)
 			},
-			probes: 2,
+			probes: 3,
 		},
 		{
 			name: "Grok",
