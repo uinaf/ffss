@@ -164,6 +164,11 @@ jobs:
       - name: Lint every skill package
         run: npm run lint
         working-directory: tools/skill-evals
+      # Guards the advisory overrides in tools/skill-evals/package.json: a
+      # lockfile change that reintroduces a high or critical advisory fails here.
+      - name: Audit the harness dependencies
+        run: npm run audit
+        working-directory: tools/skill-evals
 
   verify:
     if: always()
