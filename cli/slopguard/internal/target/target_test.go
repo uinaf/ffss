@@ -1591,3 +1591,56 @@ func targetPaths(target protocol.Target) []string {
 func equalStrings(left, right []string) bool {
 	return fmt.Sprint(left) == fmt.Sprint(right)
 }
+
+// Review runs Git without credentials, so a blobless partial clone reports a
+// bare "unable to read <oid>" that is indistinguishable from corruption.
+func TestMissingObjectNamesAPartialClone(t *testing.T) {
+	t.Parallel()
+
+	collector, repository, _ := preparedCollectorWithGitWrapper(t)
+	missing := errors.New("git diff: fatal: unable to read 3d8aa228125fd714b42a29577e6be6f12b0a2c80")
+
+	if got := collector.explainMissingObject(context.Background(), repository, missing); got != missing {
+		t.Fatalf("a full clone must be left unexplained: %v", got)
+	}
+
+	gitCommand(t, repository, "config", "remote.origin.promisor", "true")
+	explained := collector.explainMissingObject(context.Background(), repository, missing)
+	if !errors.Is(explained, missing) {
+		t.Fatalf("the original cause must survive: %v", explained)
+	}
+	for _, want := range []string{"partial clone", "fetch --refetch origin", repository} {
+		if !strings.Contains(explained.Error(), want) {
+			t.Fatalf("explanation %q is missing %q", explained, want)
+		}
+	}
+
+	unrelated := errors.New("git diff: fatal: bad revision")
+	if got := collector.explainMissingObject(context.Background(), repository, unrelated); got != unrelated {
+		t.Fatalf("unrelated failures must be left alone: %v", got)
+	}
+}
+
+// End-to-end: a genuinely absent blob in a promisor clone must reach the caller
+// with the partial-clone explanation attached, not a bare Git failure.
+func TestFreezeExplainsMissingObjectFromPartialClone(t *testing.T) {
+	t.Parallel()
+
+	collector, repository, _ := preparedCollectorWithGitWrapper(t)
+	writeFile(t, repository, "file.txt", "changed\n")
+	gitCommand(t, repository, "commit", "-am", "change")
+	blob := strings.TrimSpace(gitCommand(t, repository, "rev-parse", "HEAD~1:file.txt"))
+	gitCommand(t, repository, "config", "remote.origin.promisor", "true")
+	gitCommand(t, repository, "config", "remote.origin.partialclonefilter", "blob:none")
+	if err := os.Remove(filepath.Join(repository, ".git/objects", blob[:2], blob[2:])); err != nil {
+		t.Skipf("blob is packed rather than loose: %v", err)
+	}
+
+	_, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD"})
+	if err == nil {
+		t.Fatal("a missing blob must fail the freeze")
+	}
+	if !strings.Contains(err.Error(), "partial clone") {
+		t.Fatalf("error does not explain the partial clone: %v", err)
+	}
+}

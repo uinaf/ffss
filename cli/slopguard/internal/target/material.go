@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -462,7 +463,7 @@ func (collector *Collector) changedPaths(ctx context.Context, root string, plan 
 			return nil
 		}}
 		if err := collector.git.runSandboxWithAttributesTo(ctx, root, plan.sandbox, nil, parser, arguments...); err != nil {
-			return nil, nil, fmt.Errorf("list changed paths: %w", err)
+			return nil, nil, fmt.Errorf("list changed paths: %w", collector.explainMissingObject(ctx, root, err))
 		}
 		if err := parser.Err(); err != nil {
 			return nil, nil, err
@@ -473,6 +474,24 @@ func (collector *Collector) changedPaths(ctx context.Context, root string, plan 
 		return nil, nil, err
 	}
 	return paths, deleted, nil
+}
+
+var missingObjectPattern = regexp.MustCompile(`unable to read [0-9a-f]{40,64}`)
+
+// slopguard runs Git without a credential helper, an SSH agent, or a terminal,
+// so a blobless partial clone cannot lazily fetch the objects a diff needs. The
+// bare "unable to read <oid>" that Git reports gives no hint of that, and the
+// object is genuinely absent, so the failure looks like corruption.
+func (collector *Collector) explainMissingObject(ctx context.Context, root string, err error) error {
+	if err == nil || collector.git == nil || !missingObjectPattern.MatchString(err.Error()) {
+		return err
+	}
+	output, configErr := collector.git.run(ctx, root, nil, 4<<10, "config", "--get", "remote.origin.promisor")
+	if configErr != nil || strings.TrimSpace(string(output)) != "true" {
+		return err
+	}
+	return fmt.Errorf("%w; the repository is a partial clone and review runs Git without network access, "+
+		"so lazily fetched objects are unavailable (hydrate it with: git -C %s fetch --refetch origin)", err, root)
 }
 
 func (collector *Collector) inspectRawModes(ctx context.Context, root string, plan *targetPlan) ([]deletedBlob, error) {
