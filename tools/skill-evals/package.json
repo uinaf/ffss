@@ -6,13 +6,14 @@
     "lint": "skillcheck lint --root ../..",
     "run": "skillcheck run --root ../..",
     "sweep": "skillcheck sweep --root ../..",
-    "summarize": "skillcheck summarize --root ../.."
+    "summarize": "skillcheck summarize --root ../..",
+    "audit": "npm audit --audit-level=high"
   },
   "devDependencies": {
     "@uinaf/skillcheck": "^0.4.0"
   },
   "overrides": {
-    "adm-zip": "^0.6.1",
-    "sharp": "^0.35.4"
+    "adm-zip@<0.6.1": "^0.6.1",
+    "sharp@<0.35.4": "^0.35.4"
   }
 }
