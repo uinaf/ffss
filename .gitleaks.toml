@@ -1,18 +1,20 @@
 [extend]
 useDefault = true
 
-# Skill-eval scratch manifests record file content by SHA-256 digest, which
-# `generic-api-key` cannot tell from a token, and the autoreview config test
-# pins a placeholder environment assignment. Allow those values only in those
-# files: each condition is AND, and the regexes match the finding's secret
-# rather than its line, so a credential sharing a line with a digest or with
-# the placeholder is still reported.
+# Skill-eval scratch manifests (now only in history) record file content by
+# SHA-256 digest; the one entry that trips generic-api-key is the
+# `AVAILABLE_ACCESS.md` fixture. Allow only that whole line, so any other key
+# with a 64-hex value in a manifest is still reported.
 [[allowlists]]
-description = "Skill-eval scratch manifest content digests"
+description = "Skill-eval scratch manifest AVAILABLE_ACCESS.md content digest"
 condition = "AND"
-paths = ['''tools/skill-evals/scratch/.*/manifest\.json$''']
-regexes = ['''^[0-9a-f]{64}$''']
+paths = ['''^tools/skill-evals/scratch/[^/]+/manifest\.json$''']
+regexTarget = "line"
+regexes = ['''^\s*"AVAILABLE_ACCESS\.md":\s*"[0-9a-f]{64}",?\s*$''']
 
+# The autoreview config test pins a placeholder environment assignment; the
+# condition is AND and the regex matches the finding's secret, so a credential
+# sharing a line with the placeholder is still reported.
 [[allowlists]]
 description = "autoreview config test placeholder environment assignment"
 condition = "AND"
