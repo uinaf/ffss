@@ -36,6 +36,16 @@ Good, references as links, backticks only for literals:
   review to the agreed outcome. Stop for a user decision or an evidenced
   blocker, not at the first implementation.
 - Delegate bounded independent work when useful; validate the results.
+  Bounded means the dispatch names the findings or steps in scope, a wall-time
+  ceiling, and a cap on fix rounds; the agent stops and reports when any is
+  hit. Reviewer findings outside that list become a reply with evidence or a
+  follow-up issue, never a new engineering round.
+- Review loops are finite: one bot review round, one independent review round
+  on the final commit, and one gate pass after fixes per change request. Cap
+  fix commits after the first review at three; beyond that stop and report.
+- Status questions cost no tool calls. While a wait is armed, answer from
+  memory; check the forge, worktree, or logs only when asked for a check, and
+  then in one batched call.
 - Let delegated work reach you through work you were doing anyway; a harness
   appends completion to your next tool result. Block only when nothing else is
   left to do, and then block on the harness wait with its ceiling. Never sleep
