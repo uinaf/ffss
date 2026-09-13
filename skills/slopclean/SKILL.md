@@ -11,7 +11,8 @@ and public API. Follow house conventions; one pass, not a sterilizing loop.
 Read the matching reference; source-and-test diffs need both:
 
 - [Prose](references/prose.md): cut puffery, vague claims, chatbot phrases, and
-  repetitive scaffolding. Prefer concrete facts; preserve the author's voice.
+  repetitive scaffolding; replace code/config restatements with source links.
+  Prefer concrete facts; preserve the author's voice.
 - [Code](references/code.md): remove narrated comments, pointless forwarding,
   proven-unused private options, and misleading internal names. Call count alone
   does not make a useful boundary wasteful.

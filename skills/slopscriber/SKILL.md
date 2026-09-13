@@ -13,6 +13,21 @@ Preserve current commands, invariants, boundaries, and recovery paths; remove
 stale facts, repetition, and history that belongs elsewhere. Keep one canonical
 home per contract and link to it with a task-shaped label.
 
+## Code and config own implementation facts
+
+Treat code and structured config as documentation for the facts they express.
+Link to the owning file and identify the relevant key, section, or symbol;
+do not maintain prose copies of inventories, defaults, schemas, or task lists.
+For example, link to an inventory group instead of listing every host and
+repeating the same command for each one. A value change should not require
+a matching Markdown edit just to keep a second copy current.
+
+Keep what the source does not explain: intent, tradeoffs, non-obvious operating
+constraints, recovery procedures, and minimal examples needed to use it.
+Verify the source is accessible to the intended reader before replacing prose
+with a link. When a standalone reference is required, prefer generating it
+from the owner over maintaining it by hand.
+
 ## Negative-state rule
 
 Remove absent or retired capabilities unless the limitation changes a current
