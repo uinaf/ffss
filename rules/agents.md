@@ -40,25 +40,26 @@ Good, references as links, backticks only for literals:
   ceiling, and a cap on fix rounds; the agent stops and reports when any is
   hit. Reviewer findings outside that list become a reply with evidence or a
   follow-up issue, never a new engineering round.
-- Review loops are finite: one bot review round, one independent review round
-  on the final commit, and one gate pass after fixes per change request. Cap
-  fix commits after the first review at three; beyond that stop and report.
+- Review budgets are ceilings, not required stages. Unless the task sets a
+  different budget, allow at most one bot round, one independent review on the
+  final candidate, three fix commits after the first review, and one final
+  gate pass after fixes per change request. Batch fixes before that pass.
+  If required proof needs another round beyond the budget, pause affected
+  delivery and report the missing proof and decision needed. Continue
+  independent work; a spent budget never makes stale or failing proof valid.
 - Status questions cost no tool calls. While a wait is armed, answer from
   memory; check the forge, worktree, or logs only when asked for a check, and
   then in one batched call.
-- Let delegated work reach you through work you were doing anyway; a harness
-  appends completion to your next tool result. Block only when nothing else is
-  left to do, and then block on the harness wait with its ceiling. Never sleep
-  and re-check, and never spawn an agent only to watch: each wake re-sends the
-  whole context to learn one bit.
+- Use completion notifications for delegated work. Keep working independently;
+  wait within the declared budget only when nothing else is ready. Do not poll
+  workers or delegate an agent merely to watch another agent.
 - Return a receipt, not a transcript: status, one-line summary, changes, risks,
   unverified items, evidence references, next action. Bound each item; put the
   full output in an artifact and reference it. Reviewers read the real diff.
 - Poll external state that reports to nobody: it is the only wait that cannot
   silently drop a terminal state. Bound it with a deadline and a failure exit,
   and match the interval to how fast that state changes.
-- Keep transcripts append-only. Never buy a cheaper wait by rewriting earlier
-  turns; some models invalidate their own reasoning when history is edited.
+- Keep transcripts append-only; do not rewrite earlier turns to reduce wait cost.
 
 ### Implementation
 
@@ -89,8 +90,8 @@ need scope.
   when static checks cannot prove it.
 - Test changed behavior existing coverage misses, including failure paths. No
   tests that restate the implementation.
-- For UI changes, exercise the flow plus keyboard, responsive, accessibility,
-  and reduced-motion behavior.
+- For UI changes, exercise the affected flow and relevant keyboard, responsive,
+  accessibility, and reduced-motion behavior.
 - Reuse passing proof until a change, failure, or concrete concern invalidates
   it. Run independent review once when requested or required and validate its
   findings.

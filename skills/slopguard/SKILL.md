@@ -12,8 +12,9 @@ rules: [security.md](references/security.md).
 
 ## When
 
-- Once, after the completed change passes its checks and before delivery or
-  handoff. Not per edit, test run, thread fix, or turn.
+- When independent review is requested or required, run it after the completed
+  change passes its checks and before delivery or handoff. Not per edit, test
+  run, thread fix, or turn; a review budget alone does not require a review.
 - An explicit request may target unfinished work; report missing verification
   without calling it closeout.
 - Reuse a valid result while target, base, contract, and requirements are
@@ -89,6 +90,12 @@ before passing it.
    failure: [results.md](references/results.md).
 
 ## Convergence
+
+Respect the task or repository's review budget across turns and skill handoffs.
+If refreshed review or checks are required but would exceed it, pause affected
+delivery, report the missing proof and budget decision, and continue independent
+work. Do not reset the count, substitute a different reviewer, or reuse stale
+proof to close out.
 
 Carry accepted fixes and evidence-backed rejections forward. A repeated finding
 needs new evidence to reopen it; another model verdict alone is not new

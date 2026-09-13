@@ -1,0 +1,36 @@
+{
+  "context": "Tests replacing stale host/default copies with accessible owning source links while retaining operational rationale, recovery, and useful command syntax.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Inventory owns host facts",
+      "max_score": 25,
+      "description": "docs/agents.md replaces the host/address inventory copy with a valid relative link to inventory/agents.yaml instead of updating or extending a second host list."
+    },
+    {
+      "name": "Config owns defaults",
+      "max_score": 20,
+      "description": "docs/agents.md links config/agent-defaults.yaml and identifies the relevant settings without manually repeating their values; future value changes alone would not require updating this Markdown."
+    },
+    {
+      "name": "Restart example remains useful",
+      "max_score": 15,
+      "description": "The repeated per-host restart catalogue becomes a reusable, accurate restart example with a clear way to select a host from the inventory."
+    },
+    {
+      "name": "Rationale retained",
+      "max_score": 15,
+      "description": "The heartbeat tradeoff and bandwidth-budget constraint remain available because the config does not express that rationale."
+    },
+    {
+      "name": "Recovery and retirement retained",
+      "max_score": 15,
+      "description": "The rollback command, heartbeat confirmation, remote-data consequence, log export, and monitoring cleanup remain actionable."
+    },
+    {
+      "name": "Scope and proof respected",
+      "max_score": 10,
+      "description": "Only docs/agents.md and doc-report.md change; the report accurately describes the inspected sources and actual checks without claiming host operations or unexecuted validation."
+    }
+  ]
+}

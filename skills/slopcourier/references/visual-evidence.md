@@ -1,10 +1,28 @@
 # Visual evidence ladder
 
-- Give a non-trivial change one clear review aid, chosen by what the change
-  shows best: a labeled UI screenshot, a short recording for interaction or
-  motion, a focused diagram, or sanitized contract input/output as fenced text.
-- Skip visual evidence for trivial or text-only changes.
-- Pick the first applicable rung.
+Use an aid when it answers a review question more clearly than the diff and
+description already do. Reuse existing evidence; do not create an artifact
+just because the change is non-trivial.
+
+## Choose the view
+
+- A focused diff shows an existing behavior's change; show the whole small
+  block only when omitted context would hide ownership or order.
+- A shallow call tree or Mermaid diagram explains control flow, state, or
+  boundaries. Include only the elements needed to understand the change.
+- Actual sanitized input/output demonstrates a contract; a screenshot or short
+  recording shows observed UI behavior. Label examples and explanatory diagrams
+  as such: they do not prove execution or replace required checks.
+- Keep the aid beside the claim it supports. If the diff is already clear,
+  omit the extra aid. Do not turn delivery into a standalone HTML explainer.
+
+Selection principle adapted from [HumanLayer's show-me skill](https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md).
+
+## Attach only when needed
+
+Inline text and Mermaid need no upload. For captured media, use the first
+applicable attachment route below.
+
 - The `attach` tool works on any forge when installed; forge-specific rungs
   apply only to the forge the delivery dispatched to (never upload through the
   other forge's API because its CLI happens to be installed).

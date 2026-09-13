@@ -5,13 +5,14 @@ description: "Open or update a change request for completed, verified work. Use 
 
 # Slopcourier
 
-Deliver finished, verified work as one change request. Delivery only: no
-implementation, review, merge, or second workflow runtime.
+Deliver finished, verified work as one change request. This skill owns
+change-request delivery. Continue separately authorized implementation,
+review, or merge through its owning workflow; this lane does not end the task.
 
 ## Preconditions
 
 - Authorized by the user's request or agreed execution plan.
-  Preparation-only requests produce a draft and stop.
+  Preparation-only requests produce a local draft without publication.
 - The change is complete and its required gates passed on this revision. Don't
   repeat passing proof without new changes or concerns. Report missing or
   failing gates instead of delivering.
@@ -42,8 +43,10 @@ implementation, review, merge, or second workflow runtime.
    implementation inventory. The body describes the change as it stands: no
    review history, finding counts, fix hashes, reviewer names, or iteration
    narrative. Review results go to the user and to thread replies.
-5. Non-trivial changes get one review aid from
-   [visual-evidence.md](references/visual-evidence.md).
+5. Include a review aid when it makes the changed behavior substantially
+   easier to assess. Choose the smallest useful view with
+   [visual-evidence.md](references/visual-evidence.md); a clear diff may suffice.
 6. Return the URL and delivered commit. Babysitting or merge, if requested,
-   continues with slopnanny. Delivery alone authorizes no merge, auto-merge,
-   branch deletion, or rework.
+   continues with [slopnanny](../slopnanny/SKILL.md). Preserve existing authority
+   across the handoff. Delivery alone grants no additional merge, auto-merge,
+   branch deletion, or rework authority.
