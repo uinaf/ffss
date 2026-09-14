@@ -52,6 +52,8 @@ Do not bundle the catalog's skill bodies into ffss: that would expose every
 stack globally again. Do not prune global or unrelated repo skills as a side
 effect. An explicitly requested global migration must also update the owning
 installation manifest so synchronization does not reinstall them.
+Complete global removal before installing local replacements, then verify both
+scopes; do not assume a global removal preserved a same-named local skill.
 
 ## Make discoverable and verify
 
