@@ -22,6 +22,8 @@ is not a reason to introduce a library, migrate tests, or change architecture.
 Inspect existing repo-local skills and their source records first. Reuse a
 matching installation; report name collisions or local edits before replacing
 them. Global availability does not make a repository self-contained.
+Honor explicitly chosen global skills and skip duplicate local installs unless
+the user requests a self-contained repository.
 
 If asked only for advice or inspection, report the selection and exact install
 commands without making changes. A request to equip or set up repo skills

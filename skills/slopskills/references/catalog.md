@@ -10,6 +10,7 @@ not a blanket bundle.
 | --- | --- | --- |
 | `react-ban-use-effect` | [uinaf/agent-skills](https://github.com/uinaf/agent-skills) | React code; effect implementation, refactoring, or effect policy. |
 | `react-doctor` | [millionco/react-doctor](https://github.com/millionco/react-doctor) | React code; feature or bug verification and React diagnostics. |
+| `shadcn` | [shadcn/ui](https://github.com/shadcn-ui/ui) | A `components.json` configuration, existing shadcn components, or an explicit shadcn setup task; component composition, registries, presets, or styling. React alone does not qualify. |
 | `tanstack-query` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | A TanStack Query dependency or imports; fetching, query keys, mutations, caching, or invalidation. |
 | `tanstack-form` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | A TanStack Form dependency or imports; form state, field validation, or submission. |
 | `tanstack-start` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | TanStack Start dependency/configuration; routes, server functions, SSR, or deployment. Router alone does not imply Start. |
@@ -18,6 +19,10 @@ not a blanket bundle.
 React alone does not select all TanStack skills. Match the actual TanStack
 package, including non-React adapters, and check guidance against the installed
 major version before using its APIs.
+
+The UI endpoint distributes commercially licensed ui.sh material for licensed
+colleagues. Keep downloaded files local and ignored by Git; do not vendor them
+into public repositories. Preserve an explicitly preferred global installation.
 
 ## Swift
 
