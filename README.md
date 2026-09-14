@@ -26,6 +26,7 @@ One job each.
 | [`slopspec`](skills/slopspec/) | Saving agreed work as issues, epics, or durable plans |
 | [`slopscriber`](skills/slopscriber/) | Auditing and updating repository documentation |
 | [`slopprep`](skills/slopprep/) | Preparing repositories and runners for autonomous work |
+| [`slopskills`](skills/slopskills/) | Selecting and installing repo-local skills for the stack and task |
 | [`wat`](skills/wat/) | Rewriting rambling replies as terse status updates |
 
 ## Installation

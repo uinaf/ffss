@@ -1,0 +1,7 @@
+interface:
+  display_name: "slopskills"
+  short_description: "Equip a repo with relevant stack skills"
+  default_prompt: "Use $slopskills to inspect this repository's stack and install the relevant repo-local skills for the requested work."
+
+policy:
+  allow_implicit_invocation: true

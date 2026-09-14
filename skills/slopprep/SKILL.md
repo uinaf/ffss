@@ -29,6 +29,8 @@ checks are gaps, not failed executions.
 
 ## Choose the relevant guidance
 
+- Repository-local stack skill selection and installation:
+  [slopskills](../slopskills/SKILL.md). Preserve inspection-only scope.
 - Agent guide structure, routing, authority, cross-model behavior:
   [agent-guidance.md](references/agent-guidance.md).
 - Verification coverage, real surfaces, failure evidence:
