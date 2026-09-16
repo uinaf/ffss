@@ -73,10 +73,34 @@ glab api "projects/:id/uploads" --form "file=@evidence.png"
   the change-request description or a comment.
 - Uploads inherit project visibility.
 
-## 3. github.com deliveries (`gh` + user-attachments endpoint)
+## 3. github.com deliveries (`gh --attach`)
 
-Upload images and video to the CDN the web drag-drop uses; the asset inherits
-repository visibility and needs no browser:
+`gh` 2.99+ uploads media natively. `gh pr create`, `gh pr edit`, `gh pr comment`,
+and the `issue` equivalents take a repeatable `--attach` flag (up to 50 files,
+images and video). `gh pr review` does not; use `gh pr comment` for review media.
+The asset inherits repository visibility.
+
+```bash
+gh pr create --attach './after.png#Login error state'   # alt text after '#'
+gh pr comment 13 --attach ./before.png --attach ./after.png
+gh pr edit 13 --attach ./flow.mp4                       # video takes no alt text
+```
+
+- If the body already references the local path (`![alt](./after.png)`), `gh`
+  rewrites that reference to the uploaded URL; otherwise it appends the asset.
+- Video is embedded as a bare URL on its own line, where GitHub renders a
+  player. Never wrap it in `![]()` yourself. `#alt` on a video fails with
+  "cannot set alt text on video".
+- Transcode Playwright's webm for broad playback first:
+  `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4`.
+- Partial upload failure on create still creates the pull request and reports
+  the failed files; retry them with `gh pr edit --attach`.
+- github.com and GitHub Enterprise Cloud only.
+
+<details><summary>Fallback: gh below 2.99 or GitHub Enterprise Server</summary>
+
+Upload to the CDN the web drag-drop uses, then embed the returned `.url`
+(images as markdown, video as a bare line):
 
 ```bash
 repo_id=$(gh api repos/{owner}/{repo} -q .id)
@@ -90,18 +114,10 @@ Accept: application/json
 EOF
 ```
 
-- The heredoc keeps the token out of the process argument list.
-- Embed the returned `.url` as markdown.
-- Failure modes: 422 = unsupported content type; 404 = bad repository id or
-  no push permission.
+The heredoc keeps the token out of the process argument list. 422 =
+unsupported content type; 404 = bad repository id or no push permission.
 
-Video: same endpoint with `content_type` `video/mp4` or `video/webm`; embed
-the returned URL on its own bare line, where GitHub renders a player (`![]()`
-image syntax does not). Transcode Playwright's webm for broad playback first:
-
-```bash
-ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4
-```
+</details>
 
 ## Embedding
 
