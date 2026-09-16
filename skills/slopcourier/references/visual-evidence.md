@@ -23,9 +23,8 @@ Selection principle adapted from [HumanLayer's show-me skill](https://github.com
 Inline text and Mermaid need no upload. For captured media, use the first
 applicable attachment route below.
 
-- The `attach` tool works on any forge when installed; forge-specific rungs
-  apply only to the forge the delivery dispatched to (never upload through the
-  other forge's API because its CLI happens to be installed).
+- Forge rungs apply only to the forge the delivery dispatched to; never upload
+  through the other forge's API because its CLI happens to be installed.
 - Never commit proof assets to any product repository branch (no
   `.github/pr-assets` or similar).
 
@@ -45,43 +44,17 @@ A recording proves an interaction; the reviewer's time starts at frame one.
 - Prefer roughly 15 seconds or less; beyond that, a labeled screenshot
   sequence usually reads better.
 
-## 1. attach: the uinaf uploader (when installed, any forge)
+## 1. github.com deliveries (`gh --attach`)
 
-- This rung means the [uinaf attach](https://github.com/uinaf/attach) CLI
-  specifically, not any binary named `attach`.
-- Verify the identity first: `attach help` must show the
-  `attach put <file> [--repo <owner/name>] [--pr <n>]` command shape (or
-  `gh extension list` shows `gh attach` from `uinaf/gh-attach`).
-- Anything else on PATH under that name is not this rung; fall through.
-
-When it is the real tool, let it own attachment end to end:
-
-- `attach put` the asset (or `gh attach put` when only the extension is
-  installed; the extension does not put an `attach` binary on PATH)
-- scope with `--repo`/`--pr`
-- embed the returned reference (`--markdown` or `--url`)
-
-## 2. GitLab deliveries (`glab`)
-
-Upload through the project uploads API and embed the returned markdown:
+`gh` 2.99+ uploads media natively; check `gh --version` first (older `gh`
+uses the fallback below). `gh pr create`, `gh pr edit`, `gh pr comment`, and
+the `issue` equivalents take a repeatable `--attach <file>` flag, at most 50
+per command: png, jpg, jpeg, gif, webp, svg, mp4, mov, webm. `gh pr review`
+does not; use `gh pr comment` for review media. The asset inherits repository
+visibility.
 
 ```bash
-glab api "projects/:id/uploads" --form "file=@evidence.png"
-```
-
-- The response carries a `markdown` field (`![…](/uploads/…)`); paste it into
-  the change-request description or a comment.
-- Uploads inherit project visibility.
-
-## 3. github.com deliveries (`gh --attach`)
-
-`gh` 2.99+ uploads media natively. `gh pr create`, `gh pr edit`, `gh pr comment`,
-and the `issue` equivalents take a repeatable `--attach` flag (up to 50 files,
-images and video). `gh pr review` does not; use `gh pr comment` for review media.
-The asset inherits repository visibility.
-
-```bash
-gh pr create --attach './after.png#Login error state'   # alt text after '#'
+gh pr create --attach './after.png#Login error state'   # alt text after '#', quoted
 gh pr comment 13 --attach ./before.png --attach ./after.png
 gh pr edit 13 --attach ./flow.mp4                       # video takes no alt text
 ```
@@ -93,11 +66,16 @@ gh pr edit 13 --attach ./flow.mp4                       # video takes no alt tex
   "cannot set alt text on video".
 - Transcode Playwright's webm for broad playback first:
   `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4`.
+- `--attach` does not combine with `--web` or `--dry-run`.
 - Partial upload failure on create still creates the pull request and reports
   the failed files; retry them with `gh pr edit --attach`.
-- github.com and GitHub Enterprise Cloud only.
+- Requires GitHub.com or a GHE.com tenant, an OAuth token, classic PAT, or
+  fine-grained PAT, and WRITE or higher on the repository. GitHub Enterprise
+  Server and GitHub App installation tokens are unsupported
+  ([cli/cli#14309](https://github.com/cli/cli/issues/14309)), so unattended
+  runtimes on App tokens fall through to the fallback below, then to rung 3.
 
-<details><summary>Fallback: gh below 2.99 or GitHub Enterprise Server</summary>
+<details><summary>Fallback: gh below 2.99, GitHub Enterprise Server, or an App token</summary>
 
 Upload to the CDN the web drag-drop uses, then embed the returned `.url`
 (images as markdown, video as a bare line):
@@ -119,6 +97,18 @@ unsupported content type; 404 = bad repository id or no push permission.
 
 </details>
 
+## 2. GitLab deliveries (`glab`)
+
+Upload through the project uploads API and embed the returned markdown:
+
+```bash
+glab api "projects/:id/uploads" --form "file=@evidence.png"
+```
+
+- The response carries a `markdown` field (`![…](/uploads/…)`); paste it into
+  the change-request description or a comment.
+- Uploads inherit project visibility.
+
 ## Embedding
 
 Structure the evidence; never paste bare images that take over the page:
@@ -130,7 +120,7 @@ Structure the evidence; never paste bare images that take over the page:
 - Collapse anything long or secondary in `<details><summary>…</summary>`.
 - One primary aid inline; everything else collapsed or linked.
 
-## 4. Non-media artifacts or endpoint failure
+## 3. Non-media artifacts or endpoint failure
 
 - Do not force non-media artifacts through a media endpoint.
 - Fall back to the change request itself: paste the decisive excerpt as
