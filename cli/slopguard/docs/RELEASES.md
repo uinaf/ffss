@@ -86,7 +86,7 @@ Replace the example archive version and target with the release being checked.
 Pull-request jobs receive read-only repository access and no release secrets.
 The main-only release job enters the protected `release` Environment only after
 macOS/Linux verification and snapshot packaging pass. It mints a short-lived
-`uinaf-releaser` installation token scoped to `slopguard` and `homebrew-tap`
+`uinaf-ci` installation token scoped to `ffss` and `homebrew-tap`
 with Contents write permission.
 
 - The protected `release` Environment stores the Developer ID certificate,
