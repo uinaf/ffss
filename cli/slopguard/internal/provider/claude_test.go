@@ -279,6 +279,7 @@ func TestClaudeReviewReportsRefusalAsCapability(t *testing.T) {
 		message string
 	}{
 		{name: "with category", output: `{"type":"result","subtype":"success","is_error":false,"stop_reason":"refusal","stop_details":{"category":"cyber"},"result":"` + providerOutputSentinel + `"}`, message: "Claude refused to review this change (cyber)"},
+		{name: "unknown category stays generic", output: `{"type":"result","subtype":"success","is_error":false,"stop_reason":"refusal","stop_details":{"category":"` + providerOutputSentinel + ` see /private"},"result":""}`, message: "Claude refused to review this change"},
 		{name: "without category", output: `{"type":"result","subtype":"success","is_error":false,"stop_reason":"refusal","result":"` + providerOutputSentinel + `","structured_output":{}}`, message: "Claude refused to review this change"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
