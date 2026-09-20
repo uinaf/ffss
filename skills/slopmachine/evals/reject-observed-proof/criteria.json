@@ -1,0 +1,31 @@
+{
+  "context": "Reject observation-only evidence, demand a check that fails on the negative control, reuse valid proof, respect the user's runtime on a shared host, and record compact provenance.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Observation rejected as proof",
+      "max_score": 25,
+      "description": "Treats the screenshot and the settled-state test as observations, because the test passed with the fix reverted; does not accept 'looks verified' or the delegate's claim as completion"
+    },
+    {
+      "name": "Negative control required",
+      "max_score": 25,
+      "description": "Plans a regression test or check that fails with the fix reverted and passes at 7c1d2e4, and holds delivery until that evidence exists"
+    },
+    {
+      "name": "Valid proof reused",
+      "max_score": 15,
+      "description": "Reuses lint and typecheck from 7c1d2e4 only while their inputs are unchanged, and plans to rerun them once the replacement test lands because both cover test files; does not rerun anything merely because the session resumed"
+    },
+    {
+      "name": "Shared host respected",
+      "max_score": 20,
+      "description": "Stops the delegate's port 3001 server and runs the browser-driven check only when the slot is free; never stops or reuses the user's port 3000 session"
+    },
+    {
+      "name": "Compact provenance recorded",
+      "max_score": 15,
+      "description": "Records each proof with the revision it ran against, the command, whether it ran or is planned, and the surface exercised, without a transcript"
+    }
+  ]
+}
