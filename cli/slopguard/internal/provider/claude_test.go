@@ -270,6 +270,34 @@ func TestClaudeReviewClassifiesReportedFailures(t *testing.T) {
 	}
 }
 
+func TestClaudeReviewReportsRefusalAsCapability(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name    string
+		output  string
+		message string
+	}{
+		{name: "with category", output: `{"type":"result","subtype":"success","is_error":false,"stop_reason":"refusal","stop_details":{"category":"cyber"},"result":"` + providerOutputSentinel + `"}`, message: "Claude refused to review this change (cyber)"},
+		{name: "unknown category stays generic", output: `{"type":"result","subtype":"success","is_error":false,"stop_reason":"refusal","stop_details":{"category":"` + providerOutputSentinel + ` see /private"},"result":""}`, message: "Claude refused to review this change"},
+		{name: "without category", output: `{"type":"result","subtype":"success","is_error":false,"stop_reason":"refusal","result":"` + providerOutputSentinel + `","structured_output":{}}`, message: "Claude refused to review this change"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fake := newFakeClaude(t, fakeClaudeOptions{output: test.output})
+			reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}})
+			_, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)})
+			failure := assertProviderError(t, err, protocol.FailureCapability)
+			if failure.Message != test.message {
+				t.Fatalf("message = %q, want %q", failure.Message, test.message)
+			}
+			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptFailed {
+				t.Fatalf("attempt = %+v", failure.Attempt)
+			}
+			assertExecutionMetadata(t, failure, protocol.ProviderClaude, "2.1.220", false)
+		})
+	}
+}
+
 func TestClaudeReviewPrefersReportedFailureOnNonZeroExit(t *testing.T) {
 	t.Parallel()
 

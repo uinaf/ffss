@@ -272,11 +272,15 @@ func decodeClaudeEnvelope(output []byte) ([]byte, error) {
 		return nil, err
 	}
 	var envelope struct {
-		Type             string          `json:"type"`
-		Subtype          string          `json:"subtype"`
-		IsError          *bool           `json:"is_error"`
-		APIErrorStatus   *int            `json:"api_error_status"`
-		Result           string          `json:"result"`
+		Type           string `json:"type"`
+		Subtype        string `json:"subtype"`
+		IsError        *bool  `json:"is_error"`
+		APIErrorStatus *int   `json:"api_error_status"`
+		Result         string `json:"result"`
+		StopReason     string `json:"stop_reason"`
+		StopDetails    struct {
+			Category string `json:"category"`
+		} `json:"stop_details"`
 		StructuredOutput json.RawMessage `json:"structured_output"`
 	}
 	if err := json.Unmarshal(output, &envelope); err != nil {
@@ -302,12 +306,25 @@ func decodeClaudeEnvelope(output []byte) ([]byte, error) {
 	if envelope.Type != "result" || envelope.Subtype != "success" || envelope.IsError == nil {
 		return nil, fmt.Errorf("Claude did not report a successful result")
 	}
+	// A refusal arrives as a successful envelope without structured output.
+	// Retrying the same bundle would refuse again, so report capability.
+	if envelope.StopReason == "refusal" {
+		message := "Claude refused to review this change"
+		if category := envelope.StopDetails.Category; refusalCategoryPattern.MatchString(category) {
+			message += " (" + category + ")"
+		}
+		return nil, &reportedProviderError{Class: protocol.FailureCapability, Message: message}
+	}
 	structured := bytes.TrimSpace(envelope.StructuredOutput)
 	if len(structured) == 0 || structured[0] != '{' {
 		return nil, fmt.Errorf("Claude result is missing structured_output object")
 	}
 	return append([]byte(nil), structured...), nil
 }
+
+// Refusal categories are short identifiers such as "cyber"; anything else is
+// provider-controlled text and stays out of the sanitized failure message.
+var refusalCategoryPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`)
 
 func validClaudeFailureSubtype(subtype string) bool {
 	switch subtype {
