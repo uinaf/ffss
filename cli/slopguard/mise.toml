@@ -145,6 +145,12 @@ depends = ["release:check"]
 run = '''
 set -e
 export GORELEASER_CURRENT_TAG="${GORELEASER_CURRENT_TAG:-v0.0.0}"
+# goreleaser >= 2.18 drops commit metadata when the current tag does not
+# exist, so alias HEAD locally like the release job does. Never pushed.
+if ! git rev-parse -q --verify "refs/tags/$GORELEASER_CURRENT_TAG" >/dev/null; then
+  git -c tag.gpgSign=false tag -m snapshot "$GORELEASER_CURRENT_TAG"
+  trap 'git tag -d "$GORELEASER_CURRENT_TAG" >/dev/null' EXIT
+fi
 goreleaser release --snapshot --clean --skip=publish,sign
 test "$(find dist -maxdepth 1 -name 'slopguard_*.tar.gz' -type f | wc -l | tr -d ' ')" = "4"
 test "$(find dist -maxdepth 1 -name 'slopguard_*_linux_amd64.tar.gz' -type f | wc -l | tr -d ' ')" = "1"
