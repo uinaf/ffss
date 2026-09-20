@@ -26,7 +26,8 @@
 - Slopguard performs at most one configured retry, only for a malformed
   protocol response, using the same frozen bundle and provider.
   Authentication, capability, timeout, cancellation, and provider failures
-  are not retried.
+  are not retried. A Claude refusal (`stop_reason: refusal`) is a capability
+  failure carrying the refusal category; switch engine instead of retrying.
 - When the malformed response can be classified safely, the retry receives a
   rule-specific correction without provider output or repository content.
 
