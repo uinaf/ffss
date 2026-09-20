@@ -87,7 +87,9 @@ need scope.
 
 - Match proof to the claim: reproduce bugs, show refactor parity, exercise
   changed contracts, measure performance before and after. Use a real surface
-  when static checks cannot prove it.
+  when static checks cannot prove it. A check proves behavior only when it
+  fails on a negative control; a screenshot or artifact that merely shows the
+  expected state is an observation, not proof.
 - Test changed behavior existing coverage misses, including failure paths. No
   tests that restate the implementation.
 - For UI changes, exercise the affected flow and relevant keyboard, responsive,
@@ -95,8 +97,12 @@ need scope.
 - Reuse passing proof until a change, failure, or concrete concern invalidates
   it. Run independent review once when requested or required and validate its
   findings.
+- On a shared interactive host, hold the expensive build, test, or runtime
+  slot only while a check needs it, and stop only processes the task started.
 - Report what was verified and what failed, was skipped, or was unavailable.
-  Never claim an unexecuted check passed.
+  Never claim an unexecuted check passed. Record each proof compactly: the
+  source and dependency revision it ran against, the command, its execution
+  state, and the surface it exercised.
 
 ### Delivery
 
