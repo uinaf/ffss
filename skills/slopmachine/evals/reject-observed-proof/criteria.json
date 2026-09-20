@@ -25,7 +25,7 @@
     {
       "name": "Compact provenance recorded",
       "max_score": 15,
-      "description": "Records each proof with the revision it ran against, the command, whether it ran or is planned, and the surface exercised, without a transcript"
+      "description": "Records each proof with the source revision and dependency state it ran against (7c1d2e4, lockfile unchanged), the command, whether it ran or is planned, and the surface exercised, without a transcript"
     }
   ]
 }
