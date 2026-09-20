@@ -19,7 +19,8 @@ Current observations from this session:
 - You reverted the fix locally to check the test and it still passed; the
   test renders the modal and asserts on the final settled state. You restored
   the fix; the worktree is at 7c1d2e4 again.
-- Lint and typecheck passed at 7c1d2e4 in this session.
+- `pnpm lint` and `pnpm typecheck` passed at 7c1d2e4 in this session. Both
+  cover test files.
 - This is the user's interactive workstation. `pnpm dev` on port 3000 is the
   user's own session, started before this task. The delegated agent started a
   second `pnpm dev` on port 3001 for its screenshot and left it running. Only

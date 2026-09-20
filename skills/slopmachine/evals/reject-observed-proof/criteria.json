@@ -15,7 +15,7 @@
     {
       "name": "Valid proof reused",
       "max_score": 15,
-      "description": "Keeps the passing lint and typecheck at 7c1d2e4 without rerunning them; reruns only what the new test changes"
+      "description": "Reuses lint and typecheck from 7c1d2e4 only while their inputs are unchanged, and plans to rerun them once the replacement test lands because both cover test files; does not rerun anything merely because the session resumed"
     },
     {
       "name": "Shared host respected",
