@@ -17,6 +17,9 @@ jobs:
   changes:
     name: classify changes
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       clilib: ${{ steps.filter.outputs.clilib }}
       slopguard: ${{ steps.filter.outputs.slopguard }}
