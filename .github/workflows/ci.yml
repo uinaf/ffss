@@ -21,19 +21,12 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      clilib: ${{ steps.filter.outputs.clilib }}
-      slopguard: ${{ steps.filter.outputs.slopguard }}
-      skills: ${{ steps.filter.outputs.skills }}
+      clilib: ${{ contains(fromJSON(steps.changes.outputs.changes), 'clilib') }}
+      slopguard: ${{ contains(fromJSON(steps.changes.outputs.changes), 'slopguard') }}
+      skills: ${{ contains(fromJSON(steps.changes.outputs.changes), 'skills') }}
     steps:
-      - name: Check out repository
-        # Pull requests are classified through the API and need no tree; push
-        # events diff against the previous commit and need one.
-        if: github.event_name != 'pull_request'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - id: filter
-        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+      - id: changes
+        uses: uinaf/.github/.github/actions/changes@main
         with:
           filters: |
             clilib:
