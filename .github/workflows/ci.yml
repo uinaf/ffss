@@ -26,7 +26,7 @@ jobs:
       skills: ${{ contains(fromJSON(steps.changes.outputs.changes), 'skills') }}
     steps:
       - id: changes
-        uses: uinaf/.github/.github/actions/changes@f7ac9a6a4cea4b50af18406cb84a375462945a82 # main
+        uses: uinaf/.github/.github/actions/changes@273d0888178ba4795605c440bef144d8882331fc # v1.0.0
         with:
           filters: |
             clilib:
