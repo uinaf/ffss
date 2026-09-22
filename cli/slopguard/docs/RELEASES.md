@@ -123,9 +123,11 @@ version, and a crash between the tag push and draft creation is recovered by
 recreating the draft. If publication succeeded and only the downstream Homebrew
 smoke failed, the rerun detects the published release and skips every mutating
 release step. Never delete or move a published tag to retry a release. Reruns
-pin the original commit, so once `main` has advanced Semantic Release skips
-with "local branch is behind the remote"; use `workflow_dispatch`, which runs
-at `HEAD`.
+pin the original commit. Once `main` has advanced, Semantic Release skips
+with "local branch is behind the remote", and a `workflow_dispatch` runs at
+`HEAD`, where the release-tag step only recognizes a tag on that commit; a
+tag stranded on an older commit needs its release created from that commit
+by hand.
 
 ## Version tracks
 
