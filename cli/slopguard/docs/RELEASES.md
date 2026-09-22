@@ -108,13 +108,26 @@ with Contents write permission.
 - The workflow verifies those outputs and provenance before publishing the
   draft; publication makes the release assets and tag immutable.
 - Exact-tag release discovery fails closed instead of skipping publication.
+- GoReleaser OSS needs a plain semver tag and, from 2.18, drops commit
+  metadata when that tag does not exist, so the release job and
+  `release:snapshot` alias `HEAD` with a local tag that is never pushed; the
+  member prefix lives only on the pushed tag.
+- The workflow uses a per-member concurrency group so a queued run cannot
+  replace another member's pending release; Homebrew tap write races are
+  handled by the cask script's bounded retry.
 - No release commit is pushed to `main`.
 
 If publication fails after the tag is created, rerunning the failed workflow is
 safe: a release tag at `HEAD` resumes the mutable draft without choosing a new
-version. If publication succeeded and only the downstream Homebrew smoke
-failed, the rerun detects the published release and skips every mutating
-release step. Never delete or move a published tag to retry a release.
+version, and a crash between the tag push and draft creation is recovered by
+recreating the draft. If publication succeeded and only the downstream Homebrew
+smoke failed, the rerun detects the published release and skips every mutating
+release step. Never delete or move a published tag to retry a release. Reruns
+pin the original commit. Once `main` has advanced, Semantic Release skips
+with "local branch is behind the remote", and a `workflow_dispatch` runs at
+`HEAD`, where the release-tag step only recognizes a tag on that commit; a
+tag stranded on an older commit needs its release created from that commit
+by hand.
 
 ## Version tracks
 

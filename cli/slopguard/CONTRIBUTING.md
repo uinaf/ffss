@@ -15,6 +15,10 @@ Deterministic core checks, before opening or updating a pull request:
 mise run verify
 ```
 
+The test tasks cap Go parallelism because Git-backed tests spawn many
+subprocesses; the race task runs serially because macOS TSan can crash when
+Git subprocess tests run concurrently.
+
 Before release-related changes, run the release gate and release configuration
 checks. The release gate needs network access for the current Go vulnerability
 database.
