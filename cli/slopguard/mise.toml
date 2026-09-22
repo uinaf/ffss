@@ -22,12 +22,10 @@ run = "test -z \"$(gofmt -l .)\""
 
 [tasks.test]
 description = "Run unit tests"
-# Git-backed tests spawn many subprocesses; cap parallelism to avoid process exhaustion.
 run = "go test -p 4 -parallel 4 ./..."
 
 [tasks."test:race"]
 description = "Run unit tests with the race detector"
-# macOS TSan can crash when multiple Git subprocess tests run concurrently.
 run = "go test -race -p 1 -parallel 1 ./..."
 
 [tasks.vet]
@@ -145,8 +143,6 @@ depends = ["release:check"]
 run = '''
 set -e
 export GORELEASER_CURRENT_TAG="${GORELEASER_CURRENT_TAG:-v0.0.0}"
-# goreleaser >= 2.18 drops commit metadata when the current tag does not
-# exist, so alias HEAD locally like the release job does. Never pushed.
 if ! git rev-parse -q --verify "refs/tags/$GORELEASER_CURRENT_TAG" >/dev/null; then
   git -c tag.gpgSign=false -c tag.forceSignAnnotated=false tag --no-sign "$GORELEASER_CURRENT_TAG"
   trap 'git tag -d "$GORELEASER_CURRENT_TAG" >/dev/null' EXIT
@@ -158,8 +154,6 @@ test "$(find dist -maxdepth 1 -name 'slopguard_*_linux_arm64.tar.gz' -type f | w
 for archive in dist/slopguard_*.tar.gz; do
   test "$(tar -tzf "$archive" | LC_ALL=C sort | tr '\n' ' ')" = "LICENSE README.md slopguard "
 done
-# The cask is rendered by the release workflow (scripts/publish-cask.sh);
-# the same quarantine guard applies to the template there.
 if rg -n 'xattr|com\.apple\.quarantine' scripts/publish-cask.sh; then
   printf '%s\n' "cask template removes quarantine" >&2
   exit 1

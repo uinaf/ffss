@@ -65,6 +65,4 @@ changelog:
   disable: true
 
 release:
-  # Publishing is workflow-owned; goreleaser only builds, signs, and
-  # notarizes (release workflows run with --skip=publish).
   disable: true

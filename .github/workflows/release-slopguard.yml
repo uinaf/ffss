@@ -5,16 +5,11 @@ on:
     branches: [main]
     paths:
       - "cli/slopguard/**"
-  # Reruns pin the original commit; once main advances, semantic-release
-  # skips ("local branch is behind the remote"). Dispatch runs at HEAD.
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Per-member groups: a shared group would let a queued run replace the
-# other member's pending release. Tap-write races are handled by the cask
-# script's bounded retry instead.
 concurrency:
   group: release-slopguard
   cancel-in-progress: false
@@ -177,9 +172,6 @@ jobs:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -euo pipefail
-          # semantic-release pushes the tag before creating the release; a
-          # crash between the two leaves a tag with no release. Recover by
-          # recreating the draft instead of failing every rerun.
           if draft=$(gh release view "$TAG" --repo uinaf/ffss --json isDraft --jq .isDraft 2>/dev/null); then
             echo "published=$([ "$draft" = "false" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           else
@@ -200,8 +192,6 @@ jobs:
         run: |
           set -euo pipefail
           ./scripts/verify-apple-credentials.sh "$APPLE_TEAM_ID"
-          # goreleaser OSS needs a plain semver tag; the member prefix lives
-          # only on the pushed tag. The local alias is never pushed.
           git tag -f "$GORELEASER_CURRENT_TAG"
           exec goreleaser release --clean --skip=publish
 
