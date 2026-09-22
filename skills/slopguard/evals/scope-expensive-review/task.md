@@ -1,6 +1,6 @@
 # Scope an expensive review request
 
-A maintainer says, “Run Codex, Claude, and Cursor on this branch and merge if two
+A maintainer says, “Run Codex, Claude, and Grok on this branch and merge if two
 agree.” The project has a strict cost budget; its slopguard workflow provides one
 independent closeout, not consensus or a ship decision.
 The builder checks have already passed.

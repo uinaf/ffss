@@ -35,8 +35,8 @@ func TestCodexReviewUsesFrozenStdinAndCanonicalResult(t *testing.T) {
 	if result.Provider.Name != protocol.ProviderCodex || result.Provider.Model != "test-model" || result.Provider.Version != "0.146.0" {
 		t.Fatalf("provider = %+v", result.Provider)
 	}
-	if result.Attempt.Outcome != protocol.AttemptValid || result.Attempt.Number != 1 || result.ProtocolRecovery.Applied {
-		t.Fatalf("result metadata = %+v, %+v", result.Attempt, result.ProtocolRecovery)
+	if result.Attempt.Outcome != protocol.AttemptValid || result.Attempt.Number != 1 {
+		t.Fatalf("result metadata = %+v", result.Attempt)
 	}
 	if result.WebAccess {
 		t.Fatalf("result policy = web %t", result.WebAccess)

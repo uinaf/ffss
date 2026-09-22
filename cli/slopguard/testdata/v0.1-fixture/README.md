@@ -1,6 +1,6 @@
 # v0.1 real-review fixture
 
-Public, synthetic fixture giving Codex, Claude, Cursor, and Grok the same
+Public, synthetic fixture giving Codex, Claude, and Grok the same
 bounded controls. `base/` is the initial repository state, `after/` adds a
 clean tested `Mean` function, and `defective/` adds three intentionally broken
 helpers in separate files.

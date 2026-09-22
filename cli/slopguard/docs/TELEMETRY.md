@@ -29,7 +29,7 @@ Events contain only:
 
 - telemetry, CLI release, and result-schema versions;
 - provider enum, target mode, web access, outcome, and failure class;
-- attempt outcomes and protocol-recovery enum;
+- attempt outcomes and the protocol-recovery flag;
 - coarse bundle-size, finding-count, and phase-duration buckets.
 
 They contain no paths, revisions, hashes, prompts, findings, prose, raw

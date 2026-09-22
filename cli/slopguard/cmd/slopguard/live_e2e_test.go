@@ -86,7 +86,7 @@ func TestBinaryLiveProviderMatrix(t *testing.T) {
 
 func TestLiveReviewEnvironmentRouting(t *testing.T) {
 	t.Setenv("SLOPGUARD_REASONING_EFFORT", "low")
-	t.Setenv("CURSOR_CONFIG_DIR", "/provider/state")
+	t.Setenv("GROK_HOME", "/provider/state")
 	t.Setenv("CODEX_API_KEY", "direct-codex-key")
 	t.Setenv("OPENAI_API_KEY", "direct-openai-key")
 	t.Setenv("GIT_CONFIG_GLOBAL", "/host/global.gitconfig")
@@ -102,8 +102,8 @@ func TestLiveReviewEnvironmentRouting(t *testing.T) {
 		}
 		values[name] = value
 	}
-	if values["CURSOR_CONFIG_DIR"] != "/provider/state" {
-		t.Fatalf("CURSOR_CONFIG_DIR = %q", values["CURSOR_CONFIG_DIR"])
+	if values["GROK_HOME"] != "/provider/state" {
+		t.Fatalf("GROK_HOME = %q", values["GROK_HOME"])
 	}
 	if values["GIT_CONFIG_GLOBAL"] != "/dev/null" || values["GIT_CONFIG_SYSTEM"] != "/dev/null" {
 		t.Fatalf("Git config environment = %q, %q", values["GIT_CONFIG_GLOBAL"], values["GIT_CONFIG_SYSTEM"])
@@ -143,7 +143,6 @@ func selectedLiveProviders(t *testing.T) []liveProvider {
 	available := []liveProvider{
 		{name: protocol.ProviderCodex, executable: "codex", model: provider.DefaultCodexModel, credentials: []string{"CODEX_API_KEY", "OPENAI_API_KEY"}},
 		{name: protocol.ProviderClaude, executable: "claude", model: provider.DefaultClaudeModel, credentials: []string{"ANTHROPIC_API_KEY"}},
-		{name: protocol.ProviderCursor, executable: "cursor-agent", model: provider.DefaultCursorModel, webAccess: true, credentials: []string{"CURSOR_API_KEY"}},
 		{name: protocol.ProviderGrok, executable: "grok", model: provider.DefaultGrokModel, credentials: []string{"XAI_API_KEY"}},
 	}
 	selection := strings.TrimSpace(os.Getenv("SLOPGUARD_LIVE_PROVIDERS"))
@@ -282,11 +281,7 @@ func runLiveReview(t *testing.T, binary string, live liveProvider, control liveC
 		"--output", "json",
 		"--prompt-file", "-",
 	}
-	if live.name == protocol.ProviderCursor {
-		arguments = append(arguments, "--web-access")
-	} else {
-		arguments = append(arguments, "--web-access=false", "--reasoning-effort", "high")
-	}
+	arguments = append(arguments, "--web-access=false", "--reasoning-effort", "high")
 	command := exec.CommandContext(t.Context(), binary, arguments...)
 	command.Env = liveReviewEnvironment(t, live)
 	command.Stdin = strings.NewReader(control.contract)

@@ -21,25 +21,24 @@ var eventFields = map[string]bool{
 	"schema_version": true, "cli_version": true, "report_schema_version": true,
 	"provider": false, "target_mode": false, "web_access": true,
 	"outcome": true, "failure_class": false, "attempt_outcomes": true,
-	"protocol_recovery_applied": true, "protocol_recovery_strategy": false,
-	"bundle_bucket": true, "finding_count_bucket": true, "phase_duration_buckets": true,
+	"protocol_recovery_applied": true,
+	"bundle_bucket":             true, "finding_count_bucket": true, "phase_duration_buckets": true,
 }
 
 type Event struct {
-	SchemaVersion            string            `json:"schema_version"`
-	CLIVersion               string            `json:"cli_version"`
-	ReportSchemaVersion      string            `json:"report_schema_version"`
-	Provider                 string            `json:"provider,omitempty"`
-	TargetMode               string            `json:"target_mode,omitempty"`
-	WebAccess                bool              `json:"web_access"`
-	Outcome                  string            `json:"outcome"`
-	FailureClass             string            `json:"failure_class,omitempty"`
-	AttemptOutcomes          []string          `json:"attempt_outcomes"`
-	ProtocolRecoveryApplied  bool              `json:"protocol_recovery_applied"`
-	ProtocolRecoveryStrategy string            `json:"protocol_recovery_strategy,omitempty"`
-	BundleBucket             string            `json:"bundle_bucket"`
-	FindingCountBucket       string            `json:"finding_count_bucket"`
-	PhaseDurationBuckets     map[string]string `json:"phase_duration_buckets"`
+	SchemaVersion           string            `json:"schema_version"`
+	CLIVersion              string            `json:"cli_version"`
+	ReportSchemaVersion     string            `json:"report_schema_version"`
+	Provider                string            `json:"provider,omitempty"`
+	TargetMode              string            `json:"target_mode,omitempty"`
+	WebAccess               bool              `json:"web_access"`
+	Outcome                 string            `json:"outcome"`
+	FailureClass            string            `json:"failure_class,omitempty"`
+	AttemptOutcomes         []string          `json:"attempt_outcomes"`
+	ProtocolRecoveryApplied bool              `json:"protocol_recovery_applied"`
+	BundleBucket            string            `json:"bundle_bucket"`
+	FindingCountBucket      string            `json:"finding_count_bucket"`
+	PhaseDurationBuckets    map[string]string `json:"phase_duration_buckets"`
 }
 
 type Metrics struct {
@@ -97,9 +96,6 @@ func (metrics *Metrics) Event(cliVersion string, report protocol.Report) Event {
 	for _, attempt := range report.Metadata.Attempts {
 		event.AttemptOutcomes = append(event.AttemptOutcomes, string(attempt.Outcome))
 	}
-	if report.Metadata.ProtocolRecovery.Strategy != nil {
-		event.ProtocolRecoveryStrategy = string(*report.Metadata.ProtocolRecovery.Strategy)
-	}
 	if metrics != nil {
 		metrics.mu.Lock()
 		if metrics.bundleSet {
@@ -127,7 +123,7 @@ func (event Event) Validate() error {
 	}
 	if event.Provider != "" {
 		switch protocol.ProviderName(event.Provider) {
-		case protocol.ProviderCodex, protocol.ProviderClaude, protocol.ProviderCursor, protocol.ProviderGrok:
+		case protocol.ProviderCodex, protocol.ProviderClaude, protocol.ProviderGrok:
 		default:
 			return fmt.Errorf("invalid telemetry provider")
 		}
@@ -158,10 +154,8 @@ func (event Event) Validate() error {
 			return fmt.Errorf("invalid telemetry attempt outcome")
 		}
 	}
-	if event.ProtocolRecoveryStrategy != "" {
-		if !event.ProtocolRecoveryApplied || protocol.RecoveryStrategy(event.ProtocolRecoveryStrategy) != protocol.RecoveryCursorTrailingObject {
-			return fmt.Errorf("invalid telemetry recovery strategy")
-		}
+	if event.ProtocolRecoveryApplied {
+		return fmt.Errorf("invalid telemetry protocol recovery")
 	}
 	if !oneOf(event.BundleBucket, "unavailable", "0", "1-64KiB", "64KiB-1MiB", "1-8MiB", "8MiB+") {
 		return fmt.Errorf("invalid telemetry bundle bucket")

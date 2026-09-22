@@ -123,8 +123,7 @@ func Run(ctx context.Context, options Options) protocol.Report {
 		if reviewErr != nil {
 			reason, execution := providerFailureDetails(reviewErr)
 			if execution != nil {
-				merged := mergeExecution(resolvedExecution, *execution)
-				resolvedExecution = &merged
+				resolvedExecution = execution
 			}
 			class, attempt := providerFailure(reviewErr, attemptNumber, attemptDuration)
 			if attempt != nil {
@@ -147,7 +146,7 @@ func Run(ctx context.Context, options Options) protocol.Report {
 		attempts = append(attempts, attempt)
 		metadataMatches := result.Provider.Name == options.Config.Engine.Value && result.WebAccess == options.Config.WebAccess.Value
 		if metadataMatches {
-			execution := mergeExecution(resolvedExecution, result.ResolvedExecution())
+			execution := result.ResolvedExecution()
 			resolvedExecution = &execution
 		}
 		if unchangedErr := verifyUnchanged(ctx, bundle); unchangedErr != nil {
@@ -196,12 +195,11 @@ func successReport(reviewedTarget protocol.Target, result provider.Result, attem
 		Status:        status,
 		Review:        &result.Review,
 		Metadata: protocol.Metadata{
-			Target:           &reviewedTarget,
-			Provider:         &providerMetadata,
-			Attempts:         append([]protocol.Attempt(nil), attempts...),
-			DurationMS:       durationMS,
-			WebAccess:        result.WebAccess,
-			ProtocolRecovery: result.ProtocolRecovery,
+			Target:     &reviewedTarget,
+			Provider:   &providerMetadata,
+			Attempts:   append([]protocol.Attempt(nil), attempts...),
+			DurationMS: durationMS,
+			WebAccess:  result.WebAccess,
 		},
 	}
 }
@@ -221,7 +219,6 @@ func failureReport(class protocol.FailureClass, message string, reviewedTarget *
 		providerMetadata := execution.Provider
 		report.Metadata.Provider = &providerMetadata
 		report.Metadata.WebAccess = execution.WebAccess
-		report.Metadata.ProtocolRecovery = execution.ProtocolRecovery
 	}
 	return report
 }
@@ -232,13 +229,6 @@ func providerFailureDetails(err error) (protocol.ProtocolReason, *provider.Execu
 		return "", nil
 	}
 	return failure.Reason, failure.Execution
-}
-
-func mergeExecution(current *provider.Execution, next provider.Execution) provider.Execution {
-	if current != nil && current.ProtocolRecovery.Applied && !next.ProtocolRecovery.Applied {
-		next.ProtocolRecovery = current.ProtocolRecovery
-	}
-	return next
 }
 
 func providerFailure(err error, number int, durationMS int64) (protocol.FailureClass, *protocol.Attempt) {

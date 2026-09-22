@@ -40,7 +40,6 @@ type ProviderName string
 const (
 	ProviderCodex  ProviderName = "codex"
 	ProviderClaude ProviderName = "claude"
-	ProviderCursor ProviderName = "cursor"
 	ProviderGrok   ProviderName = "grok"
 )
 
@@ -94,10 +93,6 @@ const (
 )
 
 type RecoveryStrategy string
-
-const (
-	RecoveryCursorTrailingObject RecoveryStrategy = "cursor_trailing_object"
-)
 
 type Report struct {
 	SchemaVersion string   `json:"schema_version"`

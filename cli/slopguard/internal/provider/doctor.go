@@ -105,13 +105,6 @@ func Doctor(ctx context.Context, options DoctorOptions) (diagnostic Diagnostic) 
 		preflight = func(candidate string) (string, error) {
 			return adapter.preflight(probeContext, candidate, runtime.Workspace, providerEnvironment, options.Config)
 		}
-	case protocol.ProviderCursor:
-		adapter := NewCursor(CursorOptions{Repository: repository, Executable: executable, Environment: environment})
-		executable = adapter.executable
-		providerEnvironment := runtime.Environment()
-		preflight = func(candidate string) (string, error) {
-			return adapter.preflight(probeContext, candidate, runtime.Workspace, providerEnvironment, options.Config, false)
-		}
 	case protocol.ProviderGrok:
 		adapter := NewGrok(GrokOptions{Repository: repository, Executable: executable, Environment: environment})
 		executable = adapter.executable
@@ -131,7 +124,7 @@ func Doctor(ctx context.Context, options DoctorOptions) (diagnostic Diagnostic) 
 	if err != nil {
 		return diagnostic.withFailure(classifyDoctorFailure(err))
 	}
-	if !validDoctorVersion(diagnostic.Provider, prepared.Version) || doctorVersionContainsCredential(diagnostic.Provider, prepared.Version, environment) {
+	if !validDoctorVersion(diagnostic.Provider, prepared.Version) || doctorVersionContainsCredential(prepared.Version, environment) {
 		return diagnostic.withFailure(protocol.FailureCapability)
 	}
 	diagnostic.Compatible = true
@@ -149,7 +142,7 @@ func (diagnostic Diagnostic) Validate() error {
 	}
 	if diagnostic.Provider != "" {
 		switch diagnostic.Provider {
-		case protocol.ProviderCodex, protocol.ProviderClaude, protocol.ProviderCursor, protocol.ProviderGrok:
+		case protocol.ProviderCodex, protocol.ProviderClaude, protocol.ProviderGrok:
 		default:
 			return fmt.Errorf("invalid doctor provider")
 		}
@@ -222,10 +215,6 @@ func validateDoctorConfig(effective config.Effective) error {
 		default:
 			return fmt.Errorf("Claude reasoning effort is unsupported")
 		}
-	case protocol.ProviderCursor:
-		if effective.ReasoningEffort.Source != config.SourceDefault || !effective.WebAccess.Value {
-			return fmt.Errorf("Cursor execution policy is unsupported")
-		}
 	}
 	return nil
 }
@@ -270,25 +259,19 @@ func validDoctorVersion(name protocol.ProviderName, version string) bool {
 		matched = codexVersionPattern.FindString(version)
 	case protocol.ProviderClaude:
 		matched = claudeVersionPattern.FindString(version)
-	case protocol.ProviderCursor:
-		matched = cursorVersionPattern.FindString(version)
 	case protocol.ProviderGrok:
 		matched = grokVersionPattern.FindString(version)
 	}
 	return matched == version
 }
 
-func doctorVersionContainsCredential(provider protocol.ProviderName, version string, environment []string) bool {
-	var build string
-	if provider == protocol.ProviderCursor {
-		_, build, _ = strings.Cut(version, "-")
-	}
+func doctorVersionContainsCredential(version string, environment []string) bool {
 	for _, entry := range environment {
 		name, value, found := strings.Cut(entry, "=")
 		if !found || value == "" || !credentialEnvironmentName(name) {
 			continue
 		}
-		if version == value || build == value {
+		if version == value {
 			return true
 		}
 	}

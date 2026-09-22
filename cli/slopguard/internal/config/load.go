@@ -360,20 +360,16 @@ func applyProviderDefaults(effective *Effective) {
 		switch effective.Engine.Value {
 		case protocol.ProviderCodex, protocol.ProviderClaude:
 			effective.ReasoningEffort.Value = ReasoningMedium
-		case protocol.ProviderCursor, protocol.ProviderGrok:
+		case protocol.ProviderGrok:
 			effective.ReasoningEffort.Value = ReasoningHigh
 		}
-	}
-	if effective.Engine.Value == protocol.ProviderCursor && effective.Engine.Source == SourceFlag && effective.WebAccess.Source == SourceDefault {
-		effective.WebAccess.Value = true
-		effective.WebAccess.Source = SourceFlag
 	}
 }
 
 func validateRaw(raw rawConfig, source Source) error {
 	if raw.Engine.set {
 		switch protocol.ProviderName(raw.Engine.value) {
-		case protocol.ProviderCodex, protocol.ProviderClaude, protocol.ProviderCursor, protocol.ProviderGrok:
+		case protocol.ProviderCodex, protocol.ProviderClaude, protocol.ProviderGrok:
 		default:
 			return fmt.Errorf("%s engine: invalid value %q", source, raw.Engine.value)
 		}

@@ -197,9 +197,6 @@ func (grok *Grok) Review(ctx context.Context, request Request) (result Result, r
 		Attempt:   attempt,
 		Duration:  time.Since(started),
 		WebAccess: resolvedExecution.WebAccess,
-		ProtocolRecovery: protocol.ProtocolRecovery{
-			Applied: false,
-		},
 	}, nil
 }
 

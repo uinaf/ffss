@@ -54,19 +54,18 @@ SLOPGUARD_LIVE_PROVIDERS=codex,grok mise run verify:live
 SLOPGUARD_LIVE_PROVIDERS=grok SLOPGUARD_LIVE_REPEAT=3 mise run verify:live
 ```
 
-- Default: Codex, Claude, Cursor, and Grok sequentially.
+- Default: Codex, Claude, and Grok sequentially.
 - The run removes the selected provider's direct API-key variables and
   preserves normal provider state, XDG configuration, and helper configuration.
   Use an isolated session or gateway/helper profile when those routes need
   separate proof.
-- Cursor runs with web access because its harness cannot guarantee per-run web
-  disablement; the other providers run with web access off.
+- Every provider runs with web access off.
 - `SLOPGUARD_LIVE_REPEAT` is bounded from 1 through 10.
 - Selected providers x 2 controls x repeat count may request at most 80
   reviews, keeping the worst-case retry path inside the 8h30m test timeout.
 - These checks consume provider quota and require every selected harness on
   `PATH`.
-- At the maximum repeat value, the default four-provider route can exceed eight
+- At the maximum repeat value, the default three-provider route can exceed eight
   hours when every review consumes its protocol retry, so the full two-route
   matrix caps the repeat count at 5.
 

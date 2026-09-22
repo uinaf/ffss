@@ -36,7 +36,7 @@ func TestGrokReviewUsesFrozenPromptAndBoundedPolicy(t *testing.T) {
 	if result.Provider.Name != protocol.ProviderGrok || result.Provider.Model != "test-model" || result.Provider.Version != "1.0.4" {
 		t.Fatalf("provider = %+v", result.Provider)
 	}
-	if result.Attempt.Outcome != protocol.AttemptValid || result.ProtocolRecovery.Applied || len(result.Review.Findings) != 0 {
+	if result.Attempt.Outcome != protocol.AttemptValid || len(result.Review.Findings) != 0 {
 		t.Fatalf("result = %+v", result)
 	}
 	if prompt := readTestFile(t, fake.prompt); prompt != "frozen review bundle\nretry"+reviewpolicy.GrokReviewProtocol() {
@@ -468,7 +468,7 @@ func TestGrokReviewUsesExplicitDefaultModel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if DefaultGrokModel != "grok-4.6" {
+	if DefaultGrokModel != "grok-4.7" {
 		t.Fatalf("DefaultGrokModel = %q", DefaultGrokModel)
 	}
 	if result.Provider.Model != DefaultGrokModel {

@@ -3,7 +3,7 @@
 # slopguard
 
 `slopguard` is a Go CLI and agent skill for one structured, independent code
-review through Codex CLI, Claude Code, Cursor Agent, or Grok Build. It freezes
+review through Codex CLI, Claude Code, or Grok Build. It freezes
 an explicit Git target, validates the provider result locally, and emits a
 stable terminal or JSON report.
 

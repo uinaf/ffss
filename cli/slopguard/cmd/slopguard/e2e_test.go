@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/uinaf/ffss/cli/slopguard/internal/config"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
 )
@@ -197,43 +196,6 @@ func TestBinarySchemaCommandsAreStandalone(t *testing.T) {
 	}
 }
 
-func TestBinaryConfigCommandReportsCursorWebDefaults(t *testing.T) {
-	binary := buildSlopguardBinary(t)
-	repository := cliRepository(t)
-
-	for _, test := range []struct {
-		name      string
-		arguments []string
-		web       bool
-		webSource config.Source
-	}{
-		{name: "implicit", arguments: []string{"--engine", "cursor"}, web: true, webSource: config.SourceFlag},
-		{name: "explicit false", arguments: []string{"--engine", "cursor", "--web-access=false"}, webSource: config.SourceFlag},
-		{name: "Grok web off", arguments: []string{"--engine", "grok"}, webSource: config.SourceDefault},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			effective := runBinaryConfig(t, binary, repository, test.arguments...)
-			if effective.WebAccess.Value != test.web || effective.WebAccess.Source != test.webSource {
-				t.Fatalf("web_access = %+v", effective.WebAccess)
-			}
-		})
-	}
-
-	t.Run("repository engine does not grant web", func(t *testing.T) {
-		repository := cliRepository(t)
-		if err := os.WriteFile(filepath.Join(repository, ".slopguard.yaml"), []byte("engine: cursor\n"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		effective := runBinaryConfig(t, binary, repository)
-		if effective.Engine.Value != protocol.ProviderCursor || effective.Engine.Source != config.SourceRepository {
-			t.Fatalf("engine = %+v", effective.Engine)
-		}
-		if effective.WebAccess.Value || effective.WebAccess.Source != config.SourceDefault {
-			t.Fatalf("web_access = %+v", effective.WebAccess)
-		}
-	})
-}
-
 func buildSlopguardBinary(t *testing.T) string {
 	t.Helper()
 	workingDirectory, err := os.Getwd()
@@ -247,32 +209,6 @@ func buildSlopguardBinary(t *testing.T) string {
 		t.Fatalf("build CLI: %v: %s", err, output)
 	}
 	return binary
-}
-
-func runBinaryConfig(t *testing.T, binary, repository string, arguments ...string) config.Effective {
-	t.Helper()
-	commandArguments := append([]string{"config", "--repository", repository}, arguments...)
-	commandArguments = append(commandArguments, "--json")
-	command := exec.Command(binary, commandArguments...)
-	command.Env = []string{
-		"PATH=" + os.Getenv("PATH"),
-		"HOME=" + t.TempDir(),
-		"XDG_CONFIG_HOME=" + t.TempDir(),
-		"GIT_CONFIG_GLOBAL=/dev/null",
-		"GIT_CONFIG_SYSTEM=/dev/null",
-	}
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	command.Stdout = &stdout
-	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		t.Fatalf("config command: %v, stderr = %s", err, stderr.String())
-	}
-	var effective config.Effective
-	if err := json.Unmarshal(stdout.Bytes(), &effective); err != nil {
-		t.Fatalf("decode config JSON: %v: %s", err, stdout.String())
-	}
-	return effective
 }
 
 func writeFakeReviewTools(t testing.TB, scenario string) (string, string, string, string, string) {

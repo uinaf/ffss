@@ -32,7 +32,7 @@ func TestClaudeReviewUsesFrozenStdinAndCanonicalArguments(t *testing.T) {
 	if result.Provider.Name != protocol.ProviderClaude || result.Provider.Model != "test-model" || result.Provider.Version != "2.1.220" {
 		t.Fatalf("provider = %+v", result.Provider)
 	}
-	if result.Attempt.Outcome != protocol.AttemptValid || result.ProtocolRecovery.Applied || len(result.Review.Findings) != 0 {
+	if result.Attempt.Outcome != protocol.AttemptValid || len(result.Review.Findings) != 0 {
 		t.Fatalf("result = %+v", result)
 	}
 	prompt := readTestFile(t, fake.prompt)

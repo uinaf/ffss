@@ -4,9 +4,11 @@
 
 - Provider processes retain bounded private stderr diagnostics without treating
   large non-fatal hook or progress output as `provider output_limit`.
-- Codex CLI `0.153.2`, Claude Code `2.1.260`, Cursor Agent
-  `2026.09.02-c22c1a3`, and Grok Build `1.0.13` are covered by compatibility
-  fixtures.
+- Codex CLI `0.153.2`, Claude Code `2.1.260`, and Grok Build `1.0.13` are
+  covered by compatibility fixtures.
+- The Cursor engine is removed; `engine: cursor` is now a configuration error.
+- Default models are `gpt-6-sol` for Codex, `claude-opus-5-5` for Claude, and
+  `grok-4.7` for Grok.
 - `slopguard doctor --json` is an alias for `--output json`.
 
 `slopguard` evaluates a CLI release after every successful push to protected

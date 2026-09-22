@@ -453,8 +453,6 @@ func defaultReviewer(name protocol.ProviderName, repository string) provider.Rev
 		return provider.NewCodex(provider.CodexOptions{Repository: repository})
 	case protocol.ProviderClaude:
 		return provider.NewClaude(provider.ClaudeOptions{Repository: repository})
-	case protocol.ProviderCursor:
-		return provider.NewCursor(provider.CursorOptions{Repository: repository})
 	case protocol.ProviderGrok:
 		return provider.NewGrok(provider.GrokOptions{Repository: repository})
 	default:

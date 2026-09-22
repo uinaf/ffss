@@ -9,7 +9,7 @@ Slopguard resolves one flat typed configuration in this precedence order:
 5. built-in operational defaults
 
 - The engine has no built-in default.
-- Valid engines are `codex`, `claude`, `cursor`, and `grok`.
+- Valid engines are `codex`, `claude`, and `grok`.
 
 Inspect resolved values and their source with:
 
@@ -38,10 +38,8 @@ Environment variables: `SLOPGUARD_ENGINE`, `SLOPGUARD_MODEL`,
   zero or one, and invalid types fail closed.
 - No profiles or local override files.
 - `max_bytes` defaults to 1 MiB; maximum 128 MiB.
-- Reasoning effort defaults to `medium` for Codex and Claude, `high` for Cursor
-  and Grok. Explicit configuration overrides it for Codex, Claude, and Grok.
-  Cursor encodes effort in the model ID and rejects a separate
-  `reasoning_effort`; choose its effort with `--model`.
+- Reasoning effort defaults to `medium` for Codex and Claude and `high` for
+  Grok. Explicit configuration overrides it.
 
 ## Runtime
 
@@ -50,10 +48,6 @@ empty temporary workspace holding only the frozen bundle.
 
 ## Web access
 
-- Defaults off for Codex, Claude, and Grok.
-- Explicit CLI `--engine cursor` enables otherwise-unset web access implicitly
-  because Cursor cannot guarantee a per-run web disable.
-- Repository, environment, or XDG engine selection does not grant web access.
-- Explicit `web_access: false` stays authoritative and prevents a Cursor run.
+- Defaults off.
 - Only an explicit flag or an ownership-checked account-home XDG file may
-  otherwise enable web access.
+  enable web access.

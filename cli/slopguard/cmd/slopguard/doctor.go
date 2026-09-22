@@ -106,7 +106,7 @@ func providerName(values configFlagValues) protocol.ProviderName {
 	}
 	name := protocol.ProviderName(*values.engine)
 	switch name {
-	case protocol.ProviderCodex, protocol.ProviderClaude, protocol.ProviderCursor, protocol.ProviderGrok:
+	case protocol.ProviderCodex, protocol.ProviderClaude, protocol.ProviderGrok:
 		return name
 	default:
 		return ""

@@ -15,7 +15,6 @@ import (
 
 func TestEventUsesPrivacyAllowlist(t *testing.T) {
 	const private = "PRIVATE-SENTINEL-path-revision-prompt-model-prose"
-	recovery := protocol.RecoveryCursorTrailingObject
 	report := protocol.Report{
 		SchemaVersion: protocol.SchemaVersion,
 		Status:        protocol.StatusFindings,
@@ -32,10 +31,9 @@ func TestEventUsesPrivacyAllowlist(t *testing.T) {
 				Mode: protocol.TargetBranch, SnapshotHash: private, HeadRevision: private, BaseRevision: private,
 				Files: []protocol.ReviewedFile{{FilePath: private, LineRanges: []protocol.LineRange{{StartLine: 1, EndLine: 1}}}},
 			},
-			Provider:         &protocol.Provider{Name: protocol.ProviderCursor, Model: private, Version: private},
-			Attempts:         []protocol.Attempt{{Number: 1, Outcome: protocol.AttemptMalformed}, {Number: 2, Outcome: protocol.AttemptValid}},
-			WebAccess:        true,
-			ProtocolRecovery: protocol.ProtocolRecovery{Applied: true, Strategy: &recovery},
+			Provider:  &protocol.Provider{Name: protocol.ProviderGrok, Model: private, Version: private},
+			Attempts:  []protocol.Attempt{{Number: 1, Outcome: protocol.AttemptMalformed}, {Number: 2, Outcome: protocol.AttemptValid}},
+			WebAccess: true,
 		},
 	}
 	metrics := NewMetrics()
@@ -55,7 +53,7 @@ func TestEventUsesPrivacyAllowlist(t *testing.T) {
 	}
 	want := []string{
 		"attempt_outcomes", "bundle_bucket", "cli_version", "finding_count_bucket", "outcome",
-		"phase_duration_buckets", "protocol_recovery_applied", "protocol_recovery_strategy", "provider",
+		"phase_duration_buckets", "protocol_recovery_applied", "provider",
 		"report_schema_version", "schema_version", "target_mode", "web_access",
 	}
 	got := make([]string, 0, len(fields))
@@ -71,6 +69,10 @@ func TestEventUsesPrivacyAllowlist(t *testing.T) {
 	}
 	if err := event.Validate(); err != nil {
 		t.Fatal(err)
+	}
+	event.ProtocolRecoveryApplied = true
+	if err := event.Validate(); err == nil || !strings.Contains(err.Error(), "invalid telemetry protocol recovery") {
+		t.Fatalf("Validate() error = %v, want protocol recovery rejection", err)
 	}
 }
 

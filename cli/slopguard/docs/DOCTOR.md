@@ -11,8 +11,7 @@ slopguard doctor --engine codex --json
 
 It runs the same executable discovery, version, help-capability, and web-policy
 checks as review preparation, and creates and removes the provider's empty
-runtime workspace. It omits the Cursor authentication probe that review
-preparation runs, so it stays offline and spends no provider call. It does not
+runtime workspace. It stays offline and spends no provider call. It does not
 inspect or emit provider configuration contents or attempt login; native
 provider processes still receive their configured environment during startup.
 
