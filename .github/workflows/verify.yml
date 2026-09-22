@@ -1,4 +1,4 @@
-name: CI
+name: Verify
 
 on:
   push:
@@ -34,7 +34,7 @@ jobs:
             slopguard:
               - 'cli/slopguard/**'
               - 'cli/lib/**'
-              - '.github/workflows/ci.yml'
+              - '.github/workflows/verify.yml'
               - '.github/workflows/release-slopguard.yml'
             skills:
               - 'skills/**'
