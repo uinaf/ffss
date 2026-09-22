@@ -29,13 +29,13 @@ npm run summarize                             # writes .skillcheck/scorecards/<U
 operator-run. A bare `--judge` model grades through the Anthropic selection
 (`ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN` for a gateway, or the local
 Claude Code session); a provider-qualified judge uses that provider's env.
-`--harness codex` or `--harness cursor` needs the matching CLI login (or
-`OPENAI_API_KEY` / `CURSOR_API_KEY`) for the agent leg. A fully non-Anthropic
-sweep:
+`--harness codex` needs the Codex CLI login (or `OPENAI_API_KEY`) for the agent
+leg. `--harness grok` needs the Grok Build CLI and its login or supported
+credentials. A fully non-Anthropic sweep with Codex:
 
 ```sh
-OPENAI_API_KEY=… OPENAI_BASE_URL=… npm run sweep -- --harness cursor \
-  --agent composer-2.5 --judge openai:chat:gpt-5.6-sol --judge-effort high
+OPENAI_API_KEY=… OPENAI_BASE_URL=… npm run sweep -- --harness codex \
+  --judge openai:chat:gpt-5.6-sol --judge-effort high
 ```
 
 ## Security overrides
