@@ -24,7 +24,10 @@ empty temporary workspace holding only the frozen bundle.
 
 ## Web access
 
-- Defaults off.
-- Only an explicit flag or the ownership-checked `~/.config/slopguard/config.yaml`
-  may enable web access. A file selected through `XDG_CONFIG_HOME`, repository
+- Defaults on, so reviewers can search for and fetch references. Pass
+  `--web-access=false` when the target must not steer the reviewer to the
+  network or the user disallows web access.
+- Any source may disable it. Only an explicit flag or the ownership-checked
+  `~/.config/slopguard/config.yaml` may enable it after a lower source turned
+  it off. A file selected through `XDG_CONFIG_HOME`, repository
   configuration, and environment variables cannot.

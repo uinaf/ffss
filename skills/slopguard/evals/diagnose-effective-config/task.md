@@ -1,7 +1,7 @@
 # Diagnose a surprising effective configuration
 
 An engineer wants a review of a dirty local patch. Their account config contains
-`engine: claude` and `timeout: 20m`. The repository file contains
+`engine: claude`, `timeout: 20m`, and `web_access: false`. The repository file contains
 `engine: codex` and `timeout: 8m`. Their shell has `SLOPGUARD_ENGINE=grok`,
 `SLOPGUARD_TIMEOUT=3m`, and `SLOPGUARD_WEB_ACCESS=true`. They plan to add
 `--engine codex --model gpt-5.6-sol --reasoning-effort high --timeout 90s` to

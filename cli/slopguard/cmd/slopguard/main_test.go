@@ -856,13 +856,13 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 			if effective.ReasoningEffort.Value != test.effort || effective.ReasoningEffort.Source != config.SourceDefault {
 				t.Fatalf("reasoning_effort = %+v", effective.ReasoningEffort)
 			}
-			if effective.WebAccess.Value || effective.WebAccess.Source != test.webSource {
+			if !effective.WebAccess.Value || effective.WebAccess.Source != test.webSource {
 				t.Fatalf("web_access = %+v", effective.WebAccess)
 			}
 		})
 	}
 
-	t.Run("repository engine does not grant web", func(t *testing.T) {
+	t.Run("repository engine keeps default web", func(t *testing.T) {
 		repository := cliRepository(t)
 		if err := os.WriteFile(filepath.Join(repository, ".slopguard.yaml"), []byte("engine: grok\n"), 0o600); err != nil {
 			t.Fatal(err)
@@ -883,7 +883,7 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 		if effective.Engine.Value != protocol.ProviderGrok || effective.Engine.Source != config.SourceRepository {
 			t.Fatalf("engine = %+v", effective.Engine)
 		}
-		if effective.WebAccess.Value || effective.WebAccess.Source != config.SourceDefault {
+		if !effective.WebAccess.Value || effective.WebAccess.Source != config.SourceDefault {
 			t.Fatalf("web_access = %+v", effective.WebAccess)
 		}
 	})
@@ -1006,7 +1006,8 @@ func cleanResult() provider.Result {
 			Outcome:    protocol.AttemptValid,
 			DurationMS: 1,
 		},
-		Duration: time.Millisecond,
+		Duration:  time.Millisecond,
+		WebAccess: true,
 	}
 }
 

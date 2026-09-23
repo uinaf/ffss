@@ -152,9 +152,9 @@ func TestLoadAppliesProviderDefaults(t *testing.T) {
 		engine protocol.ProviderName
 		effort ReasoningEffort
 	}{
-		{name: "Codex medium with web disabled", engine: protocol.ProviderCodex, effort: ReasoningMedium},
-		{name: "Claude medium with web disabled", engine: protocol.ProviderClaude, effort: ReasoningMedium},
-		{name: "Grok high with web disabled", engine: protocol.ProviderGrok, effort: ReasoningHigh},
+		{name: "Codex medium with web enabled", engine: protocol.ProviderCodex, effort: ReasoningMedium},
+		{name: "Claude medium with web enabled", engine: protocol.ProviderClaude, effort: ReasoningMedium},
+		{name: "Grok high with web enabled", engine: protocol.ProviderGrok, effort: ReasoningHigh},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			repository := configRepository(t)
@@ -170,7 +170,7 @@ func TestLoadAppliesProviderDefaults(t *testing.T) {
 			if effective.ReasoningEffort.Value != test.effort || effective.ReasoningEffort.Source != SourceDefault {
 				t.Fatalf("reasoning_effort = %+v", effective.ReasoningEffort)
 			}
-			if effective.WebAccess.Value || effective.WebAccess.Source != SourceDefault {
+			if !effective.WebAccess.Value || effective.WebAccess.Source != SourceDefault {
 				t.Fatalf("web_access = %+v", effective.WebAccess)
 			}
 		})
@@ -204,6 +204,7 @@ func TestUntrustedSourcesCannotEnableWeb(t *testing.T) {
 			repository := configRepository(t)
 			writeConfig(t, filepath.Join(repository, ".slopguard.yaml"), test.repository)
 			home := t.TempDir()
+			writeConfig(t, filepath.Join(home, ".config", "slopguard", "config.yaml"), "web_access: false\n")
 			_, err := Load(context.Background(), Options{
 				Repository: repository,
 				LookupEnv:  envLookup(test.environment),
@@ -213,6 +214,34 @@ func TestUntrustedSourcesCannotEnableWeb(t *testing.T) {
 				t.Fatalf("Load() error = %v", err)
 			}
 		})
+	}
+}
+
+func TestUntrustedSourcesKeepDefaultWeb(t *testing.T) {
+	t.Parallel()
+
+	repository := configRepository(t)
+	writeConfig(t, filepath.Join(repository, ".slopguard.yaml"), "engine: codex\nweb_access: true\n")
+	effective, err := loadWithoutUserConfig(t, repository, map[string]string{"SLOPGUARD_WEB_ACCESS": "true"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !effective.WebAccess.Value || effective.WebAccess.Source != SourceDefault {
+		t.Fatalf("web_access = %+v", effective.WebAccess)
+	}
+}
+
+func TestUntrustedSourcesCanDisableWeb(t *testing.T) {
+	t.Parallel()
+
+	repository := configRepository(t)
+	writeConfig(t, filepath.Join(repository, ".slopguard.yaml"), "engine: codex\nweb_access: false\n")
+	effective, err := loadWithoutUserConfig(t, repository, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if effective.WebAccess.Value || effective.WebAccess.Source != SourceRepository {
+		t.Fatalf("web_access = %+v", effective.WebAccess)
 	}
 }
 
@@ -305,18 +334,22 @@ func TestTelemetryEnablementTrustBoundary(t *testing.T) {
 	})
 }
 
-func TestEnvironmentSelectedXDGCannotEnableWeb(t *testing.T) {
+func TestEnvironmentSelectedXDGWebIsNotTrusted(t *testing.T) {
 	t.Parallel()
 
 	repository := configRepository(t)
 	xdg := t.TempDir()
 	writeConfig(t, filepath.Join(xdg, "slopguard", "config.yaml"), "engine: codex\nweb_access: true\n")
-	if _, err := Load(context.Background(), Options{
+	effective, err := Load(context.Background(), Options{
 		Repository: repository,
 		LookupEnv:  envLookup(map[string]string{"XDG_CONFIG_HOME": xdg}),
 		HomeDir:    func() (string, error) { return t.TempDir(), nil },
-	}); err == nil || !strings.Contains(err.Error(), "xdg config cannot enable web") {
-		t.Fatalf("Load() error = %v", err)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !effective.WebAccess.Value || effective.WebAccess.Source != SourceDefault {
+		t.Fatalf("web_access = %+v", effective.WebAccess)
 	}
 }
 

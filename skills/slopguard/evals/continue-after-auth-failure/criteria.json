@@ -18,8 +18,8 @@
       "max_score": 10
     },
     {
-      "name": "No web flag",
-      "description": "The command does not add --web-access",
+      "name": "Web disabled explicitly",
+      "description": "The command passes --web-access=false because web access defaults on",
       "max_score": 10
     },
     {

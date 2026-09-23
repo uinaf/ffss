@@ -100,7 +100,7 @@ func TestClaudeReviewPreservesConfigurationAndEnablesWeb(t *testing.T) {
 	if contains(arguments, "--fallback-model") {
 		t.Fatalf("arguments retained --fallback-model: %v", arguments)
 	}
-	if argumentAfter(arguments, "--tools") != "WebSearch" || argumentAfter(arguments, "--allowedTools") != "WebSearch" {
+	if argumentAfter(arguments, "--tools") != "WebSearch,WebFetch" || argumentAfter(arguments, "--allowedTools") != "WebSearch,WebFetch" {
 		t.Fatalf("web arguments = %v", arguments)
 	}
 	environment := readTestFile(t, fake.environment)
@@ -439,7 +439,7 @@ func newFakeClaude(t *testing.T, options fakeClaudeOptions) fakeClaude {
 		"  [ \"${1:-}\" = 'dontAsk' ] || return 1; shift\n" +
 		"  [ \"${1:-}\" = '--no-chrome' ] || return 1; shift\n" +
 		"  [ \"${1:-}\" = '--tools' ] || return 1; shift\n" +
-		"  if [ \"${1:-}\" = 'WebSearch' ]; then shift; [ \"${1:-}\" = '--allowedTools' ] || return 1; shift; [ \"${1:-}\" = 'WebSearch' ] || return 1; shift; else [ \"$#\" -ge 1 ] || return 1; [ -z \"$1\" ] || return 1; shift; fi\n" +
+		"  if [ \"${1:-}\" = 'WebSearch,WebFetch' ]; then shift; [ \"${1:-}\" = '--allowedTools' ] || return 1; shift; [ \"${1:-}\" = 'WebSearch,WebFetch' ] || return 1; shift; else [ \"$#\" -ge 1 ] || return 1; [ -z \"$1\" ] || return 1; shift; fi\n" +
 		"  [ \"${1:-}\" = '--model' ] || return 1; shift\n" +
 		"  [ -n \"${1:-}\" ] || return 1; case \"$1\" in -*) return 1 ;; esac; shift\n" +
 		"  [ \"${1:-}\" = '--effort' ] || return 1; shift\n" +

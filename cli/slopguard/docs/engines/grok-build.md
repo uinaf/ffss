@@ -33,9 +33,9 @@ environment and user configuration.
 
 ## Web access
 
-Off by default: the adapter also disallows `web_search` and passes
-`--disable-web-search`, leaving no tools for the model to call. When on,
-`web_search` and `web_fetch` are the only tools.
+On by default: `web_search` and `web_fetch` are then the only tools. When off,
+the adapter also disallows `web_search` and passes `--disable-web-search`,
+leaving no tools for the model to call.
 
 ## Output contract
 

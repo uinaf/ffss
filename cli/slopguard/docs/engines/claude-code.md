@@ -22,8 +22,9 @@ separately valid findings.
 
 ## Web access
 
-Off by default. When enabled, `WebSearch` is the only exposed tool; filesystem,
-shell, MCP, browser, and unrestricted fetch tools stay unavailable.
+On by default. `WebSearch` and `WebFetch` are then the only exposed tools;
+filesystem, shell, MCP, and browser tools stay unavailable. When off, no tools
+are exposed.
 
 ## Output contract
 

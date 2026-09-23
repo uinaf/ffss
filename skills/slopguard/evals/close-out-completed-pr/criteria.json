@@ -29,7 +29,7 @@
     },
     {
       "name": "Provider web default understood",
-      "description": "The plan keeps web access off",
+      "description": "The plan keeps the default web access and adds no web flag",
       "max_score": 10
     },
     {
