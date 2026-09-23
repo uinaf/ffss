@@ -61,13 +61,14 @@ SLOPGUARD_LIVE_PROVIDERS=grok SLOPGUARD_LIVE_REPEAT=3 mise run verify:live
   separate proof.
 - Every provider runs with web access off.
 - `SLOPGUARD_LIVE_REPEAT` is bounded from 1 through 10.
-- Selected providers x 2 controls x repeat count may request at most 80
-  reviews, keeping the worst-case retry path inside the 8h30m test timeout.
+- Each review has a 6m timeout, because Grok at high effort needs more than
+  3m for a clean review.
+- Selected providers x 2 controls x repeat count may request at most 40
+  reviews, so a worst case where every review uses its retry still fits the
+  8h30m test timeout. The full three-provider matrix therefore allows a
+  repeat count of at most 6.
 - These checks consume provider quota and require every selected harness on
   `PATH`.
-- At the maximum repeat value, the default three-provider route can exceed eight
-  hours when every review consumes its protocol retry, so the full two-route
-  matrix caps the repeat count at 5.
 
 ## Pull Requests
 

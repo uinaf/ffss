@@ -124,10 +124,10 @@ func TestValidateLiveMatrixSize(t *testing.T) {
 		repeat    int
 		wantError bool
 	}{
-		{name: "full matrix maximum", providers: 4, controls: 2, repeat: 10},
+		{name: "full matrix maximum", providers: 3, controls: 2, repeat: 6},
 		{name: "selected provider matrix", providers: 1, controls: 2, repeat: 10},
-		{name: "added control exceeds maximum", providers: 4, controls: 5, repeat: 5, wantError: true},
-		{name: "too many reviews", providers: 4, controls: 2, repeat: 11, wantError: true},
+		{name: "added control exceeds maximum", providers: 3, controls: 5, repeat: 3, wantError: true},
+		{name: "too many reviews", providers: 3, controls: 2, repeat: 7, wantError: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			err := validateLiveMatrixSize(test.providers, test.controls, test.repeat)
@@ -175,7 +175,7 @@ func selectedLiveProviders(t *testing.T) []liveProvider {
 }
 
 func validateLiveMatrixSize(providers, controls, repeat int) error {
-	const maximumReviews = 80
+	const maximumReviews = 40
 	reviews := providers * controls * repeat
 	if reviews > maximumReviews {
 		return fmt.Errorf("live provider matrix requests %d reviews; maximum is %d within the 8h30m test timeout", reviews, maximumReviews)
@@ -277,7 +277,7 @@ func runLiveReview(t *testing.T, binary string, live liveProvider, control liveC
 		"--engine", string(live.name),
 		"--model", live.model,
 		"--retries", "1",
-		"--timeout", "3m",
+		"--timeout", "6m",
 		"--output", "json",
 		"--prompt-file", "-",
 	}
