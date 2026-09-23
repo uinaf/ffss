@@ -54,7 +54,6 @@ Good, references as links, backticks only for literals:
 - Poll external state that reports to nobody: it is the only wait that cannot
   silently drop a terminal state. Bound it with a deadline and a failure exit,
   and match the interval to how fast that state changes.
-- Keep transcripts append-only; do not rewrite earlier turns to reduce wait cost.
 - Context growth is not a reason to stop, hand off, or trim scope; supported
   harnesses compact long sessions. As milestones land, keep resumable state
   (decisions, finding dispositions, proof revisions) in the task's existing
