@@ -16,7 +16,8 @@ its contract; independent review belongs to the required reviewer.
   comments.
 - Green checks and no threads are not settled while a requested reviewer,
   human or bot, is pending. After it submits, re-read everything.
-- Require checks and review evidence for the latest commit. Don't reprocess
+- Require checks for the latest commit and review evidence that still applies
+  to it. Don't reprocess
   findings a push answered; don't assume a push resolved older feedback.
 - Unchanged observations need no new tests, review, or reply.
 
@@ -40,10 +41,10 @@ its contract; independent review belongs to the required reviewer.
 Replies are first person as the authenticated account: evidence and commit
 hashes, nothing that doesn't advance the thread.
 
-## Quiet discipline
+## Settle
 
-- Nothing changed → post nothing. Your report to the user still says what was
-  observed.
+- When nothing changed, post nothing on the forge; still tell the user what
+  you observed.
 - Merge when required checks are green on the latest commit, no review is
   pending, and reviewers and threads are clear. Use the repository's merge
   method and report the merged commit; babysitting carries merge authority.

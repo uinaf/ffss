@@ -39,6 +39,30 @@ families:
 - keep communication preferences concrete and non-repetitive
 - state a recurring failure only when it changes the desired behavior
 - preserve room for model judgment inside mechanically enforced boundaries
+- give the reason behind a rule in plain words; capitalized or absolute
+  pressure makes current models apply it too broadly
+- keep exact step sequences for fragile operations; for judgment work, state
+  the outcome and let the model choose the steps
+- ask reviewers for every suspected finding and filter afterwards; severity
+  thresholds in the request suppress real findings
+- leave out inherited review-round caps, fix-commit limits, and context or
+  token countdowns; agents read them as stop signals and end authorized work
+  early. Keep explicit user limits and machine timeouts
+- state each rule once; repeated "ask first" lines and conflicting rules cause
+  needless stops
+- state that user instructions outrank skill guidance, within the harness's
+  instruction hierarchy
+- name the early stops to avoid and the ones to keep, such as a decision only
+  the user can make
+
+Current models follow instructions literally, so guidance written to correct
+an older model's failure tends to overcorrect. Measured tendencies also
+differ: Opus 5 over-delegates small tasks, while GPT-6 Astra stops to ask
+early. Shared text states the behavior each should reach, not a fix for one. When models
+change, re-test inherited rules against first-party guidance
+([Claude](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices),
+[GPT-6](https://developers.openai.com/api/docs/guides/latest-model)) and delete
+those whose failure no longer reproduces.
 
 Do not stack model-specific prompt fragments in the shared guide. Keep model
 selection, reasoning effort, verbosity, tool policy, and harness-specific
