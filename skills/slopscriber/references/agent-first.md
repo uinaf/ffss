@@ -24,9 +24,10 @@ fragment material the same task always needs together.
 
 For skills, keep discovery descriptions short and specific to the requested
 capability, with the trigger first; broad triggers pull routine work into a
-specialized workflow. Harnesses load descriptions at startup, possibly
-shortened, the body on use, and references on demand: keep essential constraints in `SKILL.md` and route setup, recovery,
-and mode-specific detail to references when not needed on every use.
+specialized workflow. Harnesses load descriptions at startup, sometimes
+shortened; they load the body on use and references on demand. Keep essential
+constraints in `SKILL.md`; route setup, recovery, and mode-specific detail to
+references when not needed on every use.
 
 Use task-shaped headings and stable terms. Preserve literal commands, paths,
 and diagnostic identifiers for search. Runbooks need observable outcomes and

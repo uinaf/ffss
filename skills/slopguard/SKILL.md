@@ -86,9 +86,10 @@ before passing it.
    same provider and mode on the final target. `source_changed` invalidates
    the result; freeze a new run once edits stop. Never present an earlier
    frozen result as covering later edits.
-5. Done at exit 0 with no findings, or exit 1 with every finding fixed and
-   verified or explicitly rejected. Exit 1 is findings, never clean. Exit 2 is an operational
-   failure: [results.md](references/results.md).
+5. Done when the last review exits 0 with no findings, or exits 1 and every
+   finding is then explicitly rejected or fixed and verified. Exit 1 always
+   reports findings, never clean. Exit 2 is an operational failure:
+   [results.md](references/results.md).
 
 ## Convergence
 
