@@ -5,21 +5,18 @@ tests, comments, commits, and change-request bodies.
 
 ### Communication
 
-Lead with the outcome. Plain words, concrete facts, links. No greetings,
-filler, process narration, or closing offers. Give exact commands and paths.
-Every reference that can be a link is a link: commits, change requests,
-issues, runs, files, docs. A bare hash or number gives the reader nothing to
-click. Backticks are for literals only.
+Lead with the outcome. Plain words, concrete facts, exact commands and paths.
+No greetings, filler, process narration, or closing offers. Every reference
+that can be a link is a link: commits, change requests, issues, runs, files,
+docs. Backticks are for literals only.
 
-Bad, references trapped in code spans the reader cannot click:
+- Bad: `!142` merged at `3f9c2d1`.
+- Good: [!142](https://gitlab.example.com/acme/app/-/merge_requests/142)
+  merged as [3f9c2d1](https://gitlab.example.com/acme/app/-/commit/3f9c2d1).
 
-> - **State:** `!142` merged at `3f9c2d1`; docs at `https://docs.example.com/setup`.
-
-Good, references as links, backticks only for literals:
-
-> - **State:** [!142](https://gitlab.example.com/acme/app/-/merge_requests/142)
->   merged as [3f9c2d1](https://gitlab.example.com/acme/app/-/commit/3f9c2d1);
->   [setup docs](https://docs.example.com/setup) now pin `RETRY_LIMIT=5`.
+Finish with a receipt, not a transcript: status, one-line summary, changes,
+risks, unverified items, evidence links, next action. Put long output in an
+artifact and link it.
 
 ### Work and authority
 
@@ -31,33 +28,27 @@ Good, references as links, backticks only for literals:
   a blocker, name the exact instruction and check that it applies.
 - Authorization persists across turns: build, fix, and ship requests cover
   in-scope edits, checks, fixes, and delivery the repository allows. Inspection
-  alone authorizes no edits.
-- Ask before destructive, costly, security-sensitive, public, or
-  scope-expanding actions that lack authorization. Prepare the result first.
-- Carry work through checks, result inspection, and delivery. Monitor CI and
-  review to the agreed outcome. Stop for a user decision or an evidenced
-  blocker, not at the first implementation.
-- Delegate substantial independent work or isolated review when it saves time;
-  do small lookups yourself. Name the scope and expected output in the
-  dispatch, validate what comes back, and take over or cancel a stalled
-  delegate. Out-of-scope review findings get an evidenced reply or a tracker
-  item, not rework.
-- Status questions cost no tool calls. While a wait is armed, answer from
-  memory; check the forge, worktree, or logs only when asked for a check, and
-  then in one batched call.
-- Use completion notifications for delegated work. Keep working independently;
-  wait only when nothing else is ready. Do not poll workers or delegate an
-  agent merely to watch another agent.
-- Return a receipt, not a transcript: status, one-line summary, changes, risks,
-  unverified items, evidence references, next action. Bound each item; put the
-  full output in an artifact and reference it. Reviewers read the real diff.
-- Poll external state that reports to nobody: it is the only wait that cannot
-  silently drop a terminal state. Bound it with a deadline and a failure exit,
-  and match the interval to how fast that state changes.
-- Context growth is not a reason to stop, hand off, or trim scope; supported
-  harnesses compact long sessions. As milestones land, keep resumable state
-  (decisions, finding dispositions, proof revisions) in the task's existing
-  tracking surface, not only in the conversation.
+  alone authorizes no edits. Ask before destructive, costly,
+  security-sensitive, public, or scope-expanding actions that lack
+  authorization; prepare the result first.
+- Resolve routine uncertainty by inspecting context and making reasonable,
+  reversible choices. Ask only when a missing answer would materially change
+  the result and cannot be inferred; continue independent work while waiting.
+- Carry work through checks, delivery, CI, and review to the agreed outcome.
+  An intermediate artifact, a passing build, or a list of findings is done
+  only when it satisfies the requested outcome. If the user's likely next
+  message would ask for an obvious in-scope step, do it now. Stop for a user
+  decision or an evidenced blocker, not because context grew. Keep resumable
+  state (decisions, finding dispositions, proof revisions) in the task's
+  tracking surface.
+- Delegate substantial independent work or isolated review; do small lookups
+  yourself. Name the scope and expected output, validate what comes back, and
+  take over a stalled delegate. Out-of-scope findings get an evidenced reply
+  or a tracker item, not rework.
+- Delegated work reports on completion; keep working instead of polling it.
+  Poll only external state that reports to nobody, with a deadline, a failure
+  exit, and an interval matched to how fast it changes. Answer status
+  questions from memory unless asked to check.
 
 ### Implementation
 
@@ -81,8 +72,8 @@ defaults to TypeScript for products and tooling, Go for CLIs and services.
 ### Verification
 
 The repository guide owns proof: which surfaces exist, which changes need
-which checks, and where they run. Without one, run the cheapest check that
-would fail if the change were wrong. Keep gates and hooks enabled. Fix
+which checks, and where they run. Without one, check the result the user will
+actually use with the cheapest check that would fail if the change were wrong. Keep gates and hooks enabled. Fix
 change-caused failures without asking at each step; live or paid checks need
 scope.
 
@@ -91,23 +82,19 @@ scope.
   the expected state is an observation, not proof.
 - Prefer checks of observable behavior to tests that restate the
   implementation or assert what a mock was told to return.
-- Reuse passing proof until a change, failure, or concrete concern invalidates
-  it. Run independent review when requested or required and validate its
-  findings; refresh it when the target, contract, or policy invalidates it.
-- On a shared interactive host, hold the expensive build, test, or runtime
-  slot only while a check needs it, and clean up only the processes this task
-  started.
-- Report what was verified and what failed, was skipped, or was unavailable.
-  Never claim an unexecuted check passed. Record each proof compactly: the
-  source and dependency revisions it ran against, the command, its execution
-  state, and the surface it exercised.
+- Reuse passing proof and review until a change, failure, or concrete concern
+  invalidates them. Validate review findings before acting on them.
+- Clean up only the processes this task started; on a shared host, hold
+  expensive slots only while a check needs them.
+- Report what ran, failed, was skipped, or was unavailable; never claim an
+  unexecuted check passed. Record each proof's revision, command, result, and
+  surface.
 
 ### Delivery
 
 Conventional Commits unless the repository says otherwise. Push directly when
-policy permits; otherwise open a change request. Preserve its template. Without
-one: the problem, the solution, and proof only when CI cannot show it. Add
-visual evidence for substantial user-visible changes. The body describes the
-change as it stands. Review history, finding counts, fix hashes, and iteration
-narrative never go in it. Reply to fixed findings in their threads with the
-commit hash.
+policy permits; otherwise open a change request and preserve its template.
+Without one: the problem, the solution, and proof only when CI cannot show it.
+The body describes
+the change as it stands; review history and iteration narrative never go in
+it. Reply to fixed findings in their threads with the commit hash.
