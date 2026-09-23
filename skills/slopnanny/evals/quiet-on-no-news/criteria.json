@@ -1,5 +1,5 @@
 {
-  "context": "Tests posting nothing when nothing changed, and signal freshness: the only comment predates the latest push and was already answered by it, checks are still running, so the correct move is no forge action at all — a brief waiting status to the user, no filler comments, no premature settling.",
+  "context": "Tests silence when nothing changed and signal freshness: the only comment predates the latest push and was already answered by it, checks are still running, so the correct move is no forge action at all — a brief waiting status to the user, no filler comments, no premature settling.",
   "type": "weighted_checklist",
   "checklist": [
     {
