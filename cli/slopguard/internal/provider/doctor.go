@@ -30,7 +30,6 @@ type AuthenticationReadiness string
 const (
 	AuthenticationReady     AuthenticationReadiness = "ready"
 	AuthenticationDelegated AuthenticationReadiness = "delegated"
-	AuthenticationMissing   AuthenticationReadiness = "missing"
 )
 
 type Diagnostic struct {
@@ -129,9 +128,6 @@ func Doctor(ctx context.Context, options DoctorOptions) (diagnostic Diagnostic) 
 	}
 	diagnostic.Compatible = true
 	diagnostic.Version = prepared.Version
-	if diagnostic.Authentication == AuthenticationMissing {
-		return diagnostic.withFailure(protocol.FailureAuth)
-	}
 	diagnostic.Status = DoctorReady
 	return diagnostic
 }
@@ -152,7 +148,7 @@ func (diagnostic Diagnostic) Validate() error {
 	if diagnostic.Status != DoctorReady && diagnostic.Status != DoctorNotReady {
 		return fmt.Errorf("invalid doctor status")
 	}
-	if diagnostic.Authentication != AuthenticationReady && diagnostic.Authentication != AuthenticationDelegated && diagnostic.Authentication != AuthenticationMissing {
+	if diagnostic.Authentication != AuthenticationReady && diagnostic.Authentication != AuthenticationDelegated {
 		return fmt.Errorf("invalid authentication readiness")
 	}
 	if diagnostic.Compatible != (diagnostic.Version != "") || diagnostic.Version != "" && !validDoctorVersion(diagnostic.Provider, diagnostic.Version) {
@@ -185,8 +181,6 @@ func (diagnostic Diagnostic) withFailure(class protocol.FailureClass) Diagnostic
 
 func doctorFailureMessage(class protocol.FailureClass) (string, bool) {
 	switch class {
-	case protocol.FailureAuth:
-		return "provider authentication is not ready", true
 	case protocol.FailureTarget:
 		return "repository path is not inside a Git worktree", true
 	case protocol.FailureTimeout:

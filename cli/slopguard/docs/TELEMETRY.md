@@ -4,7 +4,7 @@ Telemetry is disabled by default and performs no filesystem or network work
 unless enabled explicitly for a review.
 
 Enable one command with `--telemetry`, or set `telemetry: true` in the
-ownership-checked account file at `$HOME/.config/slopguard/config.yaml`.
+ownership-checked account file at `~/.config/slopguard/config.yaml`.
 Repository configuration, environment variables, and an XDG path selected by
 `XDG_CONFIG_HOME` cannot enable collection.
 

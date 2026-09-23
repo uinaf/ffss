@@ -9,33 +9,37 @@ Slopguard loads one flat, typed configuration in descending precedence:
    `$HOME/.config/slopguard/config.yaml` when `XDG_CONFIG_HOME` is unset
 5. built-in operational defaults
 
-The engine has no default. Select exactly one of `codex`, `claude`, or `grok` through a flag or configuration source. Slopguard never chooses an
-engine by examining `PATH`.
+The engine has no default. Select exactly one of `codex`, `claude`, or `grok`
+through a flag or configuration source. Slopguard never chooses an engine by
+examining `PATH`.
 
 ## File schema
 
 Both YAML files use the same strict schema:
 
 ```yaml
-engine: codex
-model: gpt-5.6
-reasoning_effort: medium
-timeout: 15m
-retries: 1
-max_bytes: 1048576
+engine: claude
+model: claude-sonnet-5
+reasoning_effort: high
+timeout: 30m
+retries: 0
+max_bytes: 4194304
 web_access: false
 telemetry: false
 ```
 
-- Unknown keys, multiple YAML documents, invalid types, and retry counts above
-  one are errors.
+Omitted keys keep their built-in defaults: [`defaults()`](../internal/config/types.go)
+for operational values, [`applyProviderDefaults`](../internal/config/load.go)
+for per-engine reasoning effort, and the `Default*Model` constants in
+[provider/types.go](../internal/provider/types.go), which the adapter applies
+when the model is unset. `slopguard config` prints each value and its source.
+
+- Unknown keys, multiple YAML documents, and invalid types are errors.
+- `retries` must be `0` or `1`; `timeout` must be positive and at most `24h`.
 - Configuration cannot contain commands, provider argument strings, or named
   profiles.
 - There is no `.slopguard.local.yaml`.
-- `max_bytes` defaults to 1 MiB and must be between 1 byte and 128 MiB
-  (`134217728`).
-- Default reasoning effort is `medium` for Codex and Claude and `high` for
-  Grok; any explicit configuration source overrides it.
+- `max_bytes` is bounded by the [target limits](TARGETS.md).
 - Each configuration file must be a regular file no larger than 64 KiB;
   symbolic links are rejected.
 - Boolean fields accept only `true` or `false`; `yes`, `no`, `on`, and `off`
@@ -43,9 +47,8 @@ telemetry: false
 - A trusted account-home XDG file must be owned by the current user and must
   not be group- or world-writable.
 
-Environment variables: `SLOPGUARD_ENGINE`, `SLOPGUARD_MODEL`,
-`SLOPGUARD_REASONING_EFFORT`, `SLOPGUARD_TIMEOUT`, `SLOPGUARD_RETRIES`,
-`SLOPGUARD_MAX_BYTES`, and `SLOPGUARD_WEB_ACCESS`.
+Each file key except `telemetry` has an upper-case `SLOPGUARD_` environment
+variable, such as `SLOPGUARD_REASONING_EFFORT`.
 
 Telemetry has no environment-variable source. It defaults off and can be
 enabled only with `--telemetry` or `telemetry: true` in the ownership-checked
@@ -74,6 +77,5 @@ slopguard config --engine codex
 slopguard config --engine codex --json
 ```
 
-The diagnostic accepts the same typed overrides: `--model`,
-`--reasoning-effort`, `--timeout`, `--retries`, `--max-bytes`, `--web-access`,
-and `--telemetry`. `--repository` inspects another checkout.
+It accepts the same typed overrides as `review`; `--repository` inspects
+another checkout.

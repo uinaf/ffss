@@ -1,45 +1,21 @@
 # Configuration
 
-Slopguard resolves one flat typed configuration in this precedence order:
+Slopguard resolves one flat typed configuration: CLI flags, then
+`SLOPGUARD_*` environment variables, then `.slopguard.yaml` at the Git root,
+then the account config file, then built-in defaults. The engine has no
+built-in default. Keys, validation, and precedence:
+[configuration docs](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/CONFIG.md).
 
-1. CLI flags
-2. `SLOPGUARD_*` environment variables
-3. `.slopguard.yaml` at the Git root
-4. account XDG (Cross-Desktop Group) config
-5. built-in operational defaults
-
-- The engine has no built-in default.
-- Valid engines are `codex`, `claude`, and `grok`.
-
-Inspect resolved values and their source with:
+Inspect resolved values and their source before a paid run:
 
 ```bash
-slopguard config --repository . --engine "$engine"
 slopguard config --repository . --engine "$engine" --json
+slopguard doctor --repository . --engine "$engine" --json
 ```
 
-YAML schema:
-
-```yaml
-engine: codex
-model: gpt-6-sol
-reasoning_effort: medium
-timeout: 15m
-retries: 1
-max_bytes: 1048576
-web_access: false
-```
-
-Environment variables: `SLOPGUARD_ENGINE`, `SLOPGUARD_MODEL`,
-`SLOPGUARD_REASONING_EFFORT`, `SLOPGUARD_TIMEOUT`, `SLOPGUARD_RETRIES`,
-`SLOPGUARD_MAX_BYTES`, `SLOPGUARD_WEB_ACCESS`.
-
-- Unknown keys, loose YAML booleans, multiple documents, retry counts outside
-  zero or one, and invalid types fail closed.
-- No profiles or local override files.
-- `max_bytes` defaults to 1 MiB; maximum 128 MiB.
-- Reasoning effort defaults to `medium` for Codex and Claude and `high` for
-  Grok. Explicit configuration overrides it.
+`doctor` checks the executable, capabilities, and web policy offline and
+reports authentication as `ready` (a supported credential variable is set) or
+`delegated` (the provider session decides at runtime).
 
 ## Runtime
 
@@ -49,5 +25,6 @@ empty temporary workspace holding only the frozen bundle.
 ## Web access
 
 - Defaults off.
-- Only an explicit flag or an ownership-checked account-home XDG file may
-  enable web access.
+- Only an explicit flag or the ownership-checked `~/.config/slopguard/config.yaml`
+  may enable web access. A file selected through `XDG_CONFIG_HOME`, repository
+  configuration, and environment variables cannot.

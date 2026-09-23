@@ -51,8 +51,9 @@ workflow. Never download installers or recreate the runtime.
 ## Provider
 
 Read [providers.md](references/providers.md). User choice, then trusted config,
-else Codex at medium reasoning. Never switch providers on your own. Config and
-web access: [configuration.md](references/configuration.md).
+else Codex at medium reasoning. Never switch providers on your own. Config,
+offline readiness (`slopguard doctor`), and web access:
+[configuration.md](references/configuration.md).
 
 ## Run
 

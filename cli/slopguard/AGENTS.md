@@ -5,12 +5,9 @@ independent code review.
 
 ## Commands
 
-- `mise run verify`
-- `go test ./...`
-- `go test -race ./...`
-- `go vet ./...`
-- `go build ./cmd/slopguard`
-- `go run ./cmd/slopguard --version`
+`mise run verify` is the deterministic gate; [mise.toml](mise.toml) owns its
+steps and the Go parallelism caps. Setup, release, and live provider checks:
+[Contributing](CONTRIBUTING.md).
 
 ## Boundaries
 

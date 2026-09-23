@@ -1,19 +1,11 @@
 # Releases
 
-## Next release
-
-- Provider processes retain bounded private stderr diagnostics without treating
-  large non-fatal hook or progress output as `provider output_limit`.
-- Codex CLI `0.153.2`, Claude Code `2.1.260`, and Grok Build `1.0.13` are
-  covered by compatibility fixtures.
-- The Cursor engine is removed; `engine: cursor` is now a configuration error.
-- Default models are `gpt-6-sol` for Codex, `claude-opus-5-5` for Claude, and
-  `grok-4.7` for Grok.
-- `slopguard doctor --json` is an alias for `--output json`.
-
 `slopguard` evaluates a CLI release after every successful push to protected
 `main`. Conventional Commits determine whether that evaluation publishes a
 version; merges with no consumer-facing release type stop without a tag.
+Release notes are generated from those commits on each
+[GitHub Release](https://github.com/uinaf/ffss/releases?q=slopguard); this file
+holds no changelog.
 
 ## Published artifacts
 
@@ -68,7 +60,7 @@ Download one archive plus the manifest and signature bundle from the matching
 GitHub Release, then verify the workflow identity and checksum:
 
 ```bash
-archive=slopguard_v0.1.2_darwin_arm64.tar.gz
+archive=slopguard_v3.0.0_darwin_arm64.tar.gz
 
 cosign verify-blob \
   --bundle checksums.txt.sigstore.json \
@@ -114,7 +106,7 @@ with Contents write permission.
   metadata when that tag does not exist, so the release job and
   `release:snapshot` alias `HEAD` with a local tag that is never pushed; the
   member prefix lives only on the pushed tag.
-- The workflow uses a per-member concurrency group so a queued run cannot
+- The workflow's fixed `release-slopguard` concurrency group ensures a queued run cannot
   replace another member's pending release; Homebrew tap write races are
   handled by the cask script's bounded retry.
 - No release commit is pushed to `main`.

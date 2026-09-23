@@ -44,9 +44,9 @@ Each finding contains:
 
 - a title of at most 140 Unicode characters
 - an explanation of at most 2,000 Unicode characters
-- priority `P0`, `P1`, `P2`, or `P3`
+- a priority and category from the
+  [review schema](../schema/review-v1.schema.json) enums
 - confidence from 0 through 1
-- category `bug`, `security`, `regression`, `test_gap`, or `maintainability`
 - a normalized repository-relative POSIX path and inclusive start/end lines
 
 No confidence threshold suppresses a valid finding, including when overall
@@ -86,22 +86,10 @@ decoder because standard JSON Schema cannot address an array element from the
 end: attempt numbers are sequential from one, and the final attempt is
 `valid`.
 
-Failure classes:
-
-- `config`
-- `target`
-- `secret_scan`
-- `capability`
-- `authentication`
-- `timeout`
-- `cancelled`
-- `provider`
-- `protocol`
-- `source_changed`
-- `internal`
-
-`secret_scan` remains in schema v1 for compatibility with historical reports;
-current builds do not emit it.
+Failure classes are the `FailureClass` constants in
+[protocol/types.go](../internal/protocol/types.go). `secret_scan` remains in
+schema v1 for compatibility with historical reports; current builds do not emit
+it.
 
 Failure messages are sanitized diagnostics, not raw provider output. Protocol
 failures include a stable correction category such as `finding_location`,

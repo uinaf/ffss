@@ -4,11 +4,18 @@ Slopguard runs exactly one review engine against an already frozen prompt and
 returns one canonical review. Select the engine explicitly with `--engine` or a
 trusted configuration source.
 
-| Engine | Harness | Default model | Default effort | Runtime details |
-| --- | --- | --- | --- | --- |
-| `codex` | Codex CLI | `gpt-6-sol` | `medium` | [Codex CLI](codex.md) |
-| `claude` | Claude Code | `claude-opus-5-5` | `medium` | [Claude Code](claude-code.md) |
-| `grok` | Grok Build | `grok-4.7` | `high` | [Grok Build](grok-build.md) |
+| Engine | Harness | Runtime details |
+| --- | --- | --- |
+| `codex` | Codex CLI | [Codex CLI](codex.md) |
+| `claude` | Claude Code | [Claude Code](claude-code.md) |
+| `grok` | Grok Build | [Grok Build](grok-build.md) |
+
+Every adapter passes one explicit model and effort with no fallback. An empty
+model resolves to the engine's `Default*Model` constant in
+[provider/types.go](../../internal/provider/types.go); default effort comes from
+[`applyProviderDefaults`](../../internal/config/load.go).
+`slopguard config --engine <engine>` prints the effective effort; it shows an
+unset model as `""`, and the review report's metadata names the model used.
 
 ## Shared runtime boundary
 
@@ -38,10 +45,16 @@ members after success, failure, timeout, cancellation, or stdout overflow.
 Diagnostics redact credential-bearing environment values, escape terminal
 control characters, and remain bounded.
 
-Compatibility is capability-based, not a version whitelist. Each adapter
-requires a canonical version plus its safety-critical flags and enumerated
-option values. The engine pages record the oldest and newest fixture-tested
-versions.
+Compatibility is capability-based, not a version whitelist, with no numeric
+upper bound. Each adapter requires a canonical version plus its
+safety-critical flags and enumerated option values. Recorded help surfaces in
+[provider testdata](../../internal/provider/testdata) pin the newest
+fixture-tested versions.
+
+Engines keep the existing environment, user configuration, and configured
+provider or session authentication. Each attempt invokes the selected model
+and may consume plan or API quota; only malformed output consumes the one
+configured protocol retry.
 
 See [Configuration](../CONFIG.md) for precedence and web-access policy.
 [`slopguard doctor`](../DOCTOR.md) runs only this executable and policy
