@@ -63,14 +63,20 @@ needs no wrapper file. Make it:
 - emit task-and-attempt-scoped artifacts when evidence must survive the process
 
 Don't create a parallel agent-only verification wrapper. Improve the ordinary
-command contributors and CI already use.
+command contributors and CI already use. When slow or platform-specific lanes
+run on a remote runner, the same command runs there; declare the runner and
+its credential boundary in the repository guide's
+[proof map](agent-guidance.md#proof-map).
 
 ## Real-Surface Evidence
 
 Choose the smallest check set that can honestly disprove the claim:
 
-- UI: navigate the changed flow, inspect interaction and console state,
-  capture a labeled screenshot only as supporting evidence.
+- UI: navigate the changed flow, inspect interaction and console state, and
+  cover the relevant keyboard, responsive, accessibility, and reduced-motion
+  behavior; a labeled screenshot is supporting evidence only.
+- Device or platform: run the build on the simulator, emulator, or hardware
+  the claim names and record the flow with the commands that produced it.
 - API or service: start the real process, send representative success and
   error requests, inspect response plus structured logs.
 - CLI: invoke the shipped or packaged entrypoint with representative arguments

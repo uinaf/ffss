@@ -39,7 +39,9 @@ Put guidance at its owner:
 
 - Global: identity, workspace routing, and harness policy.
 - Repository: system purpose, critical outcomes, shared hazards, code-placement
-  rules, exact lifecycle commands and their proof limits, and durable write-back.
+  rules, exact lifecycle commands, a
+  [proof map](../../slopprep/references/agent-guidance.md#proof-map) from
+  change class to check, and durable write-back.
 - Scoped: package, language, or subsystem rules needed only there.
 
 The root is a compact operating contract, not a contents page. Inline facts

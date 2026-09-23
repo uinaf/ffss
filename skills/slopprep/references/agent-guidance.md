@@ -28,6 +28,26 @@ Keep sensitive identity, credentials, finance, machine state, and private
 workspace facts behind task-relevant pointers so an agent opens the smallest
 source needed.
 
+## Proof Map
+
+The global guide stays generic, so the repository guide owns its proof. Map
+each change class the repository actually has to its check, runner, and
+artifact, from what its surfaces and existing lanes already support:
+
+- changes that need only static checks, such as docs, copy, or lint-only
+  config
+- component or visual changes: stories, visual diffs, or rendered captures
+- user workflows: end-to-end or black-box checks against the running product
+- device or platform behavior: simulator, emulator, or hardware runs with a
+  recording and the commands that produced it
+- deployed or provider-backed behavior: live checks and their scope limits
+- pure logic with a wide input space: unit or property tests
+
+Name where expensive or platform-specific lanes run, such as a declared
+remote runner, and keep the command identical to the local one. Omit classes
+the repository does not have; an invented lane makes agents run proof the
+change cannot need.
+
 ## Cross-Model Contract
 
 Write shared guidance as observable behavior that works across capable model
@@ -89,15 +109,16 @@ harness.
 7. Test with a representative handoff: can a fresh agent explain the product
    or system outcome at risk, place the change, enumerate its surfaces, and
    name the starting source, allowed actions, required proof, and stop
-   condition?
+   condition? Include a docs-only change: the guide should let it skip
+   runtime proof.
 
 ## Grade Effects
 
 - Missing purpose, ownership, working model, or starting route caps Legibility
   at D when it affects the task class.
 - A concise entrypoint with valid task-shaped pointers can reach C.
-- B requires versioned acceptance, lifecycle, authority, proof, and write-back
-  contracts with current links and commands.
+- B requires versioned acceptance, lifecycle, authority, proof map, and
+  write-back contracts with current links and commands.
 - A requires a maintenance loop that turns recurring failures, review feedback,
   model changes, and operational drift into simpler guidance or mechanical
   enforcement.

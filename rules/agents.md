@@ -74,25 +74,23 @@ defaults to TypeScript for products and tooling, Go for CLIs and services.
   Retries stay bounded, cancellable, and limited to idempotent transient work.
 - Keep secrets and sensitive payloads out of logs and artifacts.
 - Preserve user input, recovery paths, and UI interaction states.
-- Comment only invariants and external constraints the code cannot express.
-  Update the owning doc when behavior changes.
+- Code and tests carry no narration. Comment only invariants and external
+  constraints the code cannot express. Update the owning doc when behavior
+  changes.
 
 ### Verification
 
-Run the approved checks for affected behavior. Keep gates and hooks enabled.
-Fix change-caused failures without asking at each step; live or paid checks
-need scope.
+The repository guide owns proof: which surfaces exist, which changes need
+which checks, and where they run. Without one, run the cheapest check that
+would fail if the change were wrong. Keep gates and hooks enabled. Fix
+change-caused failures without asking at each step; live or paid checks need
+scope.
 
-- Match proof to the claim: reproduce bugs, show refactor parity, exercise
-  changed contracts, measure performance before and after. Use a real surface
-  when static checks cannot prove it. A regression or behavioral check proves
-  its claim only when it fails on a negative control, such as the fix
-  reverted; a screenshot or artifact that merely shows the expected state is
-  an observation, not proof.
-- Test changed behavior existing coverage misses, including failure paths. No
-  tests that restate the implementation.
-- For UI changes, exercise the affected flow and relevant keyboard, responsive,
-  accessibility, and reduced-motion behavior.
+- Match proof to the claim. A check proves its claim only when it fails on a
+  negative control, such as the fix reverted; an artifact that merely shows
+  the expected state is an observation, not proof.
+- Prefer checks of observable behavior to tests that restate the
+  implementation or assert what a mock was told to return.
 - Reuse passing proof until a change, failure, or concrete concern invalidates
   it. Run independent review when requested or required and validate its
   findings; refresh it when the target, contract, or policy invalidates it.
