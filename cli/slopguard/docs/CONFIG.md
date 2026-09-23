@@ -31,8 +31,8 @@ telemetry: false
 Omitted keys keep their built-in defaults: [`defaults()`](../internal/config/types.go)
 for operational values, [`applyProviderDefaults`](../internal/config/load.go)
 for per-engine reasoning effort, and the `Default*Model` constants in
-[provider/types.go](../internal/provider/types.go). `slopguard config` prints
-the resolved value and source of each.
+[provider/types.go](../internal/provider/types.go), which the adapter applies
+when the model is unset. `slopguard config` prints each value and its source.
 
 - Unknown keys, multiple YAML documents, and invalid types are errors.
 - `retries` must be `0` or `1`; `timeout` must be positive and at most `24h`.
