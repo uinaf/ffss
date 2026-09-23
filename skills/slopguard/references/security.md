@@ -19,6 +19,10 @@ Slopguard is a local launcher, not a hosted review service. The selected harness
 sends the frozen bundle to its configured model provider; disabling web search
 does not make that processing offline.
 
+Web access is on by default. Repository content under review can steer the
+reviewer toward attacker-chosen URLs and leak bundle content through fetches.
+Pass `--web-access=false` for targets that must not reach the network.
+
 Use the task's existing authorization for that repository, target, and provider.
 When execution needs approval, state those facts, what content leaves the
 machine, and that the reviewer only reports. Installation, login, or this skill
