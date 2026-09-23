@@ -48,7 +48,7 @@ func bindConfigFlags(flags *flag.FlagSet) configFlagValues {
 		timeout:   flags.String("timeout", "", "provider timeout"),
 		retries:   flags.Int("retries", 0, "protocol retry count: 0 or 1"),
 		maxBytes:  flags.Int64("max-bytes", 0, "maximum frozen bundle bytes"),
-		webAccess: flags.Bool("web-access", false, "allow provider web access"),
+		webAccess: flags.Bool("web-access", true, "allow provider web access; --web-access=false disables it"),
 		telemetry: flags.Bool("telemetry", false, "record privacy-minimized local telemetry"),
 	}
 }
