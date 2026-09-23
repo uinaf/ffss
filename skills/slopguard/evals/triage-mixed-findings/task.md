@@ -2,7 +2,7 @@
 
 The original review ran:
 
-`slopguard review --mode branch --base origin/main --engine codex --prompt <contract>`
+`slopguard review --mode branch --base origin/main --engine codex --prompt-file -` with the contract on stdin
 
 It returned two findings. Finding A says a cancellation path leaks a child
 process; a focused reproduction confirms it. Finding B says a filename can

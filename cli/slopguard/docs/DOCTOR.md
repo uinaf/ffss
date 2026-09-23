@@ -21,9 +21,10 @@ Authentication is advisory:
 - `delegated`: the provider/helper/session decides at runtime.
 
 Status is `ready` or `not_ready`. Exit 0: ready. Exit 1: a valid `not_ready`
-diagnostic, including capability, authentication, timeout, cancellation, or
-internal failures. Exit 2: configuration rejected, or the diagnostic could not
-be validated or written. Review never calls doctor or depends on its result.
+diagnostic from a capability, timeout, cancellation, or internal failure.
+Exit 2: configuration rejected, repository not resolvable, or the diagnostic
+could not be validated or written. Review never calls doctor or depends on its
+result.
 
 Output contains only the provider enum, compatible version, effective web
 policy, authentication readiness, and a bounded failure class and message. It

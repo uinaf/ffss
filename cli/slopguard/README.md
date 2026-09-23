@@ -92,8 +92,8 @@ slopguard review --mode branch --base origin/main --engine codex \
   --output json --prompt "$prompt" > result.json
 ```
 
-Exit 0: valid clean review. Exit 1: valid findings. Exit 2: no trustworthy
-review result.
+Exit 0 is a valid clean review, 1 is valid findings, and 2 is no trustworthy
+result; [the result contract](docs/RESULT_SCHEMA.md) owns the details.
 
 The binary exposes its canonical contracts:
 

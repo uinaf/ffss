@@ -12,32 +12,22 @@
 | 1 | `findings` | Valid review with one or more findings |
 | 2 | `failure` | No trustworthy review result |
 
-- Every valid finding is reported regardless of confidence.
-- Findings include priority `P0` through `P3`, confidence, category, and a
-  repository-relative location.
-- The local validator rejects paths or line ranges outside the frozen target.
-  Every finding location must fit within one reviewed line range; a concern
-  spanning discontiguous hunks must be narrowed or split.
-
-- Failure classes: `config`, `target`, `capability`, `authentication`,
-  `timeout`, `cancelled`, `provider`, `protocol`, `source_changed`, `internal`.
-- Never reinterpret an operational failure as a clean review.
+- Every valid finding is reported regardless of confidence, with a priority,
+  confidence, category, and a location inside the frozen target.
+- Exit 2 carries a stable failure class, such as `authentication`,
+  `capability`, `timeout`, or `source_changed`. Never reinterpret an
+  operational failure as a clean review.
+- Field and enum details:
+  [result contract](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/RESULT_SCHEMA.md).
 
 - Slopguard performs at most one configured retry, only for a malformed
   protocol response, using the same frozen bundle and provider.
   Authentication, capability, timeout, cancellation, and provider failures
   are not retried. A Claude refusal (`stop_reason: refusal`) is a capability
   failure carrying the refusal category. Report it; another engine needs
-  explicit scope, as `providers.md` states.
-- When the malformed response can be classified safely, the retry receives a
-  rule-specific correction without provider output or repository content.
-
-- Fences, ambiguous braces, JSON-value prefixes, multiple objects, and suffix
-  prose fail closed.
-
-- Once provider execution metadata is resolved, operational failures preserve
-  the provider, model, harness version, and effective web-access state in the
-  canonical report. Earlier failures keep nullable metadata unset.
+  explicit scope, as [providers.md](providers.md) states.
+- Once provider execution metadata is resolved, failure reports preserve the
+  provider, model, harness version, and web-access state.
 
 After any provider return, slopguard recollects the target. A changed snapshot
 produces `source_changed`: discard the findings and rerun from a new freeze.

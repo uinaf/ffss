@@ -2,7 +2,7 @@
 
 The authoritative sources were the user request and issue `APP-42`. The branch
 tests and browser smoke passed. The command
-`slopguard review --mode branch --base origin/main --engine claude --prompt <contract>`
+`slopguard review --mode branch --base origin/main --engine claude --prompt-file -` with the contract on stdin
 returned exit 0 with status `clean`, one valid attempt, web access off, and no
 findings.
 

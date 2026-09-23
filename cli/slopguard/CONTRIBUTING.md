@@ -36,17 +36,19 @@ Opt in when target-collection behavior needs the extra smoke check:
 mise run test:current-checkout
 ```
 
-For command-surface changes, also exercise the built binary directly. For skill
-changes, run the pinned hosted quality gate:
+For command-surface changes, also exercise the built binary directly. For
+changes to the [agent skill](../../skills/slopguard/SKILL.md), run the
+[skillcheck lint](../../tools/skill-evals/README.md) that CI runs:
 
 ```bash
-mise run skill:lint
+cd ../../tools/skill-evals && npm ci && npm run lint
 ```
 
 Authenticated provider regression checks are committed but separate from
-deterministic verification and CI. They build the current CLI, materialize
-public synthetic clean and defective commits, run builder tests, and review both
-controls through each selected provider with native configuration:
+deterministic verification and CI. They build the current CLI, materialize the
+public [synthetic fixture](testdata/v0.1-fixture/README.md) as clean and
+defective commits, run builder tests, and review both controls through each
+selected provider at its default model with high effort and web access off:
 
 ```bash
 mise run verify:live
@@ -54,19 +56,18 @@ SLOPGUARD_LIVE_PROVIDERS=codex,grok mise run verify:live
 SLOPGUARD_LIVE_PROVIDERS=grok SLOPGUARD_LIVE_REPEAT=3 mise run verify:live
 ```
 
-- Default: Codex, Claude, and Grok sequentially.
+[`TestBinaryLiveProviderMatrix`](cmd/slopguard/live_e2e_test.go) owns the
+provider list, repeat bounds, per-review timeout, and review cap.
+
 - The run removes the selected provider's direct API-key variables and
   preserves normal provider state, XDG configuration, and helper configuration.
   Use an isolated session or gateway/helper profile when those routes need
   separate proof.
-- Every provider runs with web access off.
-- `SLOPGUARD_LIVE_REPEAT` is bounded from 1 through 10.
-- Each review has a 6m timeout, because Grok at high effort needs more than
-  3m for a clean review.
-- Selected providers x 2 controls x repeat count may request at most 40
-  reviews, so a worst case where every review uses its retry still fits the
-  8h30m test timeout. The full three-provider matrix therefore allows a
-  repeat count of at most 6.
+- The per-review timeout covers Grok at high effort, whose clean review
+  exceeds 3m.
+- The review cap keeps a worst case where every review uses its retry inside
+  the `verify:live` test timeout in [mise.toml](mise.toml); raising either
+  side needs the other.
 - These checks consume provider quota and require every selected harness on
   `PATH`.
 

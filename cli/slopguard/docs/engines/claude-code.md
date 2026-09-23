@@ -1,8 +1,8 @@
 # Claude Code engine
 
-Select with `--engine claude`. The adapter always passes an explicit model; an
-empty model setting resolves to `claude-opus-5-5`, with no fallback. Effort
-defaults to `medium` and must be `low`, `medium`, `high`, `xhigh`, or `max`.
+Select with `--engine claude`. Effort must be `low`, `medium`, `high`,
+`xhigh`, or `max`. Defaults and shared runtime rules:
+[Review engines](README.md).
 
 ## Runtime contract
 
@@ -15,10 +15,6 @@ The Claude review process resolves authentication from the preserved
 environment and user configuration. A separate auth-status surface cannot
 block a configured session, gateway, helper, or key.
 
-Compatibility is capability-based with no numeric upper bound. Fixtures cover
-Claude Code `2.1.220` through `2.1.260`; other versions must expose the same
-required flags before Slopguard invokes the model.
-
 The frozen prompt is delivered on standard input followed by a trusted review
 policy. Each finding location must fit within one reviewed line range;
 cross-hunk concerns must be narrowed to one establishing range or split into
@@ -27,10 +23,7 @@ separately valid findings.
 ## Web access
 
 Off by default. When enabled, `WebSearch` is the only exposed tool; filesystem,
-shell, MCP, browser, and unrestricted fetch tools stay unavailable. The
-provider keeps its existing environment, user configuration, and configured
-provider or session authentication, and runs from an empty workspace with an
-explicit safe tool inventory.
+shell, MCP, browser, and unrestricted fetch tools stay unavailable.
 
 ## Output contract
 
@@ -46,8 +39,9 @@ is a provider-reported failure, not a malformed review. Accepted subtypes:
 `success`, `error_during_execution`, `error_max_turns`, `error_max_budget_usd`,
 and `error_max_structured_output_retries`. Typed `401` and `403` statuses
 become authentication; `429` remains a provider failure with a stable
-rate-limit diagnostic. Raw provider error text is never copied into the
-report.
+rate-limit diagnostic. A refusal (`stop_reason: refusal`) is a capability
+failure carrying the refusal category. Raw provider error text is never copied
+into the report.
 
 ## Verify
 

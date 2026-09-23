@@ -18,7 +18,6 @@ Defective review contract:
   final partial batch and sizes larger than the input
 - `ReadConfig` closes every opened file
 
-Create separate temporary Git repositories from `base/`, overlay either
-`after/` or `defective/`, commit the overlay, and review that commit with each
-provider. Run `go test ./...` before review. Do not add credentials or
+`mise run verify:live` materializes both controls and reviews them with each
+provider; see [Contributing](../../CONTRIBUTING.md). Do not add credentials or
 machine-local data to the fixture.

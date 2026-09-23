@@ -4,12 +4,11 @@ Select with `--engine grok`. Install the official CLI and authenticate before
 the first native review:
 
 ```bash
-npm install --global @xai-official/grok@1.0.13
+npm install --global @xai-official/grok
 grok login
 ```
 
-The adapter always passes an explicit model; an empty model setting resolves to
-`grok-4.7`, with no fallback. Reasoning effort defaults to `high`.
+Defaults and shared runtime rules: [Review engines](README.md).
 
 ## Runtime contract
 
@@ -23,24 +22,20 @@ environment and user configuration.
   provider workspace and removed with it after the run. It never appears in
   process arguments.
 - Every run disables plan mode, subagents, memory, shell, edits, file reads,
-  grep, and Model Context Protocol (MCP) tools. Grok 1.0.4 receives
-  `--no-memory`; 1.0.5 and newer receive the documented `GROK_MEMORY=0` and
-  `GROK_SUBAGENTS=0` environment controls because the per-run memory flag was
-  removed.
+  grep, and Model Context Protocol (MCP) tools with `--no-plan`,
+  `--no-subagents`, and the documented `GROK_MEMORY=0` and `GROK_SUBAGENTS=0`
+  environment controls. Versions before 1.0.5 also receive `--no-memory`,
+  which later releases removed.
 - `dontAsk` permission mode silently denies tools without an explicit allow
   rule and prevents interactive approval prompts.
-- Tool filtering uses Grok's documented internal IDs. With web off, the adapter
-  starts from `web_search` and removes it with `--disallowed-tools`. It also
-  removes the always-on `search_tool` and `use_tool` MCP meta-tools, leaving no
-  tools for the model to call.
+- Tool filtering uses Grok's documented internal IDs. The adapter always
+  disallows the `search_tool` and `use_tool` MCP meta-tools and `Agent`.
 
 ## Web access
 
-Off by default. `web_search` and `web_fetch` are removed when web access is off
-and are the only tools when it is on. MCP meta-tools are always removed. The
-review keeps the existing environment, user configuration, and configured
-provider or session authentication, and runs from an empty workspace with an
-explicit per-run tool and feature policy.
+Off by default: the adapter also disallows `web_search` and passes
+`--disable-web-search`, leaving no tools for the model to call. When on,
+`web_search` and `web_fetch` are the only tools.
 
 ## Output contract
 
@@ -72,20 +67,16 @@ Findings stay linked to reviewed files by the canonical review location.
 
 Grok treats the schema's unanchored non-whitespace string pattern as a
 full-string constraint and otherwise truncates explanations, titles, bodies,
-and paths to one character. The provider-facing projection omits only that
-pattern for Grok. Canonical decoding still enforces non-blank text, length
-bounds, and safe relative paths.
+and paths to one character, so its provider-facing projection
+([schema/embed.go](../../schema/embed.go)) omits that pattern along with the
+`$schema` keyword and the path `not` rule, and adds the completion bounds
+above. Canonical decoding still enforces non-blank text, length bounds, and
+safe relative paths.
 
-Compatibility is capability-based with no numeric upper bound. Fixtures cover
-Grok Build CLI `1.0.4`, `1.0.5`, and `1.0.13`. Capability discovery checks
-every trusted PATH candidate, skipping incompatible tool-manager targets before
-selecting a real Grok executable, and fails closed when no candidate preserves
-the version-specific required flags or enumerated values.
-
-Each attempt invokes the selected xAI model and may consume plan or API quota.
-The one configured protocol retry runs again only after malformed output;
-authentication, capability, timeout, cancellation, and process failures are
-not retried.
+Capability discovery checks every trusted PATH candidate, skipping
+incompatible tool-manager targets before selecting a real Grok executable,
+and fails closed when no candidate preserves the version-specific required
+flags or enumerated values.
 
 ## Verify
 
