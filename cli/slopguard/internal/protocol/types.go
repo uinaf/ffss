@@ -40,6 +40,7 @@ type ProviderName string
 const (
 	ProviderCodex  ProviderName = "codex"
 	ProviderClaude ProviderName = "claude"
+	// ProviderCursor appears only in version 1 reports from releases before 3.0.
 	ProviderCursor ProviderName = "cursor"
 	ProviderGrok   ProviderName = "grok"
 )

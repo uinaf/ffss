@@ -133,7 +133,7 @@ func TestDoctorCommandReturnsExit2ForProviderConfigRejection(t *testing.T) {
 	repository := reviewRepository(t)
 	var stdout bytes.Buffer
 	exit := run(t.Context(), []string{
-		"doctor", "--repository", repository, "--engine", "cursor", "--web-access=false", "--output", "json",
+		"doctor", "--repository", repository, "--engine", "claude", "--reasoning-effort", "minimal", "--output", "json",
 	}, &stdout, io.Discard, dependencies{
 		lookupEnv: func(string) (string, bool) { return "", false },
 		homeDir:   func() (string, error) { return t.TempDir(), nil },

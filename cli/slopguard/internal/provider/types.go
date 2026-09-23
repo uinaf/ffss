@@ -14,10 +14,9 @@ import (
 )
 
 const (
-	DefaultCodexModel  = "gpt-6-astra"
-	DefaultClaudeModel = "claude-fable-5-1"
-	DefaultCursorModel = "cursor-grok-4.6-high"
-	DefaultGrokModel   = "grok-4.6"
+	DefaultCodexModel  = "gpt-6-sol"
+	DefaultClaudeModel = "claude-opus-5-5"
+	DefaultGrokModel   = "grok-4.7"
 )
 
 type Request struct {
@@ -53,18 +52,16 @@ func (request Request) promptReader(additionalSuffix string) io.Reader {
 }
 
 type Result struct {
-	Review           protocol.Review
-	Provider         protocol.Provider
-	Attempt          protocol.Attempt
-	Duration         time.Duration
-	WebAccess        bool
-	ProtocolRecovery protocol.ProtocolRecovery
+	Review    protocol.Review
+	Provider  protocol.Provider
+	Attempt   protocol.Attempt
+	Duration  time.Duration
+	WebAccess bool
 }
 
 type Execution struct {
-	Provider         protocol.Provider
-	WebAccess        bool
-	ProtocolRecovery protocol.ProtocolRecovery
+	Provider  protocol.Provider
+	WebAccess bool
 }
 
 type Reviewer interface {
@@ -204,8 +201,6 @@ func providerCredentialNames(name protocol.ProviderName) (string, []string) {
 		return "Codex", []string{"CODEX_API_KEY", "OPENAI_API_KEY"}
 	case protocol.ProviderClaude:
 		return "Claude", []string{"ANTHROPIC_API_KEY"}
-	case protocol.ProviderCursor:
-		return "Cursor", []string{"CURSOR_API_KEY"}
 	case protocol.ProviderGrok:
 		return "Grok", []string{"XAI_API_KEY"}
 	default:

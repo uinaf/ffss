@@ -32,16 +32,12 @@
 - When the malformed response can be classified safely, the retry receives a
   rule-specific correction without provider output or repository content.
 
-- Cursor first requires one canonical review object. Its only recovery accepts
-  plain prose followed by exactly one canonical trailing object; success is
-  recorded as `cursor_trailing_object`.
 - Fences, ambiguous braces, JSON-value prefixes, multiple objects, and suffix
   prose fail closed.
 
 - Once provider execution metadata is resolved, operational failures preserve
-  the provider, model, harness version, effective web-access state, and any
-  protocol recovery in the canonical report. Earlier failures keep nullable
-  metadata unset.
+  the provider, model, harness version, and effective web-access state in the
+  canonical report. Earlier failures keep nullable metadata unset.
 
 After any provider return, slopguard recollects the target. A changed snapshot
 produces `source_changed`: discard the findings and rerun from a new freeze.

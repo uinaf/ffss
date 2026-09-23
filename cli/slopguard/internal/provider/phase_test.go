@@ -31,13 +31,6 @@ func TestProviderPhaseCoverage(t *testing.T) {
 			},
 		},
 		{
-			name: "cursor",
-			setup: func(t *testing.T) (Reviewer, config.Effective) {
-				fake := newFakeCursor(t, fakeCursorOptions{})
-				return NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}}), cursorConfig(true, 5*time.Second)
-			},
-		},
-		{
 			name: "grok",
 			setup: func(t *testing.T) (Reviewer, config.Effective) {
 				fake := newFakeGrok(t, fakeGrokOptions{})

@@ -40,14 +40,6 @@ func TestProviderPreparationIsCachedAcrossReviewAttempts(t *testing.T) {
 			probes: 2,
 		},
 		{
-			name: "Cursor",
-			newFixture: func(t *testing.T) (Reviewer, string, string, config.Effective) {
-				fake := newFakeCursor(t, fakeCursorOptions{})
-				return NewCursor(CursorOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}}), fake.probes, fake.directory, cursorConfig(true, 5*time.Second)
-			},
-			probes: 3,
-		},
-		{
 			name: "Grok",
 			newFixture: func(t *testing.T) (Reviewer, string, string, config.Effective) {
 				fake := newFakeGrok(t, fakeGrokOptions{})
@@ -278,10 +270,10 @@ func TestPreparationCacheDoesNotRetryCoincidentFailureAfterLeaderCancellation(t 
 	}
 }
 
-func TestCodexClaudeAndCursorSkipImplicitIncompatibleCandidate(t *testing.T) {
+func TestCodexAndClaudeSkipImplicitIncompatibleCandidate(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"codex", "claude", "cursor-agent"} {
+	for _, name := range []string{"codex", "claude"} {
 		t.Run(name, func(t *testing.T) {
 			shimDirectory := t.TempDir()
 			manager := filepath.Join(t.TempDir(), "mise")
@@ -305,13 +297,6 @@ func TestCodexClaudeAndCursorSkipImplicitIncompatibleCandidate(t *testing.T) {
 				if _, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)}); err != nil {
 					t.Fatal(err)
 				}
-			case "cursor-agent":
-				fake := newFakeCursor(t, fakeCursorOptions{})
-				environment := []string{"PATH=" + strings.Join([]string{shimDirectory, filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)), "CURSOR_API_KEY=secret"}
-				reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Environment: environment})
-				if _, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)}); err != nil {
-					t.Fatal(err)
-				}
 			}
 		})
 	}
@@ -320,7 +305,7 @@ func TestCodexClaudeAndCursorSkipImplicitIncompatibleCandidate(t *testing.T) {
 func TestExplicitProviderExecutableDoesNotFallback(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"codex", "claude", "cursor-agent", "grok"} {
+	for _, name := range []string{"codex", "claude", "grok"} {
 		t.Run(name, func(t *testing.T) {
 			manager := filepath.Join(t.TempDir(), "mise")
 			writeTestExecutableAt(t, manager, "#!/bin/sh\nif [ \"${1:-}\" = '--version' ]; then printf '%s\\n' 'mise 2026.8.6'; exit 0; fi\nif [ \"${1:-}\" = '--help' ]; then printf '%s\\n' 'mise command help'; exit 0; fi\nexit 1\n")
@@ -338,11 +323,6 @@ func TestExplicitProviderExecutableDoesNotFallback(t *testing.T) {
 				arguments = fake.arguments
 				reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: manager, Environment: []string{"PATH=" + strings.Join([]string{filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)), "ANTHROPIC_API_KEY=secret"}})
 				_, err = reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)})
-			case "cursor-agent":
-				fake := newFakeCursor(t, fakeCursorOptions{})
-				arguments = fake.arguments
-				reviewer := NewCursor(CursorOptions{Repository: t.TempDir(), Executable: manager, Environment: []string{"PATH=" + strings.Join([]string{filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)), "CURSOR_API_KEY=secret"}})
-				_, err = reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: cursorConfig(true, 5*time.Second)})
 			case "grok":
 				fake := newFakeGrok(t, fakeGrokOptions{})
 				arguments = fake.arguments

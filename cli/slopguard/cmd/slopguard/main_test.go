@@ -312,12 +312,12 @@ func TestReviewCommandPreservesExecutionMetadataAfterProtocolRetryExhausts(t *te
 	t.Parallel()
 
 	execution := &provider.Execution{
-		Provider:  protocol.Provider{Name: protocol.ProviderCursor, Model: "cursor-grok-4.5-high-fast", Version: "2026.08.04-aaa8809"},
+		Provider:  protocol.Provider{Name: protocol.ProviderGrok, Model: "grok-4.7", Version: "1.0.13"},
 		WebAccess: true,
 	}
-	reviewer := &scriptedReviewer{results: []reviewStep{{err: cursorProtocolError(execution, protocol.ProtocolReasonMultipleDocuments)}, {err: cursorProtocolError(execution, protocol.ProtocolReasonMultipleDocuments)}}}
+	reviewer := &scriptedReviewer{results: []reviewStep{{err: protocolError(execution, protocol.ProtocolReasonMultipleDocuments)}, {err: protocolError(execution, protocol.ProtocolReasonMultipleDocuments)}}}
 	var stdout bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", reviewRepository(t), "--mode", "local", "--engine", "cursor", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
+	exit := run(t.Context(), []string{"review", "--repository", reviewRepository(t), "--mode", "local", "--engine", "grok", "--web-access", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
 	if exit != 2 || len(reviewer.prompts) != 2 {
 		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
 	}
@@ -331,47 +331,6 @@ func TestReviewCommandPreservesExecutionMetadataAfterProtocolRetryExhausts(t *te
 	}
 	if result.Failure == nil || !strings.Contains(result.Failure.Message, string(protocol.ProtocolReasonMultipleDocuments)) || result.Metadata.Provider == nil || *result.Metadata.Provider != execution.Provider || !result.Metadata.WebAccess {
 		t.Fatalf("result = %+v", result)
-	}
-}
-
-func TestReviewCommandPreservesRecoveryAcrossProtocolRetry(t *testing.T) {
-	t.Parallel()
-
-	strategy := protocol.RecoveryCursorTrailingObject
-	recovered := cleanResult()
-	recovered.Provider = protocol.Provider{Name: protocol.ProviderCursor, Model: "cursor-grok-4.5-high-fast", Version: "2026.08.04-aaa8809"}
-	recovered.WebAccess = true
-	recovered.ProtocolRecovery = protocol.ProtocolRecovery{Applied: true, Strategy: &strategy}
-	recovered.Review.Findings = []protocol.Finding{finding("outside target", 0.9)}
-	recovered.Review.Findings[0].Location.FilePath = "other.go"
-	execution := &provider.Execution{
-		Provider:  recovered.Provider,
-		WebAccess: recovered.WebAccess,
-	}
-	unrecovered := recovered
-	unrecovered.ProtocolRecovery = protocol.ProtocolRecovery{}
-	for _, test := range []struct {
-		name  string
-		retry reviewStep
-	}{
-		{name: "provider error", retry: reviewStep{err: cursorProtocolError(execution, protocol.ProtocolReasonMultipleDocuments)}},
-		{name: "invalid result", retry: reviewStep{result: unrecovered}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			reviewer := &scriptedReviewer{results: []reviewStep{{result: recovered}, test.retry}}
-			var stdout bytes.Buffer
-			exit := run(t.Context(), []string{"review", "--repository", reviewRepository(t), "--mode", "local", "--engine", "cursor", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
-			if exit != 2 {
-				t.Fatalf("run() exit = %d, output = %s", exit, stdout.String())
-			}
-			result, err := protocol.DecodeReport(stdout.Bytes())
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !result.Metadata.ProtocolRecovery.Applied || result.Metadata.ProtocolRecovery.Strategy == nil || *result.Metadata.ProtocolRecovery.Strategy != strategy {
-				t.Fatalf("protocol recovery = %+v", result.Metadata.ProtocolRecovery)
-			}
-		})
 	}
 }
 
@@ -874,13 +833,10 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 		name      string
 		arguments []string
 		effort    config.ReasoningEffort
-		web       bool
 		webSource config.Source
 	}{
 		{name: "Codex medium", arguments: []string{"config", "--repository", repository, "--engine", "codex", "--json"}, effort: config.ReasoningMedium, webSource: config.SourceDefault},
 		{name: "Claude medium", arguments: []string{"config", "--repository", repository, "--engine", "claude", "--json"}, effort: config.ReasoningMedium, webSource: config.SourceDefault},
-		{name: "Cursor high with implicit web", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--json"}, effort: config.ReasoningHigh, web: true, webSource: config.SourceFlag},
-		{name: "Cursor high with explicit false", arguments: []string{"config", "--repository", repository, "--engine", "cursor", "--web-access=false", "--json"}, effort: config.ReasoningHigh, webSource: config.SourceFlag},
 		{name: "Grok high", arguments: []string{"config", "--repository", repository, "--engine", "grok", "--json"}, effort: config.ReasoningHigh, webSource: config.SourceDefault},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -900,7 +856,7 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 			if effective.ReasoningEffort.Value != test.effort || effective.ReasoningEffort.Source != config.SourceDefault {
 				t.Fatalf("reasoning_effort = %+v", effective.ReasoningEffort)
 			}
-			if effective.WebAccess.Value != test.web || effective.WebAccess.Source != test.webSource {
+			if effective.WebAccess.Value || effective.WebAccess.Source != test.webSource {
 				t.Fatalf("web_access = %+v", effective.WebAccess)
 			}
 		})
@@ -908,7 +864,7 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 
 	t.Run("repository engine does not grant web", func(t *testing.T) {
 		repository := cliRepository(t)
-		if err := os.WriteFile(filepath.Join(repository, ".slopguard.yaml"), []byte("engine: cursor\n"), 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(repository, ".slopguard.yaml"), []byte("engine: grok\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		var stdout bytes.Buffer
@@ -924,7 +880,7 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 		if err := json.Unmarshal(stdout.Bytes(), &effective); err != nil {
 			t.Fatal(err)
 		}
-		if effective.Engine.Value != protocol.ProviderCursor || effective.Engine.Source != config.SourceRepository {
+		if effective.Engine.Value != protocol.ProviderGrok || effective.Engine.Source != config.SourceRepository {
 			t.Fatalf("engine = %+v", effective.Engine)
 		}
 		if effective.WebAccess.Value || effective.WebAccess.Source != config.SourceDefault {
@@ -1073,11 +1029,11 @@ func providerError(class protocol.FailureClass, outcome protocol.AttemptOutcome)
 	}
 }
 
-func cursorProtocolError(execution *provider.Execution, reason protocol.ProtocolReason) error {
+func protocolError(execution *provider.Execution, reason protocol.ProtocolReason) error {
 	class := protocol.FailureProtocol
 	return &provider.Error{
 		Class:     class,
-		Message:   "Cursor returned an invalid review document (" + string(reason) + ")",
+		Message:   "Provider returned an invalid review document (" + string(reason) + ")",
 		Attempt:   &protocol.Attempt{Number: 1, Outcome: protocol.AttemptMalformed, DurationMS: 1, ErrorClass: &class},
 		Reason:    reason,
 		Execution: execution,

@@ -29,12 +29,12 @@
     },
     {
       "name": "Provider web default understood",
-      "description": "The plan keeps web off for Codex, Claude, or Grok, or records Cursor's implicit web capability if Cursor is selected",
+      "description": "The plan keeps web access off",
       "max_score": 10
     },
     {
       "name": "No capability prompt",
-      "description": "The plan does not ask for separate permission to use the documented default or Cursor web behavior",
+      "description": "The plan does not ask for separate permission to use the documented default",
       "max_score": 10
     },
     {

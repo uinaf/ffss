@@ -31,7 +31,7 @@ func TestLoadUsesDocumentedPrecedenceAndSources(t *testing.T) {
 	effective, err := Load(context.Background(), Options{
 		Repository: repository,
 		LookupEnv: envLookup(map[string]string{
-			"SLOPGUARD_ENGINE":           "cursor",
+			"SLOPGUARD_ENGINE":           "grok",
 			"SLOPGUARD_RETRIES":          "1",
 			"SLOPGUARD_REASONING_EFFORT": "medium",
 		}),
@@ -41,7 +41,7 @@ func TestLoadUsesDocumentedPrecedenceAndSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if effective.Engine.Value != protocol.ProviderCursor || effective.Engine.Source != SourceEnvironment {
+	if effective.Engine.Value != protocol.ProviderGrok || effective.Engine.Source != SourceEnvironment {
 		t.Fatalf("engine = %+v", effective.Engine)
 	}
 	if effective.Model.Value != "repo-model" || effective.Model.Source != SourceRepository {
@@ -151,11 +151,9 @@ func TestLoadAppliesProviderDefaults(t *testing.T) {
 		name   string
 		engine protocol.ProviderName
 		effort ReasoningEffort
-		web    bool
 	}{
 		{name: "Codex medium with web disabled", engine: protocol.ProviderCodex, effort: ReasoningMedium},
 		{name: "Claude medium with web disabled", engine: protocol.ProviderClaude, effort: ReasoningMedium},
-		{name: "Cursor high with web enabled", engine: protocol.ProviderCursor, effort: ReasoningHigh, web: true},
 		{name: "Grok high with web disabled", engine: protocol.ProviderGrok, effort: ReasoningHigh},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -172,102 +170,11 @@ func TestLoadAppliesProviderDefaults(t *testing.T) {
 			if effective.ReasoningEffort.Value != test.effort || effective.ReasoningEffort.Source != SourceDefault {
 				t.Fatalf("reasoning_effort = %+v", effective.ReasoningEffort)
 			}
-			expectedWebSource := SourceDefault
-			if test.engine == protocol.ProviderCursor {
-				expectedWebSource = SourceFlag
-			}
-			if effective.WebAccess.Value != test.web || effective.WebAccess.Source != expectedWebSource {
+			if effective.WebAccess.Value || effective.WebAccess.Source != SourceDefault {
 				t.Fatalf("web_access = %+v", effective.WebAccess)
 			}
 		})
 	}
-}
-
-func TestCursorImplicitWebRequiresFlagEngineAndHonorsExplicitFalse(t *testing.T) {
-	t.Parallel()
-
-	t.Run("untrusted engine sources", func(t *testing.T) {
-		for _, test := range []struct {
-			name        string
-			xdg         string
-			repository  string
-			environment map[string]string
-		}{
-			{name: "repository", repository: "engine: cursor\n"},
-			{name: "environment", environment: map[string]string{"SLOPGUARD_ENGINE": "cursor"}},
-			{name: "environment-selected XDG", xdg: "engine: cursor\n"},
-		} {
-			t.Run(test.name, func(t *testing.T) {
-				repository := configRepository(t)
-				if test.repository != "" {
-					writeConfig(t, filepath.Join(repository, ".slopguard.yaml"), test.repository)
-				}
-				xdg := t.TempDir()
-				if test.xdg != "" {
-					writeConfig(t, filepath.Join(xdg, "slopguard", "config.yaml"), test.xdg)
-				}
-				environment := map[string]string{"XDG_CONFIG_HOME": xdg}
-				for name, value := range test.environment {
-					environment[name] = value
-				}
-				effective, err := Load(context.Background(), Options{
-					Repository: repository,
-					LookupEnv:  envLookup(environment),
-					HomeDir:    func() (string, error) { return t.TempDir(), nil },
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
-				if effective.Engine.Value != protocol.ProviderCursor || effective.WebAccess.Value || effective.WebAccess.Source != SourceDefault {
-					t.Fatalf("effective config = %+v", effective)
-				}
-			})
-		}
-	})
-
-	t.Run("explicit false sources", func(t *testing.T) {
-		for _, test := range []struct {
-			name        string
-			xdg         string
-			repository  string
-			environment map[string]string
-			override    *bool
-			source      Source
-		}{
-			{name: "repository", repository: "web_access: false\n", source: SourceRepository},
-			{name: "environment", environment: map[string]string{"SLOPGUARD_WEB_ACCESS": "false"}, source: SourceEnvironment},
-			{name: "environment-selected XDG", xdg: "web_access: false\n", source: SourceXDG},
-			{name: "flag", override: boolPointer(false), source: SourceFlag},
-		} {
-			t.Run(test.name, func(t *testing.T) {
-				repository := configRepository(t)
-				if test.repository != "" {
-					writeConfig(t, filepath.Join(repository, ".slopguard.yaml"), test.repository)
-				}
-				xdg := t.TempDir()
-				if test.xdg != "" {
-					writeConfig(t, filepath.Join(xdg, "slopguard", "config.yaml"), test.xdg)
-				}
-				environment := map[string]string{"XDG_CONFIG_HOME": xdg}
-				for name, value := range test.environment {
-					environment[name] = value
-				}
-				engine := protocol.ProviderCursor
-				effective, err := Load(context.Background(), Options{
-					Repository: repository,
-					LookupEnv:  envLookup(environment),
-					HomeDir:    func() (string, error) { return t.TempDir(), nil },
-					Overrides:  Overrides{Engine: &engine, WebAccess: test.override},
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
-				if effective.WebAccess.Value || effective.WebAccess.Source != test.source {
-					t.Fatalf("web_access = %+v", effective.WebAccess)
-				}
-			})
-		}
-	})
 }
 
 func TestLoadRejectsUnknownRepositoryKeyWithSource(t *testing.T) {
@@ -418,7 +325,7 @@ func TestEnvironmentSelectedXDGStillSuppliesNonCapabilityValues(t *testing.T) {
 
 	repository := configRepository(t)
 	xdg := t.TempDir()
-	writeConfig(t, filepath.Join(xdg, "slopguard", "config.yaml"), "engine: cursor\nmodel: xdg-model\n")
+	writeConfig(t, filepath.Join(xdg, "slopguard", "config.yaml"), "engine: grok\nmodel: xdg-model\n")
 	effective, err := Load(context.Background(), Options{
 		Repository: repository,
 		LookupEnv:  envLookup(map[string]string{"XDG_CONFIG_HOME": xdg}),
@@ -487,7 +394,7 @@ func TestEnvironmentSelectedXDGInsideRepositorySuppliesNonCapabilityValues(t *te
 
 	repository := configRepository(t)
 	xdg := filepath.Join(repository, ".xdg")
-	writeConfig(t, filepath.Join(xdg, "slopguard", "config.yaml"), "engine: cursor\nmodel: repo-xdg-model\n")
+	writeConfig(t, filepath.Join(xdg, "slopguard", "config.yaml"), "engine: grok\nmodel: repo-xdg-model\n")
 	effective, err := Load(context.Background(), Options{
 		Repository: repository,
 		LookupEnv:  envLookup(map[string]string{"XDG_CONFIG_HOME": xdg}),
@@ -652,7 +559,7 @@ func TestLoadUsesOnlyRootRepositoryConfig(t *testing.T) {
 	if err := os.Mkdir(nested, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	writeConfig(t, filepath.Join(nested, ".slopguard.yaml"), "engine: cursor\n")
+	writeConfig(t, filepath.Join(nested, ".slopguard.yaml"), "engine: grok\n")
 	effective, err := loadWithoutUserConfig(t, nested, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -809,10 +716,6 @@ func envLookup(values map[string]string) func(string) (string, bool) {
 		value, ok := values[name]
 		return value, ok
 	}
-}
-
-func boolPointer(value bool) *bool {
-	return &value
 }
 
 func configRepository(t *testing.T) string {

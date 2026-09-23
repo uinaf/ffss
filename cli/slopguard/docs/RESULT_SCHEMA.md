@@ -72,7 +72,9 @@ expand that boundary by returning another path or line.
 - Attempts are numbered from one. `valid` attempts have no error class;
   `malformed` and `failed` attempts carry a stable failure class.
 - Version 1 records one recovery strategy: `cursor_trailing_object`, valid
-  only when the selected provider is Cursor.
+  only when the provider is Cursor. Releases since 3.0 no longer run Cursor,
+  so they emit `{"applied": false, "strategy": null}`; the schema still
+  accepts earlier Cursor reports.
 - JSON numbers with an exact integer value, including `12.0` and `1.2e1`, are
   accepted for integer fields.
 - Line and attempt numbers are capped at 2,147,483,647; millisecond durations

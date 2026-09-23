@@ -36,13 +36,6 @@ func TestDoctorUsesProviderPreflightWithoutModelCalls(t *testing.T) {
 			},
 		},
 		{
-			name: "cursor", provider: protocol.ProviderCursor, probes: 2,
-			fixture: func(t *testing.T) (string, string, string, config.Effective, []string, []string) {
-				fake := newFakeCursor(t, fakeCursorOptions{})
-				return fake.path, fake.arguments, fake.probes, cursorConfig(true, 5*time.Second), []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=secret"}, []string{"PATH=/usr/bin:/bin", "HOME=/native/home", "CURSOR_CONFIG_DIR=/native/cursor"}
-			},
-		},
-		{
 			name: "grok", provider: protocol.ProviderGrok, probes: 2,
 			fixture: func(t *testing.T) (string, string, string, config.Effective, []string, []string) {
 				fake := newFakeGrok(t, fakeGrokOptions{})
@@ -101,11 +94,6 @@ func TestDoctorReportsCurrentProviderVersionsCompatible(t *testing.T) {
 				version: "2.1.260", help: providerHelpFixture(t, "claude-2.1.260-help.txt"),
 			}).path, claudeConfig(false, 5*time.Second)
 		}},
-		{name: "cursor", version: "2026.09.02-c22c1a3", fixture: func(t *testing.T) (string, config.Effective) {
-			return newFakeCursor(t, fakeCursorOptions{
-				version: "2026.09.02-c22c1a3", help: providerHelpFixture(t, "cursor-2026.09.02-c22c1a3-help.txt"),
-			}).path, cursorConfig(true, 5*time.Second)
-		}},
 		{name: "grok", version: "1.0.13", fixture: func(t *testing.T) (string, config.Effective) {
 			return newFakeGrok(t, fakeGrokOptions{
 				version: "1.0.13", help: providerHelpFixture(t, "grok-1.0.13-help.txt"),
@@ -147,9 +135,6 @@ func TestDoctorReportsTimeoutAndCancellationForEveryProvider(t *testing.T) {
 		{name: "claude", fixture: func(t *testing.T, timeout time.Duration) (string, config.Effective) {
 			return newFakeClaude(t, fakeClaudeOptions{}).path, claudeConfig(false, timeout)
 		}},
-		{name: "cursor", fixture: func(t *testing.T, timeout time.Duration) (string, config.Effective) {
-			return newFakeCursor(t, fakeCursorOptions{}).path, cursorConfig(true, timeout)
-		}},
 		{name: "grok", fixture: func(t *testing.T, timeout time.Duration) (string, config.Effective) {
 			return newFakeGrok(t, fakeGrokOptions{}).path, grokConfig(false, timeout)
 		}},
@@ -185,7 +170,6 @@ func TestDoctorClassifiesMissingIncompatibleTimeoutAndCancellation(t *testing.T)
 	}{
 		{name: "codex", effective: base},
 		{name: "claude", effective: claudeConfig(false, 5*time.Second)},
-		{name: "cursor", effective: cursorConfig(true, 5*time.Second)},
 		{name: "grok", effective: grokConfig(false, 5*time.Second)},
 	}
 	for _, test := range providers {
@@ -233,18 +217,6 @@ func TestDoctorUsesSingleTimeoutBudget(t *testing.T) {
 	}
 }
 
-func TestDoctorRejectsCanonicalCursorVersionContainingCredential(t *testing.T) {
-	fake := newFakeCursor(t, fakeCursorOptions{version: "2026.08.23-deadbee"})
-	diagnostic := Doctor(t.Context(), DoctorOptions{
-		Repository: t.TempDir(), Executable: fake.path,
-		Environment: []string{"PATH=/usr/bin:/bin", "CURSOR_API_KEY=deadbee"},
-		Config:      cursorConfig(true, 5*time.Second),
-	})
-	if diagnostic.FailureClass != protocol.FailureCapability || diagnostic.Compatible || diagnostic.Version != "" {
-		t.Fatalf("diagnostic = %+v", diagnostic)
-	}
-}
-
 func TestDoctorAllowsShortCredentialPlaceholderInNumericVersion(t *testing.T) {
 	fake := newFakeCodex(t, fakeCodexOptions{})
 	diagnostic := Doctor(t.Context(), DoctorOptions{
@@ -288,14 +260,14 @@ func TestDiagnosticRejectsUnboundedFailure(t *testing.T) {
 		t.Fatal("expected non-canonical message to be rejected")
 	}
 	tooLong := Diagnostic{
-		SchemaVersion: DoctorSchemaVersion, Status: DoctorReady, Provider: protocol.ProviderCursor,
-		Version: "2026.08.23-" + strings.Repeat("a", doctorVersionMaxBytes), Compatible: true,
+		SchemaVersion: DoctorSchemaVersion, Status: DoctorReady, Provider: protocol.ProviderCodex,
+		Version: "0.146.0-" + strings.Repeat("a", doctorVersionMaxBytes), Compatible: true,
 		Authentication: AuthenticationDelegated,
 	}
 	if err := tooLong.Validate(); err == nil {
 		t.Fatal("expected oversized provider version to be rejected")
 	}
-	tooLong.Version = "2026.08.23-ok private-output"
+	tooLong.Version = "0.146.0 private-output"
 	if err := tooLong.Validate(); err == nil {
 		t.Fatal("expected non-canonical provider version to be rejected")
 	}

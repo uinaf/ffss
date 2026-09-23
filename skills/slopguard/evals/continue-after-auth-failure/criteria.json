@@ -44,7 +44,7 @@
     },
     {
       "name": "No fallback",
-      "description": "The plan does not automatically switch to Claude or Cursor after another failure",
+      "description": "The plan does not automatically switch to Claude or Grok after another failure",
       "max_score": 10
     }
   ]

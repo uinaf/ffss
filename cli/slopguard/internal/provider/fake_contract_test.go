@@ -49,13 +49,6 @@ func TestFakeProviderCLIsRejectInvalidReviewArguments(t *testing.T) {
 		})
 	})
 
-	t.Run("cursor", func(t *testing.T) {
-		t.Parallel()
-		workspace := t.TempDir()
-		valid := cursorArguments(cursorConfig(true, 5*time.Second), workspace, "test-model")
-		assertInvalidContracts(t, newFakeCursor(t, fakeCursorOptions{}).path, valid, []string{"--output-format", "text"})
-	})
-
 	t.Run("grok", func(t *testing.T) {
 		t.Parallel()
 		workspace := t.TempDir()
