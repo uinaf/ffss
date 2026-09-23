@@ -14,7 +14,7 @@ rules: [security.md](references/security.md).
 
 - When independent review is requested or required, run it after the completed
   change passes its checks and before delivery or handoff. Not per edit, test
-  run, thread fix, or turn; a review budget alone does not require a review.
+  run, thread fix, or turn. An installed CLI is not a request.
 - An explicit request may target unfinished work; report missing verification
   without calling it closeout.
 - Reuse a valid result while target, base, contract, and requirements are
@@ -86,23 +86,19 @@ before passing it.
    same provider and mode on the final target. `source_changed` invalidates
    the result; freeze a new run once edits stop. Never present an earlier
    frozen result as covering later edits.
-5. Done at exit 0 with no findings, or exit 1 with every finding explicitly
-   rejected. Exit 1 is findings, never clean. Exit 2 is an operational
-   failure: [results.md](references/results.md).
+5. Done when the last review exits 0 with no findings, or exits 1 and every
+   finding is then explicitly rejected or fixed and verified. Exit 1 always
+   reports findings, never clean. Exit 2 is an operational failure:
+   [results.md](references/results.md).
 
 ## Convergence
-
-Respect the task or repository's review budget across turns and skill handoffs.
-If refreshed review or checks are required but would exceed it, pause affected
-delivery, report the missing proof and budget decision, and continue independent
-work. Do not reset the count, substitute a different reviewer, or reuse stale
-proof to close out.
 
 Carry accepted fixes and evidence-backed rejections forward. A repeated finding
 needs new evidence to reopen it; another model verdict alone is not new
 evidence. If the same disagreement returns after a fix or reasoned rejection,
-compare the evidence once. Reject a disproven claim; if a material uncertainty
-remains, state the decision needed and pause that part of delivery. Continue
+investigate it within scope. Reject a disproven claim; if settling it needs
+unavailable evidence or user judgment, state the decision needed and pause
+that part of delivery. Continue
 independent work. Never rerun unchanged inputs or alternate fixes merely to
 obtain agreement, and never treat an unresolved required review as passed.
 

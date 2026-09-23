@@ -1,0 +1,13 @@
+{
+  "context": "Tests that review closes on evidence rather than round counts: fixed and rejected findings reach a terminal state, contract-changing fixes get one refreshed review, clerical edits and unrequested work get none, and session length never stops authorized work.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {"name": "No round-count stop", "description": "Case A does not stop, pause delivery, or ask the user because of the number of review rounds, fix commits, or session length", "max_score": 15},
+    {"name": "Repeated finding rejected", "description": "Case A keeps the repeated finding rejected, citing the recorded evidence, and does not reopen it or rerun review to settle it", "max_score": 15},
+    {"name": "Refresh scoped to contract change", "description": "Case A refreshes independent review once on the final head because the fix changed an authentication contract, using the same provider and mode", "max_score": 15},
+    {"name": "Clerical edit inspected directly", "description": "Case A treats the comment typo as a clerical edit that needs direct inspection, not its own review", "max_score": 10},
+    {"name": "Terminal condition stated", "description": "Case A states that closeout is reached when the refreshed review has no findings or every finding is fixed and verified or rejected, then proceeds to delivery", "max_score": 15},
+    {"name": "Proof revision kept", "description": "Case A ties the regression and required-check evidence to the head they ran on", "max_score": 10},
+    {"name": "No unrequested review", "description": "Case B delivers without independent review; an installed CLI and provider do not create a review requirement", "max_score": 20}
+  ]
+}

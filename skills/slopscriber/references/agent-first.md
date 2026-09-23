@@ -23,9 +23,11 @@ scope. Split by task, not file length: another link adds a lookup, so do not
 fragment material the same task always needs together.
 
 For skills, keep discovery descriptions short and specific to the requested
-capability; broad triggers pull routine work into a specialized workflow. Keep
-essential constraints in `SKILL.md`; route setup, recovery, and mode-specific
-detail to references when not needed on every use.
+capability, with the trigger first; broad triggers pull routine work into a
+specialized workflow. Harnesses load descriptions at startup, sometimes
+shortened; they load the body on use and references on demand. Keep essential
+constraints in `SKILL.md`; route setup, recovery, and mode-specific detail to
+references when not needed on every use.
 
 Use task-shaped headings and stable terms. Preserve literal commands, paths,
 and diagnostic identifiers for search. Runbooks need observable outcomes and
@@ -48,13 +50,21 @@ omissions across clients, providers, or modes recur.
 Make completion and authority concrete: name the requested outcome and the
 actions that need a user decision. Preserve existing authorization across
 checks, fixes, and delivery; avoid mandatory reading lists, repeated testing
-reminders, and review checkpoints without a task-specific reason. Keep shared
-guidance model-neutral and revisit constraints whose rationale no longer holds.
+reminders, review checkpoints, and round or commit caps without a
+task-specific reason. Keep shared guidance model-neutral and revisit
+constraints whose rationale no longer holds; see the
+[cross-model contract](../../slopprep/references/agent-guidance.md#cross-model-contract).
+
+Harnesses cap what they load: Codex drops guide text past a
+[size limit](https://learn.chatgpt.com/docs/agent-configuration/agents-md) and
+shortens or omits skills past its
+[discovery limit](https://learn.chatgpt.com/docs/build-skills). Check both
+before adding root content or skills.
 
 Keep one authored source. When a repository uses AGENTS.md, use a CLAUDE.md
 symlink or supported `@AGENTS.md` import, not a copy. Preserve an existing
 valid import. Check current harness documentation before changing hierarchy,
-filenames, or import behavior: [Codex](https://developers.openai.com/codex/guides/agents-md)
+filenames, or import behavior: [Codex](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
 and [Claude Code](https://code.claude.com/docs/en/memory).
 
 ## Capture proven workflows

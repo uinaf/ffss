@@ -44,18 +44,10 @@ npx skills add Effect-TS/skills --list
 npx skills add Effect-TS/skills --skill effect-ts --agent codex --yes
 ```
 
-Use project scope, never `--global` or `--all`. Codex discovers repo skills under
-`.agents/skills/`; retain the installer-managed links for other selected
-harnesses. Keep installed files and source locks according to repository policy;
-do not commit absolute links into a developer's home or plugin cache. Check that
-references and required companion skills survive installation.
-
-Do not bundle the catalog's skill bodies into ffss: that would expose every
-stack globally again. Do not prune global or unrelated repo skills as a side
-effect. An explicitly requested global migration must also update the owning
-installation manifest so synchronization does not reinstall them.
-Complete global removal before installing local replacements, then verify both
-scopes; do not assume a global removal preserved a same-named local skill.
+Use project scope, never `--global` or `--all`. Do not commit absolute links
+into a home directory or plugin cache, or prune global or unrelated skills as
+a side effect. Harness paths, lockfiles, and global-to-local migration:
+[installation.md](references/installation.md).
 
 ## Make discoverable and verify
 

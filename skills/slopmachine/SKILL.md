@@ -28,8 +28,8 @@ before treating it as a blocker. Respect an explicit hold or narrower endpoint.
 ## Execute
 
 - Work in dependency order. Batch independent reads and checks. Delegate
-  bounded independent work when useful and permitted, keep working alongside
-  it, and inspect the results before integrating them. After a dependency lands,
+  independent work when useful and permitted, keep working alongside it, and
+  inspect the results before integrating them. After a dependency lands,
   reconcile dependent branches with the new base before verifying and merging.
 - Implement the full requested behavior with focused edits. Fix nearby issues
   only when they prevent the requested outcome; report unrelated findings
@@ -62,8 +62,8 @@ report, never passing evidence. Don't bypass a required gate to finish.
 
 ## Continue and report
 
-Give brief updates when findings, decisions, or blockers change. Before
-compaction or a handoff, preserve the agreed scope, authorization, decisions,
+Give brief updates when findings, decisions, or blockers change. As milestones
+land and before a handoff, record the agreed scope, authorization, decisions,
 completed work, valid proof and its revision, delivery URLs, and outstanding
 work in the existing tracking surface. On resume, reconcile that record with
 the worktree and forge; reuse valid proof and continue from the actual state.

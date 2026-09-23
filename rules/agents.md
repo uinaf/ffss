@@ -27,6 +27,8 @@ Good, references as links, backticks only for literals:
   preserve unrelated changes.
 - State a short plan for non-trivial work. Revisit settled choices only on new
   evidence.
+- User instructions outrank skill and guide text. Before treating a skill as
+  a blocker, name the exact instruction and check that it applies.
 - Authorization persists across turns: build, fix, and ship requests cover
   in-scope edits, checks, fixes, and delivery the repository allows. Inspection
   alone authorizes no edits.
@@ -35,24 +37,17 @@ Good, references as links, backticks only for literals:
 - Carry work through checks, result inspection, and delivery. Monitor CI and
   review to the agreed outcome. Stop for a user decision or an evidenced
   blocker, not at the first implementation.
-- Delegate bounded independent work when useful; validate the results.
-  Bounded means the dispatch names the findings or steps in scope, a wall-time
-  ceiling, and a cap on fix rounds; the agent stops and reports when any is
-  hit. Reviewer findings outside that list become a reply with evidence or a
-  follow-up issue, never a new engineering round.
-- Review budgets are ceilings, not required stages. Unless the task sets a
-  different budget, allow at most one bot round, one independent review on the
-  final candidate, three fix commits after the first review, and one final
-  gate pass after fixes per change request. Batch fixes before that pass.
-  If required proof needs another round beyond the budget, pause affected
-  delivery and report the missing proof and decision needed. Continue
-  independent work; a spent budget never makes stale or failing proof valid.
+- Delegate substantial independent work or isolated review when it saves time;
+  do small lookups yourself. Name the scope and expected output in the
+  dispatch, validate what comes back, and take over or cancel a stalled
+  delegate. Out-of-scope review findings get an evidenced reply or a tracker
+  item, not rework.
 - Status questions cost no tool calls. While a wait is armed, answer from
   memory; check the forge, worktree, or logs only when asked for a check, and
   then in one batched call.
 - Use completion notifications for delegated work. Keep working independently;
-  wait within the declared budget only when nothing else is ready. Do not poll
-  workers or delegate an agent merely to watch another agent.
+  wait only when nothing else is ready. Do not poll workers or delegate an
+  agent merely to watch another agent.
 - Return a receipt, not a transcript: status, one-line summary, changes, risks,
   unverified items, evidence references, next action. Bound each item; put the
   full output in an artifact and reference it. Reviewers read the real diff.
@@ -60,6 +55,10 @@ Good, references as links, backticks only for literals:
   silently drop a terminal state. Bound it with a deadline and a failure exit,
   and match the interval to how fast that state changes.
 - Keep transcripts append-only; do not rewrite earlier turns to reduce wait cost.
+- Context growth is not a reason to stop, hand off, or trim scope; supported
+  harnesses compact long sessions. As milestones land, keep resumable state
+  (decisions, finding dispositions, proof revisions) in the task's existing
+  tracking surface, not only in the conversation.
 
 ### Implementation
 
@@ -96,8 +95,8 @@ need scope.
 - For UI changes, exercise the affected flow and relevant keyboard, responsive,
   accessibility, and reduced-motion behavior.
 - Reuse passing proof until a change, failure, or concrete concern invalidates
-  it. Run independent review once when requested or required and validate its
-  findings.
+  it. Run independent review when requested or required and validate its
+  findings; refresh it when the target, contract, or policy invalidates it.
 - On a shared interactive host, hold the expensive build, test, or runtime
   slot only while a check needs it, and clean up only the processes this task
   started.
