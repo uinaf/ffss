@@ -164,10 +164,10 @@ func TestDecodeReportRejectsInvalidContracts(t *testing.T) {
 		{
 			name: "strategy without recovery",
 			mutate: func(report map[string]any) {
-				strategy := "trailing_object"
+				strategy := "cursor_trailing_object"
 				metadataMap(report)["protocol_recovery"].(map[string]any)["strategy"] = strategy
 			},
-			wantErr: "protocol_recovery is unsupported",
+			wantErr: "strategy requires applied=true",
 		},
 	}
 
@@ -478,11 +478,19 @@ func TestReportValidateSemanticRules(t *testing.T) {
 			wantErr: "forbids error_class",
 		},
 		{
-			name: "applied recovery",
+			name: "recovery without strategy",
 			mutate: func(report *Report) {
 				report.Metadata.ProtocolRecovery.Applied = true
 			},
-			wantErr: "protocol_recovery is unsupported",
+			wantErr: "invalid strategy",
+		},
+		{
+			name: "cursor recovery with non-cursor provider",
+			mutate: func(report *Report) {
+				strategy := RecoveryCursorTrailingObject
+				report.Metadata.ProtocolRecovery = ProtocolRecovery{Applied: true, Strategy: &strategy}
+			},
+			wantErr: "requires provider cursor",
 		},
 	}
 

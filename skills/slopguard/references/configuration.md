@@ -22,7 +22,7 @@ YAML schema:
 
 ```yaml
 engine: codex
-model: gpt-6-astra
+model: gpt-6-sol
 reasoning_effort: medium
 timeout: 15m
 retries: 1

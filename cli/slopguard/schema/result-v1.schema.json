@@ -182,7 +182,29 @@
         "protocol_recovery": {
           "$ref": "#/$defs/protocol_recovery"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "protocol_recovery": {
+                "properties": { "applied": { "const": true } },
+                "required": ["applied"]
+              }
+            },
+            "required": ["protocol_recovery"]
+          },
+          "then": {
+            "properties": {
+              "provider": {
+                "type": "object",
+                "properties": { "name": { "const": "cursor" } },
+                "required": ["name"]
+              }
+            }
+          }
+        }
+      ]
     },
     "target": {
       "type": "object",
@@ -289,7 +311,7 @@
       "required": ["name", "model", "version"],
       "properties": {
         "name": {
-          "enum": ["codex", "claude", "grok"]
+          "enum": ["codex", "claude", "cursor", "grok"]
         },
         "model": {
           "type": "string",
@@ -351,9 +373,28 @@
       "additionalProperties": false,
       "required": ["applied", "strategy"],
       "properties": {
-        "applied": { "const": false },
-        "strategy": { "type": "null" }
-      }
+        "applied": { "type": "boolean" },
+        "strategy": {
+          "oneOf": [
+            { "const": "cursor_trailing_object" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "applied": { "const": true } },
+            "required": ["applied"]
+          },
+          "then": {
+            "properties": { "strategy": { "const": "cursor_trailing_object" } }
+          },
+          "else": {
+            "properties": { "strategy": { "type": "null" } }
+          }
+        }
+      ]
     }
   }
 }

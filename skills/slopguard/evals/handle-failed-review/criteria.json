@@ -28,8 +28,8 @@
       "max_score": 10
     },
     {
-      "name": "No Codex fallback",
-      "description": "The plan does not switch to Codex automatically",
+      "name": "No Grok fallback",
+      "description": "The plan does not switch to Grok automatically",
       "max_score": 10
     },
     {

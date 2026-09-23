@@ -45,6 +45,9 @@ func (report Report) Validate() error {
 			return err
 		}
 	}
+	if report.Metadata.ProtocolRecovery.Applied && (report.Metadata.Provider == nil || report.Metadata.Provider.Name != ProviderCursor) {
+		return fmt.Errorf("cursor protocol recovery requires provider cursor")
+	}
 	if err := validateAttempts(report.Metadata.Attempts); err != nil {
 		return err
 	}
@@ -214,7 +217,7 @@ func (target Target) validate() error {
 
 func (provider Provider) validate() error {
 	switch provider.Name {
-	case ProviderCodex, ProviderClaude, ProviderGrok:
+	case ProviderCodex, ProviderClaude, ProviderCursor, ProviderGrok:
 	default:
 		return fmt.Errorf("invalid provider.name %q", provider.Name)
 	}
@@ -255,8 +258,14 @@ func validateAttempts(attempts []Attempt) error {
 }
 
 func (recovery ProtocolRecovery) validate() error {
-	if recovery.Applied || recovery.Strategy != nil {
-		return fmt.Errorf("protocol_recovery is unsupported")
+	if !recovery.Applied {
+		if recovery.Strategy != nil {
+			return fmt.Errorf("protocol_recovery.strategy requires applied=true")
+		}
+		return nil
+	}
+	if recovery.Strategy == nil || *recovery.Strategy != RecoveryCursorTrailingObject {
+		return fmt.Errorf("protocol_recovery has invalid strategy")
 	}
 	return nil
 }
