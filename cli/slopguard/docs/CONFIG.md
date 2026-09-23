@@ -24,7 +24,7 @@ reasoning_effort: high
 timeout: 30m
 retries: 0
 max_bytes: 4194304
-web_access: false
+web_access: true
 telemetry: false
 ```
 
@@ -57,11 +57,16 @@ account-home XDG file. Repository configuration and an XDG path selected by
 
 ## Security controls
 
-Web access defaults to off.
+Web access defaults to on so reviewers can search for and fetch references.
+Pass `--web-access=false` or set `web_access: false` to turn it off.
 
 - A path selected through `XDG_CONFIG_HOME`, repository configuration, and
-  environment variables cannot enable web access. Their `web_access: true`
-  values are rejected.
+  environment variables may disable web access but cannot enable it. Their
+  `web_access: true` is ignored while web access is already on and rejected
+  when a lower-precedence source turned it off.
+- With web access on, repository content under review can steer the reviewer
+  toward attacker-chosen URLs. Turn it off for targets that must not reach the
+  network.
 
 Providers run from a new empty temporary workspace, receive only the frozen
 review bundle, and inherit the normal provider environment, user configuration,

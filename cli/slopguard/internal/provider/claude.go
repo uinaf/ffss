@@ -238,6 +238,8 @@ func (claude *Claude) preflight(ctx context.Context, executable, workspace strin
 	return string(match[1]), nil
 }
 
+const claudeWebTools = "WebSearch,WebFetch"
+
 func claudeArguments(effective config.Effective, schema, model string) []string {
 	arguments := make([]string, 0, 32)
 	arguments = append(arguments,
@@ -249,7 +251,7 @@ func claudeArguments(effective config.Effective, schema, model string) []string 
 		"--no-chrome",
 	)
 	if effective.WebAccess.Value {
-		arguments = append(arguments, "--tools", "WebSearch", "--allowedTools", "WebSearch")
+		arguments = append(arguments, "--tools", claudeWebTools, "--allowedTools", claudeWebTools)
 	} else {
 		arguments = append(arguments, "--tools", "")
 	}

@@ -39,7 +39,7 @@ func TestFakeProviderCLIsRejectInvalidReviewArguments(t *testing.T) {
 			t.Fatal(err)
 		}
 		valid := claudeArguments(claudeConfig(false, 5*time.Second), string(schema), "test-model")
-		assertInvalidContracts(t, newFakeClaude(t, fakeClaudeOptions{}).path, valid, []string{"--allowedTools", "WebSearch"})
+		assertInvalidContracts(t, newFakeClaude(t, fakeClaudeOptions{}).path, valid, []string{"--allowedTools", "WebSearch,WebFetch"})
 		t.Run("missing tools value", func(t *testing.T) {
 			toolsIndex := indexOf(valid, "--tools")
 			if toolsIndex < 0 {

@@ -2,7 +2,7 @@
 
 A Go pull request is implementation-complete and its full test suite has passed.
 No provider is named by the user or repository configuration. Codex CLI, Claude
-Code, and Grok Build are installed. No task requirement needs web access.
+Code, and Grok Build are installed.
 
 Write `closeout.md` with the exact review command, the decision behind it,
 failure handling, and the evidence the final report must contain. The pull request targets `main` and its acceptance criteria

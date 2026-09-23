@@ -20,7 +20,8 @@ cancellation, process, and protocol failures remain distinct.
 
 ## Web access
 
-Off unless trusted configuration enables it; then only `--search` is added.
+On by default, which adds only `--search`. When off, the adapter passes
+`--config web_search="disabled"`.
 
 ## Output contract
 

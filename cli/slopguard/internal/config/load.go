@@ -319,7 +319,10 @@ func applyRaw(effective *Effective, raw rawConfig, source Source, allowCapabilit
 		return err
 	}
 	if raw.WebAccess.set && raw.WebAccess.value && !allowCapabilities {
-		return fmt.Errorf("%s config cannot enable web access", source)
+		if !effective.WebAccess.Value {
+			return fmt.Errorf("%s config cannot enable web access", source)
+		}
+		raw.WebAccess.set = false
 	}
 	if raw.Telemetry.set && raw.Telemetry.value && !allowCapabilities {
 		return fmt.Errorf("%s config cannot enable telemetry", source)
