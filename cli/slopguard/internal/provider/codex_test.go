@@ -383,7 +383,7 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 			if strings.Contains(failure.Message, providerOutputSentinel) {
 				t.Fatalf("protocol failure disclosed provider output: %q", failure.Message)
 			}
-			if !strings.Contains(failure.Message, test.detail) {
+			if test.detail != "" && !strings.Contains(failure.Message, test.detail) {
 				t.Fatalf("protocol failure = %q, want detail %q", failure.Message, test.detail)
 			}
 			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptMalformed {
