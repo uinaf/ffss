@@ -458,6 +458,24 @@ func TestFreezeSummarizesBinaryFilesWithoutContent(t *testing.T) {
 func TestFreezeRejectsUnsafeInputs(t *testing.T) {
 	t.Parallel()
 
+	t.Run("oversized untracked binary", func(t *testing.T) {
+		repository := committedRepository(t)
+		sparse, err := os.Create(filepath.Join(repository, "huge.bin"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := sparse.Truncate(MaximumMaxBytes + 1); err != nil {
+			t.Fatal(err)
+		}
+		if err := sparse.Close(); err != nil {
+			t.Fatal(err)
+		}
+		_, err = newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+		if err == nil || !strings.Contains(err.Error(), "exceeds hashing limit") {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+	})
+
 	t.Run("sensitive binary path", func(t *testing.T) {
 		repository := committedRepository(t)
 		writeBytes(t, repository, "signing.p12", []byte{0x30, 0, 0x82})

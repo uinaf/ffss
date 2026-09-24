@@ -988,9 +988,12 @@ func summarizeBinaryFile(root, relative string) ([]byte, bool, error) {
 	if bytes.IndexByte(head[:read], 0) < 0 {
 		return nil, false, nil
 	}
+	if before.Size() > MaximumMaxBytes {
+		return nil, false, fmt.Errorf("binary file of %d bytes exceeds hashing limit of %d bytes", before.Size(), MaximumMaxBytes)
+	}
 	hash := sha256.New()
 	_, _ = hash.Write(head[:read])
-	rest, err := io.Copy(hash, file)
+	rest, err := io.Copy(hash, io.LimitReader(file, MaximumMaxBytes))
 	if err != nil {
 		return nil, false, err
 	}

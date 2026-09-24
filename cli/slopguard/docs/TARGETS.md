@@ -48,7 +48,8 @@ boundary without first distilling and authorizing it.
   tracked changes appear as Git's `Binary files ... differ` line with full blob
   IDs, and untracked files as an `UNTRUSTED-BINARY-FILE` section carrying only
   size and SHA-256. Both still bind the snapshot, so later edits invalidate
-  the result.
+  the result. Untracked binaries above 128 MiB fail closed rather than being
+  hashed.
 - Invalid UTF-8 text, binary context files, sensitive paths, gitlinks (mode 160000 /
   submodules), symlink escapes, merge commits, unsafe revisions, FIFOs and
   other special files, context-path symlinks, and incomplete file reads fail
