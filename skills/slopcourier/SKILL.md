@@ -1,6 +1,6 @@
 ---
 name: slopcourier
-description: "Open or update a change request for completed, verified work. Use for change-request delivery."
+description: "Open or update a change request for completed, verified work, including its title, body, and review aids. Use whenever creating or editing a pull or merge request."
 ---
 
 # Slopcourier
