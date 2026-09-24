@@ -50,7 +50,8 @@ The issue may contain only:
 - slopguard version
 - operating system and architecture
 - provider name and web-access state
-- stable failure class
+- stable failure class, plus the protocol reason and violated rule for
+  protocol failures
 - sanitized reproduction steps using public or synthetic input
 - expected behavior and high-level actual behavior
 
