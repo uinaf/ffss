@@ -567,17 +567,19 @@ func (collector *Collector) untrackedFiles(ctx context.Context, root string, pla
 		if sensitivePath(path) && !environmentTemplatePath(path) {
 			return fmt.Errorf("sensitive path %q is not reviewable", path)
 		}
-		summary, binary, err := summarizeBinaryFile(ctx, root, path)
-		if err != nil {
-			return fmt.Errorf("read untracked file %q: %w", path, err)
-		}
-		if binary {
-			budget.Add("binary:"+path, int64(len(summary)))
-			budget.AddFraming(sectionFramingBytes("UNTRUSTED-BINARY-FILE", path, int64(len(summary))))
-			if !budget.Exceeded() {
-				binaries[path] = summary
+		if !budget.Exceeded() {
+			summary, binary, err := summarizeBinaryFile(ctx, root, path)
+			if err != nil {
+				return fmt.Errorf("read untracked file %q: %w", path, err)
 			}
-			return nil
+			if binary {
+				budget.Add("binary:"+path, int64(len(summary)))
+				budget.AddFraming(sectionFramingBytes("UNTRUSTED-BINARY-FILE", path, int64(len(summary))))
+				if !budget.Exceeded() {
+					binaries[path] = summary
+				}
+				return nil
+			}
 		}
 		content, size, err := budget.Read(root, path, "untracked:"+path)
 		if err != nil {
