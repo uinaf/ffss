@@ -438,6 +438,7 @@ type deletedBlob struct {
 
 func (collector *Collector) changedPaths(ctx context.Context, root string, plan *targetPlan, maxBytes int64) ([]string, []deletedBlob, error) {
 	var paths []string
+	binaries := map[string]struct{}{}
 	var inventoryBytes int64
 	for _, arguments := range diffCommands(plan, "--numstat", "-z") {
 		parser := &nulRecordWriter{handle: func(record []byte) error {
@@ -445,13 +446,11 @@ func (collector *Collector) changedPaths(ctx context.Context, root string, plan 
 			if len(fields) != 3 {
 				return fmt.Errorf("git numstat returned malformed record")
 			}
-			if string(fields[0]) == "-" || string(fields[1]) == "-" {
-				return fmt.Errorf("binary input %q is unsupported", fields[2])
-			}
-			if _, err := strconv.ParseInt(string(fields[0]), 10, 64); err != nil {
+			if string(fields[0]) == "-" && string(fields[1]) == "-" {
+				binaries[string(fields[2])] = struct{}{}
+			} else if _, err := strconv.ParseInt(string(fields[0]), 10, 64); err != nil {
 				return fmt.Errorf("git numstat returned invalid addition count")
-			}
-			if _, err := strconv.ParseInt(string(fields[1]), 10, 64); err != nil {
+			} else if _, err := strconv.ParseInt(string(fields[1]), 10, 64); err != nil {
 				return fmt.Errorf("git numstat returned invalid deletion count")
 			}
 			path := string(fields[2])
@@ -473,7 +472,13 @@ func (collector *Collector) changedPaths(ctx context.Context, root string, plan 
 	if err != nil {
 		return nil, nil, err
 	}
-	return paths, deleted, nil
+	textDeleted := deleted[:0]
+	for _, blob := range deleted {
+		if _, binary := binaries[blob.path]; !binary {
+			textDeleted = append(textDeleted, blob)
+		}
+	}
+	return paths, textDeleted, nil
 }
 
 var missingObjectPattern = regexp.MustCompile(`unable to read [0-9a-f]{40,64}`)
@@ -551,8 +556,9 @@ func gitlinkMode(mode string) bool {
 	return mode == "160000"
 }
 
-func (collector *Collector) untrackedFiles(ctx context.Context, root string, plan *targetPlan, budget *byteBudget) (map[string][]byte, error) {
+func (collector *Collector) untrackedFiles(ctx context.Context, root string, plan *targetPlan, budget *byteBudget) (map[string][]byte, map[string][]byte, error) {
 	files := map[string][]byte{}
+	binaries := map[string][]byte{}
 	parser := &nulRecordWriter{handle: func(rawPath []byte) error {
 		path := string(rawPath)
 		if err := protocolPath(path); err != nil {
@@ -560,6 +566,16 @@ func (collector *Collector) untrackedFiles(ctx context.Context, root string, pla
 		}
 		if sensitivePath(path) && !environmentTemplatePath(path) {
 			return fmt.Errorf("sensitive path %q is not reviewable", path)
+		}
+		summary, binary, err := summarizeBinaryFile(root, path)
+		if err != nil {
+			return fmt.Errorf("read untracked file %q: %w", path, err)
+		}
+		if binary {
+			budget.Add("binary:"+path, int64(len(summary)))
+			budget.AddFraming(sectionFramingBytes("UNTRUSTED-BINARY-FILE", path, int64(len(summary))))
+			binaries[path] = summary
+			return nil
 		}
 		content, size, err := budget.Read(root, path, "untracked:"+path)
 		if err != nil {
@@ -572,9 +588,9 @@ func (collector *Collector) untrackedFiles(ctx context.Context, root string, pla
 		return nil
 	}}
 	if err := collector.git.runSandboxWithAttributesTo(ctx, root, plan.sandbox, nil, parser, "ls-files", "--others", "--exclude-standard", "-z"); err != nil {
-		return nil, fmt.Errorf("list untracked files: %w", err)
+		return nil, nil, fmt.Errorf("list untracked files: %w", err)
 	}
-	return files, parser.Err()
+	return files, binaries, parser.Err()
 }
 
 func (collector *Collector) deletedFiles(ctx context.Context, root string, plan *targetPlan, blobs []deletedBlob, budget *byteBudget) (map[string][]byte, error) {
@@ -949,6 +965,44 @@ func readContainedFile(root, relative string, retainLimit int64) ([]byte, int64,
 		return nil, 0, fmt.Errorf("binary or invalid UTF-8 content")
 	}
 	return content, before.Size(), nil
+}
+
+// binarySniffBytes matches Git's buffer_is_binary heuristic: a NUL byte in the
+// first 8000 bytes marks the content as binary.
+const binarySniffBytes = 8000
+
+func summarizeBinaryFile(root, relative string) ([]byte, bool, error) {
+	if err := protocolPath(relative); err != nil {
+		return nil, false, err
+	}
+	file, before, err := openRegularFile(root, relative)
+	if err != nil {
+		return nil, false, err
+	}
+	defer func() { _ = file.Close() }()
+	head := make([]byte, binarySniffBytes)
+	read, err := io.ReadFull(file, head)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		return nil, false, err
+	}
+	if bytes.IndexByte(head[:read], 0) < 0 {
+		return nil, false, nil
+	}
+	hash := sha256.New()
+	_, _ = hash.Write(head[:read])
+	rest, err := io.Copy(hash, file)
+	if err != nil {
+		return nil, false, err
+	}
+	after, err := file.Stat()
+	if err != nil {
+		return nil, false, err
+	}
+	if !os.SameFile(before, after) || before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) || int64(read)+rest != before.Size() {
+		return nil, false, fmt.Errorf("file changed while reading")
+	}
+	summary := fmt.Sprintf("binary content omitted; %d bytes; sha256:%s", before.Size(), hex.EncodeToString(hash.Sum(nil)))
+	return []byte(summary), true, nil
 }
 
 func protocolPath(value string) error {

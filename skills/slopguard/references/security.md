@@ -3,11 +3,12 @@
 - The CLI freezes one explicit local, branch, or commit target into a bounded
   UTF-8 bundle and labels repository material as untrusted.
 - It sends the complete frozen bundle, including deleted bytes and context, to
-  the selected provider without credential scanning.
+  the selected provider without credential scanning. Binary files enter as
+  path, blob ID, size, and hash only; the reviewer never sees their content.
 - It invokes provider executables outside the reviewed repository and refuses
   stale source after provider execution.
 
-- Do not bypass a sensitive-path, size, binary-data, symlink, revision,
+- Do not bypass a sensitive-path, size, invalid-UTF-8, symlink, revision,
   capability, or source-change refusal.
 - Confirm the frozen target is authorized for disclosure to the selected
   provider; Slopguard does not scan it for credentials.

@@ -386,14 +386,83 @@ func TestFreezeCommitAndRejectMergeCommit(t *testing.T) {
 	}
 }
 
+func TestFreezeSummarizesBinaryFilesWithoutContent(t *testing.T) {
+	t.Parallel()
+
+	png := []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR-binary-marker")
+	repository := newRepository(t)
+	writeFile(t, repository, "file.txt", "base\n")
+	writeBytes(t, repository, "changed.png", png)
+	writeBytes(t, repository, "deleted.png", png)
+	gitCommand(t, repository, "add", ".")
+	gitCommand(t, repository, "commit", "-m", "base")
+
+	writeBytes(t, repository, "changed.png", append(append([]byte(nil), png...), 1))
+	if err := os.Remove(filepath.Join(repository, "deleted.png")); err != nil {
+		t.Fatal(err)
+	}
+	writeBytes(t, repository, "untracked.png", png)
+	writeFile(t, repository, "file.txt", "text change\n")
+
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	if err != nil {
+		t.Fatalf("Freeze() error = %v", err)
+	}
+	payload := bundle.Payload()
+	if strings.Contains(payload, "binary-marker") || strings.Contains(payload, "GIT binary patch") {
+		t.Fatal("payload contains binary content")
+	}
+	for _, expected := range []string{
+		"Binary files a/changed.png and b/changed.png differ",
+		"Binary files a/deleted.png and /dev/null differ",
+		"BEGIN UNTRUSTED-BINARY-FILE PATH-BYTES 13 untracked.png",
+		fmt.Sprintf("binary content omitted; %d bytes; sha256:", len(png)),
+		"+text change",
+	} {
+		if !strings.Contains(payload, expected) {
+			t.Errorf("payload does not contain %q", expected)
+		}
+	}
+	wantPaths := []string{"changed.png", "deleted.png", "file.txt", "untracked.png"}
+	if got := targetPaths(bundle.Target()); !equalStrings(got, wantPaths) {
+		t.Fatalf("target paths = %v, want %v", got, wantPaths)
+	}
+	if err := bundle.VerifyUnchanged(context.Background()); err != nil {
+		t.Fatalf("VerifyUnchanged() error = %v", err)
+	}
+
+	writeBytes(t, repository, "untracked.png", append(append([]byte(nil), png...), 2))
+	if err := bundle.VerifyUnchanged(context.Background()); !errors.Is(err, ErrSourceChanged) {
+		t.Fatalf("VerifyUnchanged() after untracked binary edit = %v, want ErrSourceChanged", err)
+	}
+	bundle, err = newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeBytes(t, repository, "changed.png", append(append([]byte(nil), png...), 3))
+	if err := bundle.VerifyUnchanged(context.Background()); !errors.Is(err, ErrSourceChanged) {
+		t.Fatalf("VerifyUnchanged() after tracked binary edit = %v, want ErrSourceChanged", err)
+	}
+
+	gitCommand(t, repository, "add", ".")
+	gitCommand(t, repository, "commit", "-m", "binary commit")
+	commit, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD"})
+	if err != nil {
+		t.Fatalf("Freeze(commit) error = %v", err)
+	}
+	if strings.Contains(commit.Payload(), "binary-marker") || !strings.Contains(commit.Payload(), "Binary files /dev/null and b/untracked.png differ") {
+		t.Fatal("commit payload does not summarize the committed binary")
+	}
+}
+
 func TestFreezeRejectsUnsafeInputs(t *testing.T) {
 	t.Parallel()
 
-	t.Run("binary", func(t *testing.T) {
+	t.Run("sensitive binary path", func(t *testing.T) {
 		repository := committedRepository(t)
-		writeBytes(t, repository, "file.txt", []byte{'a', 0, 'b'})
+		writeBytes(t, repository, "signing.p12", []byte{0x30, 0, 0x82})
 		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
-		if err == nil || !strings.Contains(err.Error(), "binary") {
+		if err == nil || !strings.Contains(err.Error(), "sensitive path") {
 			t.Fatalf("Freeze() error = %v", err)
 		}
 	})
