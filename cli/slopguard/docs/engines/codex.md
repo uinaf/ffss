@@ -37,6 +37,11 @@ top-level `error` events. Item-level error notices are non-fatal; top-level
 `error` and `turn.failed` events are provider failures and do not consume the
 malformed-review retry. Their payloads remain private.
 
+Duplicate JSON fields are rejected, except a repeated `item.id`, which Codex
+emits on `web_search` items. An
+`invalid_envelope` failure names the violated rule, such as
+`event after turn.completed`, without provider payload content.
+
 ## Verify
 
 Default tests use a controlled fake executable. Optional authenticated smoke:

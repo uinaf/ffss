@@ -243,8 +243,13 @@ func nonNull(value map[string]json.RawMessage, path string, fields ...string) er
 }
 
 func RejectDuplicateKeys(data []byte) error {
+	return RejectDuplicateKeysExcept(data, "")
+}
+
+// RejectDuplicateKeysExcept permits repeats of one field path, such as "$.item.id".
+func RejectDuplicateKeysExcept(data []byte, allowed string) error {
 	decoder := json.NewDecoder(bytes.NewReader(data))
-	if err := walkJSONValue(decoder, "$"); err != nil {
+	if err := walkJSONValue(decoder, "$", allowed); err != nil {
 		return err
 	}
 	if token, err := decoder.Token(); err != io.EOF {
@@ -256,7 +261,7 @@ func RejectDuplicateKeys(data []byte) error {
 	return nil
 }
 
-func walkJSONValue(decoder *json.Decoder, currentPath string) error {
+func walkJSONValue(decoder *json.Decoder, currentPath, allowed string) error {
 	token, err := decoder.Token()
 	if err != nil {
 		return fmt.Errorf("decode JSON at %s: %w", currentPath, err)
@@ -277,17 +282,17 @@ func walkJSONValue(decoder *json.Decoder, currentPath string) error {
 			if !ok {
 				return fmt.Errorf("decode JSON object at %s: key is not a string", currentPath)
 			}
-			if _, exists := seen[key]; exists {
+			if _, exists := seen[key]; exists && currentPath+"."+key != allowed {
 				return fmt.Errorf("duplicate field %q at %s", key, currentPath)
 			}
 			seen[key] = struct{}{}
-			if err := walkJSONValue(decoder, currentPath+"."+key); err != nil {
+			if err := walkJSONValue(decoder, currentPath+"."+key, allowed); err != nil {
 				return err
 			}
 		}
 	case '[':
 		for index := 0; decoder.More(); index++ {
-			if err := walkJSONValue(decoder, fmt.Sprintf("%s[%d]", currentPath, index)); err != nil {
+			if err := walkJSONValue(decoder, fmt.Sprintf("%s[%d]", currentPath, index), allowed); err != nil {
 				return err
 			}
 		}

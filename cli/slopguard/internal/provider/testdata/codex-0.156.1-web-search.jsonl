@@ -1,0 +1,9 @@
+{"type":"thread.started","thread_id":"thread-latest"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Checking the provider documentation."}}
+{"type":"item.started","item":{"id":"item_1","type":"web_search","id":"exec-00000000-0000-0000-0000-000000000001","query":"","action":{"type":"other"}}}
+{"type":"item.completed","item":{"id":"item_1","type":"web_search","id":"exec-00000000-0000-0000-0000-000000000001","query":"provider documentation","action":{"type":"search","queries":["provider documentation"]},"results":[{"type":"text_result","domain":"example.com","ref_id":"turn0search0","snippet":"Documentation."}]}}
+{"type":"item.started","item":{"id":"item_2","type":"web_search","id":"exec-00000000-0000-0000-0000-000000000002","query":"","action":{"type":"other"}}}
+{"type":"item.completed","item":{"id":"item_2","type":"web_search","id":"exec-00000000-0000-0000-0000-000000000002","query":"https://example.com/docs","action":{"type":"open_page","url":"https://example.com/docs"},"results":[{"type":"text_result","domain":"example.com","ref_id":"turn1view0","snippet":"Total lines: 10"}]}}
+{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"{\"findings\":[],\"overall_explanation\":\"No defects.\",\"overall_confidence\":0.95}"}}
+{"type":"turn.completed","usage":{"input_tokens":100,"cached_input_tokens":80,"cache_write_input_tokens":0,"output_tokens":20,"reasoning_output_tokens":10}}
