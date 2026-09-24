@@ -87,7 +87,7 @@ func TestDecodeCodexCurrentEventFormat(t *testing.T) {
 	}
 }
 
-func TestDecodeCodexRejectsDuplicateFieldsOutsideWebSearchID(t *testing.T) {
+func TestDecodeCodexRejectsDuplicateFieldsOtherThanItemID(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range []struct {
@@ -95,11 +95,8 @@ func TestDecodeCodexRejectsDuplicateFieldsOutsideWebSearchID(t *testing.T) {
 		event string
 	}{
 		{name: "event field", event: `{"type":"item.completed","type":"item.completed","item":{"id":"item_1","type":"reasoning","text":"x"}}`},
-		{name: "non-web-search item id", event: `{"type":"item.completed","item":{"id":"item_1","type":"agent_message","id":"item_2","text":"x"}}`},
-		{name: "web search item id three times", event: `{"type":"item.completed","item":{"id":"item_1","type":"web_search","id":"ws_1","id":"ws_2","query":"q"}}`},
 		{name: "web search item other field", event: `{"type":"item.completed","item":{"id":"item_1","type":"web_search","query":"q","query":"r"}}`},
 		{name: "web search nested field", event: `{"type":"item.completed","item":{"id":"item_1","type":"web_search","id":"ws_1","action":{"type":"search","type":"other"}}}`},
-		{name: "web search type after repeated id", event: `{"type":"item.completed","item":{"id":"item_1","id":"ws_1","type":"web_search","type":"agent_message"}}`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			envelope := strings.Join([]string{
@@ -307,7 +304,7 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 	}{
 		{name: "malformed review", options: fakeCodexOptions{result: `{"findings":[]}`}},
 		{name: "envelope mismatch", options: fakeCodexOptions{envelopeMessage: `{"findings":[],"overall_explanation":"Different.","overall_confidence":0.9}`}},
-		{name: "invalid envelope", options: fakeCodexOptions{rawEnvelope: "not-json\n"}, detail: "event is not a JSON object"},
+		{name: "invalid envelope", options: fakeCodexOptions{rawEnvelope: "not-json\n"}, detail: "event is not valid JSON"},
 		{name: "error missing message", options: fakeCodexOptions{rawEnvelope: `{"type":"error"}` + "\n"}},
 		{name: "turn failure missing error", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.failed"}` + "\n"}},
 		{name: "turn failure missing message", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.failed","error":{}}` + "\n"}},

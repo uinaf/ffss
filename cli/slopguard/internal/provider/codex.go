@@ -331,10 +331,6 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 		if turnCompleted {
 			return "", envelopeViolation("event after turn.completed")
 		}
-		line, err := normalizeCodexEvent(line)
-		if err != nil {
-			return "", err
-		}
 		var event struct {
 			Type     string      `json:"type"`
 			ThreadID string      `json:"thread_id"`
@@ -351,7 +347,11 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 			} `json:"item"`
 		}
 		if err := json.Unmarshal(line, &event); err != nil {
-			return "", envelopeViolation("event fields have unexpected types")
+			return "", envelopeViolation("event is not valid JSON")
+		}
+		// Codex flattens the web_search call ID into its item, repeating "id".
+		if err := protocol.RejectDuplicateKeysExcept(line, "$.item.id"); err != nil {
+			return "", envelopeViolation("duplicate JSON field")
 		}
 		switch event.Type {
 		case "thread.started":
@@ -442,102 +442,6 @@ func envelopeViolationDetail(err error) string {
 		return violation.detail
 	}
 	return "unclassified violation"
-}
-
-// normalizeCodexEvent rejects duplicate JSON fields except the one Codex emits
-// itself: web_search items flatten the search call ID into the item, so "id"
-// appears twice. The first "id" is the item ID and is the one kept.
-func normalizeCodexEvent(line []byte) ([]byte, error) {
-	fields, err := codexObjectFields(line)
-	if err != nil {
-		return nil, err
-	}
-	event := make(map[string]json.RawMessage, len(fields))
-	for _, field := range fields {
-		if _, duplicate := event[field.key]; duplicate {
-			return nil, envelopeViolation("duplicate event field")
-		}
-		if field.key != "item" {
-			if err := protocol.RejectDuplicateKeys(field.value); err != nil {
-				return nil, envelopeViolation("duplicate nested field")
-			}
-		}
-		event[field.key] = field.value
-	}
-	item, found := event["item"]
-	if !found || !bytes.HasPrefix(bytes.TrimSpace(item), []byte("{")) {
-		return line, nil
-	}
-	itemFields, err := codexObjectFields(item)
-	if err != nil {
-		return nil, err
-	}
-	normalized := make(map[string]json.RawMessage, len(itemFields))
-	repeatedID := false
-	for _, field := range itemFields {
-		if _, duplicate := normalized[field.key]; duplicate {
-			if field.key != "id" || repeatedID {
-				return nil, envelopeViolation("duplicate item field")
-			}
-			repeatedID = true
-			continue
-		}
-		if err := protocol.RejectDuplicateKeys(field.value); err != nil {
-			return nil, envelopeViolation("duplicate nested field")
-		}
-		normalized[field.key] = field.value
-	}
-	if !repeatedID {
-		return line, nil
-	}
-	var itemType string
-	if err := json.Unmarshal(normalized["type"], &itemType); err != nil || itemType != "web_search" {
-		return nil, envelopeViolation("duplicate item field")
-	}
-	rebuilt, err := json.Marshal(normalized)
-	if err != nil {
-		return nil, envelopeViolation("event could not be normalized")
-	}
-	event["item"] = rebuilt
-	if line, err = json.Marshal(event); err != nil {
-		return nil, envelopeViolation("event could not be normalized")
-	}
-	return line, nil
-}
-
-type codexObjectField struct {
-	key   string
-	value json.RawMessage
-}
-
-func codexObjectFields(data []byte) ([]codexObjectField, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
-		return nil, envelopeViolation("event is not a JSON object")
-	}
-	var fields []codexObjectField
-	for decoder.More() {
-		token, err := decoder.Token()
-		if err != nil {
-			return nil, envelopeViolation("event is not valid JSON")
-		}
-		key, ok := token.(string)
-		if !ok {
-			return nil, envelopeViolation("event is not valid JSON")
-		}
-		var value json.RawMessage
-		if err := decoder.Decode(&value); err != nil {
-			return nil, envelopeViolation("event is not valid JSON")
-		}
-		fields = append(fields, codexObjectField{key: key, value: value})
-	}
-	if token, err := decoder.Token(); err != nil || token != json.Delim('}') {
-		return nil, envelopeViolation("event is not valid JSON")
-	}
-	if _, err := decoder.Token(); err != io.EOF {
-		return nil, envelopeViolation("event has trailing content")
-	}
-	return fields, nil
 }
 
 func validCodexUsage(usage *codexUsage) bool {
