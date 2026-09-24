@@ -43,7 +43,14 @@ boundary without first distilling and authorizing it.
 - An oversized target fails before provider execution, reports the largest
   byte contributors from a bounded streaming count, and is never chunked.
 - Deleted, untracked, and context reads share the same aggregate budget.
-- Binary data, invalid UTF-8, sensitive paths, gitlinks (mode 160000 /
+- Files Git classifies as binary (numstat `-`, or a NUL byte in the first
+  8000 bytes of an untracked file) stay in the target without their content:
+  tracked changes appear as Git's `Binary files ... differ` line with full blob
+  IDs, and untracked files as an `UNTRUSTED-BINARY-FILE` section carrying only
+  size and SHA-256. Both still bind the snapshot, so later edits invalidate
+  the result. Untracked binaries above 128 MiB fail closed rather than being
+  hashed.
+- Invalid UTF-8 text, binary context files, sensitive paths, gitlinks (mode 160000 /
   submodules), symlink escapes, merge commits, unsafe revisions, FIFOs and
   other special files, context-path symlinks, and incomplete file reads fail
   closed. Files whose names start with `.env.` and end in `.example`,

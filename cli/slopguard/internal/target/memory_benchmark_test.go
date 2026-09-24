@@ -50,7 +50,7 @@ func BenchmarkComposeBundle(b *testing.B) {
 			b.SetBytes(int64(size))
 			b.ResetTimer()
 			for range b.N {
-				payload, _, _, err := composeBundle(target, "sha256:state", "review it", diff, contributors, nil, nil, nil, int64(size+(1<<20)))
+				payload, _, _, err := composeBundle(target, "sha256:state", "review it", diff, contributors, nil, nil, nil, nil, int64(size+(1<<20)))
 				if err != nil {
 					b.Fatal(err)
 				}
