@@ -69,17 +69,74 @@ func TestCodexReviewUsesFrozenStdinAndCanonicalResult(t *testing.T) {
 func TestDecodeCodexCurrentEventFormat(t *testing.T) {
 	t.Parallel()
 
-	fixture, err := os.ReadFile(filepath.Join("testdata", "codex-0.153.2-success.jsonl"))
+	for _, name := range []string{"codex-0.153.2-success.jsonl", "codex-0.156.1-web-search.jsonl"} {
+		t.Run(name, func(t *testing.T) {
+			fixture, err := os.ReadFile(filepath.Join("testdata", name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			message, err := decodeCodexEnvelope(fixture)
+			if err != nil {
+				t.Fatal(err)
+			}
+			review, err := protocol.DecodeReview([]byte(message))
+			if err != nil || review.OverallExplanation != "No defects." {
+				t.Fatalf("review = %+v, error = %v", review, err)
+			}
+		})
+	}
+}
+
+func TestDecodeCodexRejectsDuplicateFieldsOutsideWebSearchID(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name  string
+		event string
+	}{
+		{name: "event field", event: `{"type":"item.completed","type":"item.completed","item":{"id":"item_1","type":"reasoning","text":"x"}}`},
+		{name: "non-web-search item id", event: `{"type":"item.completed","item":{"id":"item_1","type":"agent_message","id":"item_2","text":"x"}}`},
+		{name: "web search item id three times", event: `{"type":"item.completed","item":{"id":"item_1","type":"web_search","id":"ws_1","id":"ws_2","query":"q"}}`},
+		{name: "web search item other field", event: `{"type":"item.completed","item":{"id":"item_1","type":"web_search","query":"q","query":"r"}}`},
+		{name: "web search nested field", event: `{"type":"item.completed","item":{"id":"item_1","type":"web_search","id":"ws_1","action":{"type":"search","type":"other"}}}`},
+		{name: "web search type after repeated id", event: `{"type":"item.completed","item":{"id":"item_1","id":"ws_1","type":"web_search","type":"agent_message"}}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			envelope := strings.Join([]string{
+				`{"type":"thread.started","thread_id":"fake-thread"}`,
+				`{"type":"turn.started"}`,
+				test.event,
+				"",
+			}, "\n")
+			_, err := decodeCodexEnvelope([]byte(envelope))
+			if detail := envelopeViolationDetail(err); !strings.Contains(detail, "duplicate") {
+				t.Fatalf("error = %v, detail = %q", err, detail)
+			}
+		})
+	}
+}
+
+func TestCodexReviewAcceptsWebSearchEvents(t *testing.T) {
+	t.Parallel()
+
+	fixture, err := os.ReadFile(filepath.Join("testdata", "codex-0.156.1-web-search.jsonl"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	message, err := decodeCodexEnvelope(fixture)
+	fake := newFakeCodex(t, fakeCodexOptions{
+		rawEnvelope: string(fixture),
+		result:      `{"findings":[],"overall_explanation":"No defects.","overall_confidence":0.95}`,
+	})
+	reviewer := NewCodex(CodexOptions{
+		Repository: t.TempDir(), Executable: fake.path,
+		Environment: []string{"PATH=/usr/bin:/bin", "OPENAI_API_KEY=test-provider-secret"},
+	})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: codexConfig(true, 5*time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	review, err := protocol.DecodeReview([]byte(message))
-	if err != nil || review.OverallExplanation != "No defects." {
-		t.Fatalf("review = %+v, error = %v", review, err)
+	if result.Attempt.Outcome != protocol.AttemptValid || result.Review.OverallExplanation != "No defects." {
+		t.Fatalf("result = %+v", result)
 	}
 }
 
@@ -246,14 +303,15 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		options fakeCodexOptions
+		detail  string
 	}{
 		{name: "malformed review", options: fakeCodexOptions{result: `{"findings":[]}`}},
 		{name: "envelope mismatch", options: fakeCodexOptions{envelopeMessage: `{"findings":[],"overall_explanation":"Different.","overall_confidence":0.9}`}},
-		{name: "invalid envelope", options: fakeCodexOptions{rawEnvelope: "not-json\n"}},
+		{name: "invalid envelope", options: fakeCodexOptions{rawEnvelope: "not-json\n"}, detail: "event is not a JSON object"},
 		{name: "error missing message", options: fakeCodexOptions{rawEnvelope: `{"type":"error"}` + "\n"}},
 		{name: "turn failure missing error", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.failed"}` + "\n"}},
 		{name: "turn failure missing message", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.failed","error":{}}` + "\n"}},
-		{name: "unknown event", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.cancelled"}` + "\n"}},
+		{name: "unknown event", options: fakeCodexOptions{rawEnvelope: `{"type":"turn.cancelled"}` + "\n"}, detail: "unsupported event type"},
 		{name: "item error missing message", options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
 			`{"type":"thread.started","thread_id":"fake-thread"}`,
 			`{"type":"turn.started"}`,
@@ -303,7 +361,7 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 			`{"type":"item.started","item":{"id":"item-0","type":"reasoning","text":""}}`,
 			`{"type":"turn.completed","usage":{"input_tokens":1,"cached_input_tokens":0,"output_tokens":1}}`,
 			"",
-		}, "\n")}},
+		}, "\n")}, detail: "invalid turn.completed event"},
 		{
 			name: "event after completion",
 			options: fakeCodexOptions{rawEnvelope: strings.Join([]string{
@@ -313,6 +371,7 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 				`{"type":"item.completed","item":{"id":"item-0","type":"agent_message","text":"late"}}`,
 				"",
 			}, "\n")},
+			detail: "event after turn.completed",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -326,6 +385,9 @@ func TestCodexReviewRejectsMalformedOrInconsistentOutput(t *testing.T) {
 			failure := assertProviderError(t, err, protocol.FailureProtocol)
 			if strings.Contains(failure.Message, providerOutputSentinel) {
 				t.Fatalf("protocol failure disclosed provider output: %q", failure.Message)
+			}
+			if !strings.Contains(failure.Message, test.detail) {
+				t.Fatalf("protocol failure = %q, want detail %q", failure.Message, test.detail)
 			}
 			if failure.Attempt == nil || failure.Attempt.Outcome != protocol.AttemptMalformed {
 				t.Fatalf("attempt = %+v", failure.Attempt)

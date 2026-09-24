@@ -209,7 +209,7 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		class := protocol.FailureProtocol
 		attempt.Outcome = protocol.AttemptMalformed
 		attempt.ErrorClass = &class
-		return Result{}, invalidProviderOutput("Codex", "event envelope", protocol.ProtocolReasonInvalidEnvelope, runtime.Environment(), &attempt).withExecution(resolvedExecution)
+		return Result{}, invalidProviderOutput("Codex", "event envelope: "+envelopeViolationDetail(err), protocol.ProtocolReasonInvalidEnvelope, runtime.Environment(), &attempt).withExecution(resolvedExecution)
 	}
 	output, err := readProviderResult(outputFile)
 	if err != nil {
@@ -329,9 +329,10 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 			continue
 		}
 		if turnCompleted {
-			return "", fmt.Errorf("Codex emitted an event after turn.completed")
+			return "", envelopeViolation("event after turn.completed")
 		}
-		if err := protocol.RejectDuplicateKeys(line); err != nil {
+		line, err := normalizeCodexEvent(line)
+		if err != nil {
 			return "", err
 		}
 		var event struct {
@@ -350,48 +351,48 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 			} `json:"item"`
 		}
 		if err := json.Unmarshal(line, &event); err != nil {
-			return "", err
+			return "", envelopeViolation("event fields have unexpected types")
 		}
 		switch event.Type {
 		case "thread.started":
 			if threadStarted || strings.TrimSpace(event.ThreadID) == "" {
-				return "", fmt.Errorf("invalid thread.started event")
+				return "", envelopeViolation("invalid thread.started event")
 			}
 			threadStarted = true
 		case "turn.started":
 			if !threadStarted || turnStarted {
-				return "", fmt.Errorf("invalid turn.started event")
+				return "", envelopeViolation("invalid turn.started event")
 			}
 			turnStarted = true
 		case "item.started":
 			if !turnStarted || event.Item == nil || strings.TrimSpace(event.Item.ID) == "" || strings.TrimSpace(event.Item.Type) == "" {
-				return "", fmt.Errorf("invalid %s event", event.Type)
+				return "", envelopeViolation("invalid item.started event")
 			}
 			if _, active := activeItems[event.Item.ID]; active {
-				return "", fmt.Errorf("duplicate item.started event")
+				return "", envelopeViolation("duplicate item.started event")
 			}
 			if _, completed := completedItems[event.Item.ID]; completed {
-				return "", fmt.Errorf("item restarted after completion")
+				return "", envelopeViolation("item restarted after completion")
 			}
 			activeItems[event.Item.ID] = event.Item.Type
 		case "item.updated":
 			if !turnStarted || event.Item == nil || strings.TrimSpace(event.Item.ID) == "" || strings.TrimSpace(event.Item.Type) == "" || activeItems[event.Item.ID] != event.Item.Type {
-				return "", fmt.Errorf("invalid item.updated event")
+				return "", envelopeViolation("invalid item.updated event")
 			}
 		case "item.completed":
 			if !turnStarted || event.Item == nil || strings.TrimSpace(event.Item.ID) == "" || strings.TrimSpace(event.Item.Type) == "" {
-				return "", fmt.Errorf("invalid item.completed event")
+				return "", envelopeViolation("invalid item.completed event")
 			}
 			if event.Item.Type == "error" && strings.TrimSpace(event.Item.Message) == "" {
-				return "", fmt.Errorf("invalid item.completed error event")
+				return "", envelopeViolation("invalid item.completed error event")
 			}
 			if activeType, active := activeItems[event.Item.ID]; active {
 				if activeType != event.Item.Type {
-					return "", fmt.Errorf("item type changed before completion")
+					return "", envelopeViolation("item type changed before completion")
 				}
 				delete(activeItems, event.Item.ID)
 			} else if _, completed := completedItems[event.Item.ID]; completed {
-				return "", fmt.Errorf("duplicate item.completed event")
+				return "", envelopeViolation("duplicate item.completed event")
 			}
 			completedItems[event.Item.ID] = struct{}{}
 			if event.Item.Type == "agent_message" {
@@ -399,32 +400,144 @@ func decodeCodexEnvelope(output []byte) (string, error) {
 			}
 		case "turn.completed":
 			if !turnStarted || turnCompleted || !validCodexUsage(event.Usage) || len(activeItems) != 0 {
-				return "", fmt.Errorf("invalid turn.completed event")
+				return "", envelopeViolation("invalid turn.completed event")
 			}
 			turnCompleted = true
 		case "error":
 			if strings.TrimSpace(event.Message) == "" {
-				return "", fmt.Errorf("Codex returned an invalid error event")
+				return "", envelopeViolation("invalid error event")
 			}
 			return "", &reportedProviderError{Class: protocol.FailureProvider, Message: "Codex reported a provider failure"}
 		case "turn.failed":
 			if event.Error == nil || strings.TrimSpace(event.Error.Message) == "" {
-				return "", fmt.Errorf("Codex returned an invalid turn.failed event")
+				return "", envelopeViolation("invalid turn.failed event")
 			}
 			return "", &reportedProviderError{Class: protocol.FailureProvider, Message: "Codex reported a provider failure"}
 		case "":
-			return "", fmt.Errorf("Codex event is missing type")
+			return "", envelopeViolation("event is missing type")
 		default:
-			return "", fmt.Errorf("unsupported Codex event type")
+			return "", envelopeViolation("unsupported event type")
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return "", err
+		return "", envelopeViolation("event line could not be read")
 	}
 	if !threadStarted || !turnStarted || !turnCompleted || strings.TrimSpace(lastMessage) == "" {
-		return "", fmt.Errorf("incomplete Codex JSONL envelope")
+		return "", envelopeViolation("incomplete event stream")
 	}
 	return lastMessage, nil
+}
+
+type envelopeViolationError struct {
+	detail string
+}
+
+func (violation *envelopeViolationError) Error() string { return violation.detail }
+
+func envelopeViolation(detail string) error { return &envelopeViolationError{detail: detail} }
+
+func envelopeViolationDetail(err error) string {
+	var violation *envelopeViolationError
+	if errors.As(err, &violation) {
+		return violation.detail
+	}
+	return "unclassified violation"
+}
+
+// normalizeCodexEvent rejects duplicate JSON fields except the one Codex emits
+// itself: web_search items flatten the search call ID into the item, so "id"
+// appears twice. The first "id" is the item ID and is the one kept.
+func normalizeCodexEvent(line []byte) ([]byte, error) {
+	fields, err := codexObjectFields(line)
+	if err != nil {
+		return nil, err
+	}
+	event := make(map[string]json.RawMessage, len(fields))
+	for _, field := range fields {
+		if _, duplicate := event[field.key]; duplicate {
+			return nil, envelopeViolation("duplicate event field")
+		}
+		if field.key != "item" {
+			if err := protocol.RejectDuplicateKeys(field.value); err != nil {
+				return nil, envelopeViolation("duplicate nested field")
+			}
+		}
+		event[field.key] = field.value
+	}
+	item, found := event["item"]
+	if !found || !bytes.HasPrefix(bytes.TrimSpace(item), []byte("{")) {
+		return line, nil
+	}
+	itemFields, err := codexObjectFields(item)
+	if err != nil {
+		return nil, err
+	}
+	normalized := make(map[string]json.RawMessage, len(itemFields))
+	repeatedID := false
+	for _, field := range itemFields {
+		if _, duplicate := normalized[field.key]; duplicate {
+			if field.key != "id" || repeatedID {
+				return nil, envelopeViolation("duplicate item field")
+			}
+			repeatedID = true
+			continue
+		}
+		if err := protocol.RejectDuplicateKeys(field.value); err != nil {
+			return nil, envelopeViolation("duplicate nested field")
+		}
+		normalized[field.key] = field.value
+	}
+	if !repeatedID {
+		return line, nil
+	}
+	var itemType string
+	if err := json.Unmarshal(normalized["type"], &itemType); err != nil || itemType != "web_search" {
+		return nil, envelopeViolation("duplicate item field")
+	}
+	rebuilt, err := json.Marshal(normalized)
+	if err != nil {
+		return nil, envelopeViolation("event could not be normalized")
+	}
+	event["item"] = rebuilt
+	if line, err = json.Marshal(event); err != nil {
+		return nil, envelopeViolation("event could not be normalized")
+	}
+	return line, nil
+}
+
+type codexObjectField struct {
+	key   string
+	value json.RawMessage
+}
+
+func codexObjectFields(data []byte) ([]codexObjectField, error) {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+		return nil, envelopeViolation("event is not a JSON object")
+	}
+	var fields []codexObjectField
+	for decoder.More() {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, envelopeViolation("event is not valid JSON")
+		}
+		key, ok := token.(string)
+		if !ok {
+			return nil, envelopeViolation("event is not valid JSON")
+		}
+		var value json.RawMessage
+		if err := decoder.Decode(&value); err != nil {
+			return nil, envelopeViolation("event is not valid JSON")
+		}
+		fields = append(fields, codexObjectField{key: key, value: value})
+	}
+	if token, err := decoder.Token(); err != nil || token != json.Delim('}') {
+		return nil, envelopeViolation("event is not valid JSON")
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return nil, envelopeViolation("event has trailing content")
+	}
+	return fields, nil
 }
 
 func validCodexUsage(usage *codexUsage) bool {
