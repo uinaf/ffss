@@ -567,14 +567,16 @@ func (collector *Collector) untrackedFiles(ctx context.Context, root string, pla
 		if sensitivePath(path) && !environmentTemplatePath(path) {
 			return fmt.Errorf("sensitive path %q is not reviewable", path)
 		}
-		summary, binary, err := summarizeBinaryFile(root, path)
+		summary, binary, err := summarizeBinaryFile(ctx, root, path)
 		if err != nil {
 			return fmt.Errorf("read untracked file %q: %w", path, err)
 		}
 		if binary {
 			budget.Add("binary:"+path, int64(len(summary)))
 			budget.AddFraming(sectionFramingBytes("UNTRUSTED-BINARY-FILE", path, int64(len(summary))))
-			binaries[path] = summary
+			if !budget.Exceeded() {
+				binaries[path] = summary
+			}
 			return nil
 		}
 		content, size, err := budget.Read(root, path, "untracked:"+path)
@@ -971,7 +973,7 @@ func readContainedFile(root, relative string, retainLimit int64) ([]byte, int64,
 // first 8000 bytes marks the content as binary.
 const binarySniffBytes = 8000
 
-func summarizeBinaryFile(root, relative string) ([]byte, bool, error) {
+func summarizeBinaryFile(ctx context.Context, root, relative string) ([]byte, bool, error) {
 	if err := protocolPath(relative); err != nil {
 		return nil, false, err
 	}
@@ -993,9 +995,24 @@ func summarizeBinaryFile(root, relative string) ([]byte, bool, error) {
 	}
 	hash := sha256.New()
 	_, _ = hash.Write(head[:read])
-	rest, err := io.Copy(hash, io.LimitReader(file, MaximumMaxBytes))
-	if err != nil {
-		return nil, false, err
+	var rest int64
+	chunk := make([]byte, 64<<10)
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, false, err
+		}
+		count, err := file.Read(chunk)
+		_, _ = hash.Write(chunk[:count])
+		rest += int64(count)
+		if rest > MaximumMaxBytes {
+			return nil, false, fmt.Errorf("file changed while reading")
+		}
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, false, err
+		}
 	}
 	after, err := file.Stat()
 	if err != nil {

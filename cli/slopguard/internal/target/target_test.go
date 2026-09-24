@@ -476,6 +476,28 @@ func TestFreezeRejectsUnsafeInputs(t *testing.T) {
 		}
 	})
 
+	t.Run("cancelled binary hashing", func(t *testing.T) {
+		repository := committedRepository(t)
+		writeBytes(t, repository, "image.png", append([]byte{0}, make([]byte, binarySniffBytes)...))
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		if _, _, err := summarizeBinaryFile(ctx, repository, "image.png"); !errors.Is(err, context.Canceled) {
+			t.Fatalf("summarizeBinaryFile() error = %v, want context.Canceled", err)
+		}
+	})
+
+	t.Run("oversized binary summaries", func(t *testing.T) {
+		repository := committedRepository(t)
+		for index := range 64 {
+			writeBytes(t, repository, fmt.Sprintf("image-%02d.png", index), []byte{0, byte(index)})
+		}
+		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 4 << 10})
+		var sizeErr *SizeError
+		if !errors.As(err, &sizeErr) {
+			t.Fatalf("Freeze() error = %v, want SizeError", err)
+		}
+	})
+
 	t.Run("sensitive binary path", func(t *testing.T) {
 		repository := committedRepository(t)
 		writeBytes(t, repository, "signing.p12", []byte{0x30, 0, 0x82})
