@@ -1,26 +1,31 @@
 {
-  "context": "Tests unresolved feedback across a later push and batched rework with final review.",
+  "context": "An older bot finding survives a docs-only push and is reproduced, so it is fixed in the loop. Behavior changed, so independent review is refreshed with slopguard on the final head, the thread gets the fixing commit hash, and the PR is squash-merged once green on the new head without asking permission.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Older unresolved finding remains relevant",
-      "description": "The documentation push is not treated as having answered the reproduced cancellation defect",
-      "max_score": 30
+      "name": "Finding still open and fixed",
+      "max_score": 15,
+      "description": "Treats the 13:40 thread as unanswered by the docs push and plans a scoped fix so cancel() kills the child, proven by rerunning the reproduction"
     },
     {
-      "name": "Merge held for blocking review",
-      "description": "The plan does not merge despite green checks because the blocking review and thread remain unresolved",
-      "max_score": 30
+      "name": "Review refreshed with slopguard",
+      "max_score": 25,
+      "description": "Runs slopguard once on the final fixed head, not per edit or per thread"
     },
     {
-      "name": "Rework checked and reviewed at completion",
-      "description": "The plan fixes the scoped defect, checks affected behavior, and refreshes required review for the final target without review after every edit",
-      "max_score": 25
+      "name": "Thread answered with the commit hash",
+      "max_score": 15,
+      "description": "The reply on the src/runner.ts thread cites the fixing commit hash (a placeholder for the new commit is fine) and the reproduction evidence, then the thread is resolved"
     },
     {
-      "name": "Reply carries proof",
-      "description": "The addressed thread is answered with the fixing commit hash and evidence before settlement",
-      "max_score": 15
+      "name": "Merges without asking",
+      "max_score": 30,
+      "description": "Once required checks pass on the new head with no pending review or open thread, actions.md squash-merges PR #118 and reports it merged; it does not stop to ask whether it may merge or end at 'ready to merge'"
+    },
+    {
+      "name": "Does not merge the broken head",
+      "max_score": 15,
+      "description": "Does not merge f31a8bc despite green checks and approval"
     }
   ]
 }

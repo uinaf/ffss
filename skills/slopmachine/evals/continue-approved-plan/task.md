@@ -1,19 +1,29 @@
-# Continue the Approved Work
+# Finish the Export Flag
 
 ## Problem/Feature Description
 
-Use slopmachine to decide the next actions for the conversation below. Write
-`actions.md` instead of carrying them out: do not push, merge, or post
-anything, or claim any action ran. Include the work remaining through the delivery endpoint.
+Earlier in this conversation:
 
-User: Add `--json` output to export, then document its output contract. Use the
-existing integration tests and slopguard review; ship it through our PR flow.
-Agent: Agreed. The docs depend on the flag's actual output contract.
-User: Yes, continue and finish it.
+> Me: Add `--json` output to `export`, then document its output contract.
+> Cover it with the existing integration tests, get the change independently
+> reviewed, and ship it through our normal PR flow.
+>
+> You: Agreed. The docs come after the flag, since they describe its real
+> output.
 
-Repository policy: feature work uses PRs, required CI must pass, squash merge
-only. No additional human approval is required. There is no hold request.
-The worktree is clean; implementation has not started. The export command and
-integration test owners are identified in the existing plan. The coding and
-forge tools and companion skills are available. No slopmachine executable is
-installed.
+Me, now: Go ahead and finish it.
+
+You can't reach the real repository from here, so don't edit code, push, open
+or merge anything, or post anywhere. Instead, write `actions.md`: the ordered
+steps you would take from this point to done, the tool or workflow you would
+use for each step, and the point at which you would stop and report back to me.
+
+## Input Files
+
+=============== FILE: CONTRIBUTING.md ===============
+# Contributing
+
+- Features land through a pull request against `main`.
+- Required CI: `build`, `test`, `integration`.
+- This repository allows squash merges only.
+=============== END FILE ===============
