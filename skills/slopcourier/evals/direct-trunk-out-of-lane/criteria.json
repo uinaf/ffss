@@ -1,6 +1,7 @@
 {
   "context": "Authorized direct-default delivery remains outside slopcourier's change-request lane; the surrounding task should still finish through normal Git delivery.",
   "type": "weighted_checklist",
+  "skill_use": "optional",
   "checklist": [
     {
       "name": "Selects the authorized route",
