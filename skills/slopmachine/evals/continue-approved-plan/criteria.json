@@ -1,31 +1,31 @@
 {
-  "context": "A matching approved plan authorizes execution through repository-permitted delivery without another release gate or a workflow binary.",
+  "context": "An agreed plan that ends in the normal PR flow runs through the ffss delivery chain: slopguard for independent review, slopcourier to open the PR, and slopnanny through CI, review, and merge. Opening the PR is not the stopping point.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Continues within existing authority",
+      "name": "Independent review through slopguard",
       "max_score": 25,
-      "description": "Proceeds with implementation without asking the user to reconfirm the plan, authorize continuation, or install slopmachine"
+      "description": "The independent review step is routed to slopguard, after the implementation and its checks pass. A stated fallback for when slopguard is unavailable in this environment is fine; a generic reviewer with no mention of slopguard is not"
     },
     {
-      "name": "Completes the actual scope",
+      "name": "PR opened through slopcourier",
       "max_score": 20,
-      "description": "Includes the JSON flag and its output contract docs in dependency order, existing integration proof, and the requested slopguard review"
+      "description": "Opening the pull request is routed to slopcourier. A stated fallback to `gh pr create` when slopcourier is unavailable in this environment is fine; a bare `gh pr create` with no mention of slopcourier is not"
     },
     {
-      "name": "Carries delivery to the endpoint",
-      "max_score": 30,
-      "description": "Includes PR delivery and babysitting required CI/review through squash merge, with actual forge confirmation before reporting merged; does not stop at a commit or open PR"
+      "name": "Babysat to merge through slopnanny",
+      "max_score": 25,
+      "description": "After the PR opens, CI and review are routed to slopnanny (a stated fallback when it is unavailable is fine), and the PR is squash-merged when green; the stopping point is the merged PR, not an open PR or a request for merge permission"
     },
     {
-      "name": "Uses existing workflow owners",
+      "name": "Scope in dependency order",
       "max_score": 15,
-      "description": "Routes review, PR delivery, and babysitting to slopguard, slopcourier, and slopnanny without inventing a database, state protocol, or replacement CLI"
+      "description": "The flag and its integration coverage come before the output-contract docs"
     },
     {
-      "name": "Evidence remains truthful",
-      "max_score": 10,
-      "description": "Presents proposed actions, not fabricated implementation, passing checks, review, PR, or merge results"
+      "name": "No invented results",
+      "max_score": 15,
+      "description": "Steps are presented as planned; no code, check, review, PR, or merge is claimed to have run"
     }
   ]
 }

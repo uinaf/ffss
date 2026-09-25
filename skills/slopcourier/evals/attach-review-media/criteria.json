@@ -1,0 +1,46 @@
+{
+  "context": "Review media on a github.com delivery: media goes up through gh's native --attach, never into a repository branch; the recording is trimmed to the relevant action and transcoded for playback; video embeds as a bare URL; mobile screenshots are width-constrained and compared side by side.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Uploads through gh --attach",
+      "max_score": 34,
+      "description": "The screenshots and the video are uploaded with `--attach` on `gh pr create` or `gh pr edit` (or `gh pr comment`), not by manual drag-and-drop, a third-party host, or a raw API call."
+    },
+    {
+      "name": "No assets committed",
+      "max_score": 8,
+      "description": "The evidence files are never added to a branch of tallowmere/console (no committed `.github/pr-assets` or similar)."
+    },
+    {
+      "name": "Recording trimmed to the action",
+      "max_score": 10,
+      "description": "The plan trims the video to start within about two seconds of the first relevant step (around 00:18-00:19) and end once the Saved toast is visible (around 00:28), for example `ffmpeg -ss ... -to ...`, and checks the result (such as with ffprobe) before attaching."
+    },
+    {
+      "name": "Transcoded to H.264 mp4",
+      "max_score": 8,
+      "description": "The webm is converted to an H.264 mp4 (libx264, yuv420p or equivalent) before it is attached."
+    },
+    {
+      "name": "Video embedded as bare URL",
+      "max_score": 14,
+      "description": "The body does not wrap the video in image markdown `![...](...)` and does not give it alt text; the video sits on its own line as a bare URL or is appended by gh."
+    },
+    {
+      "name": "Screenshots compared and constrained",
+      "max_score": 14,
+      "description": "Before and after appear side by side in a labeled table, with the tall mobile screenshots width-constrained (for example `<img ... width=\"300\">`)."
+    },
+    {
+      "name": "Body problem-first",
+      "max_score": 7,
+      "description": "The body states the lost-input problem and the fix plainly, with the media beside the claim it supports and no file inventory."
+    },
+    {
+      "name": "Nothing executed remotely",
+      "max_score": 5,
+      "description": "The agent writes delivery.md without pushing, opening, or uploading anything, and does not claim it did."
+    }
+  ]
+}

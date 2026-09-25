@@ -1,77 +1,52 @@
-# Repair a Private Workspace Agent Contract
-
-## Problem
-
-A private engineering workspace supports Codex, Claude Code, and Grok-based
-agents. Its `AGENTS.md` is generic, model-specific in places, and does not say
-who the agent is helping, where task context lives, what it may do, or how to
-prove work. Working lifecycle scripts exist, but agents rediscover them and
-sometimes claim completion from a unit test or screenshot alone.
-
-Audit the workspace for agent readiness and replace `AGENTS.md` with the
-smallest useful operating contract. Produce `readiness-report.md` with the
-repository grade, runner grade, evidence level, gaps, and exercised checks.
-
-Do not change product code or invent credentials. The runner is local-only; no
-CI or live deployment access is available.
-
-## Input Files
+The `AGENTS.md` in this repo is two years old and agents working here are
+unreliable. Rewrite it for the Claude, Codex, and Grok agents we run today,
+and keep it short. Put a few lines on what you changed and why in
+`guide-notes.md`. Don't touch anything else, and don't run deploy.
 
 =============== FILE: AGENTS.md ===============
-# Instructions
+# Agent Instructions
 
-You are an expert coding assistant. Think step by step and be concise.
-For Claude, use XML tags. For GPT, restate the request before acting.
-Read every file before making changes and always ask before using tools.
-Write clean code and test your work.
+You are a world-class senior staff engineer.
 
-=============== FILE: OWNER.md ===============
-# Maya Chen
+IMPORTANT: You MUST ALWAYS ask before running ANY command.
+NEVER modify files outside src/ and docs/. NEVER EVER.
+For Claude: put every answer inside XML tags.
+For GPT: restate the task before acting.
 
-Maya builds developer tools for small teams. She values simple composable
-systems, direct evidence, and finishing the smallest complete useful result.
-She often explores too many abstractions before shipping. Private identity and
-financial details live under `private/` and should be opened only when a task
-requires them.
+Before finishing ANY change, run `npm test` AND `npm run e2e`.
 
-=============== FILE: docs/workspace.md ===============
-# Workspace
+Code review: run `npm run review` and ask the reviewer to report only
+high-severity issues. Max 2 review rounds per change; stop after 3 fix
+commits.
 
-Product implementation belongs under `packages/`. Cross-package decisions are
-recorded in `docs/decisions/`. Runtime incidents go to `ops/log.md`.
+You have a limited context window. Once you have used 60% of your tokens,
+wrap up and summarize.
 
-Use `./scripts/bootstrap.sh` for reproducible setup, `./scripts/boot.sh` to
-start the local service, `./scripts/verify.sh` for the canonical local gate, and
-`./scripts/teardown.sh` for cleanup. CI uses the same verify script.
+Always ask the user if unsure. Always ask before committing.
+=============== END FILE ===============
 
-The API smoke surface is `http://127.0.0.1:4317/health`. Invalid configuration
-must exit non-zero with a redacted `config/missing_value` diagnostic.
+=============== FILE: package.json ===============
+{
+  "name": "tideline-web",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "test:visual": "storybook test --ci",
+    "e2e": "playwright test",
+    "review": "slopguard review",
+    "deploy": "wrangler deploy --env production"
+  }
+}
+=============== END FILE ===============
 
-=============== FILE: scripts/bootstrap.sh ===============
-#!/usr/bin/env bash
-set -euo pipefail
-test -f package.json
+=============== FILE: docs/layout.md ===============
+# Layout
 
-=============== FILE: scripts/boot.sh ===============
-#!/usr/bin/env bash
-set -euo pipefail
-node server.js
-
-=============== FILE: scripts/verify.sh ===============
-#!/usr/bin/env bash
-set -euo pipefail
-npm run typecheck
-npm test
-curl --fail --silent http://127.0.0.1:4317/health
-
-=============== FILE: scripts/teardown.sh ===============
-#!/usr/bin/env bash
-set -euo pipefail
-pkill -f 'node server.js' 2>/dev/null || true
-
-## Output
-
-Produce:
-
-- `AGENTS.md`
-- `readiness-report.md`
+- `src/lib/` pure booking and pricing logic (unit tests beside it)
+- `src/components/` React components with Storybook stories
+- `src/routes/` pages; checkout and search flows are covered by Playwright in `e2e/`
+- `docs/` product and developer docs
+- Production deploy is `npm run deploy`, run only by the on-call maintainer.
+=============== END FILE ===============

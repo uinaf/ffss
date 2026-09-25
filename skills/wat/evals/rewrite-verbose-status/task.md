@@ -1,5 +1,3 @@
-# wat
-
 You just sent me this update:
 
 > So, quick status on where things stand! I've been working through the
@@ -20,4 +18,4 @@ You just sent me this update:
 > merged soon! Let me know if you have any questions or if there's
 > anything else you'd like me to dig into!
 
-wat
+way too long. again, and keep it like that from now on.

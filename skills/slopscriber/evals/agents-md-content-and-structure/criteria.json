@@ -1,56 +1,36 @@
 {
-  "context": "Tests whether the agent produces a compact repository operating contract: clear product purpose and non-negotiables, exact lifecycle commands, concrete repo-specific decisions and hazards, task-shaped pointers, and no directory dump, generated inventory, or copied reference manual.",
+  "context": "An overloaded agent guide duplicated as AGENTS.md and CLAUDE.md. A good rewrite leaves one authored guide that CLAUDE.md imports or symlinks, keeps the exact lifecycle commands and repository hazards, maps kinds of change to their checks, links deeper docs by the question they answer, and drops the directory tour, API copy, generated table, and process checkpoints that have no task-specific reason.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Compact product contract",
-      "max_score": 10,
-      "description": "AGENTS.md briefly explains what the payments service does, its critical Stripe and database responsibilities, and the outcomes a change must preserve. It avoids repeated or irrelevant guidance; no fixed line count is required."
+      "name": "Process checkpoints dropped",
+      "max_score": 35,
+      "description": "AGENTS.md has no mandatory read-all-docs list, no run-tests-after-every-edit reminder, no stop-after-N-commits review checkpoint, and no attempt cap."
     },
     {
-      "name": "Boot command present",
-      "max_score": 10,
-      "description": "AGENTS.md contains the exact command to start the development server (e.g. `npm run dev` or equivalent)"
+      "name": "One authored source",
+      "max_score": 15,
+      "description": "CLAUDE.md is a symlink to AGENTS.md or contains only an `@AGENTS.md` import (optionally with a one-line note). A CLAUDE.md that carries its own copy of the guide, synced or not, earns nothing."
     },
     {
-      "name": "Test command present",
-      "max_score": 10,
-      "description": "AGENTS.md contains the command(s) to run tests (e.g. `npm test`)"
+      "name": "Hazards kept",
+      "max_score": 15,
+      "description": "AGENTS.md keeps: migrations only via `npx knex migrate:make`, never editing existing ones; never logging STRIPE_WEBHOOK_SECRET; the logger and AppError rules; no force push to main."
     },
     {
-      "name": "Links to deep docs",
-      "max_score": 10,
-      "description": "AGENTS.md contains links or pointers to at least two deeper docs files and describes the task or question each target answers rather than presenting a bare filename list"
+      "name": "No dumps, task-shaped links",
+      "max_score": 15,
+      "description": "AGENTS.md has no directory tree, endpoint bodies, or auto-generated file table, and each link to docs/architecture.md, docs/api.md, or docs/deployment.md says when to open it."
     },
     {
-      "name": "No directory listing",
+      "name": "Change-to-check map",
       "max_score": 10,
-      "description": "AGENTS.md does NOT contain a full directory tree or file listing (no ASCII tree with multiple nested levels)"
+      "description": "AGENTS.md says which check proves which kind of change, for example `npm test` and `npm run lint` for code, plus `npm run test:integration` (with a database) for data or migration changes."
     },
     {
-      "name": "No auto-generated content",
+      "name": "Exact commands",
       "max_score": 10,
-      "description": "AGENTS.md does NOT contain the auto-generated file stats table or any section marked as auto-generated"
-    },
-    {
-      "name": "No full API docs",
-      "max_score": 10,
-      "description": "AGENTS.md does NOT include full API endpoint documentation (request/response bodies, full route listings) — at most a pointer to docs/api.md"
-    },
-    {
-      "name": "Deprecated script removed",
-      "max_score": 10,
-      "description": "AGENTS.md does NOT reference the deprecated `scripts/bootstrap.sh` — only `scripts/setup.sh` if referenced at all"
-    },
-    {
-      "name": "Concrete conventions and hazards",
-      "max_score": 10,
-      "description": "AGENTS.md preserves actionable repository-specific rules such as generated-only migrations, redacted Stripe secrets, the custom logger or AppError boundary, or strict TypeScript, and does not replace them with vague advice like write clean code"
-    },
-    {
-      "name": "Doc report produced",
-      "max_score": 10,
-      "description": "A doc-report.md file exists that lists what was removed from the old AGENTS.md and the reasoning"
+      "description": "AGENTS.md has `npm run dev` and `scripts/setup.sh`, and no reference to scripts/bootstrap.sh."
     }
   ]
 }

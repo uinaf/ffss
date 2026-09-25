@@ -1,19 +1,6 @@
-# Rewrite a Runtime Guide for Agent Retrieval
-
-## Problem
-
-The runtime guide is accurate but expensive to use: agents cannot quickly find the facts that matter for current operation and investigate irrelevant parts.
-
-Rewrite it for agents that need to start, inspect, repair, or integrate with the current runtime. Keep the operational contract complete; remove context that does not serve those tasks.
-
-## Output
-
-- `docs/runtime.md`: the rewritten source of truth, concise and structured
-- `doc-report.md`: a compact account of what changed and how it was verified
-
-Do not invent capabilities, commands, paths, or configuration.
-
-## Input
+Agents working on the scheduler keep burning time in `docs/runtime.md` before
+they find what they need. Clean it up. Everything in it is accurate as of
+today.
 
 =============== FILE: docs/runtime.md ===============
 # Runtime Notes and Background

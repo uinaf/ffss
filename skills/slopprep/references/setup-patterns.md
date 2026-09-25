@@ -34,24 +34,19 @@ implementation.
 
 The lifecycle applies to everything a task raises: process trees, ports,
 simulators, emulators, virtual machines, containers, browsers, services,
-databases, external fixtures. When a launcher spawns descendants, track the
-owned process group, not just the child PID.
+databases, external fixtures. Release only what the attempt raised, by
+recorded ID or owned process group; anything already running stays running.
 
-- Snapshot state before acquisition; persist the exact resource ID with task
-  and attempt ownership.
-- Release only what the attempt raised. A device, container, or database that
-  was already running stays running.
-- Register cleanup before the first later failure point; run it on success,
-  failure, timeout, cancellation, and retry. A cleanup or absence-verification
-  failure after primary success makes the command fail; after primary failure,
-  preserve the original status and report the cleanup failure separately.
+- Persist each exact resource ID with task and attempt ownership, and register
+  cleanup before the first later failure point.
+- A cleanup or absence-verification failure after primary success fails the
+  command; after primary failure, keep the original status and report the
+  cleanup failure separately.
 - Verify final state: nothing owned remains, nothing pre-existing changed.
   Exercise this once after success and once after an injected safe failure.
 - A persistent `run`, preview, or development task hands off its owned IDs and
   teardown command; the lifecycle is not complete until the resource is
   released or ownership accepted.
-- Kill by recorded ID or owned process group, never by name; `killall`-style
-  cleanup is always out.
 - Broad cleanup (`simctl shutdown all`, deleting every container, stopping
   shared databases) only when the command's declared scope owns the entire set.
 - Cleanup never eats the evidence: artifacts and logs survive teardown.
@@ -66,19 +61,11 @@ Proof selection and failure requirements:
 ## Mechanical Enforcement
 
 Put deterministic policy in the narrowest existing mechanical surface:
-
-- formatter, linter, type checker, or compiler for source constraints
-- schema or config validator for structured contracts
-- test-framework extension, matcher, fixture, or reporter for behavior
-- build or task graph for ordering and command composition
-- canonical local gate for pre-handoff proof
-- CI or branch policy for unavoidable merge enforcement
-- a tested module in the repository's typed language when nothing above can
-  express the rule
-
-Adopt an existing linter or hook shape before adding another. Baseline noisy
-checks before making them blocking. Errors name the violated rule, the
-boundary, and the recovery action when one exists.
+compiler, linter, or type checker; schema validator; test-framework extension;
+task graph for ordering; the canonical local gate; CI or branch policy only for
+unavoidable merge enforcement. Git hooks are optional adapters to the gate,
+never the owner of policy. Adopt an existing linter before adding another;
+baseline noisy checks before making them blocking.
 
 For TypeScript repos already linting with Oxlint, offer vendoring the
 [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) rules: copy and
@@ -107,18 +94,12 @@ execution.
 - Never embed bootstrap secrets, write fetched secrets to artifacts, or switch
   a human profile during an unattended run.
 
-## Observable and Reproducible State
+## Observable State
 
-Expose the smallest machine-readable signal the target supports:
-
-- service: readiness plus structured request or job outcomes
-- CLI or library: exit status, stdout/stderr contract, consumer invocation
-- UI: interactable runtime surface plus console or application diagnostics
-- stateful system: reproducible fixtures and isolated write/read round trips
-
-Use versioned seed data when empty state cannot exercise the real contract.
-Keep diagnostics contextual and redacted. Don't demand a health endpoint or
-JSON logging where the shipped surface already gives a better signal.
+Expose the smallest machine-readable signal the target already supports. Don't
+demand a health endpoint or JSON logging where the shipped surface already
+gives a better signal; use versioned seed data when empty state cannot
+exercise the real contract.
 
 ## Isolation
 
@@ -161,11 +142,8 @@ producer, capture time, format, and redaction status to an observed outcome.
 
 - Retry only classified recoverable failures while a configured budget
   remains; repeated unchanged failure is an escalation signal.
-- Preserve the last diagnostic, owned state, attempted recovery, and next
-  safe action.
-- Run targeted checks at the earliest reliable boundary. Successful hooks stay
-  quiet, failures stay concise; never rerun a command just to redisplay its
-  output.
+- Successful hooks stay quiet, failures stay concise; never rerun a command
+  just to redisplay its output.
 - Long or secret-bearing operations get non-cancellable critical sections or
   durable reconciliation, not optimistic process-exit handling.
 

@@ -1,41 +1,36 @@
 {
-  "context": "Tests parent-child planning, vertical slices, exact blocking edges, and frontier reporting for parallel execution.",
+  "context": "Invitation work broken into Jira TEAM tickets for parallel agents. A good plan cuts end-to-end behavior slices, blocks only where a ticket cannot start or be verified without another, and says what can start now. Topic overlap or a preferred order is not a blocking edge.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Jira epic and three children",
-      "max_score": 18,
-      "description": "The result creates one TEAM epic and exactly three child tasks matching the approved slices"
+      "name": "Only necessary blocking edges",
+      "max_score": 30,
+      "description": "Accept and revoke are each blocked by the ticket that creates invitations, and revoke is not blocked by accept. No edge exists only for topic overlap or a preferred order."
     },
     {
-      "name": "Vertical slices preserved",
-      "max_score": 18,
-      "description": "Each child delivers an end-to-end invitation behavior rather than splitting UI, API, storage, and tests into layers"
+      "name": "Vertical slices",
+      "max_score": 25,
+      "description": "Each ticket delivers an end-to-end behavior (UI, API, storage, and tests together). There is no separate UI, API, database, data-model, foundation, or test ticket."
     },
     {
-      "name": "Acceptance blocked by creation",
-      "max_score": 14,
-      "description": "The acceptance task is blocked by the invitation-creation task"
+      "name": "Frontier stated",
+      "max_score": 15,
+      "description": "The answer states that only invitation creation can start now and that accept and revoke can run in parallel once it lands."
     },
     {
-      "name": "Revocation blocked only by creation",
-      "max_score": 16,
-      "description": "The revocation task is blocked by creation and is not blocked by acceptance"
+      "name": "Epic with children",
+      "max_score": 10,
+      "description": "One TEAM epic parents the tickets, and the links use Jira parent and blocks relationships."
     },
     {
-      "name": "Native relationships",
-      "max_score": 12,
-      "description": "The result uses Jira parent and blocks relationships rather than only presenting an ordered prose list"
+      "name": "Each ticket verifiable",
+      "max_score": 10,
+      "description": "Each ticket names its own acceptance or proof of the delivered behavior."
     },
     {
-      "name": "Frontier correct",
-      "max_score": 14,
-      "description": "The current frontier contains creation only and explains that acceptance and revocation can proceed in parallel after creation"
-    },
-    {
-      "name": "No implementation",
-      "max_score": 8,
-      "description": "The response does not implement invitation behavior"
+      "name": "No implementation or local backlog",
+      "max_score": 10,
+      "description": "No source code is written and no plan or backlog file is created in the repository."
     }
   ]
 }

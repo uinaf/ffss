@@ -1,56 +1,36 @@
 {
-  "context": "Tests whether the docs skill writes checked-in documentation from target-repo evidence while keeping machine-local, private-workspace, account, and one-off tool observations out of durable repo policy.",
+  "context": "Docs updated from repo files plus notes from one developer's machine. A good answer documents only what the repository owns (npm ci, npm run setup, npm run dev, npm run verify, a link to docs/setup.md), keeps the machine-local, private-repo, account, and internal-URL observations out of checked-in docs, and describes what it left out by category without repeating those values anywhere, including its own summary.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Repo-owned setup used",
-      "max_score": 12,
-      "description": "README.md or AGENTS.md documents `npm ci` and `npm run setup` from package.json and docs/setup.md rather than the local helper"
+      "name": "Excluded values not repeated anywhere",
+      "max_score": 30,
+      "description": "Neither the changed files nor the final summary contain /Users/dev, workstation-17, bootstrap-widget, acme/internal-platform, acme-production, or deploy.acme.internal. Excluded evidence is described by category (local path, host, private repo, account profile, internal URL, one-off helper)."
     },
     {
-      "name": "Repo-owned verification used",
+      "name": "Docs use repo-owned commands",
+      "max_score": 20,
+      "description": "README.md or AGENTS.md documents npm ci and npm run setup, and AGENTS.md names npm run verify as the check before handoff."
+    },
+    {
+      "name": "Setup guide linked",
       "max_score": 10,
-      "description": "AGENTS.md documents the checked-in `npm run verify` command as the handoff gate"
+      "description": "README.md links docs/setup.md rather than copying the whole guide."
     },
     {
-      "name": "Canonical setup linked",
-      "max_score": 8,
-      "description": "README.md links to docs/setup.md instead of duplicating the full setup guide or pointing to an untracked note"
+      "name": "No local or private setup as policy",
+      "max_score": 20,
+      "description": "No checked-in doc tells readers to use a personal helper, a private sibling repo, an AWS profile, or an internal deployment dashboard."
     },
     {
-      "name": "No absolute paths or local helper",
-      "max_score": 14,
-      "description": "README.md and AGENTS.md contain no /Users path and do not recommend bootstrap-widget or another one-off local executable"
-    },
-    {
-      "name": "No host or user identity",
-      "max_score": 8,
-      "description": "Checked-in docs and the report do not reproduce the local username or hostname"
-    },
-    {
-      "name": "No private sibling or dashboard",
-      "max_score": 12,
-      "description": "Checked-in docs and the report do not name the private sibling repository or reproduce the internal dashboard URL"
-    },
-    {
-      "name": "No account profile",
+      "name": "Promotion needs the owner",
       "max_score": 10,
-      "description": "Checked-in docs and the report do not reproduce the local account/profile identifier or imply it is required repo configuration"
+      "description": "The summary says any of the excluded setup (private dependency, account, internal route, helper) would need maintainer confirmation before it becomes documented policy."
     },
     {
-      "name": "Source boundary reported",
+      "name": "Nothing invented",
       "max_score": 10,
-      "description": "doc-report.md distinguishes target-repo evidence from excluded local/private evidence and names excluded categories without repeating their sensitive values"
-    },
-    {
-      "name": "Promotion requires approval",
-      "max_score": 8,
-      "description": "doc-report.md states that promoting a local helper, private dependency, host/account setup, or internal route into repo policy requires explicit maintainer direction"
-    },
-    {
-      "name": "No invented policy",
-      "max_score": 8,
-      "description": "The solution stays within README.md, AGENTS.md, and doc-report.md, preserves repo-owned facts, and does not invent secrets, contacts, infrastructure requirements, or replacement commands"
+      "description": "No secret, contact, infrastructure requirement, or command appears that the repo files do not contain."
     }
   ]
 }

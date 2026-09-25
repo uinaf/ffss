@@ -1,46 +1,46 @@
 {
-  "context": "Tests change-request composition: outcome-first title matching the repository's merged-title convention, the template used verbatim and filled problem-first, measured proof included because CI cannot show it, and no heading scaffolds or implementation inventories. The slopguard passes and their fix hash stay out of the body.",
+  "context": "Change-request composition when the repository has no template: the owner's .github repository is the next template source, host-specific auth is verified, the body follows problem/solution/risk house style without scaffold headings, inventories, CI restatement, or review history, and the request opens ready for review.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Outcome-first title",
+      "name": "Org default template checked",
+      "max_score": 26,
+      "description": "Before settling on its own body format, the agent looks for a default pull request template in the owner's `.github` repository (tallowmere/.github), either with a read-only lookup whose result it reports or as a step in the planned commands, and says which format applies when that repository has none."
+    },
+    {
+      "name": "No scaffold headings",
       "max_score": 20,
-      "description": "The title is conventional-commit shaped like the repository's merged examples and leads with the outcome (e.g. smaller frames / restored updates on slow links, ideally with the measured reduction), not the mechanism 'negotiate permessage-deflate'"
+      "description": "The body is problem, then solution, then real risk, with headings only where they help; it has no Summary, Changes, Testing, or Test plan sections or checklist boilerplate."
     },
     {
-      "name": "Template used verbatim",
-      "max_score": 16,
-      "description": "delivery.md uses the repository template's own sections (Problem, Solution, Risk, Proof) without inventing extra headings like Summary, Changes, Testing, or Complexity"
-    },
-    {
-      "name": "Problem-first body",
-      "max_score": 14,
-      "description": "The Problem section states the user-visible issue (slow-link clients dropping updates due to uncompressed frames) before any solution detail"
-    },
-    {
-      "name": "Measured proof included",
-      "max_score": 14,
-      "description": "The 41 KB to 11 KB staging measurement appears as proof, since CI cannot show it"
-    },
-    {
-      "name": "No implementation inventory",
-      "max_score": 8,
-      "description": "The body does not list changed files or restate the diff, and does not restate the checks CI runs"
+      "name": "No inventory or CI restatement",
+      "max_score": 12,
+      "description": "The body does not list the touched files and does not report the `npm test` run or its 214-test count, since CI shows it."
     },
     {
       "name": "No review history",
-      "max_score": 8,
-      "description": "The body does not mention slopguard, the review passes, the a1f2c3d fix hash, or how the change was iterated; it describes the change as it stands"
+      "max_score": 10,
+      "description": "The body does not mention the review passes, the missing-echo finding, or the a1f2c3d hash; it describes the change as it stands."
     },
     {
-      "name": "Risk handled honestly",
+      "name": "Host-specific auth check",
       "max_score": 8,
-      "description": "The Risk section names a real risk or is left genuinely minimal; it is not padded with boilerplate"
+      "description": "The commands verify gh auth for github.com explicitly (for example `GH_HOST=github.com gh auth status` or `gh auth status --hostname github.com`)."
     },
     {
-      "name": "Stops before pushing",
-      "max_score": 12,
-      "description": "The agent delivers delivery.md and stops; it does not claim to have pushed, opened a change request, merged, or enabled auto-merge"
+      "name": "Opens ready for review",
+      "max_score": 8,
+      "description": "The planned `gh pr create` opens the PR ready for review, not as a draft, and the plan checks for an existing PR on the branch first."
+    },
+    {
+      "name": "Measured proof and outcome title",
+      "max_score": 10,
+      "description": "The 41 KB to 11 KB staging measurement appears as proof, and the conventional-commit title leads with the user-visible outcome rather than the mechanism."
+    },
+    {
+      "name": "Nothing executed remotely",
+      "max_score": 6,
+      "description": "The agent writes delivery.md and does not push, open, or claim to have opened the PR."
     }
   ]
 }

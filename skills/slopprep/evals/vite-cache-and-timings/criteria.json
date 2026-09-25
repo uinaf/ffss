@@ -1,0 +1,31 @@
+{
+  "context": "Speeding up a Vite+ verify graph. The skill-specific part: a global `run.cache: true` also caches impure package scripts (deploy, release, migrate), so package-script caching stays off; speed claims rest on four named timings with provisioning separated from task time; affected-input policy is not copied into CI path filters.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Global script caching rejected",
+      "max_score": 15,
+      "description": "Does not enable `run: { cache: true }` globally, and explains that it would also cache package scripts such as deploy, release, or db:migrate; caching is limited to the pure verify tasks (typecheck, test, lint)"
+    },
+    {
+      "name": "Four timings named",
+      "max_score": 30,
+      "description": "perf-plan.md defines how to measure unchanged, relevant-change, warm-full, and cold-full runs, reports the slowest lane, separates task time from provisioning, tool install, cache restore, and queue time, and labels any numbers not actually measured as unverified"
+    },
+    {
+      "name": "Path policy has one owner",
+      "max_score": 20,
+      "description": "Removes or declines to extend the dorny/paths-filter path list in the workflow so affected-input policy lives in the task graph, rather than keeping a second copy of source globs in CI that can skip verification (for example on a config or lockfile change)"
+    },
+    {
+      "name": "Cache inputs are complete",
+      "max_score": 20,
+      "description": "Cached task inputs include the task-graph definition and toolchain or runtime pins (such as vite.config.ts, package.json or lockfile, Node version) that can change results, and any persistent CI cache is keyed by lockfile plus OS and toolchain"
+    },
+    {
+      "name": "Exhaustive path kept",
+      "max_score": 15,
+      "description": "Keeps a forced full, uncached verify command and leaves deploy, release, and migrations outside selection and caching; no deploy, publish, push, or migration was run"
+    }
+  ]
+}

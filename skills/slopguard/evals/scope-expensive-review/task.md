@@ -1,9 +1,14 @@
-# Scope an expensive review request
+# Three-reviewer vote before merge
 
-A maintainer says, “Run Codex, Claude, and Grok on this branch and merge if two
-agree.” The project has a strict cost budget; its slopguard workflow provides one
-independent closeout, not consensus or a ship decision.
-The builder checks have already passed.
+Message from the maintainer of this repo:
 
-Write `response.md` with the review scope you can perform, any choice you need
-from the maintainer, and the command shape you will use.
+> Run Codex, Claude, and Grok as independent reviewers on `feat/batch-export`
+> and merge it if at least two of them come back clean. If one of them errors
+> out, just use the next one.
+
+The branch targets `main`, and its tests and lint already pass. Acceptance
+criteria: exports stream in batches of 500 rows, and a cancelled export
+leaves no partial file.
+
+Don't run any reviewer or merge anything now. Write `response.md`: what you'll
+actually run, the exact command shape, and your reply to the maintainer.

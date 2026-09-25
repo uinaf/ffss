@@ -1,9 +1,13 @@
-# Close out a completed pull request
+# Get this PR independently reviewed before merge
 
-A Go pull request is implementation-complete and its full test suite has passed.
-No provider is named by the user or repository configuration. Codex CLI, Claude
-Code, and Grok Build are installed.
+My Go PR (branch `fix/sigint-children`, targets `main`) is done and `go test ./...`
+is green. I want an independent review before I merge it. I haven't picked a
+reviewer and the repo has no review config. Codex CLI, Claude Code, and Grok
+Build are all installed and logged in on this machine.
 
-Write `closeout.md` with the exact review command, the decision behind it,
-failure handling, and the evidence the final report must contain. The pull request targets `main` and its acceptance criteria
-are: preserve stable JSON output and terminate provider children on SIGINT.
+Acceptance criteria: JSON output stays byte-stable, and provider child processes
+terminate on SIGINT.
+
+Don't run the review yet; I'll kick it off. Write `closeout.md` with the exact
+command you'd run (including the prompt you'd feed it), why you chose the
+reviewer and settings, and what you'd do if the review errors out.

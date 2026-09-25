@@ -1,19 +1,23 @@
-# Confirm an Inferred Destination
-
-## Problem/Feature Description
-
-The user and agent agreed on a medium-sized cache invalidation change. The user says: "make this a durable plan for later." The repository has a GitHub remote but no work-tracking guidance, issue templates, issue references, or existing source issue. The user did not ask to publish or create an issue.
-
-Respond with the next action, concisely. Do not implement anything or write repository files.
-
-## Input Files
+We agreed on the cache invalidation change in AGREED_PLAN.md. Make this a
+durable plan for later so whoever picks it up next doesn't need this
+conversation. Don't create anything on GitHub yourself, and don't start on the
+code.
 
 =============== FILE: .git/config ===============
 [remote "origin"]
   url = git@github.com:acme/cache-service.git
 =============== END FILE ===============
 
+=============== FILE: README.md ===============
+# cache-service
+
+Read-through cache in front of the accounts API.
+
+    npm ci && npm test
+=============== END FILE ===============
+
 =============== FILE: AGREED_PLAN.md ===============
 Outcome: stale cache entries are invalidated after account deletion.
 Constraints: preserve current event ordering and add integration coverage.
+Size: one reviewable change.
 =============== END FILE ===============

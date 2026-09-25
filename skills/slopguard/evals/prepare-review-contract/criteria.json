@@ -1,0 +1,10 @@
+{
+  "context": "Review-contract preparation: a slopguard branch review whose distilled prompt asks for every suspected finding unfiltered and for a base comparison of changed verification.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {"name": "Unfiltered findings requested", "description": "The reviewer prompt explicitly asks for every suspected finding regardless of severity or confidence, leaving validation to the requester; it does not ask only for significant, high-confidence, or blocking issues", "max_score": 35},
+    {"name": "Slopguard branch command", "description": "The command is `slopguard review --mode branch --base origin/main --engine codex --output json --prompt-file -` with the distilled prompt on stdin, not a direct codex invocation", "max_score": 30},
+    {"name": "Verification compared to base", "description": "The prompt asks the reviewer to compare the removed scan:security step and the 90-to-50 changed-line threshold against the base and the no-reduction goal", "max_score": 20},
+    {"name": "No verdict claimed", "description": "review-plan.md does not claim the review ran or returned a result", "max_score": 15}
+  ]
+}

@@ -1,36 +1,36 @@
 {
-  "context": "Tests replacing stale host/default copies with accessible owning source links while retaining operational rationale, recovery, and useful command syntax.",
+  "context": "A doc that copies host inventory and config defaults has drifted. A good fix makes the YAML files the only home for those values: the doc links them and names the keys instead of carrying corrected copies, while keeping the rationale, recovery, and retirement guidance the YAML cannot express.",
   "type": "weighted_checklist",
   "checklist": [
     {
       "name": "Inventory owns host facts",
       "max_score": 25,
-      "description": "docs/agents.md replaces the host/address inventory copy with a valid relative link to inventory/agents.yaml instead of updating or extending a second host list."
+      "description": "docs/agents.md no longer carries a host/address list: it links inventory/agents.yaml instead. A corrected table that adds spruce or updates addresses does not earn this."
     },
     {
       "name": "Config owns defaults",
-      "max_score": 20,
-      "description": "docs/agents.md links config/agent-defaults.yaml and identifies the relevant settings without manually repeating their values; future value changes alone would not require updating this Markdown."
+      "max_score": 25,
+      "description": "docs/agents.md links config/agent-defaults.yaml and names heartbeat_seconds and retry_limit without restating their values (no 45 or 4 copied in), so a future value change needs no Markdown edit."
     },
     {
-      "name": "Restart example remains useful",
+      "name": "Restart generalized",
       "max_score": 15,
-      "description": "The repeated per-host restart catalogue becomes a reusable, accurate restart example with a clear way to select a host from the inventory."
+      "description": "The per-host restart lines become one `fleetctl restart --host <host>` form that points to the inventory for host names."
     },
     {
       "name": "Rationale retained",
       "max_score": 15,
-      "description": "The heartbeat tradeoff and bandwidth-budget constraint remain available because the config does not express that rationale."
+      "description": "The heartbeat tradeoff against metered-link traffic and the bandwidth-budget check remain."
     },
     {
       "name": "Recovery and retirement retained",
       "max_score": 15,
-      "description": "The rollback command, heartbeat confirmation, remote-data consequence, log export, and monitoring cleanup remain actionable."
+      "description": "The rollback command, heartbeat confirmation, remote-data warning, log export, and monitoring cleanup remain actionable."
     },
     {
-      "name": "Scope and proof respected",
-      "max_score": 10,
-      "description": "Only docs/agents.md and doc-report.md change; the report accurately describes the inspected sources and actual checks without claiming host operations or unexecuted validation."
+      "name": "Scope",
+      "max_score": 5,
+      "description": "Only docs/agents.md changes among the supplied files (a report file is optional), and no host command was run."
     }
   ]
 }

@@ -1,20 +1,11 @@
 # Visual evidence ladder
 
-Use an aid when it answers a review question more clearly than the diff and
-description already do. Reuse existing evidence; do not create an artifact
-just because the change is non-trivial.
-
-## Choose the view
-
-- A focused diff shows an existing behavior's change; show the whole small
-  block only when omitted context would hide ownership or order.
-- A shallow call tree or Mermaid diagram explains control flow, state, or
-  boundaries. Include only the elements needed to understand the change.
-- Actual sanitized input/output demonstrates a contract; a screenshot or short
-  recording shows observed UI behavior. Label examples and explanatory diagrams
-  as such: they do not prove execution or replace required checks.
-- Keep the aid beside the claim it supports. If the diff is already clear,
-  omit the extra aid. Do not turn delivery into a standalone HTML explainer.
+Reuse existing evidence; do not create an artifact just because the change is
+non-trivial. Pick the smallest view that answers the review question: a focused
+diff, a shallow call tree or Mermaid diagram for control flow, sanitized
+input/output for a contract, a screenshot or short recording for UI. Label
+examples and diagrams as explanatory: they do not prove execution. Keep the aid
+beside the claim it supports; no standalone HTML explainers.
 
 Selection principle adapted from [HumanLayer's show-me skill](https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md).
 

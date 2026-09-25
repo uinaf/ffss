@@ -5,13 +5,9 @@ description: "Update repository documentation and agent guidance against current
 
 # Slopscriber
 
-Keep documentation accurate, findable, and worth reading. Edit the affected
-surfaces; a local change does not require a repository-wide audit.
-
-Verify claims against their owning code, configuration, or cited source.
-Preserve current commands, invariants, boundaries, and recovery paths; remove
-stale facts, repetition, and history that belongs elsewhere. Keep one canonical
-home per contract and link to it with a task-shaped label.
+Edit the affected surfaces; a local change does not require a
+repository-wide audit. Verify claims against their owning source. Keep one
+canonical home per contract and link to it with a task-shaped label.
 
 ## Code and config own implementation facts
 
@@ -30,8 +26,10 @@ from the owner over maintaining it by hand.
 
 ## Negative-state rule
 
-Remove absent or retired capabilities unless the limitation changes a current
-action. Keep actionable limits precise and pair them with the supported path.
+Document what exists. Remove absent, retired, or never-deployed systems, their
+unset settings, and "there is no X" summaries; the reader will not look for
+what the doc never mentions. Keep a limit only when a reader would otherwise
+build or call the wrong thing, and state it beside the supported path.
 
 ## Choose the reference
 

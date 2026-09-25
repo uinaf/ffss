@@ -13,10 +13,8 @@ and material non-goals. A decision record needs context, the choice, and its
 consequences. Omit empty sections. Tactical implementation and status stay in
 the tracker.
 
-Prefer existing integration or contract tests for executable acceptance. New
-checks derive from requirements, accept equivalent implementations, and cover
-meaningful failure paths through the normal verification lanes. Do not invent
-a fixture framework to support a spec.
+Prefer existing integration or contract tests for executable acceptance; do
+not invent a fixture framework to support a spec.
 
 When implementation reveals an ambiguity, reconcile the requirement, decision,
 and affected acceptance coverage. Record reversals as superseding decisions;

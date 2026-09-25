@@ -1,56 +1,11 @@
 {
-  "context": "Tests default provider selection, branch targeting, task-contract transport, and completion without provider fallback.",
+  "context": "Plans the closeout review with the slopguard CLI: one Codex review at medium reasoning in branch mode against main, the distilled contract on stdin, JSON output, and no provider fallback.",
   "type": "weighted_checklist",
   "checklist": [
-    {
-      "name": "Builder proof acknowledged",
-      "description": "closeout.md states that the already-passed test suite is the builder prerequisite rather than treating slopguard as builder verification",
-      "max_score": 10
-    },
-    {
-      "name": "Task contract assembled",
-      "description": "closeout.md includes an objective or acceptance-criteria contract covering stable JSON and SIGINT child termination",
-      "max_score": 10
-    },
-    {
-      "name": "Exactly one provider",
-      "description": "The planned command selects exactly one installed provider and does not invoke multiple providers",
-      "max_score": 10
-    },
-    {
-      "name": "Provider choice explained",
-      "description": "With no user or trusted-config selection, the document chooses Codex with medium reasoning",
-      "max_score": 10
-    },
-    {
-      "name": "Runtime default understood",
-      "description": "The plan recognizes that the review preserves configured provider or session authentication while using the empty frozen-bundle workspace",
-      "max_score": 10
-    },
-    {
-      "name": "Provider web default understood",
-      "description": "The plan keeps the default web access and adds no web flag",
-      "max_score": 10
-    },
-    {
-      "name": "No capability prompt",
-      "description": "The plan does not ask for separate permission to use the documented default",
-      "max_score": 10
-    },
-    {
-      "name": "Correct branch target",
-      "description": "The exact command uses review --mode branch --base main or an equivalent resolved main reference",
-      "max_score": 10
-    },
-    {
-      "name": "Prompt passed",
-      "description": "The command pipes the distilled task contract through standard input using --prompt-file -",
-      "max_score": 10
-    },
-    {
-      "name": "No fallback or panel",
-      "description": "Failure handling reports the blocker without automatically switching provider, running a panel, or claiming consensus",
-      "max_score": 10
-    }
+    {"name": "Slopguard branch review", "description": "The exact command is `slopguard review` with `--mode branch --base main` (or a resolved main ref), not a direct codex, claude, or grok invocation", "max_score": 25},
+    {"name": "Codex at medium", "description": "With no user or configured choice, closeout.md picks Codex (`--engine codex`) as the single reviewer and states medium reasoning effort as the default", "max_score": 25},
+    {"name": "Contract on stdin, JSON out", "description": "The command pipes the distilled acceptance criteria through standard input with `--prompt-file -` and requests `--output json`", "max_score": 15},
+    {"name": "Unfiltered findings requested", "description": "The prompt asks the reviewer for every suspected finding regardless of severity or confidence", "max_score": 15},
+    {"name": "No fallback or panel", "description": "On review failure the plan reports the blocker and does not automatically switch to Claude or Grok, run several reviewers, or claim consensus", "max_score": 20}
   ]
 }

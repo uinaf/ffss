@@ -159,7 +159,9 @@ agent to hand-create `.env` files or follow a wiki.
 
 ## Evidence Ceilings and Blockers
 
-- E0 justifies at most D; E1 at most C.
+- E0 justifies at most D; E1 at most C. The ceiling binds the repository and
+  runner headlines alike: a documented runner contract nobody exercised is
+  static evidence, not a higher grade.
 - E2 can justify B repository readiness; repeated-autonomy claims stay
   provisional.
 - A requires E3 trials plus E4 recovery or longitudinal evidence for the
@@ -175,13 +177,12 @@ agent to hand-create `.env` files or follow a wiki.
 
 ## Grading Rules
 
-- Grade what you can actually run, not what the files claim works.
-- Prefer cold-start execution over warm developer-machine evidence.
-- Grade final state and side effects, not the agent's success message.
+- Grade what you actually ran, cold-start over warm developer-machine
+  evidence, final state over the agent's success message.
 - Accept equivalent mechanisms; don't mandate Git hooks, a particular
   dead-code tool, worktrees, containers, or a port algorithm without a
   repository-owned reason.
 - Keep task classes explicit: a repo may be B for dependency updates, C for UI
   changes, B for scripted QA, and D for exploratory device QA at once.
 - Record model, harness, runner, toolchain revision, and evidence date for
-  empirical claims; capability and scaffolding drift.
+  empirical claims.
