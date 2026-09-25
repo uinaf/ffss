@@ -43,6 +43,14 @@ remote runner, and keep the command identical to the local one. Omit classes
 the repository does not have; an invented lane makes agents run proof the
 change cannot need.
 
+Agents add tests for every small change unless the guide says where tests
+belong. For each change class, name the boundary that owns its tests, so a new
+test lands there only when it catches a regression existing coverage misses.
+Put a subsystem's test-ownership rules in its scoped guide, drawn from
+mistakes the repository actually made. Low-value bulk already in a suite is
+[slopclean](../../slopclean/references/tests.md#pruning-a-suite) work, not
+readiness work.
+
 ## Cross-Model Contract
 
 Write shared guidance as observable behavior that works across capable model

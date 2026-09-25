@@ -75,7 +75,11 @@ check that would fail if the change were wrong.
 - A check proves a claim only if it fails on a negative control, such as the
   fix reverted. An artifact showing the expected state is an observation.
 - Test observable behavior. Skip tests that restate the implementation or
-  assert what a mock was told to return.
+  assert what a mock was told to return. Add a test only for a regression
+  existing coverage would miss.
+- Existing tests guard against regressions. When a change breaks one, fix the
+  code unless the contract intentionally changed or the test pins
+  implementation rather than behavior; then update the test and say so.
 - Reuse passing proof and review until something invalidates them. Validate
   review findings before acting on them.
 - Clean up only the processes you started. On a shared host, hold expensive

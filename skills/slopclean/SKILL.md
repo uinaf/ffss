@@ -1,12 +1,13 @@
 ---
 name: slopclean
-description: "Remove AI tells from prose, code, or tests when asked to unslop or humanize an artifact; preserve its meaning and behavior."
+description: "Remove AI tells from prose, code, or tests when asked to unslop or humanize an artifact, or prune low-value tests from a suite; preserve meaning, behavior, and coverage."
 ---
 
 # Slopclean
 
 Clean the requested artifact in place. Meaning, facts, behavior, and public API
-do not change; house conventions win. One pass, not a sterilizing loop.
+do not change; house conventions win. One pass, not a sterilizing loop;
+a suite prune stops at its measured target.
 
 Read the matching reference; source-and-test diffs need both:
 [prose](references/prose.md), [code](references/code.md),
