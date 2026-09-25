@@ -14,15 +14,10 @@ not a blanket bundle.
 | `tanstack-query` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | A TanStack Query dependency or imports; fetching, query keys, mutations, caching, or invalidation. |
 | `tanstack-form` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | A TanStack Form dependency or imports; form state, field validation, or submission. |
 | `tanstack-start` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | TanStack Start dependency/configuration; routes, server functions, SSR, or deployment. Router alone does not imply Start. |
-| `ui-design` | [UI skill endpoint](https://cdn.uinaf.dev/skills/ui) | Web UI design or implementation; works beyond React. Skip for headless packages and native SwiftUI-only work. |
 
 React alone does not select all TanStack skills. Match the actual TanStack
 package, including non-React adapters, and check guidance against the installed
 major version before using its APIs.
-
-The UI endpoint distributes commercially licensed ui.sh material for licensed
-colleagues. Keep downloaded files local and ignored by Git; do not vendor them
-into public repositories. Preserve an explicitly preferred global installation.
 
 ## Swift
 
