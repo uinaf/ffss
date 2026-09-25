@@ -1,56 +1,36 @@
 {
-  "context": "Tests whether the agent treats AGENTS.md as a model-neutral readiness contract, adds useful private-owner orientation and task-shaped routing, documents authority and lifecycle proof honestly, and separates repository, runner, and evidence claims.",
+  "context": "Rewriting an outdated agent guide into a model-neutral operating contract. The skill-specific part: inherited review-round caps, fix-commit limits, and token countdowns are removed because agents read them as stop signals; reviewers are asked for every suspected finding; and proof is mapped per change class so a docs-only change skips runtime proof.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Human orientation is useful and bounded",
-      "max_score": 10,
-      "description": "AGENTS.md briefly explains Maya's work and translates her simplicity and composition values into a concrete convergence rule such as finishing the smallest complete result before adding abstractions; it treats this as guidance rather than a synthetic persona and points to OWNER.md instead of copying sensitive private facets"
+      "name": "Inherited stop signals removed",
+      "max_score": 25,
+      "description": "The new AGENTS.md drops the 2-review-round cap, the 3-fix-commit limit, and the 60%-of-tokens wrap-up rule rather than keeping or rephrasing them as limits, and guide-notes.md says they make agents end authorized work early"
     },
     {
-      "name": "Task-shaped routing is present",
-      "max_score": 10,
-      "description": "AGENTS.md tells agents when to read OWNER.md and docs/workspace.md and routes product code, cross-package decisions, and runtime incidents to their declared homes"
+      "name": "Reviewer asked for every finding",
+      "max_score": 20,
+      "description": "The new AGENTS.md drops the high-severity-only reviewer instruction and asks the reviewer for all suspected findings, with filtering or validation done afterwards"
     },
     {
-      "name": "Shared guidance is model-neutral",
-      "max_score": 10,
-      "description": "AGENTS.md removes per-model XML, restatement, hidden-reasoning, and generic expert-assistant prompt fragments and expresses observable shared behavior instead"
+      "name": "Proof mapped per change class",
+      "max_score": 25,
+      "description": "The new AGENTS.md maps the repository's change classes to their checks: docs-only changes need no runtime proof, `src/lib` logic uses unit tests, components use the Storybook visual check, checkout and search routes use Playwright e2e; it replaces the blanket test-plus-e2e-for-every-change rule"
     },
     {
-      "name": "Authority is explicit",
+      "name": "User instructions outrank guidance",
       "max_score": 10,
-      "description": "AGENTS.md allows reversible local work without redundant confirmation, requires a real decision for destructive or external action, and prohibits invented credentials or unnecessary access to private facets"
+      "description": "The new AGENTS.md states that user instructions outrank the guide or skill guidance"
     },
     {
-      "name": "Lifecycle commands are canonical",
+      "name": "Plain, model-neutral rules",
       "max_score": 10,
-      "description": "Identifies the provided lifecycle owners without adding wrappers, but flags pkill -f teardown as unsafe for unowned processes; does not run or endorse it as safe merely because docs name it. Reports missing fixture inputs honestly."
+      "description": "The new AGENTS.md has no per-model fragments (XML-tag answers, restating the task), no persona line, and no capitalized MUST/NEVER pressure; each rule appears once with its reason, and the repeated ask-first lines collapse into one boundary"
     },
     {
-      "name": "Proof layers remain separate",
+      "name": "Real boundaries kept",
       "max_score": 10,
-      "description": "AGENTS.md or readiness-report.md distinguishes canonical local guardrails, the health smoke surface, CI, and unavailable live or deploy proof; it does not let a unit test or screenshot imply another layer"
-    },
-    {
-      "name": "Failure quality is part of proof",
-      "max_score": 10,
-      "description": "The contract requires exercising invalid configuration and checking the non-zero redacted config/missing_value diagnostic rather than testing only the happy path"
-    },
-    {
-      "name": "Repository, runner, and evidence are separate",
-      "max_score": 10,
-      "description": "readiness-report.md reports separate repository and runner grades plus an E0-through-E4 evidence level, with each claim bounded by what was actually exercised"
-    },
-    {
-      "name": "Unexercised claims are honest",
-      "max_score": 10,
-      "description": "readiness-report.md does not claim CI, live deployment, repeated autonomy, or a passing command that the fixture does not let it run; missing executable fixture inputs are reported as gaps or static evidence"
-    },
-    {
-      "name": "Guide stays navigational",
-      "max_score": 10,
-      "description": "AGENTS.md is concise but includes the small working model needed to route product code, decisions, incidents, and proof; it uses progressive disclosure and does not copy the entire workspace document, OWNER.md biography, directory tree, or volatile inventory"
+      "description": "Keeps production deploy (`npm run deploy`) as an action reserved for the on-call maintainer, and allows ordinary local edits and checks without asking first"
     }
   ]
 }

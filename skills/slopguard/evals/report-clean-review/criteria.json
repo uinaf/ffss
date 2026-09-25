@@ -1,51 +1,10 @@
 {
-  "context": "Tests whether the final report distinguishes builder proof from independent review and includes the task sources, redacted command, exact clean result, provider and web policy, and absence of findings.",
+  "context": "Closes a review whose single finding is disproven: the finding is rejected with evidence, the exit-1 result is not called clean, the review evidence goes to the user in closeout.md, and none of it goes into the change-request body.",
   "type": "weighted_checklist",
   "checklist": [
-    {
-      "name": "Sources named",
-      "description": "closeout.md names the user request and APP-42 as authoritative task sources",
-      "max_score": 10
-    },
-    {
-      "name": "Builder proof named",
-      "description": "The report separately records branch tests and browser smoke as builder evidence",
-      "max_score": 10
-    },
-    {
-      "name": "Review command recorded",
-      "description": "The report records the branch review command or its meaningful flags with the prompt value redacted",
-      "max_score": 10
-    },
-    {
-      "name": "Claude provider recorded",
-      "description": "The report identifies Claude as the single reviewer",
-      "max_score": 10
-    },
-    {
-      "name": "Clean exit recorded",
-      "description": "The report states exit 0 and status clean",
-      "max_score": 10
-    },
-    {
-      "name": "No findings recorded",
-      "description": "The report explicitly states that the valid review contained no findings",
-      "max_score": 10
-    },
-    {
-      "name": "Attempt evidence recorded",
-      "description": "The report mentions the one valid attempt",
-      "max_score": 10
-    },
-    {
-      "name": "Web state recorded",
-      "description": "The report records that web access was off",
-      "max_score": 10
-    },
-    {
-      "name": "No ship overclaim",
-      "description": "The report presents a clean independent closeout without claiming consensus, universal correctness, or an autonomous ship decision",
-      "max_score": 10
-    }
+    {"name": "Review kept out of PR body", "description": "pr-body.md contains no independent-review content: no mention of slopguard, the review command, the reviewing engine or model, the finding, its rejection, or a review verdict", "max_score": 40},
+    {"name": "Finding rejected with evidence", "description": "closeout.md rejects the collision finding because invoice.ID is a database-generated unique UUID, and does not propose a code change for it", "max_score": 20},
+    {"name": "Exit 1 not called clean", "description": "closeout.md records exit 1 with one finding that was explicitly rejected, and never describes the review as clean or finding-free", "max_score": 20},
+    {"name": "Review evidence in closeout", "description": "closeout.md records the redacted review command or its target flags, Claude as the single reviewer, and web access off, with branch tests and browser smoke listed separately as builder proof", "max_score": 20}
   ]
 }

@@ -16,17 +16,12 @@ the cross-model contract, the audit procedure, and grade effects.
 
 ## Human and Owner Context
 
-In a private owner workspace, a short human introduction improves judgment:
-the person's work, priorities, collaboration style, a useful recurring failure
-mode, and pointers to the canonical private or public profile sources. It is a
-compass, not a synthetic persona or biography.
-
-In a shared product repository, orient around the product, users, maintainer
-contract, and ownership boundaries; no personal biography.
-
-Keep sensitive identity, credentials, finance, machine state, and private
-workspace facts behind task-relevant pointers so an agent opens the smallest
-source needed.
+In a private owner workspace, add a short human introduction: the person's
+work, priorities, collaboration style, one useful recurring failure mode, and
+pointers to the canonical profile sources. It is a compass, not a persona. A
+shared product repository orients around the product and maintainer contract
+instead. Keep identity, credentials, finance, and machine state behind
+task-relevant pointers.
 
 ## Proof Map
 
@@ -93,24 +88,13 @@ harness.
 
 ## Audit Procedure
 
-1. Read the root guide and every pointer the requested task class requires.
-2. Resolve named commands through tracked task owners, delegated scripts,
-   nested packages, and hidden CI; check what each gate covers.
-3. Compare inspection or improvement authority with each command's
-   prerequisites, credentials, cost, and state changes. Inspect runtime
-   ownership and teardown before execution; a familiar command name is not a
-   safe scope.
-4. Exercise the authorized proof path on the declared runner. Report
-   unavailable or unsafe paths as gaps; inspection does not authorize
-   bootstrap or repairs.
-5. Trace one expected failure from command to surfaced diagnostic and recovery.
-6. Identify duplication, contradictions, volatile claims, hidden prerequisites,
-   and facts that live only in chat or a person's memory.
-7. Test with a representative handoff: can a fresh agent explain the product
-   or system outcome at risk, place the change, enumerate its surfaces, and
-   name the starting source, allowed actions, required proof, and stop
-   condition? Include a docs-only change: the guide should let it skip
-   runtime proof.
+Beyond resolving task owners and exercising the authorized proof path, trace
+one expected failure from command to surfaced diagnostic and recovery, and
+list facts that live only in chat or a person's memory. Then test a
+representative handoff: can a fresh agent place the change, enumerate its
+surfaces, and name the starting source, allowed actions, required proof, and
+stop condition? Include a docs-only change: the guide should let it skip
+runtime proof.
 
 ## Grade Effects
 

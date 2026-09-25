@@ -1,0 +1,31 @@
+{
+  "context": "Adding mechanical enforcement against agent slop in a TypeScript repo that already lints with Oxlint. The skill-specific part: offer vendoring the dmmulroy/anti-slop Oxlint rules (copied and owned, run by the installed toolchain), baseline existing violations before making new rules blocking, and keep policy in the existing linter and gate rather than a new linter or shell checks.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "anti-slop rules vendored or offered",
+      "max_score": 35,
+      "description": "The solution vendors the dmmulroy/anti-slop Oxlint rules into the repository (rule source copied and owned, run by the installed oxlint) or explicitly offers doing so in enforcement-notes.md, rather than inventing custom slop detection from scratch without mentioning them"
+    },
+    {
+      "name": "Baseline before blocking",
+      "max_score": 25,
+      "description": "Enabling the new rules does not break `npm run verify` on existing code: existing violations in src/ are fixed, recorded as a baseline, or the new rules start as warnings with a stated step to promote them to errors; enforcement-notes.md describes this rollout"
+    },
+    {
+      "name": "Existing linter and gate own the policy",
+      "max_score": 20,
+      "description": "Enforcement lives in the Oxlint configuration reached by `npm run lint` / `npm run verify`; no second linter (ESLint, Biome) is introduced and no grep- or shell-based slop checks are added"
+    },
+    {
+      "name": "Built-in rules cover what they can",
+      "max_score": 10,
+      "description": "Uses Oxlint's own rules where they exist, for example explicit-any and empty-block or empty-catch rules"
+    },
+    {
+      "name": "Notes map rule to slop",
+      "max_score": 10,
+      "description": "enforcement-notes.md maps each named slop pattern (any casts, empty catch, narrating comments, barrel re-exports) to what catches it, and says plainly which ones remain review-only if none catches them"
+    }
+  ]
+}

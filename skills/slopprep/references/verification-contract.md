@@ -15,110 +15,56 @@ Keep these claims separate:
 | CI | configured remote checks passed for the relevant revision |
 | live or deploy | the configured production-like surface was exercised |
 
-A build does not prove a browser flow. A screenshot does not prove an
-end-to-end transition. Green CI does not prove a provider, account, device, or
-deployed endpoint unless that exact surface ran.
+Green CI does not prove a provider, account, device, or deployed endpoint
+unless that exact surface ran.
 
 ## Task Instruments
 
 Name the instrument missing from a proof claim. Build it before iterating when
 improvement is authorized; during inspection, report the gap and its owner.
+A human asked to confirm by eye ("still feels fast", "looks right") is a
+missing instrument. Non-obvious cases:
 
 | Claim | Instrument |
 | --- | --- |
-| faster | benchmark harness with a recorded baseline on representative input |
-| matches a design or reference | repeatable capture (screenshot, render, output dump) plus direct inspection of the rendered properties, compared against the source until no discrepancy remains |
-| bug fixed | a regression test that fails before the fix or on revert |
-| feature works | checks of the changed contract, including relevant failure paths |
-| behavior preserved | the same behavioral or contract checks before and after the refactor |
-| documentation corrected | checks against the owning source, links, or rendered output as applicable |
+| matches a design or reference | repeatable capture plus direct inspection of the rendered properties, compared against the source until no discrepancy remains |
 | lower cost, size, or token count | per-unit measurement on a real sample workload, with candidates that shrink the billed unit itself |
 | best of several approaches | fixture set plus a scoring script that sweeps every candidate |
 
-For optimization, record a representative baseline before editing, identify
-the bottleneck and hypothesis, and attribute the measured change. Compare the
-same command, inputs, environment, cache state, and measurement budget. Use
-enough repeated samples to distinguish a gain from run-to-run variation;
-otherwise report it as unproven. Use a scored sweep only when choosing among
-competing approaches. Report failed hypotheses as well as gains. Reusable
-instruments belong in the existing task graph; one-task experiments stay in
-attempt-scoped scratch.
+Reusable instruments belong in the existing task graph; one-task experiments
+stay in attempt-scoped scratch.
 
 ## Repository Contract
 
 Use the repository-owned verification surface shared by local work and CI.
 For changed-code proof, prefer its affected lanes; expand for shared inputs,
-uncertain coverage, or an explicit owner requirement. Repeat passing checks
-only after relevant changes, failures, or unresolved concerns. The entrypoint
-may be a manifest script, build task, framework command, or typed CLI; it
-needs no wrapper file. Make it:
+uncertain coverage, or an explicit owner requirement. The entrypoint may be a
+manifest script, build task, framework command, or typed CLI; it needs no
+wrapper file. Make it:
 
 - run noninteractively with a finite bound
-- preserve a primary failure or signal status and concise, inspectable output;
-  make cleanup or absence-verification failure non-zero after primary success
-- exercise the strongest cheap surface appropriate to the repository
+- preserve a primary failure or signal status; make cleanup or
+  absence-verification failure non-zero after primary success
 - distinguish repository failures from missing runner capabilities
 - release owned resources on every exit path per the ownership protocol in
-  [setup-patterns.md](setup-patterns.md)
+  [setup-patterns.md](setup-patterns.md#runtime-resource-ownership)
 - emit task-and-attempt-scoped artifacts when evidence must survive the process
 
-Don't create a parallel agent-only verification wrapper. Improve the ordinary
-command contributors and CI already use. When slow or platform-specific lanes
-run on a remote runner, the same command runs there; declare the runner and
-its credential boundary in the repository guide's
+Don't create a parallel agent-only verification wrapper. When slow or
+platform-specific lanes run on a remote runner, the same command runs there;
+declare the runner and its credential boundary in the repository guide's
 [proof map](agent-guidance.md#proof-map).
-
-## Real-Surface Evidence
-
-Choose the smallest check set that can honestly disprove the claim:
-
-- UI: navigate the changed flow, inspect interaction and console state, and
-  cover the relevant keyboard, responsive, accessibility, and reduced-motion
-  behavior; a labeled screenshot is supporting evidence only.
-- Device or platform: run the build on the simulator, emulator, or hardware
-  the claim names and record the flow with the commands that produced it.
-- API or service: start the real process, send representative success and
-  error requests, inspect response plus structured logs.
-- CLI: invoke the shipped or packaged entrypoint with representative arguments
-  and inspect exit code, stdout, and stderr.
-- State or config: prove write/read round trips, restart behavior, and invalid
-  configuration handling.
-- Deploy wiring: exercise the actual configured surface when the claim extends
-  beyond local health.
-
-Capture both the action and the resulting state; a command transcript without
-its observed outcome is not real-surface evidence. Prefer integration,
-contract, smoke, and end-to-end checks over mock-heavy unit tests at the seam
-being claimed; mocked tests remain supporting evidence.
 
 ## Failure Quality
 
 Exercise at least one representative failure when the task class touches
-input, IO, authentication, network, configuration, or external dependencies.
-Record the expected off-path behavior. Require:
+input, IO, authentication, network, configuration, or external dependencies:
+non-zero terminal state, stable error class or code, the failed boundary
+without secrets, a recovery action, preserved logs.
 
-- a non-zero or explicitly failed terminal state
-- a stable error class, code, or machine-readable status when appropriate
-- enough context to identify the failed boundary without exposing secrets
-- a useful recovery action when the user or operator can act
-- preserved artifacts or logs for unattended diagnosis
-
-Swallowed errors, vague success, raw secret output, unbounded waits, cleanup
-that only runs on success, global teardown that destroys unowned resources,
-and owned resources left running without an explicit handoff are readiness
-failures.
-
-## Reporting
-
-Report outcomes, not command theater:
-
-- name the exact surface and revision exercised
-- summarize passing checks by intent and result
-- include exact commands and relevant output for failure reproduction
-- label unavailable proof as unverified and name the missing repository or
-  runner capability
-- grade final state and side effects rather than trusting an agent's
-  completion message
+Swallowed errors, cleanup that only runs on success, global teardown that
+destroys unowned resources, and owned resources left running without an
+explicit handoff are readiness failures.
 
 If the repository already provides this contract, use it during ordinary work;
 don't start readiness work just to repeat the builder's final checks.

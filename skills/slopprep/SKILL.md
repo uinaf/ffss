@@ -38,7 +38,8 @@ checks are gaps, not failed executions.
 - Slow gates, affected selection, caching:
   [fast-portable-execution.md](references/fast-portable-execution.md). Measure
   unchanged, relevant-change, warm-full, and cold-full paths before optimizing.
-- Boot, doctor, resource ownership, identity, isolation, recovery:
+- Boot, doctor, resource ownership, mechanical enforcement (linters, hooks,
+  anti-slop rules), identity, isolation, recovery:
   [setup-patterns.md](references/setup-patterns.md).
 - Unattended workflow proof, repeated trials, A-grade reliability claims:
   [autonomy-evidence.md](references/autonomy-evidence.md).
