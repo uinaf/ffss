@@ -1,46 +1,41 @@
 {
-  "context": "Tests whether prose cleanup removes filler and repeated scaffolding while preserving facts, commands, numbers, structure, and author voice.",
+  "context": "Prose cleanup that replaces a README copy of structured config with a link to its owning source, keeps the rationale the source cannot hold, and preserves the author's headings and deliberate punctuation while cutting puffery.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Punctuation serves the prose",
-      "max_score": 12,
-      "description": "Removes repetitive punctuation scaffolding where it makes prose awkward; does not mechanically ban useful em dashes or replace them with equally repetitive punctuation."
+      "name": "Config table replaced by source link",
+      "max_score": 34,
+      "description": "The options/defaults table is removed and replaced by a link to src/config.ts that names the owning symbol (Config and/or DEFAULTS); the README no longer lists option defaults, including batchSize. Keeping the table (even with batchSize corrected to 1000) fails this item."
     },
     {
-      "name": "Stock vocabulary gone",
-      "max_score": 14,
-      "description": "Words like robust, seamless/seamlessly, cutting-edge, leverages, crucial, delves, empowers, unlock, paradigm shift, and landscape no longer appear"
-    },
-    {
-      "name": "Filler and hedging cut",
-      "max_score": 12,
-      "description": "Phrases like 'it's worth noting', 'it should be noted', 'in today's fast-paced world', 'may potentially be considered', and the 'In conclusion' section are removed rather than rephrased into new filler"
-    },
-    {
-      "name": "Vague attribution resolved",
+      "name": "Rationale kept",
       "max_score": 10,
-      "description": "'Studies show' is either replaced with a named source or the claim is deleted; it does not survive as an unsourced appeal"
+      "description": "The flushMs guidance about staying below the downstream idle timeout survives, since the source does not carry it."
     },
     {
-      "name": "Inline-header list reworked",
+      "name": "Headings keep their case",
+      "max_score": 14,
+      "description": "Retained headings keep their original Title Case (for example Key Features, Getting Started); they are not converted to sentence case."
+    },
+    {
+      "name": "Deliberate dashes kept",
       "max_score": 8,
-      "description": "The '**Blazing Fast:**'-style bolded-label feature list is rewritten as plain prose or plain bullets without the bold-label crutch"
+      "description": "The em dashes that set off real explanations (the crash/replay and idle-timeout sentences) are not mechanically replaced with other punctuation just because they are em dashes."
     },
     {
-      "name": "Facts and commands intact",
-      "max_score": 20,
-      "description": "The 120,000 lines/second figure, both commands (curl install and streamlog init --port 5140), and the Linux/macOS support statement survive exactly; no facts are added or dropped"
+      "name": "Puffery and filler cut",
+      "max_score": 14,
+      "description": "robust, cutting-edge, seamlessly, crucial, leverages, blazing, empower, paradigm shift, unlock, 'incredibly simple', 'may potentially', and the Conclusion section are gone, not rephrased into new filler."
     },
     {
-      "name": "Meaning preserved",
-      "max_score": 12,
-      "description": "The cleaned text makes the same claims as the original (fast single-core throughput, integrations, at-least-once delivery, no Windows plans); this is a phrasing pass, not a rewrite of substance"
+      "name": "Facts intact",
+      "max_score": 14,
+      "description": "The 120,000 lines/second single-core figure, both commands, port 5140 in the init command, at-least-once delivery with replay, and Linux/macOS support with no Windows plans survive; no new claims or opinions are added."
     },
     {
-      "name": "Not over-cleaned",
-      "max_score": 12,
-      "description": "Preserves the original Title Case headings, including Key Features and Getting Started, and the author's concrete factual voice without adding opinions or mannerisms."
+      "name": "Source untouched",
+      "max_score": 6,
+      "description": "src/config.ts is not modified."
     }
   ]
 }

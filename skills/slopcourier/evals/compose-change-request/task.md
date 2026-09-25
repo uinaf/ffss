@@ -1,40 +1,29 @@
-# Prepare the Change Request for a Finished Fix
+# PR for the websocket compression fix
 
-## Problem/Feature Description
+Branch `fix/ws-compression` in `tallowmere/dashboard` (origin
+`git@github.com:tallowmere/dashboard.git`) is finished. `npm test` passed on
+the branch head a few minutes ago (214 passed), and CI runs the same suite on
+every PR. The repository itself has no pull request template anywhere in its
+tree.
 
-The fix is done and verified on branch `fix/ws-compression`: the repository's
-gate (`npm test`, 214 passed) ran fresh and green, and staging measurements are
-below. The remote is `git@github.com:example/dashboard.git` and `gh auth status`
-is green for github.com.
+I want to read everything before it goes up. Don't push, open, or edit
+anything on GitHub. Write `delivery.md` with the exact commands you would run
+from this checkout to open the PR, followed by the title and the complete body
+you would submit.
 
-I want to review the change request before it goes up. Write the exact title
-and complete body you will submit to `delivery.md`, then stop; do not push or
-open anything yet.
+What changed: dashboard clients on slow links were dropping live updates
+because every websocket frame shipped uncompressed. The server now negotiates
+permessage-deflate and echoes the negotiated `Sec-WebSocket-Extensions`
+header. Staging, busiest feed: median frame size went from 41 KB to 11 KB.
+Clients that don't offer the extension still get uncompressed frames.
 
-Context: dashboard clients on slow links were dropping live updates because
-every websocket frame shipped uncompressed. The change negotiates
-permessage-deflate on the websocket server. Staging measurement against the
-busiest feed: median frame size down from 41 KB to 11 KB.
+Files touched: `server/ws.ts`, `server/handshake.ts`, `server/ws.test.ts`.
 
-Slopguard ran twice on this branch. The first pass raised a missing
-`Sec-WebSocket-Extensions` echo, fixed in `a1f2c3d`; the second pass was clean.
-The verification transcript is in the session log.
+An independent review ran twice on this branch. The first pass caught the
+missing header echo, fixed in `a1f2c3d`; the second pass was clean.
 
-The last three merged change requests in this repository were titled:
+Last three merged PR titles in this repo:
 
 - `fix(api): stop dropping auth renewals under clock skew`
 - `perf(worker): cut cold-start p95 from 900ms to 320ms`
 - `feat(alerts): page on-call before the queue backs up`
-
-## Input Files
-
-=============== FILE: .github/PULL_REQUEST_TEMPLATE.md ===============
-## Problem
-
-## Solution
-
-## Risk
-
-## Proof
-<!-- Only if CI cannot show it -->
-=============== END FILE ===============

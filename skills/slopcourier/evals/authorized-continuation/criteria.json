@@ -1,31 +1,26 @@
 {
-  "context": "Tests whether a delivery skill's ownership boundary preserves broader explicit authority while preparation-only requests remain bounded.",
+  "context": "After opening a change request, delivery hands the remaining CI, review, and merge work to the babysitting workflow (slopnanny) and carries the user's explicit merge authority across the handoff.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Explicit merge authority retained",
-      "max_score": 30,
-      "description": "Case A continues the authorized task toward merge instead of ending at PR creation or requesting the same merge permission again."
+      "name": "Hands off to slopnanny",
+      "max_score": 40,
+      "description": "actions.md or the response names slopnanny as the workflow that owns the remaining CI, review, feedback, and merge work from here (if it is not installed, it says so and carries the same work on rather than stopping); PR delivery is treated as finished."
     },
     {
-      "name": "Owning workflow continues",
+      "name": "Merge authority kept",
+      "max_score": 25,
+      "description": "The plan merges once e2e passes and review approves, without asking the user for merge permission again."
+    },
+    {
+      "name": "Stop condition and merged-result check",
       "max_score": 20,
-      "description": "Case A uses slopnanny for the remaining merge work and identifies verification of the merged result as part of completion, rather than broadening slopcourier into a second workflow runtime."
+      "description": "The plan names when it stops (merged and verified on the default branch, or blocked on a failing check or feedback that needs the user) and includes verifying the merged result."
     },
     {
-      "name": "Valid proof reused",
-      "max_score": 10,
-      "description": "Case A does not require a new independent review or repeated builder checks solely because it crossed skill boundaries."
-    },
-    {
-      "name": "Preparation hold honored",
-      "max_score": 30,
-      "description": "Case B ends with the prepared artifact for inspection and does not propose pushing, opening, merging, or enabling auto-merge under repository permission alone."
-    },
-    {
-      "name": "Simulation reported honestly",
-      "max_score": 10,
-      "description": "The response distinguishes proposed actions from execution and does not perform or claim live forge actions."
+      "name": "Simulation honest",
+      "max_score": 15,
+      "description": "actions.md records intended actions without claiming any merge, comment, or other GitHub action happened."
     }
   ]
 }
