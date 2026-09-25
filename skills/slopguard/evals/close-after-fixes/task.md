@@ -1,8 +1,8 @@
 # Close out after several review rounds
 
 Write `review-actions.md` with the next actions, evidence status, and any user
-decision needed for each independent case. This is an offline exercise: do not
-invoke a reviewer, run project commands, or mutate any live system.
+decision needed for each independent case. Record the actions instead of
+taking them: do not invoke a reviewer, push, merge, or post anything.
 
 The user asked for independent review before merge and authorized fixing and
 delivering both change requests. No policy limits review rounds or fix

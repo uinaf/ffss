@@ -2,9 +2,10 @@
 
 ## Problem/Feature Description
 
-Use slopmachine to settle the work described below. This sandbox is offline;
-the supplied forge snapshot is the result of your latest poll. Write the
-next actions and user-facing outcome to `actions.md`, without executing commands.
+Use slopmachine to settle the work described below. The supplied forge
+snapshot is the result of your latest poll; use it rather than querying live.
+Write the next actions and user-facing outcome to `actions.md` instead of
+running them against the forge.
 
 Original instruction: Implement the approved CSV fix, verify it, get slopguard
 review, open the PR, and hold it. I will decide when to merge.

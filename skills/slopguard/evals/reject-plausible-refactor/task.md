@@ -1,8 +1,8 @@
 # Validate a Cheap Defensive Refactor
 
 The branch review completed with the finding below. Use slopguard to decide
-the disposition and next actions in `triage.md`. This is an offline exercise;
-do not execute commands or claim proposed actions ran.
+the disposition and next actions in `triage.md`. Record the actions instead of
+taking them; do not push, merge, post, or claim proposed actions ran.
 
 The approved task adds bounded pagination to the item endpoint, then verifies,
 reviews, and ships it through the repository's PR flow. General pagination

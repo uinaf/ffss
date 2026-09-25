@@ -1,8 +1,8 @@
 # Delivery inside different user requests
 
 Write `actions.md` identifying the next action and stopping condition in each
-independent case. Use only these observations; this is an offline exercise,
-with no forge calls, pushes, merges, or other live actions.
+independent case. Use only these observations rather than querying the forge, and record the
+actions instead of taking them: no pushes, merges, or posts.
 
 Case A: The user said, "Fix the export crash, open the PR, and merge once its
 required checks and review pass." The implementation is complete, and

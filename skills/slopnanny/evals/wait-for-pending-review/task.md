@@ -2,10 +2,10 @@
 
 ## Problem/Feature Description
 
-Babysit pull request #106 on `example/guard` until it is settled. This sandbox
-has no network; the forge state below is what your polling just returned; treat
-it as live. Write the actions you take — every forge command and any replies
-you post — to `actions.md`.
+Babysit pull request #106 on `example/guard` until it is settled. The forge
+state below is what your polling just returned; treat it as current rather
+than querying live. Write the actions you would take — every forge command and
+any replies you would post — to `actions.md` instead of running them.
 
 ## Input Files
 

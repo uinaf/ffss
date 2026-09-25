@@ -19,6 +19,6 @@ $ git status --short
  M internal/cache/redis.go   (half-finished cache experiment, not part of the fix)
 ```
 
-I have no PR for this branch yet. This sandbox has no network, so do not push;
+I have no PR for this branch yet. Don't push or open anything yet;
 write the exact sequence of git/gh commands you would run, plus the PR title
 and body, to `delivery-plan.md`.

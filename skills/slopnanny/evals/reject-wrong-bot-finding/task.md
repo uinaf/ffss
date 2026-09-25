@@ -4,8 +4,8 @@
 
 You are babysitting pull request #63 on `example/toolkit`. A review bot just
 left a finding; the diff and the bot's comment are below, both newer than the
-latest push. This sandbox has no network, so write everything you would do —
-commands, and the exact text of any reply you post — to `actions.md`.
+latest push. Don't run anything against the forge; write everything you
+would do — commands, and the exact text of any reply you post — to `actions.md`.
 
 ## Input Files
 

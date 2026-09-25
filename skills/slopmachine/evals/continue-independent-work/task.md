@@ -4,7 +4,7 @@
 
 Keep going with the agreed slopmachine plan. Use the supplied observations to
 write `actions.md` with the next actions, the remaining blocker, and anything
-needed from me. This is an offline exercise; do not execute commands.
+needed from me. Don't push, merge, or post anything yet.
 
 Approved plan:
 1. Fix expiring-token refresh, including local tests and the required staging

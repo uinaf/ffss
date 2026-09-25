@@ -2,9 +2,9 @@
 
 ## Problem/Feature Description
 
-Continue the approved slopmachine plan. This is an offline decision exercise:
-write `actions.md` with the next actions and the evidence still needed. Do not
-execute commands or invent results.
+Continue the approved slopmachine plan. Write `actions.md` with the next
+actions and the evidence still needed instead of carrying them out. Do not
+push, merge, or post anything, or invent results.
 
 Approved scope: stop the settings modal from flashing on page reload, add a
 regression test, run the required checks and slopguard, then open a PR and

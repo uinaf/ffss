@@ -2,9 +2,9 @@
 
 ## Problem/Feature Description
 
-Use slopcourier if appropriate to deliver the completed work below. This is an
-offline decision exercise: write the delivery route and next actions to
-`delivery-status.md`; do not execute commands or invent delivery results.
+Use slopcourier if appropriate to deliver the completed work below. Write the
+delivery route and next actions to `delivery-status.md` instead of running
+them against the remote; do not invent delivery results.
 
 ## Input Files
 

@@ -2,9 +2,9 @@
 
 ## Problem/Feature Description
 
-Continue the approved slopmachine work from these handoff notes. This is an
-offline decision exercise: write `actions.md` with the next actions and the
-evidence still needed. Do not execute commands or invent results.
+Continue the approved slopmachine work from these handoff notes. Write
+`actions.md` with the next actions and the evidence still needed instead of
+carrying them out. Do not push or post anything, or invent results.
 
 Approved scope: implement JSON export and its docs, run the required checks
 and slopguard, then open a PR and hold it for my inspection. Do not merge.

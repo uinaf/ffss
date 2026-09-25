@@ -3,8 +3,8 @@
 Write `delivery-notes.md` with a short change-request body and your evidence
 decision for each independent case below. All changes are authorized for
 delivery, scoped correctly, and verified on their final revision. There is no
-body template. This is an offline exercise: do not run project commands, publish, or
-create media. Supplied evidence is the complete available evidence.
+body template. Do not publish anything or create media. Supplied evidence is
+the complete available evidence.
 
 1. A configuration loader now rejects an empty `CACHE_DIR` instead of passing
    it to the filesystem API. The diff adds the empty-string check and one
