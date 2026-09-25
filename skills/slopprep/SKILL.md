@@ -38,6 +38,7 @@ checks are gaps, not failed executions.
 - Slow gates, affected selection, caching:
   [fast-portable-execution.md](references/fast-portable-execution.md). Measure
   unchanged, relevant-change, warm-full, and cold-full paths before optimizing.
+- Migrating to Vite+ or across its releases: [vite-plus.md](references/vite-plus.md).
 - Boot, doctor, resource ownership, mechanical enforcement (linters, hooks,
   anti-slop rules), identity, isolation, recovery:
   [setup-patterns.md](references/setup-patterns.md).
