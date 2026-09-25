@@ -23,6 +23,11 @@ its contract; independent review belongs to the required reviewer.
 
 ## Triage
 
+A person's `CHANGES_REQUESTED` review, or a comment questioning the design, is
+the user's to answer: stop rework on that change request, post nothing, and
+hand the objection back with the evidence you found. Bot findings and a
+person's concrete, unambiguous fix requests stay in this loop.
+
 1. Validate each claim against current code, the task contract, and stronger
    invariants. Reject wrong or out-of-scope findings with evidence; real gaps
    outside the goal become tracker items, not commits.
