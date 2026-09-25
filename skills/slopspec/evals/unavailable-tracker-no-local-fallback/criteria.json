@@ -1,41 +1,31 @@
 {
-  "context": "Tests whether planning preserves the repository's chosen tracker when access is missing and returns a correct draft instead of switching to an available but wrong system.",
+  "context": "The repository's tracker is Jira PAY and this machine has no Jira write path. A good answer keeps Jira as the destination and returns a paste-ready Jira draft plus the exact missing access in the answer itself. It does not park the plan in a repository file or in the agent's own memory or notes, and does not move it to GitHub.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Jira remains canonical",
-      "max_score": 20,
-      "description": "planning-result.md keeps Jira project PAY as the intended durable destination"
+      "name": "No local copy of the plan",
+      "max_score": 35,
+      "description": "No plan, handoff, TODO, or draft file is created in the repository (AGREED_PLAN.md may stay as it was), and the answer does not report saving the plan to the agent's memory, notes, or any other local file. The draft is returned in the answer instead."
     },
     {
-      "name": "Paste-ready artifact",
-      "max_score": 22,
-      "description": "The result contains a Jira-ready title and body with outcome, complete acceptance criteria, and verification expectations"
+      "name": "Jira PAY stays the destination",
+      "max_score": 15,
+      "description": "The answer names Jira project PAY as where the plan belongs and does not recommend a GitHub issue because GitHub access happens to work."
     },
     {
-      "name": "Exact blocker",
-      "max_score": 16,
-      "description": "The result states that no authenticated Jira write path is available"
+      "name": "Paste-ready Jira draft",
+      "max_score": 25,
+      "description": "The answer contains a Jira-ready summary and body with the outcome and all four acceptance items: transient classification, two-retry cap, idempotency keys preserved, provider-contract coverage."
     },
     {
-      "name": "No GitHub substitution",
-      "max_score": 16,
-      "description": "The result does not create or recommend a GitHub issue merely because GitHub access exists"
-    },
-    {
-      "name": "No local fallback",
-      "max_score": 14,
-      "description": "The result does not create docs/plans, plans, or another checked-in plan file"
-    },
-    {
-      "name": "Resume action",
-      "max_score": 8,
-      "description": "The result says to publish the draft to PAY once Jira access is available and then return the Jira key or URL"
+      "name": "Exact blocker and resume step",
+      "max_score": 15,
+      "description": "The answer states that no Jira write path is available here and says the next step is publishing the draft to PAY and keeping the resulting key or URL as the resume point."
     },
     {
       "name": "No implementation",
-      "max_score": 4,
-      "description": "The response does not implement retry behavior"
+      "max_score": 10,
+      "description": "The answer does not implement retry behavior or change source code."
     }
   ]
 }

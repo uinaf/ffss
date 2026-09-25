@@ -20,7 +20,6 @@ Sensitive information needs an approved private or redacted route; a public
 default tracker does not justify exposing it. Never install integrations,
 switch identities, create projects, or broaden visibility to publish a plan.
 
-Preserve native vocabulary and hierarchy for GitHub, GitLab, Jira, Linear, or
-the repository's chosen system. A local directory is valid only when the user
-or repository selected it. Missing relationship APIs can use explicit links;
+Use the tracker's native vocabulary and hierarchy. A local directory is valid
+only when the user or repository selected it. Missing relationship APIs can use explicit links;
 missing write access calls for a paste-ready draft, not a different destination.

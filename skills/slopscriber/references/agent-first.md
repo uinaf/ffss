@@ -29,10 +29,6 @@ shortened; they load the body on use and references on demand. Keep essential
 constraints in `SKILL.md`; route setup, recovery, and mode-specific detail to
 references when not needed on every use.
 
-Use task-shaped headings and stable terms. Preserve literal commands, paths,
-and diagnostic identifiers for search. Runbooks need observable outcomes and
-recovery guidance, not the operator's intentions.
-
 ## AGENTS.md
 
 Put guidance at its owner:

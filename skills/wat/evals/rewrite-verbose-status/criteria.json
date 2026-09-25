@@ -1,41 +1,36 @@
 {
-  "context": "Tests a concise status rewrite that leads with the outcome, preserves identifiers, counts, and unconfirmed test state, and ends with at most one next action. Six lines is a target, not a rigid format requirement.",
+  "context": "The user asked for a short rewrite of a rambling status update and for later replies to stay short. A good answer is the rewrite itself, keeps every fact, and changes only how it replies: it does not save the preference to memory, a notes file, or agent guidance.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "First line answers what happened",
-      "max_score": 16,
-      "description": "The rewrite opens with the outcome (fix pushed / tests corrected, PR moving), not with process or preamble"
+      "name": "Reply only, nothing persisted",
+      "max_score": 30,
+      "description": "The final message is the rewritten update. It does not report saving the brevity preference to memory, a notes or preferences file, CLAUDE.md, AGENTS.md, or any other file, and no such file appears among the changed files."
     },
     {
-      "name": "Scannable facts",
-      "max_score": 16,
-      "description": "The rewrite makes outcomes, current state, and the next action easy to distinguish. Labeled bullets suit this status report, but equivalent concise structure is acceptable."
-    },
-    {
-      "name": "Concise rewrite",
-      "max_score": 14,
-      "description": "The rewrite aims for six lines or fewer without losing decision-relevant facts or uncertainty. A small justified overrun is acceptable; filler, repeated facts, or crowded unreadable lines are not."
+      "name": "Opens with the outcome",
+      "max_score": 20,
+      "description": "The first line states what happened (fix pushed, tests corrected, PR state). No apology, acknowledgement that the last reply was long, or 'here's the short version' lead-in precedes it."
     },
     {
       "name": "Identifiers and counts kept",
-      "max_score": 22,
-      "description": "Commit 4f2a1c9, PR #212, 3 of 17 failing tests, the timezone-fixture cause, and the 14% bundle-size observation all survive"
+      "max_score": 20,
+      "description": "Commit 4f2a1c9, PR #212, 3 of 17 failing tests, the timezone-fixture cause, and the roughly 14% bundle-size growth all survive."
+    },
+    {
+      "name": "Unconfirmed state kept",
+      "max_score": 10,
+      "description": "The rewrite says the suite is still re-running and not yet green, without 'hopefully' or other empty optimism."
+    },
+    {
+      "name": "Short, scannable status",
+      "max_score": 10,
+      "description": "About six lines or fewer, with outcome, current state, and next step easy to tell apart (labeled bullets or equivalent). No rabbit-hole or long-story-short narration."
     },
     {
       "name": "One next action, no offers",
-      "max_score": 12,
-      "description": "At most one next action (re-request review once CI is green) and no 'let me know if…' closing offer"
-    },
-    {
-      "name": "Narration removed, uncertainty preserved",
-      "max_score": 12,
-      "description": "No 'rabbit hole', 'long story short', or other process narration remains. Remove empty optimism such as 'hopefully', while preserving that the suite is still running and its outcome is not yet known."
-    },
-    {
-      "name": "No adjectival padding",
-      "max_score": 8,
-      "description": "Facts carry numbers and identifiers, not adjectives like 'nicely' or 'interesting'"
+      "max_score": 10,
+      "description": "At most one next action (re-request review once CI is green) and no 'let me know if' closing offer."
     }
   ]
 }

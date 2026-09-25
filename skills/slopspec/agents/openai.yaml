@@ -4,4 +4,4 @@ interface:
   default_prompt: "Use $slopspec to save the agreed work as the smallest resumable plan in the repository's tracker."
 
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true

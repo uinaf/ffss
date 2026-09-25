@@ -1,21 +1,22 @@
-# Plan Parallel Invitation Work in Jira
-
-## Problem/Feature Description
-
-The repository tracks work in Jira project `TEAM`. The user approved a parent epic and three independently reviewable end-to-end slices:
-
-1. Create and send an invitation from the admin UI through the API.
-2. Accept an invitation and join the team; requires invitation creation.
-3. Revoke a pending invitation from the admin UI; requires invitation creation but not acceptance.
-
-The user says: "Publish the epic and tickets with the real dependency graph so agents can work in parallel."
-
-Produce `planning-result.md` describing the Jira artifacts, parent relationships, blocking links, and current dependency frontier. Do not implement the feature.
-
-## Input Files
+We settled the scope for team invitations (SCOPE.md). Break it into Jira work
+in TEAM so several agents can pick pieces up in parallel. Jira isn't reachable
+from here, so give me the epic, the tickets, and their links to create by hand.
+Don't start implementing.
 
 =============== FILE: AGENTS.md ===============
 # Agent guide
 
-Planned engineering work lives in Jira project TEAM. Multi-session features use an Epic with child Tasks and `blocks` links for hard dependencies.
+Planned engineering work lives in Jira project TEAM. Multi-session features
+use an Epic with child Tasks and `blocks` links for hard dependencies.
+=============== END FILE ===============
+
+=============== FILE: SCOPE.md ===============
+Team invitations
+
+- An admin creates an invitation in the admin UI; the API stores it and emails
+  the invite link.
+- The invitee opens the link, accepts, and joins the team.
+- An admin can revoke a pending invitation from the admin UI.
+
+Stack: React admin UI, Node API, Postgres. Every change ships with its tests.
 =============== END FILE ===============
