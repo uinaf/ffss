@@ -16,8 +16,10 @@ belongs to the required reviewer.
   and top-level comments, where bots often post findings.
 - Green checks and no threads are not settled while a requested reviewer,
   human or bot, is pending. After it submits, re-read everything.
-- Auto-review bots may never appear in review requests. Codex is running while
-  it shows 👀 or an unfinished row in its summary comment, and clean at 👍.
+- Auto-review bots may never appear in review requests. An expected bot is
+  pending until it leaves completion evidence for the head: Codex shows 👀 or
+  an unfinished summary row while running, then 👍, findings, or a completed
+  row for that commit.
 - Don't reprocess findings a push answered; don't assume a push resolved older
   feedback.
 
@@ -39,7 +41,8 @@ person's concrete, unambiguous fix requests stay in this loop.
    repeated findings; an unresolved blocking review still prevents merge.
 3. Push verified fixes; reply on each addressed thread with the commit hash.
    No force-push without approval. Let requested reviewers finish on the new
-   head; don't start duplicates.
+   head; don't start duplicates. Re-request review from an approver whose
+   approval predates the new head.
 4. Visual proof only when it is the clearest evidence:
    [visual-evidence ladder](../slopcourier/references/visual-evidence.md).
 
