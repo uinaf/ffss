@@ -24,6 +24,7 @@ jobs:
       clilib: ${{ contains(fromJSON(steps.changes.outputs.changes), 'clilib') }}
       slopguard: ${{ contains(fromJSON(steps.changes.outputs.changes), 'slopguard') }}
       skills: ${{ contains(fromJSON(steps.changes.outputs.changes), 'skills') }}
+      hooks: ${{ contains(fromJSON(steps.changes.outputs.changes), 'hooks') }}
     steps:
       - id: changes
         uses: uinaf/.github/.github/actions/changes@7bc3f9ea25b5494f4026dfdb64fb866a520afcd0 # v3.0.0
@@ -40,6 +41,9 @@ jobs:
               - 'skills/**'
               - 'cli/*/skills/**'
               - 'tools/skill-evals/**'
+            hooks:
+              - 'hooks/**'
+              - 'skills/slopnanny/scripts/**'
 
   clilib:
     name: cli/lib verify
@@ -168,9 +172,23 @@ jobs:
         run: npm run audit
         working-directory: tools/skill-evals
 
+  hooks:
+    name: plugin hooks
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.hooks == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: shellcheck -S warning hooks/merge-guard hooks/merge-guard.test.sh skills/slopnanny/scripts/merge-ready
+      - run: jq -e '.hooks.PreToolUse[0].hooks[0].command' hooks/hooks.json
+      - run: sh hooks/merge-guard.test.sh
+
   verify:
     if: always()
-    needs: [changes, clilib, slopguard, slopguard-darwin, slopguard-integration, skills]
+    needs: [changes, clilib, slopguard, slopguard-darwin, slopguard-integration, skills, hooks]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -189,6 +207,8 @@ jobs:
           INTEGRATION_RESULT: ${{ needs.slopguard-integration.result }}
           SKILLS_RESULT: ${{ needs.skills.result }}
           SKILLS_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.skills == 'true') && 'success' || 'skipped' }}
+          HOOKS_RESULT: ${{ needs.hooks.result }}
+          HOOKS_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.hooks == 'true') && 'success' || 'skipped' }}
         run: |
           test "$CHANGES_RESULT" = success
           test "$CLILIB_SELECTED" = true || test "$CLILIB_SELECTED" = false
@@ -199,6 +219,7 @@ jobs:
           test "$DARWIN_RESULT" = "$DARWIN_EXPECTED"
           test "$INTEGRATION_RESULT" = "$SLOPGUARD_EXPECTED"
           test "$SKILLS_RESULT" = "$SKILLS_EXPECTED"
+          test "$HOOKS_RESULT" = "$HOOKS_EXPECTED"
 
       - name: Check out for the scan
         if: ${{ !cancelled() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}

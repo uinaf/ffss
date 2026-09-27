@@ -71,6 +71,12 @@ cursor-agent plugin marketplace add https://github.com/uinaf/ffss
 grok plugin install uinaf/ffss --trust
 ```
 
+The plugin also ships a `PreToolUse` hook that blocks `gh pr merge` and
+`gh api .../pulls/N/merge` until [merge-ready](skills/slopnanny/scripts/merge-ready)
+passes: no unresolved review thread, pending reviewer, change request, or
+auto-review still running on the head. It needs `gh` and `jq`. Codex runs it
+after you trust it in `/hooks`.
+
 ## License
 
 MIT; see [LICENSE](LICENSE); members carry their own copies.

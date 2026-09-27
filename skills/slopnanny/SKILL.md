@@ -60,3 +60,5 @@ hashes, nothing that doesn't advance the thread.
   commit, and reviewers and threads are clear. Use the repository's merge
   method and report the merged commit; don't ask first. Hold only when asked.
   Never merge past a blocking human review or an open thread.
+- On GitHub, merge only after `scripts/merge-ready [PR] [-R OWNER/REPO]` exits 0;
+  it lists unresolved threads, pending reviewers, and running auto-reviews.

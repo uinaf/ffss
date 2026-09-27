@@ -1,0 +1,89 @@
+#!/bin/sh
+# PreToolUse hook for Claude Code and Codex: blocks `gh pr merge` and
+# `gh api .../pulls/N/merge` until skills/slopnanny/scripts/merge-ready passes.
+set -u
+
+input=$(cat)
+case $input in
+  *merge*) ;;
+  *) exit 0 ;;
+esac
+
+deny() {
+  printf 'Merge blocked by the ffss merge guard.\n%s\n' "$1" >&2
+  exit 2
+}
+
+if ! command -v jq >/dev/null 2>&1; then
+  printf '%s' "$input" | grep -Eq 'gh +(pr +merge|api .*pulls/[0-9]+/merge)' &&
+    deny "Install jq so the guard can read the command."
+  exit 0
+fi
+
+command=$(printf '%s' "$input" | jq -r '.tool_input.command // empty')
+cwd=$(printf '%s' "$input" | jq -r '.cwd // empty')
+[ -n "$command" ] || exit 0
+
+ready="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)/skills/slopnanny/scripts/merge-ready"
+# One simple command per line; quotes are not honoured, which only matters for
+# values containing ; & | or newlines.
+segments=$(printf '%s\n' "$command" | tr ';&|' '\n')
+
+check() {
+  if ! output=$(cd "${cwd:-.}" 2>/dev/null && "$ready" "$@" 2>&1); then
+    deny "$output
+Wait for review bots to finish on the current head (or comment \"@codex review\" if none ran), resolve every thread, then merge."
+  fi
+}
+
+printf '%s\n' "$segments" | while IFS= read -r segment; do
+  set -f
+  # shellcheck disable=SC2086
+  set -- $segment
+  set +f
+  while [ "$#" -gt 0 ] && [ "$1" != gh ]; do
+    if [ "$1" = cd ] && [ "$#" -ge 2 ]; then
+      case $2 in
+        "~") cwd=$HOME ;;
+        # shellcheck disable=SC2088
+        '~/'*) cwd=$HOME/${2#??} ;;
+        /*) cwd=$2 ;;
+        *) cwd=${cwd:-.}/$2 ;;
+      esac
+      break
+    fi
+    shift
+  done
+  [ "$#" -ge 2 ] || continue
+  [ "$1" = gh ] || continue
+  shift
+  case "$1 ${2:-}" in
+    "pr merge")
+      shift 2
+      pr=
+      repo=
+      skip=
+      while [ "$#" -gt 0 ]; do
+        case $1 in
+          -R | --repo) repo=${2:-}; shift ;;
+          --repo=*) repo=${1#--repo=} ;;
+          --disable-auto) skip=1 ;;
+          -t | --subject | -b | --body | -F | --body-file | -A | --author-email | --match-head-commit) shift ;;
+          -*) ;;
+          *) [ -n "$pr" ] || pr=$1 ;;
+        esac
+        [ "$#" -gt 0 ] && shift
+      done
+      [ -z "$skip" ] || continue
+      set --
+      [ -z "$pr" ] || set -- "$pr"
+      [ -z "$repo" ] || set -- "$@" -R "$repo"
+      check "$@" || exit 2
+      ;;
+    api\ *)
+      target=$(printf '%s\n' "$segment" | sed -nE 's#.*repos/([^/ ]+/[^/ ]+)/pulls/([0-9]+)/merge.*#\1 \2#p')
+      [ -n "$target" ] || continue
+      check "${target#* }" -R "${target% *}" || exit 2
+      ;;
+  esac
+done

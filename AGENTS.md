@@ -11,6 +11,7 @@ install it.
 | [skills/](skills/) | Skill packages and their eval scenarios under `evals/` |
 | [cli/slopguard/](cli/slopguard/) | Go review CLI; its own [agent guide](cli/slopguard/AGENTS.md) and [contributing](cli/slopguard/CONTRIBUTING.md) |
 | [cli/lib/](cli/lib/) | Shared Go module for the CLIs, tagged `cli/lib/vX.Y.Z` ([README](cli/lib/README.md)) |
+| [hooks/](hooks/) | Plugin hooks; the merge guard runs [slopnanny's merge-ready](skills/slopnanny/scripts/merge-ready) before `gh pr merge` |
 | [rules/](rules/) | Global agent rules consumers fetch raw from `main`; skills must work without them |
 | [plugin.json](plugin.json), [.claude-plugin/](.claude-plugin/) | Portable and Claude-compatible plugin manifests and marketplace |
 | [tools/skill-evals/](tools/skill-evals/) | npm surface for the skillcheck lint and eval harness |
@@ -23,6 +24,7 @@ install it.
 | `skills/`, `cli/*/skills/` | `npm ci && npm run lint && npm run audit` in `tools/skill-evals` ([evals](tools/skill-evals/README.md)) |
 | `cli/slopguard/` | `mise run verify` in `cli/slopguard` |
 | `cli/lib/` | `mise run verify` in `cli/lib` |
+| `hooks/`, `skills/slopnanny/scripts/` | `sh hooks/merge-guard.test.sh` |
 
 [Verify](.github/workflows/verify.yml) runs only the lanes a change touches and
 requires them through its `verify` job.
