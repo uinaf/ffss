@@ -51,9 +51,18 @@ block() { blockers="${blockers}- $1
 [ "$decision" != REVIEW_REQUIRED ] || block "a required approving review is missing"
 [ -z "$checks" ] || block "checks not green: $checks"
 
-stale=$(gh api --paginate "repos/$slug/pulls/$number/reviews?per_page=100" \
-  --jq "[.[] | select((.user.login | endswith(\"[bot]\") | not) and (.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\" or .state == \"DISMISSED\"))]
-    | group_by(.user.login) | map(last) | .[] | select(.state == \"APPROVED\" and .commit_id != \"$head\") | .user.login") ||
+stale=$(gh api graphql \
+  -F owner="$owner" -F name="$name" -F number="$number" \
+  -f query='query($owner: String!, $name: String!, $number: Int!) {
+    repository(owner: $owner, name: $name) {
+      pullRequest(number: $number) {
+        latestOpinionatedReviews(first: 100) { nodes { state author { login } commit { oid } } }
+      }
+    }
+  }' \
+  --jq ".data.repository.pullRequest.latestOpinionatedReviews.nodes[]
+    | select(.state == \"APPROVED\" and .commit.oid != \"$head\" and ((.author.login // \"\") | endswith(\"[bot]\") | not))
+    | .author.login") ||
   fail "cannot read reviews"
 [ -z "$stale" ] || block "approval predates $short: $(printf '%s' "$stale" | tr '\n' ' ' | sed 's/ $//'); re-request review"
 

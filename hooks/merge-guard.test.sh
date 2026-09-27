@@ -11,10 +11,13 @@ cat > "$work/bin/gh" <<'GH'
 printf '%s\n' "$*" >> "$DATA/calls"
 case "$1 $2" in
   "pr view") cat "$DATA/view" ;;
-  "api graphql") cat "$DATA/threads" ;;
+  "api graphql")
+    case "$*" in
+      *latestOpinionatedReviews*) cat "$DATA/stale" ;;
+      *) cat "$DATA/threads" ;;
+    esac ;;
   *)
     case "$*" in
-      *APPROVED*) cat "$DATA/stale" ;;
       *summary-author*) [ ! -s "$DATA/comments" ] || printf 'summary-author %s\n' "${AUTHOR:-chatgpt-codex-connector[bot]}" ;;
       *reactions*) cat "$DATA/reactions" ;;
       */comments*) cat "$DATA/comments" ;;
