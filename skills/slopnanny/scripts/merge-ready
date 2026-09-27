@@ -1,9 +1,9 @@
 #!/bin/sh
 # Usage: merge-ready [PR] [-R OWNER/REPO]
 # Exits 0 when the pull request has green checks, no unresolved review thread,
-# no pending requested reviewer or change request, and no auto-review running on or
-# missing from its head; otherwise prints each blocker and exits 1. Exits 2
-# when GitHub cannot be read.
+# no pending reviewer, change request or stale approval, no auto-review running
+# on or missing from its head, and nothing else GitHub reports as blocking;
+# otherwise prints each blocker and exits 1. Exits 2 when GitHub can't be read.
 set -eu
 
 pr=
@@ -23,9 +23,10 @@ fail() { printf 'merge-ready: %s\n' "$1" >&2; exit 2; }
 set --
 [ -n "$pr" ] && set -- "$pr"
 [ -n "$repo" ] && set -- "$@" -R "$repo"
-view=$(gh pr view "$@" --json number,url,headRefOid,state,reviewDecision,reviewRequests,createdAt,statusCheckRollup \
+view=$(gh pr view "$@" --json number,url,headRefOid,state,reviewDecision,reviewRequests,createdAt,statusCheckRollup,mergeStateStatus \
   --jq '.number, .url, .headRefOid, .state, (.reviewDecision // ""), ([.reviewRequests[] | .login // .slug // .name] | join(",")), ((now - (.createdAt | fromdateiso8601)) | floor),
-    ([.statusCheckRollup[] | select(((.conclusion // "") + (.state // "")) as $s | ["SUCCESS", "SKIPPED", "NEUTRAL"] | index($s) | not) | (.name // .context)] | join(","))') ||
+    ([.statusCheckRollup[] | select(((.conclusion // "") + (.state // "")) as $s | ["SUCCESS", "SKIPPED", "NEUTRAL"] | index($s) | not) | (.name // .context)] | join(",")),
+    .mergeStateStatus') ||
   fail "cannot read the pull request"
 field() { printf '%s\n' "$view" | sed -n "${1}p"; }
 number=$(field 1)
@@ -36,6 +37,7 @@ decision=$(field 5)
 requested=$(field 6)
 age=$(field 7)
 checks=$(field 8)
+merge_state=$(field 9)
 slug=$(printf '%s' "$url" | sed -E 's#^https://[^/]+/([^/]+/[^/]+)/pull/[0-9]+$#\1#')
 owner=${slug%/*}
 name=${slug#*/}
@@ -118,6 +120,13 @@ elif [ -n "$rows" ] && [ -z "$head_reviewed" ]; then
   block "Codex has not reviewed $short; wait for it, or comment \"@codex review\""
 elif [ -z "$summary" ] && [ -z "$eyes" ] && [ "${age:-0}" -lt 120 ]; then
   block "opened ${age}s ago; give auto-review bots two minutes to start"
+fi
+
+# Anything else GitHub still requires, such as a required check that never ran.
+if [ -z "$blockers" ]; then
+  case $merge_state in
+    BLOCKED | DIRTY) block "GitHub reports the merge as $merge_state" ;;
+  esac
 fi
 
 if [ -n "$blockers" ]; then

@@ -34,7 +34,7 @@ running_row="| 📝 **Code Review** | 🔄 **Running** since <relative-time date
 old_row="| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"x\">x</relative-time> | \`fedcba9\` | PR opened |"
 
 fixture() {
-  printf '7\nhttps://github.com/acme/app/pull/7\n%s\nOPEN\n%s\n%s\n%s\n%s\n' "$head" "${DECISION:-}" "${REQUESTED:-}" "${AGE:-600}" "${CHECKS:-}" > "$DATA/view"
+  printf '7\nhttps://github.com/acme/app/pull/7\n%s\nOPEN\n%s\n%s\n%s\n%s\n%s\n' "$head" "${DECISION:-}" "${REQUESTED:-}" "${AGE:-600}" "${CHECKS:-}" "${MERGE_STATE:-CLEAN}" > "$DATA/view"
   printf '%s' "${THREADS:-}" > "$DATA/threads"
   printf '%s' "${EYES:-}" > "$DATA/reactions"
   if [ -n "${NOSUMMARY:-}" ]; then
@@ -87,6 +87,8 @@ expect() {
 (ROW=$old_row REVIEWS="other-bot[bot]" fixture); expect 2 "another bot's review does not settle Codex" "gh pr merge 7"
 (fixture); expect 2 "--auto=true is refused" "gh pr merge 7 --auto=true"
 (THREADS="unresolved thread by bot at a.go:3" fixture); expect 0 "merge help is not a merge" "gh pr merge --help"
+(MERGE_STATE=BLOCKED fixture); expect 2 "a merge GitHub reports blocked is refused" "gh pr merge 7 --admin"
+(THREADS="unresolved thread by bot at a.go:3" fixture); expect 2 "if-prefixed merge is checked" "if gh pr merge 7; then echo ok; fi"
 (REQUESTED=octocat fixture); expect 2 "pending reviewer blocks" "gh pr merge 7"
 (DECISION=CHANGES_REQUESTED fixture); expect 2 "change request blocks" "gh pr merge 7"
 (THREADS="unresolved thread by bot at a.go:3" fixture); expect 2 "API merge blocks" "gh api -X PUT repos/acme/app/pulls/7/merge"
@@ -113,6 +115,8 @@ target "quoted API endpoint" "gh api -X PUT 'repos/acme/other/pulls/7/merge'" "p
 target "quoted multiword subject keeps the PR" "gh pr merge --subject 'Update docs' 7 -R acme/other" "pr view 7 -R acme/other"
 mkdir -p "$work/grouped"
 target "grouped cd and merge" "(cd $work/grouped && gh pr merge 7 --squash)" "grouped :: pr view 7"
+mkdir -p "$work/My Repo"
+target "quoted cd path with a space" "cd \\\"$work/My Repo\\\" && gh pr merge 7" "My Repo :: pr view 7"
 (ROW=$old_row EYES="chatgpt-codex-connector[bot]" REVIEWS="other-bot[bot]" fixture); expect 2 "another bot's review does not settle a 👀" "gh pr merge 7"
 (ROW=$old_row EYES="chatgpt-codex-connector[bot]" REVIEWS="chatgpt-codex-connector[bot]" fixture); expect 0 "the reacting bot's review settles it" "gh pr merge 7"
 
