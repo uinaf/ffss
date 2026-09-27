@@ -15,7 +15,7 @@ $ gh pr view 57 --json state,mergeStateStatus,reviewDecision,headRefOid,createdA
 {
   "state": "OPEN",
   "mergeStateStatus": "CLEAN",
-  "reviewDecision": "",
+  "reviewDecision": "APPROVED",
   "headRefOid": "b7c8d9e",
   "createdAt": "2026-09-25T15:18:56Z"
 }
@@ -26,6 +26,9 @@ test     pass  3m40s
 lint     pass  22s
 
 # all checks above ran against head b7c8d9e (opened 15:18, now 15:21)
+
+$ gh api repos/example/api/pulls/57/reviews --jq '.[] | "\(.user.login) \(.state) \(.commit_id)"'
+maintainer APPROVED b7c8d9e
 
 $ gh api graphql (reviewThreads for #57)
 {"reviewThreads": {"nodes": []}}
