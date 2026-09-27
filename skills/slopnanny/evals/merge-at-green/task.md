@@ -25,6 +25,9 @@ lint     pass  22s
 
 # all checks above ran against head e4f5a6b (latest push, 14:02)
 
+$ gh api repos/example/api/pulls/42/reviews --jq '.[] | "\(.user.login) \(.state) \(.commit_id)"'
+maintainer APPROVED e4f5a6b
+
 $ gh api graphql (reviewThreads for #42)
 {"reviewThreads": {"nodes": []}}
 

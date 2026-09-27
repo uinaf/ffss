@@ -38,9 +38,10 @@ continues through its owning workflow, so this lane does not end the task.
    owner's `<owner>/.github` default template. Without either, use the
    [house style](../slopscriber/references/style.md): problem, solution, real
    risks, proof only when CI cannot show it, headings only when needed. No
-   implementation inventory. The body describes the change as it stands, with
-   [no review history](https://github.com/uinaf/ffss/blob/main/rules/agents.md#delivery). Review results go to
-   the user and to thread replies.
+   implementation inventory. The body
+   describes the change as it stands: no review history, finding counts, fix
+   hashes, reviewer names, or iteration narrative. Review results go to the
+   user and to thread replies.
 5. Include a review aid only when it makes the changed behavior substantially
    easier to assess; a clear diff may suffice. Media mechanics:
    [visual-evidence.md](references/visual-evidence.md).
