@@ -74,7 +74,8 @@ grok plugin install uinaf/ffss --trust
 The plugin also ships a `PreToolUse` hook that blocks `gh pr merge` and
 `gh api .../pulls/N/merge` until [merge-ready](skills/slopnanny/scripts/merge-ready)
 passes: no unresolved review thread, pending reviewer, change request, or
-auto-review still running on the head. It needs `gh` and `jq`. Codex runs it
+auto-review still running on the head. It refuses `gh pr merge --auto`, which
+would merge later heads unchecked. It needs `gh` and `jq`. Codex runs it
 after you trust it in `/hooks`.
 
 ## License

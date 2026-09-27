@@ -15,7 +15,7 @@ deny() {
 }
 
 if ! command -v jq >/dev/null 2>&1; then
-  printf '%s' "$input" | grep -Eq 'gh +(pr +merge|api .*pulls/[0-9]+/merge)' &&
+  printf '%s' "$input" | grep -Eq 'gh .*merge' &&
     deny "Install jq so the guard can read the command."
   exit 0
 fi
@@ -30,7 +30,7 @@ ready="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)/skills/slopnanny/script
 segments=$(printf '%s\n' "$command" | tr ';&|' '\n')
 
 check() {
-  if ! output=$(cd "${cwd:-.}" 2>/dev/null && "$ready" "$@" 2>&1); then
+  if ! output=$(cd "${cwd:-.}" 2>/dev/null && GH_HOST=${host:-${GH_HOST:-github.com}} "$ready" "$@" 2>&1); then
     deny "$output
 Wait for review bots to finish on the current head (or comment \"@codex review\" if none ran), resolve every thread, then merge."
   fi
@@ -42,18 +42,27 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
   set -- $segment
   set +f
   env_repo=${GH_REPO:-}
+  host=
+  if [ "${1:-}" = cd ]; then
+    [ "$#" -ge 2 ] || cwd=$HOME
+    # shellcheck disable=SC2088
+    case ${2:-} in
+      "" | -*) ;;
+      "~") cwd=$HOME ;;
+      '~/'*) cwd=$HOME/${2#??} ;;
+      /*) cwd=$2 ;;
+      *) cwd=${cwd:-.}/$2 ;;
+    esac
+    continue
+  fi
+  # Only assignments and launchers may precede gh.
   while [ "$#" -gt 0 ] && [ "$1" != gh ]; do
-    if [ "$1" = cd ] && [ "$#" -ge 2 ]; then
-      # shellcheck disable=SC2088
-      case $2 in
-        "~") cwd=$HOME ;;
-        '~/'*) cwd=$HOME/${2#??} ;;
-        /*) cwd=$2 ;;
-        *) cwd=${cwd:-.}/$2 ;;
-      esac
-      break
-    fi
-    case $1 in GH_REPO=*) env_repo=${1#GH_REPO=} ;; esac
+    case $1 in
+      GH_REPO=*) env_repo=${1#GH_REPO=} ;;
+      GH_HOST=*) host=${1#GH_HOST=} ;;
+      *=* | env | command | exec | sudo | time | nohup) ;;
+      *) break ;;
+    esac
     shift
   done
   [ "$#" -ge 2 ] || continue
@@ -64,13 +73,17 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
   pr=
   repo=
   skip=
+  auto=
   api=
   while [ "$#" -gt 0 ]; do
     case $1 in
       -R | --repo) repo=${2:-}; shift ;;
       --repo=*) repo=${1#--repo=} ;;
       --disable-auto) skip=1 ;;
-      -t | --subject | -b | --body | -F | --body-file | -A | --author-email | --match-head-commit | -X | --method | -H | --header | -f | --raw-field | --field | --hostname | -q | --jq)
+      --auto) auto=1 ;;
+      --hostname) host=${2:-}; shift ;;
+      --hostname=*) host=${1#--hostname=} ;;
+      -t | --subject | -b | --body | -F | --body-file | -A | --author-email | --match-head-commit | -X | --method | -H | --header | -f | --raw-field | --field | -q | --jq | --input | --preview | -p | --template | --cache)
         shift ;;
       -*) ;;
       *)
@@ -87,6 +100,8 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
   case $words in
     "pr merge")
       [ -z "$skip" ] || continue
+      [ -z "$auto" ] ||
+        deny "Auto-merge would merge later heads without this check. Run $ready, then merge directly."
       set --
       [ -z "$pr" ] || set -- "$pr"
       [ -z "$repo" ] || set -- "$@" -R "$repo"
