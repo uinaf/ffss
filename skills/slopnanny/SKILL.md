@@ -61,5 +61,6 @@ hashes, nothing that doesn't advance the thread.
   method and report the merged commit; don't ask first. Hold only when asked.
   Never merge past a blocking human review or an open thread.
 - On GitHub, merge only after `scripts/merge-ready [PR] [-R OWNER/REPO]` exits 0;
-  it lists failing checks, unresolved threads, pending reviewers, and running
-  auto-reviews.
+  it lists failing checks, unresolved threads, stale approvals, pending
+  reviewers, and running auto-reviews. The plugin's merge hook runs it but fails
+  open after its 60 s timeout.

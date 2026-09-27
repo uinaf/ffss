@@ -51,6 +51,12 @@ block() { blockers="${blockers}- $1
 [ "$decision" != REVIEW_REQUIRED ] || block "a required approving review is missing"
 [ -z "$checks" ] || block "checks not green: $checks"
 
+stale=$(gh api --paginate "repos/$slug/pulls/$number/reviews?per_page=100" \
+  --jq "[.[] | select((.user.login | endswith(\"[bot]\") | not) and (.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\" or .state == \"DISMISSED\"))]
+    | group_by(.user.login) | map(last) | .[] | select(.state == \"APPROVED\" and .commit_id != \"$head\") | .user.login") ||
+  fail "cannot read reviews"
+[ -z "$stale" ] || block "approval predates $short: $(printf '%s' "$stale" | tr '\n' ' ' | sed 's/ $//'); re-request review"
+
 unresolved=$(gh api graphql --paginate \
   -F owner="$owner" -F name="$name" -F number="$number" \
   -f query='query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
@@ -73,6 +79,9 @@ unresolved=$(gh api graphql --paginate \
 eyes=$(gh api --paginate "repos/$slug/issues/$number/reactions" \
   --jq '.[] | select(.content == "eyes" and (.user.login | endswith("[bot]"))) | .user.login') ||
   fail "cannot read reactions"
+authors=$(gh api --paginate "repos/$slug/issues/$number/comments" \
+  --jq '.[] | select((.user.login | endswith("[bot]")) and (.body | contains("<!-- codex-pull-request-review-summary -->"))) | "summary-author \(.user.login)"') ||
+  fail "cannot read comments"
 summary=$(gh api --paginate "repos/$slug/issues/$number/comments" \
   --jq '.[] | select((.user.login | endswith("[bot]")) and (.body | contains("<!-- codex-pull-request-review-summary -->"))) | .body') ||
   fail "cannot read comments"
@@ -80,13 +89,13 @@ running=$(printf '%s\n' "$summary" | grep '^| ' | grep -v -e '^| Review |' -e '^
   grep -v -e 'Completed' -e 'Failed' -e 'Cancel' -e 'Skipped' | grep -F "\`$short\`" || true)
 head_reviewed=$(printf '%s\n' "$summary" | grep '^| ' | grep 'Completed' | grep -F "\`$short\`" || true)
 if [ -z "$head_reviewed" ]; then
-  reviewers=$(printf '%s\n' "$eyes" | sed '/^$/d' | sort -u | tr '\n' ' ')
+  reviewers=$(printf '%s\n%s\n' "$eyes" "$(printf '%s\n' "$authors" | sed 's/^summary-author //')" | sed '/^$/d' | sort -u | tr '\n' ' ')
   logins=$(gh api --paginate "repos/$slug/pulls/$number/reviews" \
     --jq ".[] | select((.user.login | endswith(\"[bot]\")) and .commit_id == \"$head\") | .user.login") ||
     fail "cannot read reviews"
   head_reviewed=$(printf '%s\n' "$logins" | sed '/^$/d' |
     while IFS= read -r login || [ -n "$login" ]; do
-      # With a 👀 reaction pending, only that bot's own review settles it.
+      # Once a bot reacted or posted a summary, only its own review settles it.
       case " ${reviewers:-$login }" in (*" $login "*) printf '%s\n' "$login" ;; esac
     done)
 fi

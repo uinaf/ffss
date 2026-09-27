@@ -38,6 +38,7 @@ Wait for review bots to finish on the current head (or comment \"@codex review\"
 
 printf '%s\n' "$segments" | while IFS= read -r segment; do
   set -f
+  segment=$(printf '%s' "$segment" | tr -d "\"'")
   # shellcheck disable=SC2086
   set -- $segment
   set +f
@@ -65,7 +66,10 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
     case $1 in
       GH_REPO=*) env_repo=${1#GH_REPO=} ;;
       GH_HOST=*) host=${1#GH_HOST=} ;;
-      *=* | env | command | exec | sudo | time | nohup) ;;
+      -u | -g | -C | -a | --unset | --chdir | --user | --group)
+        [ "$1" = -C ] || [ "$1" = --chdir ] && cwd=${2:-$cwd}
+        shift ;;
+      *=* | -* | env | command | exec | sudo | time | nohup | */env | */sudo) ;;
       *) break ;;
     esac
     shift
@@ -84,8 +88,10 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
     case $1 in
       -R | --repo) repo=${2:-}; shift ;;
       --repo=*) repo=${1#--repo=} ;;
+      -R?*) repo=${1#-R} ;;
       --disable-auto) skip=1 ;;
       --auto) auto=1 ;;
+      --auto=*) [ "${1#--auto=}" = false ] || auto=1 ;;
       --hostname) host=${2:-}; shift ;;
       --hostname=*) host=${1#--hostname=} ;;
       -t | --subject | -b | --body | -F | --body-file | -A | --author-email | --match-head-commit | -X | --method | -H | --header | -f | --raw-field | --field | -q | --jq | --input | --preview | -p | --template | --cache)
@@ -114,8 +120,11 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
       check "$@" || exit 2
       ;;
     api\ *)
-      target=$(printf '%s\n' "$api" | sed -nE 's#^(https?://[^/]+)?/?repos/([^/]+/[^/]+)/pulls/([0-9]+)/merge([?].*)?$#\2 \3#p')
+      target=$(printf '%s\n' "$api" | sed -nE 's#^(https?://([^/]+)(/api/v3)?)?/?repos/([^/]+/[^/]+)/pulls/([0-9]+)/merge([?].*)?$#\4 \5 \2#p')
       [ -n "$target" ] || continue
+      url_host=${target##* }
+      target=${target% *}
+      case $url_host in "" | api.github.com) ;; *) host=$url_host ;; esac
       slug=${target% *}
       case $slug in
         "{owner}/{repo}") set -- "${target#* }"; [ -z "$repo" ] || set -- "$@" -R "$repo" ;;

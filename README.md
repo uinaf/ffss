@@ -75,7 +75,7 @@ The plugin also ships a `PreToolUse` hook that blocks `gh pr merge` and
 `gh api .../pulls/N/merge` until [merge-ready](skills/slopnanny/scripts/merge-ready)
 passes: green checks and no unresolved review thread, pending reviewer, change
 request, or auto-review still running on the head. It refuses `gh pr merge --auto`, which
-would merge later heads unchecked. It needs `gh` and `jq`. Codex runs it
+would merge later heads unchecked. It needs `gh` and `jq`, and fails open if it runs past its 60 s timeout. Codex runs it
 after you trust it in `/hooks`.
 
 ## License
