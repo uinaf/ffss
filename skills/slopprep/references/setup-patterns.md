@@ -155,9 +155,9 @@ Once you know the missing contract, study two public implementations:
   [installed-package smoke](https://github.com/uinaf/workspace-kit/blob/main/scripts/smoke-package.mjs),
   and [CI gate](https://github.com/uinaf/workspace-kit/blob/main/.github/workflows/verify.yml):
   one package-owned local/CI lifecycle with consumer proof.
-- [`uinaf/dotfiles` task graph](https://github.com/uinaf/dotfiles/blob/main/mise.toml),
-  [check registry](https://github.com/uinaf/dotfiles/blob/main/scripts/verify/checks.json),
-  and [runner](https://github.com/uinaf/dotfiles/blob/main/scripts/verify/run.ts):
+- [`altaywtf/dotfiles` task graph](https://github.com/altaywtf/dotfiles/blob/main/mise.toml),
+  [check registry](https://github.com/altaywtf/dotfiles/blob/main/verify/checks.json),
+  and [runner](https://github.com/altaywtf/dotfiles/blob/main/verify/run.ts):
   deterministic domain selection, parallel checks, and failure aggregation in
   a heterogeneous repository.
 
