@@ -43,9 +43,9 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
   set +f
   while [ "$#" -gt 0 ] && [ "$1" != gh ]; do
     if [ "$1" = cd ] && [ "$#" -ge 2 ]; then
+      # shellcheck disable=SC2088
       case $2 in
         "~") cwd=$HOME ;;
-        # shellcheck disable=SC2088
         '~/'*) cwd=$HOME/${2#??} ;;
         /*) cwd=$2 ;;
         *) cwd=${cwd:-.}/$2 ;;

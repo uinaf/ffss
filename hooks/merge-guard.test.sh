@@ -29,10 +29,14 @@ running_row="| 📝 **Code Review** | 🔄 **Running** since <relative-time date
 old_row="| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"x\">x</relative-time> | \`fedcba9\` | PR opened |"
 
 fixture() {
-  printf '7\nhttps://github.com/acme/app/pull/7\n%s\nOPEN\n%s\n%s\n' "$head" "${DECISION:-}" "${REQUESTED:-}" > "$DATA/view"
+  printf '7\nhttps://github.com/acme/app/pull/7\n%s\nOPEN\n%s\n%s\n%s\n' "$head" "${DECISION:-}" "${REQUESTED:-}" "${AGE:-600}" > "$DATA/view"
   printf '%s' "${THREADS:-}" > "$DATA/threads"
   printf '%s' "${EYES:-}" > "$DATA/reactions"
-  printf '<!-- codex-pull-request-review-summary -->\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n%s\n' "${ROW:-$done_row}" > "$DATA/comments"
+  if [ -n "${NOSUMMARY:-}" ]; then
+    : > "$DATA/comments"
+  else
+    printf '<!-- codex-pull-request-review-summary -->\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n%s\n' "${ROW:-$done_row}" > "$DATA/comments"
+  fi
   printf '%s' "${REVIEWS:-}" > "$DATA/reviews"
   : > "$DATA/calls"
 }
@@ -61,6 +65,10 @@ expect() {
 (ROW=$running_row fixture); expect 2 "running Codex review blocks" "cd /tmp && gh pr merge --auto --squash"
 (ROW=$old_row EYES="chatgpt-codex-connector[bot]" fixture); expect 2 "eyes without a head review blocks" "gh pr merge 7 -R acme/app"
 (EYES="chatgpt-codex-connector[bot]" fixture); expect 0 "eyes with a completed head review merges" "gh pr merge 7 -R acme/app"
+(ROW=$old_row fixture); expect 2 "summary without the head blocks" "gh pr merge 7"
+(ROW=$old_row REVIEWS=42 fixture); expect 0 "bot review on the head merges" "gh pr merge 7"
+(NOSUMMARY=1 AGE=30 fixture); expect 2 "fresh PR without auto-review blocks" "gh pr merge 7"
+(NOSUMMARY=1 fixture); expect 0 "PR without auto-review merges after two minutes" "gh pr merge 7"
 (REQUESTED=octocat fixture); expect 2 "pending reviewer blocks" "gh pr merge 7"
 (DECISION=CHANGES_REQUESTED fixture); expect 2 "change request blocks" "gh pr merge 7"
 (THREADS="unresolved thread by bot at a.go:3" fixture); expect 2 "API merge blocks" "gh api -X PUT repos/acme/app/pulls/7/merge"
