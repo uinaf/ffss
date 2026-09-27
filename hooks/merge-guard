@@ -32,7 +32,11 @@ segments=$(printf '%s\n' "$command" | tr ';&|()' '\n' | awk '{
   out = ""; quote = ""
   for (i = 1; i <= length($0); i++) {
     c = substr($0, i, 1)
-    if (quote == "" && (c == "\047" || c == "\"")) quote = c
+    if (quote == "" && c == "\\" && i < length($0)) {
+      i++; c = substr($0, i, 1)
+      out = out ((c == " " || c == "\t") ? "\001" : c)
+    }
+    else if (quote == "" && (c == "\047" || c == "\"")) quote = c
     else if (c == quote) quote = ""
     else out = out ((quote != "" && (c == " " || c == "\t")) ? "\001" : c)
   }
@@ -46,13 +50,25 @@ Wait for review bots to finish on the current head (or comment \"@codex review\"
   fi
 }
 
+exported_repo=${GH_REPO:-}
+exported_host=
 printf '%s\n' "$segments" | while IFS= read -r segment; do
   set -f
   # shellcheck disable=SC2086
   set -- $segment
   set +f
-  env_repo=${GH_REPO:-}
-  host=
+  while [ "${1:-}" = "{" ] || [ "${1:-}" = "!" ]; do shift; done
+  if [ "${1:-}" = export ]; then
+    for word do
+      case $word in
+        GH_REPO=*) exported_repo=${word#GH_REPO=} ;;
+        GH_HOST=*) exported_host=${word#GH_HOST=} ;;
+      esac
+    done
+    continue
+  fi
+  env_repo=$exported_repo
+  host=$exported_host
   if [ "${1:-}" = cd ]; then
     shift
     for word do
