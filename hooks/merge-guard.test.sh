@@ -29,7 +29,7 @@ running_row="| 📝 **Code Review** | 🔄 **Running** since <relative-time date
 old_row="| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"x\">x</relative-time> | \`fedcba9\` | PR opened |"
 
 fixture() {
-  printf '7\nhttps://github.com/acme/app/pull/7\n%s\nOPEN\n%s\n%s\n%s\n' "$head" "${DECISION:-}" "${REQUESTED:-}" "${AGE:-600}" > "$DATA/view"
+  printf '7\nhttps://github.com/acme/app/pull/7\n%s\nOPEN\n%s\n%s\n%s\n%s\n' "$head" "${DECISION:-}" "${REQUESTED:-}" "${AGE:-600}" "${CHECKS:-}" > "$DATA/view"
   printf '%s' "${THREADS:-}" > "$DATA/threads"
   printf '%s' "${EYES:-}" > "$DATA/reactions"
   if [ -n "${NOSUMMARY:-}" ]; then
@@ -73,6 +73,10 @@ expect() {
 (THREADS="unresolved thread by bot at a.go:3" fixture); expect 0 "a mention of gh in echo is not a merge" "echo gh pr merge 7"
 (DECISION=REVIEW_REQUIRED fixture); expect 2 "missing required approval blocks" "gh pr merge 7 --admin"
 (THREADS="unresolved thread by bot at a.go:3" fixture); expect 2 "api --input before the endpoint blocks" "gh api -X PUT --input body.json repos/acme/app/pulls/7/merge"
+(CHECKS=verify fixture); expect 2 "a pending or failed check blocks" "gh pr merge 7 --admin"
+(ROW="$running_row" fixture); expect 2 "absolute gh path is checked" "/usr/bin/gh pr merge 7"
+(ROW="$old_row" fixture); expect 2 "query-bearing API endpoint is checked" "gh api -X PUT https://api.github.com/repos/acme/app/pulls/7/merge?x=1"
+(fixture); expect 2 "cd - fails closed" "cd - && gh pr merge 7"
 (REQUESTED=octocat fixture); expect 2 "pending reviewer blocks" "gh pr merge 7"
 (DECISION=CHANGES_REQUESTED fixture); expect 2 "change request blocks" "gh pr merge 7"
 (THREADS="unresolved thread by bot at a.go:3" fixture); expect 2 "API merge blocks" "gh api -X PUT repos/acme/app/pulls/7/merge"

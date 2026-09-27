@@ -44,19 +44,24 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
   env_repo=${GH_REPO:-}
   host=
   if [ "${1:-}" = cd ]; then
-    [ "$#" -ge 2 ] || cwd=$HOME
+    shift
+    while [ "$#" -gt 0 ]; do
+      case $1 in -L | -P | -e | -@ | -LP | -PL) shift ;; --) shift; break ;; *) break ;; esac
+    done
+    [ "$#" -ge 1 ] || cwd=$HOME
     # shellcheck disable=SC2088
-    case ${2:-} in
-      "" | -*) ;;
+    case ${1:-} in
+      "") ;;
+      -) cwd=/nonexistent/previous-directory ;;
       "~") cwd=$HOME ;;
-      '~/'*) cwd=$HOME/${2#??} ;;
-      /*) cwd=$2 ;;
-      *) cwd=${cwd:-.}/$2 ;;
+      '~/'*) cwd=$HOME/${1#??} ;;
+      /*) cwd=$1 ;;
+      *) cwd=${cwd:-.}/$1 ;;
     esac
     continue
   fi
   # Only assignments and launchers may precede gh.
-  while [ "$#" -gt 0 ] && [ "$1" != gh ]; do
+  while [ "$#" -gt 0 ] && [ "${1##*/}" != gh ]; do
     case $1 in
       GH_REPO=*) env_repo=${1#GH_REPO=} ;;
       GH_HOST=*) host=${1#GH_HOST=} ;;
@@ -66,7 +71,7 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
     shift
   done
   [ "$#" -ge 2 ] || continue
-  [ "$1" = gh ] || continue
+  [ "${1##*/}" = gh ] || continue
   shift
   # Inherited -R/--repo may sit before or between the subcommand words.
   words=
@@ -97,6 +102,7 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
     [ "$#" -gt 0 ] && shift
   done
   [ -n "$repo" ] || repo=$env_repo
+  case $repo in */*/*) host=${repo%%/*}; repo=${repo#*/} ;; esac
   case $words in
     "pr merge")
       [ -z "$skip" ] || continue
@@ -108,7 +114,7 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
       check "$@" || exit 2
       ;;
     api\ *)
-      target=$(printf '%s\n' "$api" | sed -nE 's#^/?repos/([^/]+/[^/]+)/pulls/([0-9]+)/merge$#\1 \2#p')
+      target=$(printf '%s\n' "$api" | sed -nE 's#^(https?://[^/]+)?/?repos/([^/]+/[^/]+)/pulls/([0-9]+)/merge([?].*)?$#\2 \3#p')
       [ -n "$target" ] || continue
       slug=${target% *}
       case $slug in

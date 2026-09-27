@@ -1,7 +1,7 @@
 #!/bin/sh
 # Usage: merge-ready [PR] [-R OWNER/REPO]
-# Exits 0 when the pull request has no unresolved review thread, no pending
-# requested reviewer or change request, and no auto-review running on or
+# Exits 0 when the pull request has green checks, no unresolved review thread,
+# no pending requested reviewer or change request, and no auto-review running on or
 # missing from its head; otherwise prints each blocker and exits 1. Exits 2
 # when GitHub cannot be read.
 set -eu
@@ -23,8 +23,9 @@ fail() { printf 'merge-ready: %s\n' "$1" >&2; exit 2; }
 set --
 [ -n "$pr" ] && set -- "$pr"
 [ -n "$repo" ] && set -- "$@" -R "$repo"
-view=$(gh pr view "$@" --json number,url,headRefOid,state,reviewDecision,reviewRequests,createdAt \
-  --jq '.number, .url, .headRefOid, .state, (.reviewDecision // ""), ([.reviewRequests[] | .login // .slug // .name] | join(",")), ((now - (.createdAt | fromdateiso8601)) | floor)') ||
+view=$(gh pr view "$@" --json number,url,headRefOid,state,reviewDecision,reviewRequests,createdAt,statusCheckRollup \
+  --jq '.number, .url, .headRefOid, .state, (.reviewDecision // ""), ([.reviewRequests[] | .login // .slug // .name] | join(",")), ((now - (.createdAt | fromdateiso8601)) | floor),
+    ([.statusCheckRollup[] | select(((.conclusion // "") + (.state // "")) as $s | ["SUCCESS", "SKIPPED", "NEUTRAL"] | index($s) | not) | (.name // .context)] | join(","))') ||
   fail "cannot read the pull request"
 field() { printf '%s\n' "$view" | sed -n "${1}p"; }
 number=$(field 1)
@@ -34,6 +35,7 @@ state=$(field 4)
 decision=$(field 5)
 requested=$(field 6)
 age=$(field 7)
+checks=$(field 8)
 slug=$(printf '%s' "$url" | sed -E 's#^https://[^/]+/([^/]+/[^/]+)/pull/[0-9]+$#\1#')
 owner=${slug%/*}
 name=${slug#*/}
@@ -47,6 +49,7 @@ block() { blockers="${blockers}- $1
 [ -z "$requested" ] || block "review requested from $requested"
 [ "$decision" != CHANGES_REQUESTED ] || block "changes requested"
 [ "$decision" != REVIEW_REQUIRED ] || block "a required approving review is missing"
+[ -z "$checks" ] || block "checks not green: $checks"
 
 unresolved=$(gh api graphql --paginate \
   -F owner="$owner" -F name="$name" -F number="$number" \
@@ -74,7 +77,7 @@ summary=$(gh api --paginate "repos/$slug/issues/$number/comments" \
   --jq '.[] | select((.user.login | endswith("[bot]")) and (.body | contains("<!-- codex-pull-request-review-summary -->"))) | .body') ||
   fail "cannot read comments"
 running=$(printf '%s\n' "$summary" | grep '^| ' | grep -v -e '^| Review |' -e '^| ---' |
-  grep -v -e 'Completed' -e 'Failed' -e 'Cancel' -e 'Skipped' || true)
+  grep -v -e 'Completed' -e 'Failed' -e 'Cancel' -e 'Skipped' | grep -F "\`$short\`" || true)
 head_reviewed=$(printf '%s\n' "$summary" | grep '^| ' | grep 'Completed' | grep -F "\`$short\`" || true)
 if [ -z "$head_reviewed" ]; then
   reviewers=$(printf '%s\n' "$eyes" | sed '/^$/d' | sort -u | tr '\n' ' ')
