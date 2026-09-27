@@ -49,3 +49,5 @@ continues through its owning workflow, so this lane does not end the task.
    continues with [slopnanny](../slopnanny/SKILL.md), carrying the user's
    existing authority across the handoff. Delivery alone grants no merge,
    auto-merge, branch deletion, or rework authority.
+   When the repository runs auto-review bots, the change request isn't
+   mergeable until they finish on the pushed head.

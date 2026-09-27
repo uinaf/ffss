@@ -25,11 +25,25 @@ lint     pass  22s
 
 # all checks above ran against head e4f5a6b (latest push, 14:02)
 
+$ gh api repos/example/api/pulls/42/reviews --jq '.[] | "\(.user.login) \(.state) \(.commit_id)"'
+maintainer APPROVED e4f5a6b
+
 $ gh api graphql (reviewThreads for #42)
 {"reviewThreads": {"nodes": []}}
 
 $ gh api graphql (reviewRequests for #42)
 {"reviewRequests": {"nodes": []}}
+
+$ gh api repos/example/api/issues/42/reactions --jq '.[] | "\(.user.login) \(.content)"'
+chatgpt-codex-connector[bot] +1
+
+$ gh api repos/example/api/issues/42/comments --jq '.[] | "\(.user.login)\n\(.body)"'
+chatgpt-codex-connector[bot]
+## Codex Review Summary
+
+| Review | Status | Commit | Review trigger |
+| --- | --- | --- | --- |
+| 📝 **Code Review** | ✅ **Completed** | `e4f5a6b` | New commits |
 
 $ gh api repos/example/api --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge}'
 {"allow_squash_merge": true, "allow_merge_commit": false, "allow_rebase_merge": false}

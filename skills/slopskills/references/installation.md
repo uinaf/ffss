@@ -1,7 +1,19 @@
 # Installation details
 
-Open when choosing harness paths, handling source locks, or migrating global
-skills to a repository.
+Open when composing an install command, choosing harness paths, handling source
+locks, or migrating global skills to a repository.
+
+## Example
+
+List the source's skills, then install explicit names for one harness, here
+Codex:
+
+```sh
+npx skills add Effect-TS/skills --list
+npx skills add Effect-TS/skills --skill effect-ts --agent codex --yes
+```
+
+## Paths, locks, and migration
 
 Codex discovers repo skills under `.agents/skills/`; retain the
 installer-managed links for other selected harnesses. Keep installed files and

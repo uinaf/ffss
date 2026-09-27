@@ -72,6 +72,7 @@ jobs:
   release:
     name: release slopguard
     needs: [verify, verify-darwin]
+    if: github.ref == 'refs/heads/main'
     runs-on: macos-26
     timeout-minutes: 45
     environment:

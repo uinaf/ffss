@@ -97,3 +97,7 @@ its template.
 Without a template, write the problem, the solution, and proof CI cannot
 show. Describe the change as it stands, without review history. Reply to fixed
 findings in their threads with the commit hash.
+
+- A new or updated change request isn't mergeable until its auto-review bots
+  finish on that head. Codex never appears in review requests: it shows 👀 or
+  an in-progress summary while running and 👍 when clean.

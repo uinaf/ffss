@@ -42,13 +42,11 @@ with a concrete reason tied to the intended task classes.
   interactive setup, copied secrets, dashboard operation, a developer's live
   session, or manual recovery.
 - **C, functional:** a documented, noninteractive path works once in the
-  declared environment and surfaces useful failure context. Progress is
-  possible; reliability, coverage, or recovery is not. C is a checkpoint, not
-  completion.
+  declared environment and surfaces useful failure context; reliability,
+  coverage, and recovery are unproven.
 - **B, dependable:** reproducible, bounded, enforced, exercised on
   representative real surfaces. The agent completes the intended task class
-  unattended and leaves inspectable evidence. Unqualified readiness work
-  targets at least B.
+  unattended and leaves inspectable evidence.
 - **A, operational:** stays dependable across long-running, concurrent,
   failure-prone operation, with durable state, scoped authority, recovery,
   empirical reliability evidence, and a maintenance loop that turns failures
@@ -159,9 +157,8 @@ agent to hand-create `.env` files or follow a wiki.
 
 ## Evidence Ceilings and Blockers
 
-- E0 justifies at most D; E1 at most C. The ceiling binds the repository and
-  runner headlines alike: a documented runner contract nobody exercised is
-  static evidence, not a higher grade.
+- E0 justifies at most D; E1 at most C, for repository and runner alike: an
+  unexercised runner contract is static evidence.
 - E2 can justify B repository readiness; repeated-autonomy claims stay
   provisional.
 - A requires E3 trials plus E4 recovery or longitudinal evidence for the
