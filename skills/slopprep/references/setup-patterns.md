@@ -20,15 +20,16 @@ failure says whether it belongs to the repository or the runner. No parallel
 `agent-*` wrappers; wire missing entrypoints into package scripts,
 Make/`just`, or checked-in scripts CI already uses.
 
+Own tool versions once: the repository's runtime and package-manager
+declarations, lockfile, catalogs, or tool manager. CI consumes those owners
+instead of copying literals into workflow files.
+
 ### Doctor
 
-Give each driven target one read-only "is this instance worth driving?" check:
-process up, expected build, port owned by the right process, auth valid,
-whichever contracts the target has. Run it before driving and again after
-anything surprising. Doctor never mutates, repairs, or replaces bootstrap; it
-reports whether the instance matches the contract and names the missing
-capability when it does not. A plain repo-local script is a complete
-implementation.
+Check whichever contracts the target has: process up, expected build, port
+owned by the right process, auth valid. Run it before driving and after
+anything surprising. It never mutates or repairs; on a mismatch it names the
+missing capability. A plain repo-local script is enough.
 
 ### Runtime resource ownership
 
@@ -49,11 +50,7 @@ recorded ID or owned process group; anything already running stays running.
   released or ownership accepted.
 - Broad cleanup (`simctl shutdown all`, deleting every container, stopping
   shared databases) only when the command's declared scope owns the entire set.
-- Cleanup never eats the evidence: artifacts and logs survive teardown.
-
-Own tool versions once: the repository's runtime and package-manager
-declarations, lockfile, catalogs, or tool manager. CI consumes those owners
-instead of copying literals into workflow files.
+- Artifacts and logs survive teardown.
 
 Proof selection and failure requirements:
 [verification-contract.md](verification-contract.md).
@@ -81,11 +78,10 @@ target, or framework command.
 
 ## Machine Identity
 
-Credentials fit readiness when ownership is explicit: the runner
-authenticates a machine or workload identity and injects short-lived access;
-the repository declares required scopes and consumes them noninteractively;
-the operator provisions, rotates, revokes, and recovers outside task
-execution.
+The runner authenticates a machine or workload identity and injects
+short-lived access; the repository declares required scopes and consumes them
+noninteractively; the operator provisions, rotates, revokes, and recovers
+outside task execution.
 
 - Separate roles for triage, test fixtures, artifact submission, delivery, and
   production changes.
@@ -103,9 +99,9 @@ exercise the real contract.
 
 ## Isolation
 
-Concurrent tasks must not collide: workspaces, branches, ports, processes,
-databases, external fixtures, artifact paths, result refs. Grade collision
-freedom and cleanup, not one allocation algorithm.
+Concurrent tasks must not collide on workspaces, branches, ports, processes,
+databases, external fixtures, artifact paths, or result refs. Grade collision
+freedom and cleanup, not the allocation algorithm.
 
 - Managed Codex or Claude worktrees may use `.worktreeinclude` for a small
   explicit set of ignored files already covered by `.gitignore`; never broad
@@ -149,7 +145,7 @@ producer, capture time, format, and redaction status to an observed outcome.
 
 ## Maintained Examples
 
-Once you know the missing contract, study two public implementations:
+Once you know the missing contract, study one of these:
 
 - [`uinaf/workspace-kit` lifecycle scripts](https://github.com/uinaf/workspace-kit/blob/main/package.json),
   [installed-package smoke](https://github.com/uinaf/workspace-kit/blob/main/scripts/smoke-package.mjs),

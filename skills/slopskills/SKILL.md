@@ -36,17 +36,11 @@ Use the repository's existing installer and version pin when available;
 otherwise use the skills CLI. Check its help and list the selected source's
 skills before installation, since names and package layouts can change.
 
-Run from the target repo root. Select explicit skill names and only the requested
-or repository-configured harnesses. For example, with Codex:
-
-```sh
-npx skills add Effect-TS/skills --list
-npx skills add Effect-TS/skills --skill effect-ts --agent codex --yes
-```
-
-Use project scope, never `--global` or `--all`. Do not commit absolute links
-into a home directory or plugin cache, or prune global or unrelated skills as
-a side effect. Harness paths, lockfiles, and global-to-local migration:
+Run from the target repo root. Select explicit skill names and only the
+requested or repository-configured harnesses. Use project scope, never
+`--global` or `--all`. Do not commit absolute links into a home directory or
+plugin cache, or prune global or unrelated skills as a side effect. Command
+example, harness paths, lockfiles, and global-to-local migration:
 [installation.md](references/installation.md).
 
 ## Make discoverable and verify
