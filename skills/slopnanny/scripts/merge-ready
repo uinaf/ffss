@@ -1,0 +1,134 @@
+#!/bin/sh
+# Usage: merge-ready [PR] [-R OWNER/REPO]
+# Exits 0 when the pull request has green checks, no unresolved review thread,
+# no pending reviewer, change request or stale approval, no auto-review running
+# on or missing from its head, and nothing else GitHub reports as blocking;
+# otherwise prints each blocker and exits 1. Exits 2 when GitHub can't be read.
+set -eu
+
+pr=
+repo=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -R | --repo) repo=${2:?missing value for $1}; shift 2 ;;
+    --repo=*) repo=${1#--repo=}; shift ;;
+    -h | --help) sed -n '2,6s/^# \{0,1\}//p' "$0"; exit 0 ;;
+    -*) printf 'merge-ready: unknown option %s\n' "$1" >&2; exit 2 ;;
+    *) pr=$1; shift ;;
+  esac
+done
+
+fail() { printf 'merge-ready: %s\n' "$1" >&2; exit 2; }
+
+set --
+[ -n "$pr" ] && set -- "$pr"
+[ -n "$repo" ] && set -- "$@" -R "$repo"
+view=$(gh pr view "$@" --json number,url,headRefOid,state,reviewDecision,reviewRequests,createdAt,statusCheckRollup,mergeStateStatus \
+  --jq '.number, .url, .headRefOid, .state, (.reviewDecision // ""), ([.reviewRequests[] | .login // .slug // .name] | join(",")), ((now - (.createdAt | fromdateiso8601)) | floor),
+    ([.statusCheckRollup[] | select(((.conclusion // "") + (.state // "")) as $s | ["SUCCESS", "SKIPPED", "NEUTRAL"] | index($s) | not) | (.name // .context)] | join(",")),
+    .mergeStateStatus') ||
+  fail "cannot read the pull request"
+field() { printf '%s\n' "$view" | sed -n "${1}p"; }
+number=$(field 1)
+url=$(field 2)
+head=$(field 3)
+state=$(field 4)
+decision=$(field 5)
+requested=$(field 6)
+age=$(field 7)
+checks=$(field 8)
+merge_state=$(field 9)
+slug=$(printf '%s' "$url" | sed -E 's#^https://[^/]+/([^/]+/[^/]+)/pull/[0-9]+$#\1#')
+owner=${slug%/*}
+name=${slug#*/}
+short=$(printf '%s' "$head" | cut -c1-7)
+
+blockers=
+block() { blockers="${blockers}- $1
+"; }
+
+[ "$state" = OPEN ] || block "state is $state"
+[ -z "$requested" ] || block "review requested from $requested"
+[ "$decision" != CHANGES_REQUESTED ] || block "changes requested"
+[ "$decision" != REVIEW_REQUIRED ] || block "a required approving review is missing"
+[ -z "$checks" ] || block "checks not green: $checks"
+
+stale=$(gh api graphql \
+  -F owner="$owner" -F name="$name" -F number="$number" \
+  -f query='query($owner: String!, $name: String!, $number: Int!) {
+    repository(owner: $owner, name: $name) {
+      pullRequest(number: $number) {
+        latestOpinionatedReviews(first: 100) { nodes { state author { login } commit { oid } } }
+      }
+    }
+  }' \
+  --jq ".data.repository.pullRequest.latestOpinionatedReviews.nodes[]
+    | select(.state == \"APPROVED\" and .commit.oid != \"$head\" and ((.author.login // \"\") | endswith(\"[bot]\") | not))
+    | .author.login") ||
+  fail "cannot read reviews"
+[ -z "$stale" ] || block "approval predates $short: $(printf '%s' "$stale" | tr '\n' ' ' | sed 's/ $//'); re-request review"
+
+unresolved=$(gh api graphql --paginate \
+  -F owner="$owner" -F name="$name" -F number="$number" \
+  -f query='query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
+    repository(owner: $owner, name: $name) {
+      pullRequest(number: $number) {
+        reviewThreads(first: 100, after: $endCursor) {
+          nodes { isResolved path line comments(first: 1) { nodes { author { login } } } }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[]
+    | select(.isResolved | not)
+    | "unresolved thread by \(.comments.nodes[0].author.login // "unknown") at \(.path):\(.line // "file")"') ||
+  fail "cannot read review threads"
+[ -z "$unresolved" ] || blockers="${blockers}$(printf '%s\n' "$unresolved" | sed 's/^/- /')
+"
+
+eyes=$(gh api --paginate "repos/$slug/issues/$number/reactions" \
+  --jq '.[] | select(.content == "eyes" and (.user.login | endswith("[bot]"))) | .user.login') ||
+  fail "cannot read reactions"
+authors=$(gh api --paginate "repos/$slug/issues/$number/comments" \
+  --jq '.[] | select((.user.login | endswith("[bot]")) and (.body | contains("<!-- codex-pull-request-review-summary -->"))) | "summary-author \(.user.login)"') ||
+  fail "cannot read comments"
+summary=$(gh api --paginate "repos/$slug/issues/$number/comments" \
+  --jq '.[] | select((.user.login | endswith("[bot]")) and (.body | contains("<!-- codex-pull-request-review-summary -->"))) | .body') ||
+  fail "cannot read comments"
+running=$(printf '%s\n' "$summary" | grep '^| ' | grep -v -e '^| Review |' -e '^| ---' |
+  grep -v -e 'Completed' -e 'Failed' -e 'Cancel' -e 'Skipped' | grep -F "\`$short\`" || true)
+row_done=$(printf '%s\n' "$summary" | grep '^| ' | grep 'Completed' | grep -F "\`$short\`" || true)
+summary_bots=$(printf '%s\n' "$authors" | sed -n 's/^summary-author //p' | sort -u)
+reviewed=$(gh api --paginate "repos/$slug/pulls/$number/reviews" \
+  --jq ".[] | select((.user.login | endswith(\"[bot]\")) and .commit_id == \"$head\") | .user.login") ||
+  fail "cannot read reviews"
+# A bot is done with the head once it reviewed it, or, for the summary bot,
+# once its row for the head reads completed.
+done_bots=$(printf '%s\n' "$reviewed" | sed '/^$/d'
+  [ -z "$row_done" ] || printf '%s\n' "$summary_bots")
+waiting=$(printf '%s\n' "$eyes" "$summary_bots" | sed '/^$/d' | sort -u |
+  while IFS= read -r bot; do
+    printf '%s\n' "$done_bots" | grep -qxF "$bot" || printf '%s\n' "$bot"
+  done)
+
+if [ -n "$running" ]; then
+  block "Codex review still running: $(printf '%s' "$running" | head -n1 | sed -E 's/<[^>]*>//g; s/\*\*//g; s/ +/ /g')"
+elif [ -n "$waiting" ]; then
+  block "no review of $short yet from $(printf '%s' "$waiting" | tr '\n' ' ' | sed 's/ $//'); wait, or comment \"@codex review\""
+elif [ -z "$summary" ] && [ -z "$eyes" ] && [ "${age:-0}" -lt 120 ]; then
+  block "opened ${age}s ago; give auto-review bots two minutes to start"
+fi
+
+# Anything else GitHub still requires, such as a required check that never ran.
+if [ -z "$blockers" ]; then
+  case $merge_state in
+    BLOCKED | DIRTY | BEHIND) block "GitHub reports the merge as $merge_state" ;;
+  esac
+fi
+
+if [ -n "$blockers" ]; then
+  printf 'Not ready to merge %s at %s:\n%s' "$url" "$short" "$blockers"
+  exit 1
+fi
+printf 'Ready to merge %s at %s\n' "$url" "$short"
