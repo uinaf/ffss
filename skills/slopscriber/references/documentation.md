@@ -7,7 +7,7 @@ layout; use these defaults when redistributing overloaded docs.
 | --- | --- |
 | README.md | purpose, install/start, first successful use, links to deeper docs |
 | CONTRIBUTING.md | contributor setup, local run, validation, repo-specific workflow |
-| SECURITY.md | existing private reporting route, scope, and disclosure boundaries |
+| SECURITY.md | existing private reporting route, scope, and disclosure boundaries; skip when an owner `.github` default covers the repository |
 | LICENSE | legal terms |
 
 Coordination workspaces may lead with ownership, quick start, and their
