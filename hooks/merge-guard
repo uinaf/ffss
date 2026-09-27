@@ -28,7 +28,8 @@ ready="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)/skills/slopnanny/script
 # One simple command per line. Quotes are dropped and the blanks inside them
 # become \001 (restored for cd), so a quoted value stays one word; ; & | ( ) inside quotes still
 # split. Leaving a ( ) group does not restore the directory.
-segments=$(printf '%s\n' "$command" | tr ';&|()' '\n' | awk '{
+segments=$(printf '%s\n' "$command" |
+  awk '{ if (sub(/\\$/, "")) printf "%s", $0; else print }' | tr ';&|()' '\n' | awk '{
   out = ""; quote = ""
   for (i = 1; i <= length($0); i++) {
     c = substr($0, i, 1)
@@ -99,7 +100,13 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
         [ "$1" = -C ] || [ "$1" = --chdir ] && cwd=${2:-$cwd}
         shift ;;
       *=* | -* | env | command | exec | sudo | time | nohup | */env | */sudo) ;;
-      timeout | */timeout) shift ;;
+      timeout | */timeout)
+        shift
+        while [ "$#" -gt 0 ]; do
+          case $1 in -k | -s | --kill-after | --signal) shift 2 ;; -*) shift ;; *) break ;; esac
+        done ;;
+      *[\<\>]) shift ;;
+      [0-9]*[\<\>]* | [\<\>]*) ;;
       if | then | else | elif | do | while | until | ! | "{") ;;
       *) break ;;
     esac
