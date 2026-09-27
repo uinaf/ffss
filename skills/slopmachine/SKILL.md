@@ -26,7 +26,7 @@ before treating it as a blocker.
   before verifying and merging.
 - After checks pass, use [slopguard](../slopguard/SKILL.md) for independent
   review and honor any other required reviewers. Follow
-  [slopguard's convergence rule](../slopguard/SKILL.md#convergence) instead of
+  [slopguard's convergence rule](../slopguard/SKILL.md#validate-and-close) instead of
   chasing a clean verdict through repeated calls.
 
 ## Deliver

@@ -1,0 +1,31 @@
+{
+  "context": "Checks are green, there are no threads, and reviewRequests is empty, but the Codex auto-review is still running on the head: its 👀 reaction and the In progress row in its summary comment show it. Codex never appears in reviewRequests. The correct action is to wait for it to finish on b7c8d9e and re-read the forge, not to merge.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Does not merge",
+      "max_score": 40,
+      "description": "actions.md does not run gh pr merge (or enable auto-merge) for PR #57 while the Codex review is in progress. Merging scores 0."
+    },
+    {
+      "name": "Recognizes the running bot review",
+      "max_score": 25,
+      "description": "Cites the Codex 👀 reaction or the In progress summary row as a pending review on head b7c8d9e, and does not treat the empty reviewRequests as meaning no review is pending"
+    },
+    {
+      "name": "Waits and re-reads",
+      "max_score": 20,
+      "description": "Plans a bounded wait or poll for the Codex review to finish (👍 reaction, Completed status, or posted findings), then re-reads checks, threads, and comments before deciding to merge or rework"
+    },
+    {
+      "name": "No noise posted",
+      "max_score": 10,
+      "description": "Posts no status or ping comments to the PR, and does not request a duplicate Codex review while one is running"
+    },
+    {
+      "name": "No invented signals",
+      "max_score": 5,
+      "description": "Acts only on the provided forge state; does not invent findings, failed checks, or reviewers"
+    }
+  ]
+}

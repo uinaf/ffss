@@ -16,6 +16,8 @@ belongs to the required reviewer.
   and top-level comments, where bots often post findings.
 - Green checks and no threads are not settled while a requested reviewer,
   human or bot, is pending. After it submits, re-read everything.
+- Auto-review bots may never appear in review requests. Codex is running while
+  it shows 👀 or an unfinished row in its summary comment, and clean at 👍.
 - Don't reprocess findings a push answered; don't assume a push resolved older
   feedback.
 
@@ -33,7 +35,7 @@ person's concrete, unambiguous fix requests stay in this loop.
    affected runtime proof. When the rework changed behavior, or repository
    policy requires it, run [slopguard](../slopguard/SKILL.md#when) once on the
    final head, not per thread. Apply
-   [slopguard's convergence rule](../slopguard/SKILL.md#convergence) to
+   [slopguard's convergence rule](../slopguard/SKILL.md#validate-and-close) to
    repeated findings; an unresolved blocking review still prevents merge.
 3. Push verified fixes; reply on each addressed thread with the commit hash.
    No force-push without approval. Let requested reviewers finish on the new
@@ -49,6 +51,7 @@ hashes, nothing that doesn't advance the thread.
 - When nothing changed, post nothing on the forge; still tell the user what
   you observed.
 - Merge when required checks are green on the latest commit, no review is
-  pending, and reviewers and threads are clear. Use the repository's merge
+  pending, review evidence (approvals and bot verdicts) applies to that
+  commit, and reviewers and threads are clear. Use the repository's merge
   method and report the merged commit; don't ask first. Hold only when asked.
   Never merge past a blocking human review or an open thread.
