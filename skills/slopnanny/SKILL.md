@@ -16,10 +16,10 @@ belongs to the required reviewer.
   and top-level comments, where bots often post findings.
 - Green checks and no threads are not settled while a requested reviewer,
   human or bot, is pending. After it submits, re-read everything.
-- Auto-review bots may never appear in review requests. An expected bot is
-  pending until it leaves completion evidence for the head: Codex shows 👀 or
-  an unfinished summary row while running, then 👍, findings, or a completed
-  row for that commit.
+- Auto-review bots the repository runs may never appear in review requests.
+  Each is pending until it leaves completion evidence for the head: Codex
+  shows 👀 or an unfinished summary row while running; it is done when its
+  summary row or findings name that commit, or a 👍 appears after the push.
 - Don't reprocess findings a push answered; don't assume a push resolved older
   feedback.
 
