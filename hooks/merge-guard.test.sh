@@ -8,7 +8,7 @@ trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/bin" "$work/data"
 cat > "$work/bin/gh" <<'GH'
 #!/bin/sh
-printf '%s\n' "$*" >> "$DATA/calls"
+printf '%s :: %s\n' "$(basename "$PWD")" "$*" >> "$DATA/calls"
 case "$1 $2" in
   "pr view") cat "$DATA/view" ;;
   "api graphql")
@@ -86,6 +86,7 @@ expect() {
 (STALE=octocat fixture); expect 2 "approval on an older head blocks" "gh pr merge 7"
 (ROW=$old_row REVIEWS="other-bot[bot]" fixture); expect 2 "another bot's review does not settle Codex" "gh pr merge 7"
 (fixture); expect 2 "--auto=true is refused" "gh pr merge 7 --auto=true"
+(THREADS="unresolved thread by bot at a.go:3" fixture); expect 0 "merge help is not a merge" "gh pr merge --help"
 (REQUESTED=octocat fixture); expect 2 "pending reviewer blocks" "gh pr merge 7"
 (DECISION=CHANGES_REQUESTED fixture); expect 2 "change request blocks" "gh pr merge 7"
 (THREADS="unresolved thread by bot at a.go:3" fixture); expect 2 "API merge blocks" "gh api -X PUT repos/acme/app/pulls/7/merge"
@@ -109,6 +110,9 @@ target "attached -R value" "gh -Racme/other pr merge 7" "pr view 7 -R acme/other
 target "env -u before gh" "env -u GH_REPO gh pr merge 7 -R acme/other" "pr view 7 -R acme/other"
 target "sudo -u before gh" "sudo -u me gh pr merge 7 -R acme/other" "pr view 7 -R acme/other"
 target "quoted API endpoint" "gh api -X PUT 'repos/acme/other/pulls/7/merge'" "pr view 7 -R acme/other"
+target "quoted multiword subject keeps the PR" "gh pr merge --subject 'Update docs' 7 -R acme/other" "pr view 7 -R acme/other"
+mkdir -p "$work/grouped"
+target "grouped cd and merge" "(cd $work/grouped && gh pr merge 7 --squash)" "grouped :: pr view 7"
 (ROW=$old_row EYES="chatgpt-codex-connector[bot]" REVIEWS="other-bot[bot]" fixture); expect 2 "another bot's review does not settle a 👀" "gh pr merge 7"
 (ROW=$old_row EYES="chatgpt-codex-connector[bot]" REVIEWS="chatgpt-codex-connector[bot]" fixture); expect 0 "the reacting bot's review settles it" "gh pr merge 7"
 
