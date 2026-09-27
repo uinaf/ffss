@@ -19,7 +19,9 @@ belongs to the required reviewer.
 - Auto-review bots the repository runs may never appear in review requests.
   Each is pending until it leaves completion evidence for the head: Codex
   shows 👀 or an unfinished summary row while running; it is done when its
-  summary row or findings name that commit, or a 👍 appears after the push.
+  summary row for that commit reads completed, its findings name that commit,
+  or a 👍 appears after the push. A bot still unfinished past a bounded wait
+  is a blocker to report, not a pass.
 - Don't reprocess findings a push answered; don't assume a push resolved older
   feedback.
 

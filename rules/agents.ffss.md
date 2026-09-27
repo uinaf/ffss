@@ -10,8 +10,8 @@ lookups, and small edits that ship without a change request.
 - Running an agreed plan end to end: `slopmachine`.
 - Documentation or agent guidance that drifted from its sources: `slopscriber`.
 - Future work to record in the tracker: `slopspec`.
-- Repository readiness for autonomous work: suggest the user-invoked
-  `/slopprep`; missing stack skills: `slopskills`.
+- Repository readiness for autonomous work: ask the user to invoke
+  `slopprep` explicitly; missing stack skills: `slopskills`.
 - Removing AI tells when asked: `slopclean`.
 
 When delegating work in one of these lanes, name the skill in the brief.
