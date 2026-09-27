@@ -76,9 +76,13 @@ running=$(printf '%s\n' "$summary" | grep '^| ' | grep -v -e '^| Review |' -e '^
   grep -v -e 'Completed' -e 'Failed' -e 'Cancel' -e 'Skipped' || true)
 head_reviewed=$(printf '%s\n' "$summary" | grep '^| ' | grep 'Completed' | grep -F "\`$short\`" || true)
 if [ -z "$head_reviewed" ]; then
+  reviewers=$(printf '%s\n' "$eyes" | sed '/^$/d' | sort -u | tr '\n' ' ')
   head_reviewed=$(gh api --paginate "repos/$slug/pulls/$number/reviews" \
-    --jq ".[] | select((.user.login | endswith(\"[bot]\")) and .commit_id == \"$head\") | .id") ||
-    fail "cannot read reviews"
+    --jq ".[] | select((.user.login | endswith(\"[bot]\")) and .commit_id == \"$head\") | .user.login" |
+    while IFS= read -r login || [ -n "$login" ]; do
+      # With a 👀 reaction pending, only that bot's own review settles it.
+      case " ${reviewers:-$login }" in (*" $login "*) printf '%s\n' "$login" ;; esac
+    done) || fail "cannot read reviews"
 fi
 
 rows=$(printf '%s\n' "$summary" | grep '^| ' | grep -v -e '^| Review |' -e '^| ---' || true)

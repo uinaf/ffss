@@ -41,6 +41,7 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
   # shellcheck disable=SC2086
   set -- $segment
   set +f
+  env_repo=${GH_REPO:-}
   while [ "$#" -gt 0 ] && [ "$1" != gh ]; do
     if [ "$1" = cd ] && [ "$#" -ge 2 ]; then
       # shellcheck disable=SC2088
@@ -52,28 +53,39 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
       esac
       break
     fi
+    case $1 in GH_REPO=*) env_repo=${1#GH_REPO=} ;; esac
     shift
   done
   [ "$#" -ge 2 ] || continue
   [ "$1" = gh ] || continue
   shift
-  case "$1 ${2:-}" in
+  # Inherited -R/--repo may sit before or between the subcommand words.
+  words=
+  pr=
+  repo=
+  skip=
+  api=
+  while [ "$#" -gt 0 ]; do
+    case $1 in
+      -R | --repo) repo=${2:-}; shift ;;
+      --repo=*) repo=${1#--repo=} ;;
+      --disable-auto) skip=1 ;;
+      -t | --subject | -b | --body | -F | --body-file | -A | --author-email | --match-head-commit | -X | --method | -H | --header | -f | --raw-field | --field | --hostname | -q | --jq)
+        shift ;;
+      -*) ;;
+      *)
+        case $words in
+          "") words=$1 ;;
+          pr) words="pr $1" ;;
+          api) api=$1; words="api $1" ;;
+          "pr merge") [ -n "$pr" ] || pr=$1 ;;
+        esac ;;
+    esac
+    [ "$#" -gt 0 ] && shift
+  done
+  [ -n "$repo" ] || repo=$env_repo
+  case $words in
     "pr merge")
-      shift 2
-      pr=
-      repo=
-      skip=
-      while [ "$#" -gt 0 ]; do
-        case $1 in
-          -R | --repo) repo=${2:-}; shift ;;
-          --repo=*) repo=${1#--repo=} ;;
-          --disable-auto) skip=1 ;;
-          -t | --subject | -b | --body | -F | --body-file | -A | --author-email | --match-head-commit) shift ;;
-          -*) ;;
-          *) [ -n "$pr" ] || pr=$1 ;;
-        esac
-        [ "$#" -gt 0 ] && shift
-      done
       [ -z "$skip" ] || continue
       set --
       [ -z "$pr" ] || set -- "$pr"
@@ -81,9 +93,14 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
       check "$@" || exit 2
       ;;
     api\ *)
-      target=$(printf '%s\n' "$segment" | sed -nE 's#.*repos/([^/ ]+/[^/ ]+)/pulls/([0-9]+)/merge.*#\1 \2#p')
+      target=$(printf '%s\n' "$api" | sed -nE 's#^/?repos/([^/]+/[^/]+)/pulls/([0-9]+)/merge$#\1 \2#p')
       [ -n "$target" ] || continue
-      check "${target#* }" -R "${target% *}" || exit 2
+      slug=${target% *}
+      case $slug in
+        "{owner}/{repo}") set -- "${target#* }"; [ -z "$repo" ] || set -- "$@" -R "$repo" ;;
+        *) set -- "${target#* }" -R "$slug" ;;
+      esac
+      check "$@" || exit 2
       ;;
   esac
 done
