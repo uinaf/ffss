@@ -26,8 +26,8 @@ instead of copying literals into workflow files.
 
 ### Doctor
 
-Check whichever contracts the target has: process up, expected build, port
-owned by the right process, auth valid. Run it before driving and after
+Doctor checks whichever contracts the target has: process up, expected build,
+port owned by the right process, auth valid. Run it before driving and after
 anything surprising. It never mutates or repairs; on a mismatch it names the
 missing capability. A plain repo-local script is enough.
 
@@ -145,7 +145,7 @@ producer, capture time, format, and redaction status to an observed outcome.
 
 ## Maintained Examples
 
-Once you know the missing contract, study one of these:
+Once you know the missing contract, study these public implementations:
 
 - [`uinaf/workspace-kit` lifecycle scripts](https://github.com/uinaf/workspace-kit/blob/main/package.json),
   [installed-package smoke](https://github.com/uinaf/workspace-kit/blob/main/scripts/smoke-package.mjs),
