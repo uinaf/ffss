@@ -98,26 +98,24 @@ summary=$(gh api --paginate "repos/$slug/issues/$number/comments" \
   fail "cannot read comments"
 running=$(printf '%s\n' "$summary" | grep '^| ' | grep -v -e '^| Review |' -e '^| ---' |
   grep -v -e 'Completed' -e 'Failed' -e 'Cancel' -e 'Skipped' | grep -F "\`$short\`" || true)
-head_reviewed=$(printf '%s\n' "$summary" | grep '^| ' | grep 'Completed' | grep -F "\`$short\`" || true)
-if [ -z "$head_reviewed" ]; then
-  reviewers=$(printf '%s\n%s\n' "$eyes" "$(printf '%s\n' "$authors" | sed 's/^summary-author //')" | sed '/^$/d' | sort -u | tr '\n' ' ')
-  logins=$(gh api --paginate "repos/$slug/pulls/$number/reviews" \
-    --jq ".[] | select((.user.login | endswith(\"[bot]\")) and .commit_id == \"$head\") | .user.login") ||
-    fail "cannot read reviews"
-  head_reviewed=$(printf '%s\n' "$logins" | sed '/^$/d' |
-    while IFS= read -r login || [ -n "$login" ]; do
-      # Once a bot reacted or posted a summary, only its own review settles it.
-      case " ${reviewers:-$login }" in (*" $login "*) printf '%s\n' "$login" ;; esac
-    done)
-fi
+row_done=$(printf '%s\n' "$summary" | grep '^| ' | grep 'Completed' | grep -F "\`$short\`" || true)
+summary_bots=$(printf '%s\n' "$authors" | sed -n 's/^summary-author //p' | sort -u)
+reviewed=$(gh api --paginate "repos/$slug/pulls/$number/reviews" \
+  --jq ".[] | select((.user.login | endswith(\"[bot]\")) and .commit_id == \"$head\") | .user.login") ||
+  fail "cannot read reviews"
+# A bot is done with the head once it reviewed it, or, for the summary bot,
+# once its row for the head reads completed.
+done_bots=$(printf '%s\n' "$reviewed" | sed '/^$/d'
+  [ -z "$row_done" ] || printf '%s\n' "$summary_bots")
+waiting=$(printf '%s\n' "$eyes" "$summary_bots" | sed '/^$/d' | sort -u |
+  while IFS= read -r bot; do
+    printf '%s\n' "$done_bots" | grep -qxF "$bot" || printf '%s\n' "$bot"
+  done)
 
-rows=$(printf '%s\n' "$summary" | grep '^| ' | grep -v -e '^| Review |' -e '^| ---' || true)
 if [ -n "$running" ]; then
   block "Codex review still running: $(printf '%s' "$running" | head -n1 | sed -E 's/<[^>]*>//g; s/\*\*//g; s/ +/ /g')"
-elif [ -n "$eyes" ] && [ -z "$head_reviewed" ]; then
-  block "auto-review in progress ($(printf '%s' "$eyes" | sort -u | tr '\n' ' ' | sed 's/ $//' ) reacted 👀) and nothing reviewed $short yet"
-elif [ -n "$rows" ] && [ -z "$head_reviewed" ]; then
-  block "Codex has not reviewed $short; wait for it, or comment \"@codex review\""
+elif [ -n "$waiting" ]; then
+  block "no review of $short yet from $(printf '%s' "$waiting" | tr '\n' ' ' | sed 's/ $//'); wait, or comment \"@codex review\""
 elif [ -z "$summary" ] && [ -z "$eyes" ] && [ "${age:-0}" -lt 120 ]; then
   block "opened ${age}s ago; give auto-review bots two minutes to start"
 fi
@@ -125,7 +123,7 @@ fi
 # Anything else GitHub still requires, such as a required check that never ran.
 if [ -z "$blockers" ]; then
   case $merge_state in
-    BLOCKED | DIRTY) block "GitHub reports the merge as $merge_state" ;;
+    BLOCKED | DIRTY | BEHIND) block "GitHub reports the merge as $merge_state" ;;
   esac
 fi
 

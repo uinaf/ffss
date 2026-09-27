@@ -83,6 +83,7 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
         [ "$1" = -C ] || [ "$1" = --chdir ] && cwd=${2:-$cwd}
         shift ;;
       *=* | -* | env | command | exec | sudo | time | nohup | */env | */sudo) ;;
+      timeout | */timeout) shift ;;
       if | then | else | elif | do | while | until | ! | "{") ;;
       *) break ;;
     esac
@@ -98,6 +99,7 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
   skip=
   auto=
   api=
+  method=
   while [ "$#" -gt 0 ]; do
     case $1 in
       -R | --repo) repo=${2:-}; shift ;;
@@ -108,7 +110,11 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
       --auto=*) [ "${1#--auto=}" = false ] || auto=1 ;;
       --hostname) host=${2:-}; shift ;;
       --hostname=*) host=${1#--hostname=} ;;
-      -t | --subject | -b | --body | -F | --body-file | -A | --author-email | --match-head-commit | -X | --method | -H | --header | -f | --raw-field | --field | -q | --jq | --input | --preview | -p | --template | --cache)
+      -X | --method) method=${2:-}; shift ;;
+      -X?*) method=${1#-X} ;;
+      --method=*) method=${1#--method=} ;;
+      -f | --raw-field | -F | --field | --input) [ -n "$method" ] || method=POST; shift ;;
+      -t | --subject | -b | --body | --body-file | -A | --author-email | --match-head-commit | -H | --header | -q | --jq | --preview | -p | --template | --cache)
         shift ;;
       -*) ;;
       *)
@@ -134,6 +140,7 @@ printf '%s\n' "$segments" | while IFS= read -r segment; do
       check "$@" || exit 2
       ;;
     api\ *)
+      case $method in "" | GET | get) continue ;; esac
       target=$(printf '%s\n' "$api" | sed -nE 's#^(https?://([^/]+)(/api/v3)?)?/?repos/([^/]+/[^/]+)/pulls/([0-9]+)/merge([?].*)?$#\4 \5 \2#p')
       [ -n "$target" ] || continue
       url_host=${target##* }

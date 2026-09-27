@@ -89,6 +89,11 @@ expect() {
 (THREADS="unresolved thread by bot at a.go:3" fixture); expect 0 "merge help is not a merge" "gh pr merge --help"
 (MERGE_STATE=BLOCKED fixture); expect 2 "a merge GitHub reports blocked is refused" "gh pr merge 7 --admin"
 (THREADS="unresolved thread by bot at a.go:3" fixture); expect 2 "if-prefixed merge is checked" "if gh pr merge 7; then echo ok; fi"
+(ROW=$old_row EYES="chatgpt-codex-connector[bot]
+other-bot[bot]" REVIEWS="chatgpt-codex-connector[bot]" fixture); expect 2 "every reacting bot must review the head" "gh pr merge 7"
+(MERGE_STATE=BEHIND fixture); expect 2 "a branch GitHub reports behind is refused" "gh pr merge 7 --admin"
+(THREADS="unresolved thread by bot at a.go:3" fixture); expect 0 "a GET of the merge endpoint is not a merge" "gh api repos/acme/app/pulls/7/merge"
+(THREADS="unresolved thread by bot at a.go:3" fixture); expect 2 "timeout-wrapped merge is checked" "timeout 30s gh pr merge 7"
 (REQUESTED=octocat fixture); expect 2 "pending reviewer blocks" "gh pr merge 7"
 (DECISION=CHANGES_REQUESTED fixture); expect 2 "change request blocks" "gh pr merge 7"
 (THREADS="unresolved thread by bot at a.go:3" fixture); expect 2 "API merge blocks" "gh api -X PUT repos/acme/app/pulls/7/merge"
