@@ -1,0 +1,16 @@
+{
+  "context": "Tests the narrow signed-API fallback for a non-Go Homebrew publisher that lacks native GitHub App commit signing.",
+  "type": "weighted_checklist",
+  "checklist": [
+    { "name": "Durable release gate", "max_score": 10, "description": "The tap job resolves an exact trusted tag, requires a published immutable release that passes gh release verify, and can repair missing tap parity on a later run without relying solely on new_release_published." },
+    { "name": "Scoped App token", "max_score": 12, "description": "The source workflow token is explicitly Contents read only; the write token is a separate short-lived App token naming only homebrew-tap with Contents write." },
+    { "name": "Safe tap checkout", "max_score": 8, "description": "The tap checkout targets main, uses the App token, and sets persist-credentials: false." },
+    { "name": "Narrow deterministic generation", "max_score": 12, "description": "Generation updates only Formula/envctl.rb from the exact published version/assets and does not commit or push." },
+    { "name": "Pinned signed commit action", "max_score": 15, "description": "pgaskin/push-signed-commits is pinned to a full commit SHA with an exact version comment and receives the App token. Pins: when the task supplies no SHA, an explicit placeholder that names the exact version and is listed as a required follow-up satisfies a full-SHA pin; an invented SHA does not." },
+    { "name": "Commit path and head boundary", "max_score": 8, "description": "Only Formula/envctl.rb is staged. The signed action uses the observed tap checkout parent as expectedHeadOid on main and rejects concurrent branch advancement." },
+    { "name": "No unsigned escape", "max_score": 10, "description": "There is no ordinary git commit/push, custom author/committer identity, or generator-owned final commit." },
+    { "name": "Signature readback", "max_score": 10, "description": "The workflow reads the tap default-branch commit, requires verification.verified: true, and proves the formula version/digests match the immutable release." },
+    { "name": "Setup contract", "max_score": 8, "description": "SETUP.md documents RELEASE_APP_CLIENT_ID, RELEASE_APP_PRIVATE_KEY, the tap-only token scope, and Contents write." },
+    { "name": "No broad credential", "max_score": 7, "description": "No classic PAT or long-lived organization-wide tap token is recommended." }
+  ]
+}

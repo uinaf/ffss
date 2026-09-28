@@ -1,0 +1,66 @@
+{
+  "context": "Tests whether the agent recommends a cost-safe organization security configuration, preserves free dependency protections, and catches the public-to-private Advanced Security billing transition.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "All current repositories",
+      "max_score": 8,
+      "description": "Applies the baseline organization security configuration to all current repositories"
+    },
+    {
+      "name": "Default for new repositories",
+      "max_score": 8,
+      "description": "Makes the same configuration the default for all newly created repositories"
+    },
+    {
+      "name": "Enforced organization policy",
+      "max_score": 8,
+      "description": "Prevents repository owners from modifying the centrally configured features"
+    },
+    {
+      "name": "Secret Protection disabled",
+      "max_score": 10,
+      "description": "Disables the paid Secret Protection bundle in the fleet-wide baseline"
+    },
+    {
+      "name": "Code Security disabled",
+      "max_score": 10,
+      "description": "Disables the paid Code Security bundle and does not retain blanket legacy advanced_security enablement"
+    },
+    {
+      "name": "CodeQL default setup disabled",
+      "max_score": 10,
+      "description": "Disables CodeQL default setup as an organization-wide default"
+    },
+    {
+      "name": "Free dependency protections retained",
+      "max_score": 12,
+      "description": "Enables the dependency graph and Dependabot alerts and leaves Dependabot security updates off"
+    },
+    {
+      "name": "Public capability distinction",
+      "max_score": 6,
+      "description": "Explains that disabling paid bundles does not prove every overlapping public-repository security capability is disabled"
+    },
+    {
+      "name": "Public push protection kept",
+      "max_score": 6,
+      "description": "Keeps free secret scanning and push protection on public repositories through a separate public configuration, detached before a repository becomes private"
+    },
+    {
+      "name": "Visibility transition preflight",
+      "max_score": 12,
+      "description": "Checks attached configuration, effective paid features, active-committer usage, and projected billing before and after a public-to-private change"
+    },
+    {
+      "name": "Narrow paid exception path",
+      "max_score": 8,
+      "description": "Uses a separate narrow configuration or explicit repository opt-in with accepted cost and trigger design for paid exceptions"
+    },
+    {
+      "name": "Live readback and safe rollout",
+      "max_score": 8,
+      "description": "Requires live setting and license-usage readback, uses a bounded rollout, and does not mutate a live organization without authorization"
+    }
+  ]
+}

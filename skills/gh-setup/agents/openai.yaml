@@ -1,0 +1,7 @@
+interface:
+  display_name: "gh-setup"
+  short_description: "Configure GitHub settings, Actions, releases, and deployments"
+  default_prompt: "Use $gh-setup to configure the requested GitHub surface around the repository's existing build, verification, release, and deployment contracts."
+
+policy:
+  allow_implicit_invocation: false

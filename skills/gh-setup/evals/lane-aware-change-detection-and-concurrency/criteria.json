@@ -1,0 +1,66 @@
+{
+  "context": "Tests whether the agent sets up lane-independent change detection that only builds/deploys affected apps, uses correct concurrency settings (non-cancellable deploy, cancellable verification/e2e, same group key across main.yml and deploy.yml), and uses the correct job condition syntax for deploy gates.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "paths-filter for detection",
+      "max_score": 8,
+      "description": "Detects which lane changed with a maintained paths filter at a current major (dorny/paths-filter v4 or later, or the uinaf changes action), pinned to a full SHA with an exact version comment. Pins: when the task supplies no SHA, an explicit placeholder that names the exact version and is listed as a required follow-up satisfies a full-SHA pin; an invented SHA does not."
+    },
+    {
+      "name": "Lockfile in filter",
+      "max_score": 8,
+      "description": "The paths-filter includes the package lockfile (package-lock.json, pnpm-lock.yaml, yarn.lock, or similar) in at least one lane's filter rules"
+    },
+    {
+      "name": "Checkout-free detection",
+      "max_score": 9,
+      "description": "The changes/detect job has no checkout step on pull_request events and grants `pull-requests: read` (alongside `contents: read` when the map is job-scoped) so the filter can read the PR API; push events, which the filter detects through git, have a checkout conditioned on non-PR events at the default depth, and no job sets `fetch-depth: 0`"
+    },
+    {
+      "name": "Lane conditional build",
+      "max_score": 8,
+      "description": "Each verification/build job has an `if:` condition that gates it on the corresponding lane being detected as changed (referencing the changes job output)"
+    },
+    {
+      "name": "Deploy non-cancellable",
+      "max_score": 10,
+      "description": "The deploy job(s) include `concurrency: { cancel-in-progress: false }` (or equivalent)"
+    },
+    {
+      "name": "Verification/e2e cancellable",
+      "max_score": 8,
+      "description": "At least one verification or e2e job includes `concurrency: { cancel-in-progress: true }` (or equivalent)"
+    },
+    {
+      "name": "Concurrency group lane-scoped",
+      "max_score": 9,
+      "description": "The deploy concurrency group key is scoped to environment and lane, such as `deploy-production-web`, and NOT to `${{ github.ref }}`"
+    },
+    {
+      "name": "Shared concurrency key",
+      "max_score": 10,
+      "description": "The deploy concurrency group key in main.yml and in deploy.yml (or the manual re-deploy section) uses the same string value"
+    },
+    {
+      "name": "Explicit result check",
+      "max_score": 10,
+      "description": "Deploy job `if:` condition uses `needs.<job>.result == 'success'` (NOT `success()`) for each upstream dependency"
+    },
+    {
+      "name": "Manual deploy workflow",
+      "max_score": 8,
+      "description": "A separate workflow_dispatch workflow exists (deploy.yml or equivalent) for manually re-deploying a verified artifact or image for a validated ref without re-running verification"
+    },
+    {
+      "name": "validated redeploy ref",
+      "max_score": 8,
+      "description": "The manual deploy workflow validates the requested ref, passes it through env or outputs, and uses the validated value for checkout or artifact/image lookup rather than interpolating `inputs.ref` directly in shell"
+    },
+    {
+      "name": "Independent lane verification",
+      "max_score": 4,
+      "description": "The written explanation or workflow structure shows that a change to only one app does not trigger the build/deploy of the other app (each lane's jobs are gated independently)"
+    }
+  ]
+}

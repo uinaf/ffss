@@ -1,0 +1,61 @@
+{
+  "context": "Tests whether the agent folds scanning into the existing verify job on pushes, relies on free push protection for public repositories and Gitleaks for private ones, drops redundant triggers and scanners, and keeps verify as the only required check without stranding open pull requests.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Scan inside verify",
+      "max_score": 14,
+      "description": "Runs the scan as steps of the existing verify job instead of a separate scan job, citing GitHub's per-job rounding up to a whole minute"
+    },
+    {
+      "name": "Push-time only",
+      "max_score": 12,
+      "description": "Scans pushes to the default branch (the pushed range) and manual dispatch; drops the pull_request trigger because merges land as pushes, and the scan step cannot fail a pull-request run"
+    },
+    {
+      "name": "No scheduled scan",
+      "max_score": 8,
+      "description": "Removes the weekly schedule, naming Dependabot alerts and Renovate as the channel for new advisories, and keeps manual full-history dispatch"
+    },
+    {
+      "name": "Public relies on push protection",
+      "max_score": 10,
+      "description": "Keeps free GitHub secret scanning and push protection on public repositories and skips Gitleaks on their ordinary pushes"
+    },
+    {
+      "name": "Private uses Gitleaks",
+      "max_score": 10,
+      "description": "Runs the Gitleaks CLI on private repositories and states that paid Secret Protection is priced per active committer; does not use gitleaks-action without addressing its organization license"
+    },
+    {
+      "name": "TruffleHog dropped",
+      "max_score": 6,
+      "description": "Removes the duplicate TruffleHog full-history scan, or justifies keeping it with a named gap Gitleaks and GitHub scanning leave"
+    },
+    {
+      "name": "Workflow linters gated",
+      "max_score": 8,
+      "description": "Runs actionlint and zizmor only when the pushed range changes workflows, action metadata, or their configuration, and always on manual dispatch"
+    },
+    {
+      "name": "One required check",
+      "max_score": 10,
+      "description": "Requires only verify, justified by Renovate auto-merge, keeps the administrator bypass for direct pushes, and removes the extra scan-named contexts"
+    },
+    {
+      "name": "No stranded pull requests",
+      "max_score": 8,
+      "description": "Updates rulesets for removed or renamed checks and confirms no open pull request is left waiting on an old check name"
+    },
+    {
+      "name": "Minute arithmetic",
+      "max_score": 8,
+      "description": "Estimates weekly minutes before and after from push, pull-request, and schedule counts with whole-minute rounding, and names the remaining cost"
+    },
+    {
+      "name": "Constraints honored",
+      "max_score": 6,
+      "description": "Adds no local git hooks, no new notification channel, and no new job or schedule without a named threat and cost"
+    }
+  ]
+}
