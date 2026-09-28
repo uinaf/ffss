@@ -35,7 +35,7 @@
     {
       "name": "Free dependency protections retained",
       "max_score": 12,
-      "description": "Enables the dependency graph and Dependabot alerts and leaves Dependabot security updates off"
+      "description": "Enables the dependency graph and Dependabot alerts, and leaves Dependabot security updates off where Renovate owns vulnerability pull requests"
     },
     {
       "name": "Public capability distinction",

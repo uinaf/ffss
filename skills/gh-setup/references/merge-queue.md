@@ -1,8 +1,8 @@
 # Merge Queue
 
-Use only when the repository runs a merge queue. GitHub's native queue groups
-pull requests but does not combine their builds and removes a failing entry
-rather than bisecting
+Use only when the repository runs a merge queue. GitHub's native queue batches
+pull requests into merge groups and runs required checks once per group, but
+removes a failing entry rather than bisecting the batch
 ([GitHub](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue));
 batched builds with bisection exist in Mergify and Graphite-class queues
 ([Graphite](https://graphite.com/blog/merge-queue-batching)).

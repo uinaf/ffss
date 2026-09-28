@@ -2,15 +2,16 @@
 
 Choose one update bot per repository. Running both opens duplicate pull
 requests. Dependabot alerts are a separate GitHub feature and stay on under
-either choice. Dependabot security updates stay off; Renovate raises its own
-vulnerability pull requests.
+either choice. Under Renovate, which raises its own vulnerability pull
+requests, leave Dependabot security updates off; under Dependabot, keep them
+on.
 
 ## Choose
 
 | Signal | Choice |
 | --- | --- |
-| Only npm, Go, Cargo, or GitHub Actions manifests | Dependabot is sufficient; Renovate is equivalent |
-| Pins in `mise.toml`, OpenTofu or Terraform providers, or annotated version variables | Renovate; Dependabot has no manager for these |
+| Only npm, Go, Cargo, GitHub Actions, Terraform, or OpenTofu manifests | Dependabot is sufficient (`terraform` and `opentofu` ecosystems); Renovate is equivalent |
+| Pins in `mise.toml` or annotated version variables | Renovate; Dependabot has no manager for these |
 | Container images pinned by digest | Either; both update tag and digest together |
 | Organization already runs one bot on most repositories | Match it; one mental model beats a marginal feature |
 | Fork or mirror with no owned manifests | Neither |

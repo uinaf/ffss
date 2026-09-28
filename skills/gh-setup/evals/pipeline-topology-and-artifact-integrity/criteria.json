@@ -25,7 +25,7 @@
     {
       "name": "Framework output covered",
       "max_score": 6,
-      "description": "The chosen payload path includes framework output directories such as `.next/` or `.output/` when relevant, rather than accidentally deploying only a partial visible-file tree"
+      "description": "The payload path is `.output/public`, and any `actions/upload-artifact` step for it sets `include-hidden-files: true` (hidden directories are skipped by default), so the artifact is not silently empty"
     },
     {
       "name": "Lane-specific payload identity",
