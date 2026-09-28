@@ -28,7 +28,7 @@ running() { tmux list-sessions -F '#{session_name}' 2>/dev/null | grep -c '^slop
 
 # Holds the admission lock until this script exits, so concurrent starts can't overrun the cap.
 admit() {
-  exec 8>> "$RUN/.admission.lock"
+  exec 8>> "$RUN/.lock"
   hold 8 "another session is starting a worker"
   tmux has-session -t "=slop-$1" 2>/dev/null && { echo "slop-$1 is already running" >&2; exit 1; }
   [ "$(running)" -lt "$MAX" ] || { echo "at capacity: $MAX workers running" >&2; exit 1; }
@@ -60,10 +60,14 @@ RUN
 # Serializes start, resume and stop for one ID on this machine; held until this script exits.
 lock() {
   if [ ! -e "$RUN" ]; then mkdir -p "$(dirname "$RUN")"; mkdir -m 700 "$RUN" 2>/dev/null || true; fi
-  [ -d "$RUN" ] && [ ! -L "$RUN" ] && [ -O "$RUN" ] && [ -n "$(find "$RUN" -maxdepth 0 -perm 700)" ] ||
-    { echo "$RUN must be a directory you own with mode 700" >&2; exit 1; }
+  private_run
   exec 9>> "$RUN/.$1.lock"
   hold 9 "slop-$1 is being started or stopped by another session"
+}
+
+private_run() {
+  [ -d "$RUN" ] && [ ! -L "$RUN" ] && [ -O "$RUN" ] && [ -n "$(find "$RUN" -maxdepth 0 -perm 700)" ] ||
+    { echo "$RUN must be a directory you own with mode 700" >&2; exit 1; }
 }
 
 # hold FD MESSAGE: take an exclusive lock on FD, waiting up to SLOPMACHINE_WORKER_LOCK_WAIT seconds.
@@ -158,7 +162,8 @@ resume)
 status)
   prefix=${2:-}
   [ -z "$prefix" ] || valid PREFIX "$prefix"
-  [ -d "$RUN" ] || exit 0
+  [ -e "$RUN" ] || exit 0
+  private_run
   for d in "$RUN"/"$prefix"*/; do
     [ -d "$d" ] || continue
     id=$(basename "$d")
@@ -173,6 +178,7 @@ status)
 log)
   id=${2:?usage: worker.sh log ID}
   valid ID "$id"
+  private_run
   at=$(attempt_dir "$id")
   start=$(cat "$at/log-start" 2>/dev/null || echo 0)
   result=$(result_of "$at/log.jsonl" "$start" 2>/dev/null || true)

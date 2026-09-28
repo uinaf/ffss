@@ -152,7 +152,7 @@ class Worker(unittest.TestCase):
         self.private_run_dir()
         prompt = self.tmp / "prompt"
         prompt.write_text("s1\n")
-        with open(self.run_dir / ".admission.lock", "a") as held:
+        with open(self.run_dir / ".lock", "a") as held:
             fcntl.flock(held, fcntl.LOCK_EX)
             run = self.worker("start", "w-1", str(self.tmp / "work"), str(prompt), "a1")
         self.assertNotEqual(run.returncode, 0)
@@ -215,6 +215,21 @@ class Worker(unittest.TestCase):
         self.assertEqual(self.worker("start", "w-9", str(self.tmp / "work"), str(prompt), "a1", cwd=self.tmp).returncode, 0)
         self.wait_exit("w-9")
         self.assertEqual(self.worker("status", cwd=self.tmp).stdout.strip(), "w-9 exit=0")
+
+    def test_status_and_log_refuse_a_run_directory_others_can_reach(self):
+        (self.run_dir / "w-1" / "a1").mkdir(parents=True)
+        self.run_dir.chmod(0o755)
+        (self.run_dir / "w-1" / "current").write_text("a1\n")
+        (self.run_dir / "w-1" / "a1" / "startup-failed").write_text("planted\n")
+        for args in (("status",), ("log", "w-1")):
+            run = self.worker(*args)
+            self.assertEqual(run.returncode, 1, args)
+            self.assertNotIn("planted", run.stdout)
+
+    def test_an_id_named_like_the_admission_lock_starts(self):
+        self.env["SLOPMACHINE_WORKER_LOCK_WAIT"] = "0.3"
+        self.start("admission", "s1")
+        self.start("lock", "s2")
 
     def test_a_failed_launch_is_a_startup_failure(self):
         failing = self.tmp / "failing"
