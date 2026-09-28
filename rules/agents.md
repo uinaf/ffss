@@ -66,8 +66,8 @@ actually use with the cheapest check that would fail if the change were wrong.
 - Test observable behavior. Skip tests that restate the implementation or
   assert what a mock was told to return; add a test only for a regression
   existing coverage would miss. When a change breaks a test, fix the code
-  unless the contract intentionally changed or the test pins implementation; then update it
-  and say so.
+  unless the contract intentionally changed or the test pins implementation;
+  then update it and say so.
 - Reuse passing proof and review until something invalidates them. Validate
   review findings before acting on them.
 - Clean up only the processes you started.
