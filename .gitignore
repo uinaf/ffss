@@ -3,3 +3,4 @@
 .skillcheck/scratch/
 /cli/*/bin/
 /cli/*/dist/
+__pycache__/
