@@ -1,5 +1,5 @@
 #!/bin/sh
-# PreToolUse hook for Claude Code and Codex: blocks `gh pr merge` and
+# Claude Code PreToolUse hook: blocks `gh pr merge` and
 # `gh api .../pulls/N/merge` until skills/slopnanny/scripts/merge-ready passes.
 set -u
 

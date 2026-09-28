@@ -184,7 +184,7 @@ jobs:
         with:
           persist-credentials: false
       - run: shellcheck -S warning hooks/merge-guard hooks/merge-guard.test.sh skills/slopnanny/scripts/merge-ready
-      - run: jq -e '.hooks.PreToolUse[0].hooks[0].command' hooks/hooks.json
+      - run: jq -e '.hooks.PreToolUse[0].hooks[0].command' .claude-plugin/plugin.json
       - run: sh hooks/merge-guard.test.sh
 
   verify:
