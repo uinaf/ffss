@@ -41,8 +41,6 @@ Verify delivery against the forge's actual head and status. A missing tool,
 unavailable check, or inaccessible forge is a limitation to resolve or report,
 never passing evidence. Don't bypass a required gate to finish.
 
-When the plan renamed or moved a repository, path, host, or skill, grep every consumer checkout for the old name and update or account for each match before closing.
-
 ## Handoff
 
 As milestones land and before a handoff, record in the existing tracking
