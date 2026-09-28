@@ -1,0 +1,51 @@
+{
+  "context": "Tests whether the agent recognises a setup-dominated small repository, folds the four sub-minute jobs into one installing job that runs the checks concurrently with failure propagation, keeps the gate cheap, drops the pointless full-history checkout, treats the cache as a measured decision, and refuses to import monorepo techniques (sharding, affected detection, non-gating split jobs) that the timings do not justify.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Jobs folded on measured overhead",
+      "max_score": 14,
+      "description": "lint, typecheck, test, and audit run inside one job that checks out and installs once; ci-plan.md justifies the fold with the measured 24 seconds of per-job overhead against 2 to 6 seconds of work, not with a generic threshold."
+    },
+    {
+      "name": "Concurrent with failure propagation",
+      "max_score": 10,
+      "description": "The folded checks run concurrently through a runner with aggregate or fail-fast semantics (for example a package script using a concurrency runner, or a task graph) or with explicit per-process status collection, so any single failure fails the job; a bare `wait` after backgrounded commands does not qualify."
+    },
+    {
+      "name": "Default-depth checkout",
+      "max_score": 8,
+      "description": "No checkout sets `fetch-depth: 0`; the plan notes the change is correct but worth about a second here."
+    },
+    {
+      "name": "Gate kept cheap or removed",
+      "max_score": 10,
+      "description": "The `verify` required check either becomes the folded job itself (renamed `verify`) or stays as a gate that no longer checks out the repository to run an inline result check; the plan accounts for the 12 seconds of gate overhead."
+    },
+    {
+      "name": "Cache treated as a measurement",
+      "max_score": 8,
+      "description": "The pnpm store cache is kept or dropped only with a stated measurement plan (hit rate, restore, install, save seconds in the step summary); the plan does not assert that caching is faster by default."
+    },
+    {
+      "name": "Monorepo techniques rejected with reasons",
+      "max_score": 12,
+      "description": "ci-plan.md names sharding, affected-package detection, blobless clones, a separate non-gating job for reporting, and reduced test isolation as considered and rejected, each with a reason tied to the timings (four-second suite, single package, no reporting steps)."
+    },
+    {
+      "name": "Latency versus minutes stated",
+      "max_score": 6,
+      "description": "The plan says which of pull-request wait or runner minutes is the target and notes that on a public repository standard-runner minutes are free."
+    },
+    {
+      "name": "Checks and contract preserved",
+      "max_score": 12,
+      "description": "Lint, typecheck, test, and audit all still run on pull requests and pushes to main; the required check is still named `verify`; workflow-level concurrency with cancel-in-progress on pull_request and `permissions: contents: read` are unchanged; every action is pinned to a full commit SHA with a version comment. Pins: when the task supplies no SHA, an explicit placeholder that names the exact version and is listed as a required follow-up satisfies a full-SHA pin; an invented SHA does not."
+    },
+    {
+      "name": "No coverage removed for speed",
+      "max_score": 4,
+      "description": "The plan does not propose skipping or sampling any existing check as a speed measure."
+    }
+  ]
+}

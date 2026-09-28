@@ -1,0 +1,66 @@
+{
+  "context": "Tests whether the agent shortens a required check by stripping checkouts and history from gating jobs, batching short jobs, dropping a cache that loses to a cold install, moving non-gating work after the gate, and bounding shard count by measured setup, while preserving every check, the required-check name, lane conditions, concurrency, and permissions.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Checkout-free change detection",
+      "max_score": 10,
+      "description": "The changes job has no checkout step on pull_request events and grants `pull-requests: read` at workflow scope or, in a job-scoped map, together with `contents: read` so the push-side checkout keeps repository access so the filter can list files through the API; because the workflow also runs on push to main, a checkout conditioned on non-PR events (for example `if: github.event_name != 'pull_request'`) remains at the default depth, and no job in the workflow sets `fetch-depth: 0`. The job compares the number of files the filter listed with the pull request's `changed_files` and runs every lane when they differ."
+    },
+    {
+      "name": "Default depth on verification jobs",
+      "max_score": 8,
+      "description": "Every remaining checkout in lint, typecheck, format, licenses, schema-check, and api-test omits fetch-depth or sets it to 1."
+    },
+    {
+      "name": "Short jobs batched",
+      "max_score": 12,
+      "description": "lint, typecheck, format, and licenses no longer each start a runner; they run inside at most two jobs that install once and run the tasks concurrently through a runner with aggregate or fail-fast semantics or explicit per-process status collection, so any single failure fails the job (a bare `wait` after backgrounded commands does not qualify), and the plan justifies the fold with the measured 55 to 70 seconds of per-job overhead against 5 to 20 seconds of work rather than a fixed threshold."
+    },
+    {
+      "name": "Cache dropped with evidence",
+      "max_score": 10,
+      "description": "The node_modules actions/cache is removed and ci-plan.md cites the 28-second restore versus the 19-second cold install; if a package-manager store cache is proposed instead, the plan says it stays only after hit rate, restore, install, and save seconds are recorded, not by default."
+    },
+    {
+      "name": "Filtered install on api shards",
+      "max_score": 6,
+      "description": "api-test installs only the api package and its workspace dependencies (for example `pnpm install --filter api...`) rather than the whole workspace."
+    },
+    {
+      "name": "PostgreSQL client provided without a per-shard apt install",
+      "max_score": 4,
+      "description": "The per-shard apt-get install of postgresql-client is replaced by a prepared container image or a cached install that still provides `psql`, or it is kept with a stated reason; deleting the step without a replacement or evidence that the runner image already provides `psql` earns nothing."
+    },
+    {
+      "name": "Non-gating work after the gate",
+      "max_score": 10,
+      "description": "coverage:upload and test:cache-marker, which the task states are reporting-only, no longer run inside api-test; each shard uploads its coverage output as an artifact, a job that the verify gate does not depend on downloads and merges those artifacts before uploading and runs `test:cache-marker write` only after every shard succeeded, and the plan names the steps as non-gating."
+    },
+    {
+      "name": "Shard decision bounded by setup",
+      "max_score": 12,
+      "description": "ci-plan.md separates wall time from billed minutes using the measured 95-second per-shard setup (for example, eight shards cut the critical path to roughly one setup plus an eighth of the tests while billing four times the setup), cuts setup before or alongside any shard increase, and states the arithmetic for whichever shard count it chooses."
+    },
+    {
+      "name": "Setup timing recorded",
+      "max_score": 6,
+      "description": "The workflow writes install or setup duration to the step summary or job output so future cache decisions are measured rather than assumed."
+    },
+    {
+      "name": "Checks and lanes preserved",
+      "max_score": 12,
+      "description": "Lint, typecheck, format, licenses, schema-check, and api tests all still run; schema-check still runs only when migrations changed and api-test only when the api lane changed; the verify gate still runs under always() and fails closed on unexpected skips."
+    },
+    {
+      "name": "Contract preserved",
+      "max_score": 6,
+      "description": "Workflow-level concurrency with cancel-in-progress on pull_request, `permissions: contents: read`, and the `verify` job name are unchanged, and every action is pinned to a full commit SHA with a version comment. Pins: when the task supplies no SHA, an explicit placeholder that names the exact version and is listed as a required follow-up satisfies a full-SHA pin; an invented SHA does not."
+    },
+    {
+      "name": "No coverage removed for speed",
+      "max_score": 4,
+      "description": "ci-plan.md does not propose skipping or sampling any existing check as a speed measure."
+    }
+  ]
+}

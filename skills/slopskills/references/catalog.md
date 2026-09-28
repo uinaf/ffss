@@ -8,7 +8,7 @@ not a blanket bundle.
 
 | Skill | Install source | Evidence and use |
 | --- | --- | --- |
-| `react-ban-use-effect` | [uinaf/agent-skills](https://github.com/uinaf/agent-skills) | React code; effect implementation, refactoring, or effect policy. |
+| `react-ban-use-effect` | [uinaf/ffss](https://github.com/uinaf/ffss) | React code; effect implementation, refactoring, or effect policy. |
 | `react-doctor` | [millionco/react-doctor](https://github.com/millionco/react-doctor) | React code; feature or bug verification and React diagnostics. |
 | `shadcn` | [shadcn/ui](https://github.com/shadcn-ui/ui) | A `components.json` configuration, existing shadcn components, or an explicit shadcn setup task; component composition, registries, presets, or styling. React alone does not qualify. |
 | `tanstack-query` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | A TanStack Query dependency or imports; fetching, query keys, mutations, caching, or invalidation. |

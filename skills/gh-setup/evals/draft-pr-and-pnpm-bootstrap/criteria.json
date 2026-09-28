@@ -1,0 +1,51 @@
+{
+  "context": "Tests whether the agent correctly distinguishes pull-request activity types from draft state and replaces a legacy pnpm 11 bootstrap with the pnpm/setup successor that owns the declared package manager, runtime, install, and cache.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Draft behavior explained",
+      "max_score": 15,
+      "description": "The explanation states that pull_request activity types such as opened and synchronize can fire for draft PRs, so including ready_for_review does not itself suppress draft CI"
+    },
+    {
+      "name": "Draft-aware job gate",
+      "max_score": 20,
+      "description": "Each pull-request entry job, or a shared root job that gates every dependent verification job, has an `if:` condition requiring `github.event.pull_request.draft == false` while remaining valid for every configured event"
+    },
+    {
+      "name": "Ready event retained",
+      "max_score": 10,
+      "description": "The pull_request trigger retains ready_for_review so verification starts when a draft is marked ready"
+    },
+    {
+      "name": "Update events retained",
+      "max_score": 5,
+      "description": "The trigger still handles opened, synchronize, and reopened pull-request activity"
+    },
+    {
+      "name": "Current pnpm setup action",
+      "max_score": 20,
+      "description": "The workflow replaces both pnpm/action-setup and actions/setup-node with pnpm/setup pinned to full commit `84cb39b217b10273981911c288cd62326dc7c6d2` and the same-line v2.0.2 version comment"
+    },
+    {
+      "name": "Declared runtime and cache retained",
+      "max_score": 10,
+      "description": "pnpm/setup resolves pnpm from packageManager and Node from devEngines.runtime without duplicating those versions in the workflow, and enables its pnpm store cache"
+    },
+    {
+      "name": "Frozen install",
+      "max_score": 5,
+      "description": "The workflow installs dependencies with pnpm using the frozen lockfile behavior explicitly or through pnpm's documented CI default"
+    },
+    {
+      "name": "Unprivileged PR event",
+      "max_score": 10,
+      "description": "The workflow keeps `pull_request` and does not switch to `pull_request_target` or add write permissions or secrets"
+    },
+    {
+      "name": "Minimal correction",
+      "max_score": 5,
+      "description": "The solution changes only the draft gate and replaces the obsolete pnpm bootstrap with its direct successor without unrelated workflow redesign"
+    }
+  ]
+}

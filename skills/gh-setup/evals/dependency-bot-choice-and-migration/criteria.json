@@ -1,0 +1,61 @@
+{
+  "context": "Tests whether the agent chooses Renovate for the right reasons, migrates without duplicate bots, handles the OpenTofu registry, and is honest about checksum pins. Also tests native-automerge ruleset compatibility with direct and cross-repository writers without broadening bypasses.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Renovate justified by coverage gaps",
+      "max_score": 11,
+      "description": "Chooses Renovate because Dependabot has no manager for mise.toml or OpenTofu providers, not because of digest handling"
+    },
+    {
+      "name": "One bot per repository",
+      "max_score": 10,
+      "description": "Adds renovate.json and deletes dependabot.yml in the same commit so both bots never run together"
+    },
+    {
+      "name": "Alerts on, security updates off",
+      "max_score": 6,
+      "description": "States that Dependabot alerts stay on and that Dependabot security updates stay off under Renovate"
+    },
+    {
+      "name": "Preset and repository split",
+      "max_score": 10,
+      "description": "Encodes schedule, release age, grouping, prefixes, and registry in an organization preset and limits the repository file to opt-outs or approvals"
+    },
+    {
+      "name": "Require config file gating",
+      "max_score": 8,
+      "description": "Relies on the organization-level require-config setting so unmigrated repositories receive nothing"
+    },
+    {
+      "name": "OpenTofu registry override",
+      "max_score": 10,
+      "description": "Sets registryUrls to registry.opentofu.org for provider and module datasources and disables the hashicorp/terraform dependency"
+    },
+    {
+      "name": "Checksum pins stay manual",
+      "max_score": 11,
+      "description": "States that neither bot rewrites a sha256 stored beside a version and keeps Ansible checksum pins manual or proposes fetching upstream checksums at install time"
+    },
+    {
+      "name": "Majors via dashboard approval",
+      "max_score": 6,
+      "description": "Uses dependencyDashboardApproval rather than disabling deliberate major upgrades outright"
+    },
+    {
+      "name": "Config validation and readback",
+      "max_score": 8,
+      "description": "Validates the config before pushing and checks the first run for correct prefixes, grouping, and registry with no PRs from the retired bot"
+    },
+    {
+      "name": "Ruleset scope and writer compatibility",
+      "max_score": 12,
+      "description": "Explains that required checks constrain all default-branch updates regardless of ruleset name; inventories content and release App identities and destination repos, distinguishes tag-only release, uses truthful naming and narrowly scoped checks-only bypasses with bypass_mode always where direct writes are authorized (pull_request mode does not permit direct API commits), and preserves signing/deletion/force rules without a dependency-bot or organization-wide bypass"
+    },
+    {
+      "name": "Fleet evidence and privacy",
+      "max_score": 8,
+      "description": "Reuses the existing private policy/audit command, prepares an exact before/after rules diff, validates a canary then reads back every in-scope repo, reports the failed rule read as unknown rather than healthy, and keeps private inventory out of public artifacts"
+    }
+  ]
+}
