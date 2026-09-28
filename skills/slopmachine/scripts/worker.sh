@@ -6,7 +6,7 @@
 #   worker.sh log ID                     the current attempt's final result, or the log tail
 #   worker.sh stop ID [ATTEMPT]          kill the session and remove its run files; with ATTEMPT, only if it is current
 # IDs and attempts use [A-Za-z0-9._-] and don't start with a dot. Each start is a new attempt with fresh run files
-# (prompt, log, exit code) under $SLOPMACHINE_RUN/ID/ATTEMPT.
+# (prompt, log, exit code) under $SLOPMACHINE_RUN/ID/ATTEMPT, created private (default $TMPDIR/slopmachine-UID).
 # SLOPMACHINE_HARNESS replaces the headless command: prompt on stdin, JSON lines on stdout carrying a session_id,
 # and a final {"type":"result","result":...}. SLOPMACHINE_RESUME replaces the resume command (session id appended,
 # message on stdin). Both default to Claude Code. Workers start in "$SHELL" -l, which must run POSIX sh scripts.
@@ -14,7 +14,7 @@
 # SLOPMACHINE_WORKER_LOCK_WAIT seconds (60).
 set -euo pipefail
 
-RUN=${SLOPMACHINE_RUN:-${TMPDIR:-/tmp}/slopmachine}
+RUN=${SLOPMACHINE_RUN:-${TMPDIR:-/tmp}/slopmachine-$(id -u)}
 HARNESS=${SLOPMACHINE_HARNESS:-claude -p --permission-mode auto --output-format stream-json --verbose}
 RESUME=${SLOPMACHINE_RESUME:-claude -p --permission-mode auto --output-format stream-json --verbose --resume}
 MAX=${SLOPMACHINE_MAX_WORKERS:-2}
@@ -25,7 +25,10 @@ valid() {
 
 running() { tmux list-sessions -F '#{session_name}' 2>/dev/null | grep -c '^slop-' || true; }
 
+# Holds the admission lock until this script exits, so concurrent starts can't overrun the cap.
 admit() {
+  exec 8>> "$RUN/.admission.lock"
+  hold 8 "another session is starting a worker"
   tmux has-session -t "=slop-$1" 2>/dev/null && { echo "slop-$1 is already running" >&2; exit 1; }
   [ "$(running)" -lt "$MAX" ] || { echo "at capacity: $MAX workers running" >&2; exit 1; }
 }
@@ -40,11 +43,12 @@ launch() {
   q_dir=$(printf '%q' "$dir")
   cat > "$at/run.sh" <<RUN
 cd $q_dir 2>> $q_at/err.log || { printf 'cannot cd to %s\n' $q_dir > $q_at/startup-failed; echo 1 > $q_at/exit; exit 1; }
-$cmd >> $q_at/log.jsonl 2>> $q_at/err.log
-echo \$? > $q_at/exit
+code=0
+$cmd >> $q_at/log.jsonl 2>> $q_at/err.log || code=\$?
+echo \$code > $q_at/exit
 RUN
   rm -f "$at/exit" "$at/startup-failed"
-  tmux new-session -d -s "slop-$id" "${SHELL:-/bin/sh} -l $(printf '%q' "$at/run.sh")" 9>&- || {
+  tmux new-session -d -s "slop-$id" "${SHELL:-/bin/sh} -l $(printf '%q' "$at/run.sh")" 8>&- 9>&- || {
     echo "tmux could not start slop-$id" > "$at/startup-failed"
     echo 1 > "$at/exit"
     echo "tmux could not start slop-$id" >&2
@@ -54,18 +58,23 @@ RUN
 
 # Serializes start, resume and stop for one ID on this machine; held until this script exits.
 lock() {
-  mkdir -p "$RUN"
+  if [ ! -d "$RUN" ]; then mkdir -p "$(dirname "$RUN")"; mkdir -m 700 "$RUN" 2>/dev/null || [ -d "$RUN" ]; fi
   exec 9>> "$RUN/.$1.lock"
-  python3 - "$1" "${SLOPMACHINE_WORKER_LOCK_WAIT:-60}" <<'PY'
+  hold 9 "slop-$1 is being started or stopped by another session"
+}
+
+# hold FD MESSAGE: take an exclusive lock on FD, waiting up to SLOPMACHINE_WORKER_LOCK_WAIT seconds.
+hold() {
+  python3 - "$1" "${SLOPMACHINE_WORKER_LOCK_WAIT:-60}" "$2" <<'PY'
 import fcntl, sys, time
 deadline = time.monotonic() + float(sys.argv[2])
 while True:
     try:
-        fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fcntl.flock(int(sys.argv[1]), fcntl.LOCK_EX | fcntl.LOCK_NB)
         break
     except BlockingIOError:
         if time.monotonic() >= deadline:
-            sys.exit(f"slop-{sys.argv[1]} is being started or stopped by another session")
+            sys.exit(sys.argv[3])
         time.sleep(0.2)
 PY
 }

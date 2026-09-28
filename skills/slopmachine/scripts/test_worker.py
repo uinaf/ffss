@@ -141,6 +141,32 @@ class Worker(unittest.TestCase):
         self.assertTrue((self.run_dir / "w-3" / "a1").exists())
         self.assertEqual(self.worker("stop", "w-3", "a1").returncode, 0)
 
+    def test_a_start_waits_for_another_admission(self):
+        self.env["SLOPMACHINE_WORKER_LOCK_WAIT"] = "0.3"
+        self.run_dir.mkdir()
+        prompt = self.tmp / "prompt"
+        prompt.write_text("s1\n")
+        with open(self.run_dir / ".admission.lock", "a") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            run = self.worker("start", "w-1", str(self.tmp / "work"), str(prompt), "a1")
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("another session", run.stderr)
+        self.assertEqual(self.calls("harness-calls"), [])
+
+    def test_a_failing_harness_reports_its_exit_code_under_an_errexit_profile(self):
+        (self.tmp / "home" / ".profile").write_text("set -e\n")
+        failing = self.tmp / "failing-harness"
+        failing.write_text("#!/bin/sh\nexit 3\n")
+        failing.chmod(0o755)
+        self.env["SLOPMACHINE_HARNESS"] = str(failing)
+        self.start("w-2", "s1", attempt="a1")
+        self.wait_exit("w-2")
+        self.assertEqual(self.status()["w-2"], "exit=3")
+
+    def test_the_run_directory_is_private(self):
+        self.start("w-3", "s1")
+        self.assertEqual(self.run_dir.stat().st_mode & 0o777, 0o700)
+
     def test_a_failed_launch_is_a_startup_failure(self):
         failing = self.tmp / "failing"
         failing.mkdir()
