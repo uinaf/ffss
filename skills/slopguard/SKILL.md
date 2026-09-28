@@ -1,6 +1,6 @@
 ---
 name: slopguard
-description: "Review a code change with the slopguard CLI when independent review is requested or required, and handle its results: validate findings, fix accepted issues, and write the review closeout."
+description: "Review a code change with the slopguard CLI when the user asks for it, or when the repository has no automated review on change requests, and handle its results: validate findings, fix accepted issues, and write the review closeout."
 ---
 
 # Slopguard
@@ -12,9 +12,11 @@ rules: [security.md](references/security.md).
 
 ## When
 
-- Only when independent review is requested or required: once, after the
-  completed change passes its checks and before delivery or handoff. Not per
-  edit, test run, thread fix, or turn. An installed CLI is not a request.
+- Only when the user asks for it, or the repository has no automated review
+  on change requests (no review bots, no required reviews); where they exist,
+  they are the gate. If that's unclear, ask the user once. Run it once, after
+  the completed change passes its checks and before delivery or handoff; not
+  per edit, test run, thread fix, or turn. An installed CLI is not a request.
 - Reuse a valid result while target, base, contract, and requirements are
   unchanged. Never rerun for a cleaner verdict.
 - After post-review changes, review the final target again only when

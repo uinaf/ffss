@@ -36,8 +36,8 @@ person's concrete, unambiguous fix requests stay in this loop.
    invariants. Reject wrong or out-of-scope findings with evidence; real gaps
    outside the goal become tracker items, not commits.
 2. Batch accepted findings into one rework pass, then required gates and
-   affected runtime proof. When the rework changed behavior, or repository
-   policy requires it, run [slopguard](../slopguard/SKILL.md#when) once on the
+   affected runtime proof. When the rework changed behavior and
+   [slopguard's When](../slopguard/SKILL.md#when) applies, run it once on the
    final head, not per thread. Apply
    [slopguard's convergence rule](../slopguard/SKILL.md#validate-and-close) to
    repeated findings; an unresolved blocking review still prevents merge.

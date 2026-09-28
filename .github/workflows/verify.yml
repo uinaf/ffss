@@ -24,7 +24,6 @@ jobs:
       clilib: ${{ contains(fromJSON(steps.changes.outputs.changes), 'clilib') }}
       slopguard: ${{ contains(fromJSON(steps.changes.outputs.changes), 'slopguard') }}
       skills: ${{ contains(fromJSON(steps.changes.outputs.changes), 'skills') }}
-      scripts: ${{ contains(fromJSON(steps.changes.outputs.changes), 'scripts') }}
     steps:
       - id: changes
         uses: uinaf/.github/.github/actions/changes@7bc3f9ea25b5494f4026dfdb64fb866a520afcd0 # v3.0.0
@@ -41,9 +40,6 @@ jobs:
               - 'skills/**'
               - 'cli/*/skills/**'
               - 'tools/skill-evals/**'
-            scripts:
-              - 'skills/slopmachine/scripts/**'
-              - '.github/workflows/verify.yml'
 
   clilib:
     name: cli/lib verify
@@ -172,27 +168,9 @@ jobs:
         run: npm run audit
         working-directory: tools/skill-evals
 
-  scripts:
-    name: skill scripts
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.scripts == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends tmux
-      - run: shellcheck -S warning skills/slopmachine/scripts/worker.sh
-      - name: Worker tests, none skipped
-        run: |
-          set -o pipefail
-          python3 -m unittest discover -v -s skills/slopmachine/scripts 2>&1 | tee "$RUNNER_TEMP/test.log"
-          ! grep -q skipped "$RUNNER_TEMP/test.log"
-
   verify:
     if: always()
-    needs: [changes, clilib, slopguard, slopguard-darwin, slopguard-integration, skills, scripts]
+    needs: [changes, clilib, slopguard, slopguard-darwin, slopguard-integration, skills]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -211,8 +189,6 @@ jobs:
           INTEGRATION_RESULT: ${{ needs.slopguard-integration.result }}
           SKILLS_RESULT: ${{ needs.skills.result }}
           SKILLS_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.skills == 'true') && 'success' || 'skipped' }}
-          SCRIPTS_RESULT: ${{ needs.scripts.result }}
-          SCRIPTS_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.scripts == 'true') && 'success' || 'skipped' }}
         run: |
           test "$CHANGES_RESULT" = success
           test "$CLILIB_SELECTED" = true || test "$CLILIB_SELECTED" = false
@@ -223,7 +199,6 @@ jobs:
           test "$DARWIN_RESULT" = "$DARWIN_EXPECTED"
           test "$INTEGRATION_RESULT" = "$SLOPGUARD_EXPECTED"
           test "$SKILLS_RESULT" = "$SKILLS_EXPECTED"
-          test "$SCRIPTS_RESULT" = "$SCRIPTS_EXPECTED"
 
       - name: Check out for the scan
         if: ${{ !cancelled() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}

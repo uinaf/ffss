@@ -1,6 +1,6 @@
 ---
 name: slopmachine
-description: "Execute an agreed plan through implementation, verification, review, and delivery, fanning independent items out to parallel headless workers when that helps. Use when asked to run a plan end to end or work slopmachine-style; not for planning or assessment alone."
+description: "Execute an agreed plan through implementation, verification, review, and delivery. Use when asked to run a plan end to end or work slopmachine-style; not for planning or assessment alone."
 ---
 
 # Slopmachine
@@ -22,14 +22,18 @@ before treating it as a blocker.
 
 ## Execute
 
-- When the plan splits into independent items that parallel workers would
-  finish sooner, run them per [fan-out](references/fan-out.md).
+- Run independent items (no shared files or ordering, each with its own
+  endpoint) in parallel with the harness's own mechanism: subagents,
+  background agents, or separate sessions. Give each worker that changes files
+  its own worktree in the harness's worktree folder, and a brief with its
+  item, endpoint, rules, and report format. Keep status on the change request
+  or tracker, and validate each result before recording it.
 - After a dependency lands, reconcile dependent branches with the new base
   before verifying and merging.
-- After checks pass, use [slopguard](../slopguard/SKILL.md) for independent
-  review and honor any other required reviewers. Follow
-  [slopguard's convergence rule](../slopguard/SKILL.md#validate-and-close) instead of
-  chasing a clean verdict through repeated calls.
+- The repository's review bots and required reviewers are the review gate.
+  Run [slopguard](../slopguard/SKILL.md) only when the user asks for it or the
+  repository has no automated review on change requests; if that's unclear,
+  ask the user once.
 
 ## Deliver
 

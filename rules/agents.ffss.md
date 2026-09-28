@@ -6,7 +6,8 @@ lookups, and small edits that ship without a change request.
 - Opening or updating a change request, including its title, body, and review
   aids: `slopcourier`.
 - Review feedback, CI, or merge on an open change request: `slopnanny`.
-- Independent review of a change: `slopguard`.
+- Independent review the user asks for, or a repository without review bots
+  or required reviews: `slopguard`.
 - Running an agreed plan end to end: `slopmachine`.
 - Documentation or agent guidance that drifted from its sources: `slopscriber`.
 - Future work to record in the tracker: `slopspec`.
