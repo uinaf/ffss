@@ -15,6 +15,7 @@
 set -euo pipefail
 
 RUN=${SLOPMACHINE_RUN:-${TMPDIR:-/tmp}/slopmachine-$(id -u)}
+case $RUN in /*) ;; *) RUN=$PWD/$RUN ;; esac
 HARNESS=${SLOPMACHINE_HARNESS:-claude -p --permission-mode auto --output-format stream-json --verbose}
 RESUME=${SLOPMACHINE_RESUME:-claude -p --permission-mode auto --output-format stream-json --verbose --resume}
 MAX=${SLOPMACHINE_MAX_WORKERS:-2}
@@ -187,11 +188,13 @@ stop)
   valid ID "$id"
   [ -z "$attempt" ] || valid ATTEMPT "$attempt"
   lock "$id"
-  if [ -n "$attempt" ] && [ -f "$RUN/$id/current" ] && [ "$(cat "$RUN/$id/current")" != "$attempt" ]; then
-    echo "slop-$id is on attempt $(cat "$RUN/$id/current"), not $attempt; left running" >&2; exit 3
+  current=$(cat "$RUN/$id/current" 2>/dev/null || true)
+  if [ -n "$attempt" ] && [ -n "$current" ] && [ "$current" != "$attempt" ]; then
+    echo "slop-$id is on attempt $current, not $attempt; left running" >&2; exit 3
   fi
-  tmux kill-session -t "=slop-$id" 2>/dev/null || true
-  if [ -n "$attempt" ] && [ -f "$RUN/$id/current" ]; then
+  # A guarded stop with no current attempt has no worker of its own to kill.
+  if [ -z "$attempt" ] || [ -n "$current" ]; then tmux kill-session -t "=slop-$id" 2>/dev/null || true; fi
+  if [ -n "$attempt" ]; then
     # This attempt's files, and the rest only if every other attempt has exited: a racing start keeps its own.
     rm -rf "${RUN:?}/${id:?}/${attempt:?}"
     [ "$(cat "$RUN/$id/current" 2>/dev/null)" != "$attempt" ] || rm -f "${RUN:?}/${id:?}/current"

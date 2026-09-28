@@ -200,6 +200,22 @@ class Worker(unittest.TestCase):
         self.wait_exit("w-7")
         self.assertNotIn("done s1", self.worker("log", "w-7").stdout)
 
+    def test_a_guarded_stop_without_a_current_attempt_kills_nothing(self):
+        subprocess.run(["tmux", "new-session", "-d", "-s", "slop-w-8", "sleep 60"], env=self.env, check=True)
+        self.private_run_dir()
+        (self.run_dir / "w-8" / "a1").mkdir(parents=True)
+        self.assertEqual(self.worker("stop", "w-8", "a1").returncode, 0)
+        self.assertEqual(subprocess.run(["tmux", "has-session", "-t", "=slop-w-8"], env=self.env).returncode, 0)
+        self.assertFalse((self.run_dir / "w-8").exists())
+
+    def test_a_relative_run_directory_holds_the_run_files(self):
+        self.env["SLOPMACHINE_RUN"] = "run"
+        prompt = self.tmp / "prompt"
+        prompt.write_text("s1\n")
+        self.assertEqual(self.worker("start", "w-9", str(self.tmp / "work"), str(prompt), "a1", cwd=self.tmp).returncode, 0)
+        self.wait_exit("w-9")
+        self.assertEqual(self.worker("status", cwd=self.tmp).stdout.strip(), "w-9 exit=0")
+
     def test_a_failed_launch_is_a_startup_failure(self):
         failing = self.tmp / "failing"
         failing.mkdir()

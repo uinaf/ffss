@@ -11,8 +11,9 @@ endpoint; a single change stays in the session.
    session run.
 2. **Backlog:** list the candidates. Before dispatching, record every pick as
    `picked` and every pass with its status and reason.
-3. **Dispatch:** write the item's brief, record `dispatched` with `host=`,
-   `worker=` and a fresh `attempt=`, then run
+3. **Dispatch:** give each worker that changes files its own worktree and
+   branch; never two workers in one checkout. Write the item's brief, record
+   `dispatched` with `host=`, `worker=` and a fresh `attempt=`, then run
    `scripts/worker.sh start ID DIR BRIEF ATTEMPT`. If the worker doesn't
    start, record `picked` again.
 4. **Work:** workers follow their brief to its endpoint and post their report,
