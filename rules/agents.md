@@ -98,7 +98,7 @@ Without a template, write the problem, the solution, and proof CI cannot
 show. Describe the change as it stands, without review history. Reply to fixed
 findings in their threads with the commit hash.
 
-- Let auto-review bots finish their first review of a change request before
-  merging. Later pushes need green checks and answered threads, not another
-  bot pass. Codex never appears in review requests: it shows 👀 or an
-  in-progress summary while running and 👍 when clean.
+- If the repository runs review bots, let each finish its first review of a
+  change request before merging; they may not appear in review requests, so
+  read their comments and reactions. Later pushes need green checks and
+  answered threads, not another bot pass.
