@@ -47,8 +47,8 @@ closest owner before adding scripts, abstractions, or infrastructure.
   state in the project's typed language.
 - Validate external input at the boundary. Prefer validated types to casts,
   ignores, and non-null assertions.
-- Preserve error causes and partial failures. Keep retries bounded and limited
-  to idempotent transient work.
+- Preserve error causes and partial failures. Keep retries bounded,
+  cancellable, and limited to idempotent transient work.
 - Keep secrets and sensitive payloads out of logs and artifacts.
 - Preserve user input, recovery paths, and UI interaction states.
 - Comment only invariants and external constraints the code cannot express.
@@ -62,17 +62,17 @@ actually use with the cheapest check that would fail if the change were wrong.
 - Keep gates and hooks enabled. Fix change-caused failures without asking.
   Live or paid checks need scope.
 - A check proves a claim only if it fails on a negative control, such as the
-  fix reverted.
+  fix reverted. An artifact showing the expected state is an observation.
 - Test observable behavior. Skip tests that restate the implementation or
   assert what a mock was told to return; add a test only for a regression
   existing coverage would miss. When a change breaks a test, fix the code
-  unless the contract changed or the test pins implementation; then update it
+  unless the contract intentionally changed or the test pins implementation; then update it
   and say so.
 - Reuse passing proof and review until something invalidates them. Validate
   review findings before acting on them.
 - Clean up only the processes you started.
-- Report what ran, failed, was skipped, or was unavailable. Never claim an
-  unexecuted check passed.
+- Report what ran, failed, was skipped, or was unavailable, with each proof's
+  revision and command. Never claim an unexecuted check passed.
 
 ### Delivery
 
