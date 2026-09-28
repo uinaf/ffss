@@ -26,8 +26,8 @@ before treating it as a blocker.
   endpoint) in parallel with the harness's own mechanism: subagents,
   background agents, or separate sessions. Give each worker that changes files
   its own worktree in the harness's worktree folder, and a brief with its
-  item, endpoint, rules, and report format. Keep status on the change request
-  or tracker, and validate each result before recording it.
+  item, endpoint, rules, and report format. Keep status in the existing
+  tracking surface, and validate each result before recording it.
 - After a dependency lands, reconcile dependent branches with the new base
   before verifying and merging.
 - The repository's review bots and required reviewers are the review gate.
