@@ -17,11 +17,10 @@ belongs to the required reviewer.
 - Green checks and no threads are not settled while a requested reviewer,
   human or bot, is pending. After it submits, re-read everything.
 - Auto-review bots the repository runs may never appear in review requests.
-  Each is pending until it leaves completion evidence for the head: Codex
-  shows 👀 or an unfinished summary row while running; it is done when its
-  summary row for that commit reads completed, its findings name that commit,
-  or a 👍 appears after the push. A bot still unfinished past a bounded wait
-  is a blocker to report, not a pass.
+  Wait for each bot's first review of the change request: Codex shows 👀 or
+  an unfinished summary row while running, and is done when a summary row
+  reads completed, it posts findings, or a 👍 appears. Later pushes don't
+  wait for another bot pass; handle one if it arrives before the merge.
 - Don't reprocess findings a push answered; don't assume a push resolved older
   feedback.
 
@@ -54,8 +53,8 @@ hashes, nothing that doesn't advance the thread.
 
 - When nothing changed, post nothing on the forge; still tell the user what
   you observed.
-- Merge when required checks are green on the latest commit, no review is
-  pending, review evidence (approvals and bot verdicts) applies to that
-  commit, and reviewers and threads are clear. Use the repository's merge
+- Merge when required checks are green on the latest commit, no requested
+  review is pending, bots have finished their first review, and reviewers and
+  threads are clear. Use the repository's merge
   method and report the merged commit; don't ask first. Hold only when asked.
   Never merge past a blocking human review or an open thread.
