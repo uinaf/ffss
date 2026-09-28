@@ -25,12 +25,13 @@ Order plugins by lifecycle:
 1. analyze commits
 2. generate notes
 3. prepare versioned files or changelog
-4. publish registries or assets
-5. perform any signed source writeback
-6. create or finalize the GitHub Release
+4. perform any signed source writeback
+5. create the release tag
+6. publish registries, assets, and the GitHub Release
 
-A source-writeback plugin must run after every file-preparation plugin and
-before the release tag is finalized. List writeback files explicitly. Do not
+semantic-release runs writeback in its `prepare` step, before it tags and
+enters `publish`. A source-writeback plugin must follow every file-preparation
+plugin, so no artifact ships before the version commit and tag identify it. List writeback files explicitly. Do not
 use a tree-limited API plugin for symlinks, executable files, deletions, or
 generated trees it cannot faithfully preserve.
 

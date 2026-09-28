@@ -5,7 +5,7 @@
     {
       "name": "Renovate justified by coverage gaps",
       "max_score": 11,
-      "description": "Chooses Renovate because Dependabot has no manager for mise.toml or OpenTofu providers, not because of digest handling"
+      "description": "Chooses Renovate because Dependabot has no manager for mise.toml, not because of OpenTofu providers or digest handling"
     },
     {
       "name": "One bot per repository",

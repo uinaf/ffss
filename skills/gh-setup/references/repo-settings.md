@@ -105,8 +105,9 @@ configuration with this baseline:
 - disable the paid **Code Security** bundle and legacy blanket
   `advanced_security` enablement;
 - disable CodeQL default setup;
-- enable the dependency graph and Dependabot alerts; leave Dependabot
-  security updates off.
+- enable the dependency graph and Dependabot alerts; enable Dependabot
+  security updates on repositories that use Dependabot, and leave them off
+  where Renovate raises vulnerability pull requests.
 
 This is a billing-safe baseline, not a claim that every overlapping public-repo
 security feature is off. GitHub may provide some secret scanning or other
