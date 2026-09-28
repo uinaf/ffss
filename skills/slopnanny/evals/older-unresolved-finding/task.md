@@ -33,6 +33,9 @@ $ gh api graphql (reviewThreads for #118)
   "author": "copilot-pull-request-reviewer", "createdAt": "13:40",
   "body": "cancel() calls controller.abort() but never kills the spawned child process; the child keeps running after cancellation."}]
 
+$ gh api repos/example/runner/rulesets --jq '.[].rules[].type'
+copilot_code_review   # review_on_push: true
+
 $ gh api repos/example/runner --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge}'
 {"allow_squash_merge": true, "allow_merge_commit": false, "allow_rebase_merge": false}
 =============== END FILE ===============

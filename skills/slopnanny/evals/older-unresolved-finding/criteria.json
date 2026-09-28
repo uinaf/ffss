@@ -1,5 +1,5 @@
 {
-  "context": "An older bot finding survives a docs-only push and is reproduced, so it is fixed in the loop. Behavior changed, so independent review is refreshed with slopguard on the final head, the thread gets the fixing commit hash, and the PR is squash-merged once green on the new head without asking permission.",
+  "context": "An older bot finding survives a docs-only push and is reproduced, so it is fixed in the loop. The repository has a review bot, so its review is the gate and slopguard does not run; the thread gets the fixing commit hash, and the PR is squash-merged once green on the new head without asking permission.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -8,9 +8,9 @@
       "description": "Treats the 13:40 thread as unanswered by the docs push and plans a scoped fix so cancel() kills the child, proven by rerunning the reproduction"
     },
     {
-      "name": "Review refreshed with slopguard",
+      "name": "Review bot is the gate",
       "max_score": 25,
-      "description": "Runs slopguard once on the final fixed head, not per edit or per thread"
+      "description": "Does not run slopguard or another local review: the repository has a review bot, so its review of the new head is the gate"
     },
     {
       "name": "Thread answered with the commit hash",

@@ -23,7 +23,6 @@ install it.
 | `skills/`, `cli/*/skills/` | `npm ci && npm run lint && npm run audit` in `tools/skill-evals` ([evals](tools/skill-evals/README.md)) |
 | `cli/slopguard/` | `mise run verify` in `cli/slopguard` |
 | `cli/lib/` | `mise run verify` in `cli/lib` |
-| `skills/slopmachine/scripts/` | `shellcheck -S warning skills/slopmachine/scripts/worker.sh && python3 -m unittest discover -s skills/slopmachine/scripts` (needs tmux) |
 
 [Verify](.github/workflows/verify.yml) runs only the lanes a change touches and
 requires them through its `verify` job.
