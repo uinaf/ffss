@@ -20,18 +20,15 @@ launcher and pinned versions rather than introducing `npx ...@latest`.
 
 ## Plugin Order
 
-Order plugins by lifecycle:
+semantic-release core fixes the lifecycle: analyze commits, generate notes,
+run every `prepare` hook, create the tag, then run every `publish` hook. The
+tag is not a plugin; plugin-array order matters only among plugins sharing a
+step.
 
-1. analyze commits
-2. generate notes
-3. prepare versioned files or changelog
-4. perform any signed source writeback
-5. create the release tag
-6. publish registries, assets, and the GitHub Release
-
-semantic-release runs writeback in its `prepare` step, before it tags and
-enters `publish`. A source-writeback plugin must follow every file-preparation
-plugin, so no artifact ships before the version commit and tag identify it. List writeback files explicitly. Do not
+Within `prepare`, list signed source writeback after every plugin that
+prepares versioned files or the changelog. Registry, asset, and GitHub Release
+plugins publish after the tag, so no artifact ships before the version commit
+and tag identify it. List writeback files explicitly. Do not
 use a tree-limited API plugin for symlinks, executable files, deletions, or
 generated trees it cannot faithfully preserve.
 

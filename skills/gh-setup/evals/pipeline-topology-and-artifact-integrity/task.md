@@ -30,8 +30,21 @@ The following files represent the current repository state. Extract them before 
     "test": "vitest run",
     "test:e2e": "playwright test",
     "preview": "vite preview --outDir .output/public --port 4173"
+  },
+  "dependencies": {
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@vitejs/plugin-react": "5.1.0",
+    "vite": "7.2.2",
+    "vitest": "4.0.8"
   }
 }
+
+`package-lock.json` is committed and matches this manifest; its contents are
+omitted here.
 
 =============== FILE: vite.config.ts ===============
 import { defineConfig } from "vite";
