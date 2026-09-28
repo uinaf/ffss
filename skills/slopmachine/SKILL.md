@@ -1,6 +1,6 @@
 ---
 name: slopmachine
-description: "Execute an agreed plan through implementation, verification, review, and delivery. Use when asked to run a plan end to end or work slopmachine-style; not for planning or assessment alone."
+description: "Execute an agreed plan through implementation, verification, review, and delivery, fanning independent items out to parallel headless workers when that helps. Use when asked to run a plan end to end or work slopmachine-style; not for planning or assessment alone."
 ---
 
 # Slopmachine
@@ -22,6 +22,8 @@ before treating it as a blocker.
 
 ## Execute
 
+- When the plan splits into independent items that parallel workers would
+  finish sooner, run them per [fan-out](references/fan-out.md).
 - After a dependency lands, reconcile dependent branches with the new base
   before verifying and merging.
 - After checks pass, use [slopguard](../slopguard/SKILL.md) for independent
