@@ -21,6 +21,7 @@ HARNESS = textwrap.dedent("""\
 RESUME = textwrap.dedent("""\
     #!/bin/sh
     echo "$*" >> "$STUB_DIR/resume-calls"
+    pwd >> "$STUB_DIR/resume-dirs"
 """)
 
 
@@ -46,8 +47,12 @@ class Worker(unittest.TestCase):
         subprocess.run(["tmux", "kill-server"], env=self.env, capture_output=True)
         shutil.rmtree(self.tmp)
 
-    def worker(self, *args):
-        return subprocess.run(["bash", WORKER, *args], env=self.env, text=True, capture_output=True, timeout=30)
+    def worker(self, *args, cwd=None):
+        return subprocess.run(["bash", WORKER, *args], env=self.env, text=True, capture_output=True, timeout=30, cwd=cwd)
+
+    def private_run_dir(self):
+        self.run_dir.mkdir()
+        self.run_dir.chmod(0o700)
 
     def start(self, worker_id, session, attempt=None, cwd=None):
         prompt = self.tmp / f"prompt-{session}"
@@ -74,7 +79,7 @@ class Worker(unittest.TestCase):
     def test_ids_that_escape_the_run_directory_are_refused(self):
         sibling = self.tmp / "keep"
         sibling.mkdir()
-        self.run_dir.mkdir()
+        self.private_run_dir()
         for args in (("stop", "../keep"), ("stop", ".."), ("status", "../"), ("log", "a/b"), ("resume", ".x", "hi"),
                      ("start", ".hidden", str(self.tmp), str(self.tmp / "harness")),
                      ("start", "ok", str(self.tmp), str(self.tmp / "harness"), "../up")):
@@ -85,7 +90,8 @@ class Worker(unittest.TestCase):
 
     def test_targets_match_the_exact_session_name(self):
         subprocess.run(["tmux", "new-session", "-d", "-s", "slop-w-16101", "sleep 60"], env=self.env, check=True)
-        (self.run_dir / "w-161").mkdir(parents=True)
+        self.private_run_dir()
+        (self.run_dir / "w-161").mkdir()
         self.assertEqual(self.status()["w-161"], "dead")
         self.worker("stop", "w-161")
         alive = subprocess.run(["tmux", "has-session", "-t", "=slop-w-16101"], env=self.env)
@@ -143,7 +149,7 @@ class Worker(unittest.TestCase):
 
     def test_a_start_waits_for_another_admission(self):
         self.env["SLOPMACHINE_WORKER_LOCK_WAIT"] = "0.3"
-        self.run_dir.mkdir()
+        self.private_run_dir()
         prompt = self.tmp / "prompt"
         prompt.write_text("s1\n")
         with open(self.run_dir / ".admission.lock", "a") as held:
@@ -166,6 +172,33 @@ class Worker(unittest.TestCase):
     def test_the_run_directory_is_private(self):
         self.start("w-3", "s1")
         self.assertEqual(self.run_dir.stat().st_mode & 0o777, 0o700)
+
+    def test_a_run_directory_others_can_reach_is_refused(self):
+        self.run_dir.mkdir()
+        self.run_dir.chmod(0o755)
+        prompt = self.tmp / "prompt"
+        prompt.write_text("s1\n")
+        run = self.worker("start", "w-5", str(self.tmp / "work"), str(prompt))
+        self.assertEqual(run.returncode, 1)
+        self.assertIn("mode 700", run.stderr)
+        self.assertEqual(self.calls("harness-calls"), [])
+
+    def test_resume_runs_in_the_start_directory_from_anywhere(self):
+        prompt = self.tmp / "prompt"
+        prompt.write_text("s1\n")
+        self.assertEqual(self.worker("start", "w-6", "work", str(prompt), "a1", cwd=self.tmp).returncode, 0)
+        self.wait_exit("w-6")
+        self.assertEqual(self.worker("resume", "w-6", "post your report", cwd=self.tmp / "home").returncode, 0)
+        self.wait_exit("w-6")
+        self.assertEqual([pathlib.Path(d).resolve() for d in self.calls("resume-dirs")], [(self.tmp / "work").resolve()])
+
+    def test_log_after_a_resume_ignores_the_earlier_result(self):
+        self.start("w-7", "s1", attempt="a1")
+        self.wait_exit("w-7")
+        self.assertEqual(self.worker("log", "w-7").stdout.strip(), "done s1")
+        self.worker("resume", "w-7", "post your report")
+        self.wait_exit("w-7")
+        self.assertNotIn("done s1", self.worker("log", "w-7").stdout)
 
     def test_a_failed_launch_is_a_startup_failure(self):
         failing = self.tmp / "failing"

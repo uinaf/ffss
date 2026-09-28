@@ -74,4 +74,4 @@ session `slop-<id>` on this machine, at most `SLOPMACHINE_MAX_WORKERS` (2) at
 once. Its header lists the commands and the contract for another harness.
 Each `start` is a new attempt with its own prompt, log and exit code;
 `stop ID ATTEMPT` refuses with exit 3 once the worker has moved to a newer
-attempt. It needs tmux; if tmux is missing, stop and report.
+attempt. It needs tmux and python3; if either is missing, stop and report.

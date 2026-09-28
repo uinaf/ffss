@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Headless harness workers in tmux sessions on this machine.
+# Headless harness workers in tmux sessions on this machine. Needs tmux and python3.
 #   worker.sh start ID DIR PROMPT_FILE [ATTEMPT]  run the prompt headless in DIR (tmux session slop-ID) as a new attempt
 #   worker.sh resume ID MESSAGE          continue the current attempt's harness session
 #   worker.sh status [PREFIX]            one line per worker: running, exit=N, startup-failed or dead
@@ -58,7 +58,9 @@ RUN
 
 # Serializes start, resume and stop for one ID on this machine; held until this script exits.
 lock() {
-  if [ ! -d "$RUN" ]; then mkdir -p "$(dirname "$RUN")"; mkdir -m 700 "$RUN" 2>/dev/null || [ -d "$RUN" ]; fi
+  if [ ! -e "$RUN" ]; then mkdir -p "$(dirname "$RUN")"; mkdir -m 700 "$RUN" 2>/dev/null || true; fi
+  [ -d "$RUN" ] && [ ! -L "$RUN" ] && [ -O "$RUN" ] && [ -n "$(find "$RUN" -maxdepth 0 -perm 700)" ] ||
+    { echo "$RUN must be a directory you own with mode 700" >&2; exit 1; }
   exec 9>> "$RUN/.$1.lock"
   hold 9 "slop-$1 is being started or stopped by another session"
 }
@@ -101,12 +103,15 @@ print(session)
 PY
 }
 
+# The last result in a stream-json log, after the first SKIP lines (those written before the latest resume).
 result_of() {
-  python3 - "$1" <<'PY'
+  python3 - "$1" "$2" <<'PY'
 import json, sys
 result = ""
 with open(sys.argv[1]) as log:
-    for raw in log:
+    for number, raw in enumerate(log):
+        if number < int(sys.argv[2]):
+            continue
         try:
             event = json.loads(raw)
         except ValueError:
@@ -125,6 +130,7 @@ start)
   valid ID "$id"
   valid ATTEMPT "$attempt"
   [ "$attempt" != current ] || { echo "invalid ATTEMPT: current" >&2; exit 2; }
+  case $dir in /*) ;; *) dir=$PWD/$dir ;; esac
   lock "$id"
   admit "$id"
   at=$RUN/$id/$attempt
@@ -143,6 +149,7 @@ resume)
   at=$(attempt_dir "$id")
   session=$(session_of "$at/log.jsonl")
   admit "$id"
+  wc -l < "$at/log.jsonl" | tr -d ' ' > "$at/log-start"
   printf '%s\n' "$message" > "$at/resume.md"
   launch "$id" "$(cat "$at/dir")" "$RESUME $(printf '%q' "$session") < $(printf '%q' "$at/resume.md")" "$at"
   echo "resumed slop-$id session $session"
@@ -166,9 +173,14 @@ log)
   id=${2:?usage: worker.sh log ID}
   valid ID "$id"
   at=$(attempt_dir "$id")
-  result=$(result_of "$at/log.jsonl" 2>/dev/null || true)
+  start=$(cat "$at/log-start" 2>/dev/null || echo 0)
+  result=$(result_of "$at/log.jsonl" "$start" 2>/dev/null || true)
   if [ -n "$result" ]; then printf '%s\n' "$result"
-  else cat "$at/startup-failed" 2>/dev/null || true; tail -c 3000 "$at/log.jsonl" 2>/dev/null || true; tail -20 "$at/err.log" 2>/dev/null || true; fi
+  else
+    cat "$at/startup-failed" 2>/dev/null || true
+    tail -n +"$((start + 1))" "$at/log.jsonl" 2>/dev/null | tail -c 3000 || true
+    tail -20 "$at/err.log" 2>/dev/null || true
+  fi
   ;;
 stop)
   id=${2:?usage: worker.sh stop ID [ATTEMPT]} attempt=${3:-}
