@@ -66,6 +66,33 @@ func TestCodexReviewUsesFrozenStdinAndCanonicalResult(t *testing.T) {
 	}
 }
 
+func TestCodexReviewDefaultsToGPT61Sol(t *testing.T) {
+	t.Parallel()
+
+	fake := newFakeCodex(t, fakeCodexOptions{})
+	effective := codexConfig(false, 5*time.Second)
+	effective.Model = config.Value[string]{Value: "", Source: config.SourceDefault}
+	effective.ReasoningEffort = config.Value[config.ReasoningEffort]{Value: config.ReasoningMedium, Source: config.SourceDefault}
+	reviewer := NewCodex(CodexOptions{
+		Repository:  t.TempDir(),
+		Executable:  fake.path,
+		Environment: []string{"PATH=/usr/bin:/bin"},
+	})
+	result, err := reviewer.Review(context.Background(), Request{Prompt: "frozen review bundle", Config: effective})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Provider.Model != "gpt-6.1-sol" {
+		t.Fatalf("default model = %q", result.Provider.Model)
+	}
+	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
+	for _, required := range []string{"gpt-6.1-sol", `model_reasoning_effort="medium"`} {
+		if !contains(arguments, required) {
+			t.Errorf("Codex arguments omitted %q: %v", required, arguments)
+		}
+	}
+}
+
 func TestDecodeCodexCurrentEventFormat(t *testing.T) {
 	t.Parallel()
 
