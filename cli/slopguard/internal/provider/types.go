@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	DefaultCodexModel  = "gpt-6-sol"
+	DefaultCodexModel  = "gpt-6.1-sol"
 	DefaultClaudeModel = "claude-opus-5-5[1m]"
 	DefaultGrokModel   = "grok-4.7"
 )
