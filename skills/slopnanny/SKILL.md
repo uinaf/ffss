@@ -29,10 +29,13 @@ belongs to the required reviewer.
 
 ## Triage
 
-A person's `CHANGES_REQUESTED` review, or a comment questioning the design, is
-the user's to answer: stop rework on that change request, post nothing, and
-hand the objection back with the evidence you found. Bot findings and a
-person's concrete, unambiguous fix requests stay in this loop.
+A person's `CHANGES_REQUESTED` review blocks merge until that person approves
+or the user decides. If every point in it is a concrete, unambiguous fix, make
+the fixes, reply with the commits, and re-request that person's review. If any
+point, or any person's comment, questions the design or is ambiguous, stop
+rework on that change request, post nothing, and hand it back with the
+evidence you found. Bot findings and a person's other concrete, unambiguous fix
+requests stay in this loop.
 
 1. Validate each claim against current code, the task contract, and stronger
    invariants. Reject wrong or out-of-scope findings with evidence; real gaps
