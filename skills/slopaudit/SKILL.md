@@ -64,10 +64,10 @@ move on.
 Lead with the diagnosis in a sentence or two, then ranked findings. For each:
 the evidence, the smallest fix, and its owner. For a lesson the owner is the
 strongest one that fits: a type, lint rule, or CI check that fails on the
-mistake, then the skill or playbook for that kind of work, then a global rule. Prefer deleting or narrowing an
-instruction to adding one, and prefer the user's existing mechanisms to new
-hooks, scripts, or infrastructure. Group decisions the user must make into a
-short numbered list.
+mistake, then the skill or playbook for that kind of work, then a global
+rule. Prefer deleting or narrowing an instruction to adding one, and prefer
+the user's existing mechanisms to new hooks, scripts, or infrastructure. Group
+decisions the user must make into a short numbered list.
 
 Record a baseline for next time: corrections per completed outcome, the
 always-loaded token count, and the top repeated instructions.
