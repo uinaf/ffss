@@ -27,7 +27,6 @@ One job each.
 | [`slopscriber`](skills/slopscriber/) | Auditing and updating repository documentation |
 | [`slopprep`](skills/slopprep/) | Preparing repositories and runners for autonomous work |
 | [`slopskills`](skills/slopskills/) | Selecting and installing repo-local skills for the stack and task |
-| [`wat`](skills/wat/) | Rewriting rambling replies as terse status updates |
 | [`gh-setup`](skills/gh-setup/) | Configuring GitHub settings, Actions, releases, and deployments (invoke explicitly) |
 | [`react-ban-use-effect`](skills/react-ban-use-effect/) | Replacing direct React `useEffect` with clearer patterns and enforcement |
 
