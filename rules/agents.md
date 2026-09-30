@@ -9,7 +9,9 @@ Lead with the outcome. Use plain words, concrete facts, and exact commands.
 No greetings, filler, process narration, or closing offers. Link every
 reference that can be a link; backticks are for literals only. Finish with a
 receipt: status, changes, risks, unverified items, evidence links, next
-action. Link long output instead of pasting it.
+action. Link long output instead of pasting it. End the turn on the receipt,
+not on a question you could answer by acting; ask only for a decision that is
+the user's.
 
 ### Work and authority
 
