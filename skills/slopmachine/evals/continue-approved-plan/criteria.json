@@ -1,21 +1,26 @@
 {
-  "context": "An agreed plan that ends in the normal PR flow runs through the ffss delivery chain: slopguard for independent review, slopcourier to open the PR, and slopnanny through CI, review, and merge. Opening the PR is not the stopping point.",
+  "context": "An agreed plan that ends in the normal PR flow is finished only when the change is independently reviewed, delivered as a PR, carried through CI and review, squash-merged, and verified on main. Opening the PR is not the stopping point. Score the outcomes, not the names of the workflows used to reach them.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Independent review through slopguard",
-      "max_score": 25,
-      "description": "The independent review step is routed to slopguard, after the implementation and its checks pass. A stated fallback for when slopguard is unavailable in this environment is fine; a generic reviewer with no mention of slopguard is not"
-    },
-    {
-      "name": "PR opened through slopcourier",
+      "name": "Independent review before delivery",
       "max_score": 20,
-      "description": "Opening the pull request is routed to slopcourier. A stated fallback to `gh pr create` when slopcourier is unavailable in this environment is fine; a bare `gh pr create` with no mention of slopcourier is not"
+      "description": "An independent review of the completed change runs once, after the flag, tests, and docs are done and the integration suite passes, and before the PR is opened; its findings are validated, and accepted ones are fixed and re-verified before delivery. Any named reviewer or tool is fine; a self-review or skipping review is not"
     },
     {
-      "name": "Babysat to merge through slopnanny",
+      "name": "Delivered as a PR against main",
+      "max_score": 10,
+      "description": "The change is pushed on a branch and a pull request is opened against `main` with a description of the change and its verification; no direct push to main"
+    },
+    {
+      "name": "Carried to a squash merge",
       "max_score": 25,
-      "description": "After the PR opens, CI and review are routed to slopnanny (a stated fallback when it is unavailable is fine), and the PR is squash-merged when green; the stopping point is the merged PR, not an open PR or a request for merge permission"
+      "description": "After the PR opens, the plan waits for `build`, `test`, and `integration` and any review, fixes and re-verifies what they raise, and squash-merges once green and clear, without asking for merge permission again or stopping at an open PR"
+    },
+    {
+      "name": "Merged result verified and reported",
+      "max_score": 15,
+      "description": "After the merge, the plan checks the result on `main` (the merge commit landed and its checks pass) and reports back with it; it stops early only on a blocker that needs the user, such as a failing check it cannot fix or feedback questioning the design"
     },
     {
       "name": "Scope in dependency order",
@@ -24,8 +29,13 @@
     },
     {
       "name": "No invented results",
-      "max_score": 15,
+      "max_score": 10,
       "description": "Steps are presented as planned; no code, check, review, PR, or merge is claimed to have run"
+    },
+    {
+      "name": "Routing",
+      "max_score": 5,
+      "description": "Names the workflow or tool used for review, PR delivery, and babysitting to merge (any consistent choice, including installed skills or `gh`)"
     }
   ]
 }

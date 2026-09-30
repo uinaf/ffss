@@ -1,11 +1,11 @@
 {
-  "context": "After opening a change request, delivery hands the remaining CI, review, and merge work to the babysitting workflow (slopnanny) and carries the user's explicit merge authority across the handoff.",
+  "context": "After opening a change request under an explicit 'get it merged once CI and review pass', delivery is not the end: the agent keeps carrying CI, review, and merge to a verified result, with the user's merge authority intact. Score that outcome, not the name of the workflow that carries it.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Hands off to slopnanny",
-      "max_score": 40,
-      "description": "actions.md or the response names slopnanny as the workflow that owns the remaining CI, review, feedback, and merge work from here (if it is not installed, it says so and carries the same work on rather than stopping); PR delivery is treated as finished."
+      "name": "Carries CI and review forward",
+      "max_score": 30,
+      "description": "actions.md keeps working the PR rather than ending at 'PR open': it waits for e2e, reads the review and any threads or bot comments when they land, and fixes, re-verifies, and replies to concrete findings before merging. Handing off to a named babysitting workflow is fine when the same work is described"
     },
     {
       "name": "Merge authority kept",
@@ -14,13 +14,18 @@
     },
     {
       "name": "Stop condition and merged-result check",
-      "max_score": 20,
+      "max_score": 25,
       "description": "The plan names when it stops (merged and verified on the default branch, or blocked on a failing check or feedback that needs the user) and includes verifying the merged result."
     },
     {
       "name": "Simulation honest",
       "max_score": 15,
       "description": "actions.md records intended actions without claiming any merge, comment, or other GitHub action happened."
+    },
+    {
+      "name": "Routing",
+      "max_score": 5,
+      "description": "Names the workflow or tool that owns the remaining CI, review, and merge work (an installed babysitting skill, or `gh` directly)"
     }
   ]
 }
