@@ -61,3 +61,5 @@ hashes, nothing that doesn't advance the thread.
   reviewers and threads are clear. Use the repository's merge method and
   report the merged commit; don't ask first. Hold only when asked.
   Never merge past a blocking human review or an open thread.
+- Delete the branch or worktree only after the forge shows the change request
+  merged; a deleted head branch closes an open one.
