@@ -70,7 +70,10 @@ the user's existing mechanisms to new hooks, scripts, or infrastructure. Group
 decisions the user must make into a short numbered list.
 
 Record a baseline for next time: corrections per completed outcome, the
-always-loaded token count, and the top repeated instructions.
+always-loaded token count, and the top repeated instructions. Save the report
+and baseline where the user keeps knowledge, next to earlier runs so the trend
+shows; file follow-up work in their tracker. Raw log excerpts stay in scratch
+and are deleted after the run.
 
 ## Apply
 
