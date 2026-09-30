@@ -14,10 +14,16 @@ not a blanket bundle.
 | `tanstack-query` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | A TanStack Query dependency or imports; fetching, query keys, mutations, caching, or invalidation. |
 | `tanstack-form` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | A TanStack Form dependency or imports; form state, field validation, or submission. |
 | `tanstack-start` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | TanStack Start dependency/configuration; routes, server functions, SSR, or deployment. Router alone does not imply Start. |
+| `impeccable` | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) | A user-facing web UI where design work is in scope: redesign, critique, polish, or loading, empty, and error states. A frontend dependency alone does not qualify. |
 
 React alone does not select all TanStack skills. Match the actual TanStack
 package, including non-React adapters, and check guidance against the installed
 major version before using its APIs.
+
+`impeccable` writes a `PRODUCT.md` during `init` and follows it on later
+runs. When the repository uses a pinned design system, record that system as a
+binding brand commitment there, or the skill treats the existing code as the
+visual authority. Installing it does not authorize enabling its hooks.
 
 ## Swift
 
