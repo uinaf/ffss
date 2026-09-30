@@ -39,8 +39,8 @@ A recording proves an interaction; the reviewer's time starts at frame one.
 
 `gh` 2.99+ uploads media natively; check `gh --version` first (older `gh`
 uses the fallback below). `gh pr create`, `gh pr edit`, `gh pr comment`, and
-the `issue` equivalents take a repeatable `--attach <file>` flag, at most 50
-per command: png, jpg, jpeg, gif, webp, svg, mp4, mov, webm. `gh pr review`
+the `issue` equivalents take a repeatable `--attach <file>` flag (limits and
+alt-text rules: `gh pr create --help`). `gh pr review`
 does not; use `gh pr comment` for review media. The asset inherits repository
 visibility.
 
@@ -50,16 +50,12 @@ gh pr comment 13 --attach ./before.png --attach ./after.png
 gh pr edit 13 --attach ./flow.mp4                       # video takes no alt text
 ```
 
-- If the body already references the local path (`![alt](./after.png)`), `gh`
-  rewrites that reference to the uploaded URL; otherwise it appends the asset.
 - Video is embedded as a bare URL on its own line, where GitHub renders a
-  player. Never wrap it in `![]()` yourself. `#alt` on a video fails with
-  "cannot set alt text on video".
+  player. Never wrap it in `![]()` yourself or give it alt text.
 - Transcode Playwright's webm for broad playback first:
   `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4`.
 - `--attach` does not combine with `--web` or `--dry-run`.
-- Partial upload failure on create still creates the pull request and reports
-  the failed files; retry them with `gh pr edit --attach`.
+- Retry failed uploads with `gh pr edit --attach`.
 - Requires GitHub.com or a GHE.com tenant, an OAuth token, classic PAT, or
   fine-grained PAT, and WRITE or higher on the repository. GitHub Enterprise
   Server and GitHub App installation tokens are unsupported

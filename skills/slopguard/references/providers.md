@@ -7,16 +7,12 @@
 - If no source chooses a provider, use Codex with medium reasoning.
 - Do not run multiple providers, fall back after failure, or claim consensus.
 
-Engines are `codex`, `claude`, and `grok`. `slopguard config` prints the
-effective effort. An unset model shows as `""` and means the engine's built-in
-default; the review report's metadata names the model used. Per-engine
-constraints:
+Engines, defaults, and per-engine constraints: `slopguard review --help`,
+`slopguard config`, and the
 [engine docs](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/engines/README.md).
 
 - When the user authorizes an alternative for an unavailable configuration,
   keep the engine's default model and step the effort down one level.
-- All adapters capability-probe the installed executable and use one explicit
-  model with no model fallback.
 - A capability or authentication failure is an operational result, not
   permission to switch engines.
 

@@ -23,14 +23,8 @@
 - Slopguard performs at most one configured retry, only for a malformed
   protocol response, using the same frozen bundle and provider.
   Authentication, capability, timeout, cancellation, and provider failures
-  are not retried. A Claude refusal (`stop_reason: refusal`) is a capability
-  failure carrying the refusal category. Report it; another engine needs
-  explicit scope, as [providers.md](providers.md) states.
-- Once provider execution metadata is resolved, failure reports preserve the
-  provider, model, harness version, and web-access state.
-- A `protocol` failure carries a reason such as `invalid_envelope`; envelope
-  failures also name the violated rule, such as `event after turn.completed`.
-  Neither contains provider output.
+  are not retried. Report them; another engine needs explicit scope, as
+  [providers.md](providers.md) states.
 
 After any provider return, slopguard recollects the target. A changed snapshot
 produces `source_changed`: discard the findings and rerun from a new freeze.

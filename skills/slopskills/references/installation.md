@@ -15,8 +15,8 @@ npx skills add Effect-TS/skills --skill effect-ts --agent codex --yes
 
 ## Paths, locks, and migration
 
-Codex discovers repo skills under `.agents/skills/`; retain the
-installer-managed links for other selected harnesses. Keep installed files and
+The installer places skills where each selected harness discovers them;
+retain its managed links. Keep installed files and
 source locks according to repository policy. Check that references and
 required companion skills survive installation.
 

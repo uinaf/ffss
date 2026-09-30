@@ -1,10 +1,8 @@
 # Configuration
 
-Slopguard resolves one flat typed configuration: CLI flags, then
-`SLOPGUARD_*` environment variables, then `.slopguard.yaml` at the Git root,
-then the account config file, then built-in defaults. The engine has no
-built-in default. Keys, validation, and precedence:
+Keys, sources, and precedence:
 [configuration docs](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/CONFIG.md).
+The engine has no built-in default.
 
 Inspect resolved values and their source before a paid run:
 
@@ -27,7 +25,5 @@ empty temporary workspace holding only the frozen bundle.
 - Defaults on, so reviewers can search for and fetch references. Pass
   `--web-access=false` when the target must not steer the reviewer to the
   network or the user disallows web access.
-- Any source may disable it. Only an explicit flag or the ownership-checked
-  `~/.config/slopguard/config.yaml` may enable it after a lower source turned
-  it off. A file selected through `XDG_CONFIG_HOME`, repository
-  configuration, and environment variables cannot.
+- Which sources may re-enable it:
+  [configuration docs](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/CONFIG.md).

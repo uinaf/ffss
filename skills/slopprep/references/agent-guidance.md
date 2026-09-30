@@ -63,7 +63,7 @@ families:
 - state a recurring failure only when it changes the desired behavior
 - preserve room for model judgment inside mechanically enforced boundaries
 - give the reason behind a rule in plain words; capitalized or absolute
-  pressure makes current models apply it too broadly
+  pressure gets the rule applied too broadly
 - keep exact step sequences for fragile operations; for judgment work, state
   the outcome and let the model choose the steps
 - ask reviewers for every suspected finding and filter afterwards; severity
@@ -78,21 +78,15 @@ families:
 - name the early stops to avoid and the ones to keep, such as a decision only
   the user can make
 
-Current models follow instructions literally, so guidance written to correct
-an older model's failure tends to overcorrect. Measured tendencies also
-differ: Opus 5 over-delegates small tasks, while GPT-6 Astra stops to ask
-early. Shared text states the behavior each should reach, not a fix for one. When models
-change, re-test inherited rules against first-party guidance
-([Claude](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices),
-[GPT-6](https://developers.openai.com/api/docs/guides/latest-model)) and delete
-those whose failure no longer reproduces.
+A rule written to correct one model's failure is followed literally by every
+agent that reads it, so it overcorrects. State the behavior every agent should
+reach: when to delegate, when to ask, when to finish. When the models in use
+change, re-test inherited rules and delete those whose failure no longer
+reproduces.
 
 Do not stack model-specific prompt fragments in the shared guide. Keep model
 selection, reasoning effort, verbosity, tool policy, and harness-specific
-invocation controls in their owning configuration. When a named-model guide is
-required, verify its current first-party prompting documentation and model or
-system card; record only a measured, stable difference that cannot live in the
-harness.
+invocation controls in their owning configuration.
 
 ## Audit Procedure
 

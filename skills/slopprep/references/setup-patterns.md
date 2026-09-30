@@ -103,8 +103,8 @@ Concurrent tasks must not collide on workspaces, branches, ports, processes,
 databases, external fixtures, artifact paths, or result refs. Grade collision
 freedom and cleanup, not the allocation algorithm.
 
-- Managed Codex or Claude worktrees may use `.worktreeinclude` for a small
-  explicit set of ignored files already covered by `.gitignore`; never broad
+- Harness-managed worktrees that support `.worktreeinclude` may use it for a
+  small explicit set of ignored files already covered by `.gitignore`; never broad
   `.env*`, secret directories, caches, dependencies, build output, or
   machine-global configuration.
 - Manual worktrees and custom hooks need their own copy or bootstrap path; the

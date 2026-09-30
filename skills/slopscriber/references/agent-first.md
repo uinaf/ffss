@@ -53,10 +53,8 @@ task-specific reason. Keep shared guidance model-neutral and revisit
 constraints whose rationale no longer holds; see the
 [cross-model contract](../../slopprep/references/agent-guidance.md#cross-model-contract).
 
-Harnesses cap what they load: Codex drops guide text past a
-[size limit](https://learn.chatgpt.com/docs/agent-configuration/agents-md) and
-shortens or omits skills past its
-[discovery limit](https://learn.chatgpt.com/docs/build-skills). Check both
+Harnesses cap what they load: guide text past a size limit and skills past a
+discovery limit can be cut or omitted. Check the current harness documentation
 before adding root content or skills.
 
 Keep one authored source. When a repository uses AGENTS.md, use a CLAUDE.md
