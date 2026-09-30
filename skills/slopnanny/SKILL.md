@@ -23,7 +23,9 @@ belongs to the required reviewer.
 - A bot is done when its review or summary for the head you merge exists, or
   its latest one if it reviews only once. An eyes reaction, a running bot
   check, or a "reviewing" comment means it's still working: wait, re-poll to a
-  deadline, and on timeout report the stall instead of merging.
+  deadline, and on timeout report the stall instead of merging. A bot that
+  answers only with a usage-limit or quota notice is unavailable, not
+  pending: say so in the receipt and continue without it.
 - Don't reprocess findings a push answered; don't assume a push resolved older
   feedback.
 
