@@ -1,0 +1,36 @@
+{
+  "context": "A small mirrored setup with one contradiction that already caused incidents, a repeated correction, a skill that is used, a skill that is not, and a stale note from a previous audit. A good audit grounds each finding in the supplied files, checks the old note against the history instead of repeating it, ranks the direct-push conflict first, and changes nothing.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Delivery contradiction found and ranked first",
+      "max_score": 25,
+      "description": "Reports that the global rules require a pull request while shipit pushes straight to main, ties it to the two 'push to main' corrections in the history, ranks it as the top finding, and proposes one owner for the delivery rule so the two stop disagreeing."
+    },
+    {
+      "name": "Repeated correction quantified",
+      "max_score": 20,
+      "description": "Counts the 'too long / shorter' corrections (four) across both projects despite the existing brevity rule, and proposes a concrete change rather than restating the same rule."
+    },
+    {
+      "name": "Stale note corrected",
+      "max_score": 20,
+      "description": "Does not repeat the previous audit: says changelog is used (two /changelog invocations) and diagram has no use in the history, so diagram, not changelog, is the pruning candidate."
+    },
+    {
+      "name": "Default-behavior noise",
+      "max_score": 10,
+      "description": "Flags 'Write clean, readable code and handle errors properly' as an instruction a capable model already follows, and suggests deleting it."
+    },
+    {
+      "name": "Evidence and decisions",
+      "max_score": 15,
+      "description": "Findings cite the file (and line or count) they rest on, and the choices the user must make are grouped into a short list."
+    },
+    {
+      "name": "Read-only",
+      "max_score": 10,
+      "description": "No supplied file is modified or deleted; any new files are notes or reports only."
+    }
+  ]
+}

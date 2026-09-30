@@ -1,0 +1,7 @@
+interface:
+  display_name: "slopaudit"
+  short_description: "Audit an agentic setup and its recent use"
+  default_prompt: "Use $slopaudit to audit my agent setup, how I used it recently, and what I shipped, then rank what to prune, fix, or add."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,6 +1,6 @@
 {
   "name": "ffss",
-  "description": "The flipflopslopstack: skills to execute agreed plans, review with slopguard, deliver, babysit, plan, maintain docs, prepare repos, equip stack skills, and de-slop.",
+  "description": "The flipflopslopstack: skills to execute agreed plans, review with slopguard, deliver, babysit, plan, maintain docs, prepare repos, equip stack skills, audit agent setups, and de-slop.",
   "owner": {
     "name": "uinaf",
     "url": "https://github.com/uinaf"
@@ -9,7 +9,7 @@
     {
       "name": "ffss",
       "source": ".",
-      "description": "Workflow skills for implementation, review, delivery, planning, documentation, readiness, repo-local stack skills, and prose cleanup.",
+      "description": "Workflow skills for implementation, review, delivery, planning, documentation, readiness, repo-local stack skills, setup audits, and prose cleanup.",
       "category": "workflow"
     }
   ]

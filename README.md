@@ -26,6 +26,7 @@ One job each.
 | [`slopspec`](skills/slopspec/) | Saving agreed work as issues, epics, or durable plans |
 | [`slopscriber`](skills/slopscriber/) | Auditing and updating repository documentation |
 | [`slopprep`](skills/slopprep/) | Preparing repositories and runners for autonomous work |
+| [`slopaudit`](skills/slopaudit/) | Auditing an agentic setup, its recent use, and shipped work to decide what to prune, fix, or add |
 | [`slopskills`](skills/slopskills/) | Selecting and installing repo-local skills for the stack and task |
 | [`gh-setup`](skills/gh-setup/) | Configuring GitHub settings, Actions, releases, and deployments (invoke explicitly) |
 | [`react-ban-use-effect`](skills/react-ban-use-effect/) | Replacing direct React `useEffect` with clearer patterns and enforcement |
