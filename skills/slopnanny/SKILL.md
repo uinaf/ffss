@@ -16,10 +16,14 @@ belongs to the required reviewer.
   and top-level comments, where bots often post findings.
 - Green checks and no threads are not settled while a requested reviewer,
   human or bot, is pending. After it submits, re-read everything.
-- Review bots, if the repository has any, may not appear in review
-  requests. Wait until each finishes its first review of the change request,
-  as its comments or reactions show. Later pushes don't wait for another bot
-  pass; handle one if it arrives before the merge.
+- Know the repository's review bots before calling anything settled: those
+  that reviewed its recent merged change requests, plus any that reacted to,
+  commented on, or run a check on this one. They may not appear in review
+  requests, and silence on a young change request doesn't mean there are none.
+- A bot is done when its review or summary for the head you merge exists, or
+  its latest one if it reviews only once. An eyes reaction, a running bot
+  check, or a "reviewing" comment means it's still working: wait, re-poll to a
+  deadline, and on timeout report the stall instead of merging.
 - Don't reprocess findings a push answered; don't assume a push resolved older
   feedback.
 
@@ -53,7 +57,7 @@ hashes, nothing that doesn't advance the thread.
 - When nothing changed, post nothing on the forge; still tell the user what
   you observed.
 - Merge when required checks are green on the latest commit, no requested
-  review is pending, any review bots have finished their first review, and
+  review is pending, every known review bot is done, and
   reviewers and threads are clear. Use the repository's merge method and
   report the merged commit; don't ask first. Hold only when asked.
   Never merge past a blocking human review or an open thread.
