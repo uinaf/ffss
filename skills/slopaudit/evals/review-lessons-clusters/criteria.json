@@ -1,0 +1,41 @@
+{
+  "context": "Review data for eight agent PRs shows three recurring mistakes: a missing changeset (four PRs, two fixed by the maintainer pushing a commit), untested error paths (three PRs), and unsafe shell quoting (three PRs), plus one-off noise. Two of the clusters recur despite written rules, which means the text isn't working. A good answer clusters by mistake, counts and cites them, proposes the strongest owner for each (a CI check before a rule), measures review cost, and changes nothing.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Clusters by mistake with counts",
+      "max_score": 25,
+      "description": "Groups the findings by mistake rather than by reviewer or PR, and reports all three recurring clusters with counts and PR numbers: missing changeset (311, 318, 327, 339), untested error paths (322, 330, 341), and shell quoting (311, 322, 341). Counts may differ by one if the reasoning is stated"
+    },
+    {
+      "name": "Maintainer-pushed commits counted",
+      "max_score": 10,
+      "description": "Treats Dana's 'chore: add changeset' commits on 318 and 339 as review lessons (the maintainer fixed what the agent missed), not as clean merges"
+    },
+    {
+      "name": "Written rules that don't work",
+      "max_score": 15,
+      "description": "Notes that the changeset cluster recurs despite CONTRIBUTING.md and the error-path cluster recurs despite the CLAUDE.md rule, so repeating or restating those rules is not the fix"
+    },
+    {
+      "name": "Strongest owner per lesson",
+      "max_score": 25,
+      "description": "Proposes an enforcing check where one fits: a CI job that fails without a changeset (e.g. changeset status) and a shell linter such as shellcheck in CI, since lint is ESLint only; error-path coverage goes to a skill, playbook, or review guidance rather than another global rule. Each lesson names one owner"
+    },
+    {
+      "name": "Review cost measured",
+      "max_score": 10,
+      "description": "Reports rework cost per merged PR from the data (commits after open, review rounds, or CI runs), e.g. that 322 took 3 rounds and 7 CI runs, and notes 341 is still unmerged with open findings"
+    },
+    {
+      "name": "Noise not promoted",
+      "max_score": 5,
+      "description": "Does not turn the rejected `tok` rename into a lesson"
+    },
+    {
+      "name": "Read-only",
+      "max_score": 10,
+      "description": "No supplied file is modified or deleted; any new files are notes or reports only, and fixes are proposed for discussion"
+    }
+  ]
+}
