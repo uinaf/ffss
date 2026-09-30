@@ -15,8 +15,7 @@ action. Link long output instead of pasting it.
 
 - Read the owning sources first. Check worktree state and keep unrelated
   changes.
-- State a short plan for non-trivial work. Reopen settled choices only on new
-  evidence.
+- Reopen settled choices only on new evidence.
 - User instructions outrank skills and guides. Before calling a skill a
   blocker, name the instruction and check that it applies.
 - A build, fix, or ship request covers in-scope edits, checks, and delivery,
@@ -39,9 +38,8 @@ action. Link long output instead of pasting it.
 
 ### Implementation
 
-Use the existing stack, types, design system, and task graph. Extend the
-closest owner before adding scripts, abstractions, or infrastructure.
-
+- Extend the closest owner before adding scripts, abstractions, or
+  infrastructure.
 - Edit generated artifacts at their source and regenerate.
 - Use shell for short command sequences. Put parsing, policy, retries, and
   state in the project's typed language.
@@ -50,7 +48,6 @@ closest owner before adding scripts, abstractions, or infrastructure.
 - Preserve error causes and partial failures. Keep retries bounded,
   cancellable, and limited to idempotent transient work.
 - Keep secrets and sensitive payloads out of logs and artifacts.
-- Preserve user input, recovery paths, and UI interaction states.
 - Comment only invariants and external constraints the code cannot express.
 - Update the owning doc when behavior changes.
 
@@ -68,8 +65,7 @@ actually use with the cheapest check that would fail if the change were wrong.
   existing coverage would miss. When a change breaks a test, fix the code
   unless the contract intentionally changed or the test pins implementation;
   then update it and say so.
-- Reuse passing proof and review until something invalidates them. Validate
-  review findings before acting on them.
+- Validate review findings before acting on them.
 - Clean up only the processes you started.
 - Report what ran, failed, was skipped, or was unavailable, with each proof's
   revision and command. Never claim an unexecuted check passed.

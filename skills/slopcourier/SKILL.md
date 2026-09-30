@@ -50,4 +50,4 @@ continues through its owning workflow, so this lane does not end the task.
    existing authority across the handoff. Delivery alone grants no merge,
    auto-merge, branch deletion, or rework authority.
    When the repository runs review bots, the change request isn't
-   mergeable until they finish their first review.
+   mergeable until each has reviewed the head being merged.
