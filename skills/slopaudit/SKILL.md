@@ -32,8 +32,10 @@ Where to look and what to measure: [sources.md](references/sources.md).
    invoked by the model versus typed by the user, never-loaded skills, and
    permission denials.
 3. **Shipped work.** From the forge: output by area, time spent on agent
-   tooling versus product, churn, merges that beat review, unresolved review
-   threads after merge, and CI failure rates.
+   tooling versus product, churn, merges that beat review, and unresolved
+   review threads after merge. For contributions to other people's projects,
+   what maintainers accepted, rejected, and asked to change. For CI, what it
+   costs in money and waiting, and how often it fails or reruns.
 4. **Setup.** Duplicated rules, contradictions, instructions a capable model
    already follows, stale references, skills competing for one request,
    context leaking into places it doesn't belong (public repositories,

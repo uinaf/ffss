@@ -46,8 +46,24 @@ exhausting it.
   within days, reverts, dependency-bot volume;
 - time from opening to merge, review-bot threads opened after merge or left
   unresolved, merges with failing checks;
-- CI failure rate on default branches;
 - the user's tracker: stale, done-but-open, and duplicated items.
+
+Contributions to projects the user doesn't own are the clearest outside
+verdict on agent-written work:
+
+- acceptance rate and time to merge, and why pull requests closed unmerged;
+- what human reviewers asked to change, clustered: each cluster is a
+  candidate rule or check;
+- follow-up fixes and reverts of merged work.
+
+CI usage, per repository, sampled from the forge's run history and billing:
+
+- minutes and cost by runner type, and who triggered them: the user, agents,
+  or dependency bots;
+- failure rate on default branches and on pull requests, and reruns that
+  passed without a change, which point to flaky tests;
+- time from push to green, and the slowest jobs;
+- runner or workflow changes that were made and then reverted.
 
 ## Setup
 
