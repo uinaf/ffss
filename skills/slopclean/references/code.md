@@ -3,7 +3,9 @@
 The diff is the unit. Clean only what the change added; leave the surrounding
 code alone, even when it has the same tells, unless asked.
 
-- TODO with no owner or ticket: file it or delete it. Keep ticketed TODOs.
+- TODO with no owner or ticket: delete it and list it in the report as a
+  possible follow-up; never file tracker items from the pass. Keep ticketed
+  TODOs.
 - Unreachable branches kept "for completeness": delete, with the reasoning in
   the commit message.
 - An exported option or accepted input is a public contract even when this

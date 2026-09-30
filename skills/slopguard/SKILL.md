@@ -43,6 +43,9 @@ slopguard --version
 If missing, report it and ask for installation through the trusted host
 workflow. Never download installers or recreate the runtime.
 
+CLI doc links in the references point at `main`; read them at the installed
+release by replacing `main` with `slopguard/v<version>` from `--version`.
+
 ## Provider
 
 Read [providers.md](references/providers.md). User choice, then trusted config,

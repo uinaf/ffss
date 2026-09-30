@@ -56,13 +56,12 @@ gh pr edit 13 --attach ./flow.mp4                       # video takes no alt tex
   `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4`.
 - `--attach` does not combine with `--web` or `--dry-run`.
 - Retry failed uploads with `gh pr edit --attach`.
-- Requires GitHub.com or a GHE.com tenant, an OAuth token, classic PAT, or
-  fine-grained PAT, and WRITE or higher on the repository. GitHub Enterprise
-  Server and GitHub App installation tokens are unsupported
-  ([cli/cli#14309](https://github.com/cli/cli/issues/14309)), so unattended
-  runtimes on App tokens fall through to the fallback below, then to rung 3.
+- Requires an OAuth token, classic PAT, or fine-grained PAT, and WRITE or
+  higher on the repository. The upload endpoint 404s GitHub App installation
+  tokens ([cli/cli#14309](https://github.com/cli/cli/issues/14309)), so
+  runtimes on App tokens skip the fallback below and go to rung 3.
 
-<details><summary>Fallback: gh below 2.99, GitHub Enterprise Server, or an App token</summary>
+<details><summary>Fallback: gh below 2.99 with an OAuth token or PAT</summary>
 
 Upload to the CDN the web drag-drop uses, then embed the returned `.url`
 (images as markdown, video as a bare line):

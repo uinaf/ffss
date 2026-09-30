@@ -93,24 +93,24 @@ repositories do not expose the same public reporting surface; route them to an
 existing private maintainer channel.
 
 For an organization that wants useful free defaults without per-active-committer
-Advanced Security charges, suggest one enforced organization security
-configuration with this baseline:
+Advanced Security charges, suggest a family of enforced organization security
+configurations sharing this baseline:
 
-- apply it to all current repositories and make it the default for all new
-  repositories;
+- a repository takes one configuration and a configuration holds one value per
+  setting, so keep one configuration per visibility and update bot: public
+  ones add free secret scanning and push protection; Dependabot security
+  updates are off for Renovate repositories, which raise their own
+  vulnerability pull requests, and on for Dependabot repositories;
+- attach every current repository to its matching configuration; for new
+  public and new private repositories, make the configuration for that
+  visibility and the organization's usual update bot the default, and
+  reattach a repository when it adopts the other bot or changes visibility;
 - do not allow repository owners to modify the configured features;
-- disable the paid **Secret Protection** bundle, and attach a separate public
-  configuration with free secret scanning and push protection to public
-  repositories;
+- disable the paid **Secret Protection** bundle;
 - disable the paid **Code Security** bundle and legacy blanket
   `advanced_security` enablement;
 - disable CodeQL default setup;
-- enable the dependency graph and Dependabot alerts;
-- a configuration holds one Dependabot security updates value and a
-  repository takes one configuration, so split by update bot: security
-  updates off in the configuration for Renovate repositories, which raise
-  their own vulnerability pull requests, and on in a separate configuration
-  attached to Dependabot repositories.
+- enable the dependency graph and Dependabot alerts.
 
 This is a billing-safe baseline, not a claim that every overlapping public-repo
 security feature is off. GitHub may provide some secret scanning or other

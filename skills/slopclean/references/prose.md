@@ -9,8 +9,10 @@ Clean the passage the user asked for in the author's voice and house style.
   Keep rationale, non-obvious constraints, recovery steps, and minimal usage
   examples the source cannot hold. A config change should not require a
   matching prose edit merely to repeat the new value.
-- Name the source behind vague attribution, or remove the claim. Keep
-  uncertainty that reflects the evidence.
+- Replace vague attribution with the source only when the artifact or its
+  materials name it; otherwise leave the claim and flag it. Never invent a
+  citation or drop a claim to hide the gap. Keep uncertainty that reflects the
+  evidence.
 - Keep established heading capitalization, useful headings, lists, and
   emphasis; don't flatten scan-friendly structure into a prose wall.
 - An em dash, colon, parenthesis, or short sentence is not itself a defect.
