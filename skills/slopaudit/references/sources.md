@@ -48,13 +48,32 @@ exhausting it.
   unresolved, merges with failing checks;
 - the user's tracker: stale, done-but-open, and duplicated items.
 
-Contributions to projects the user doesn't own are the clearest outside
-verdict on agent-written work:
+Contributions to projects the user doesn't own: acceptance rate, time to
+merge, and why pull requests closed unmerged.
 
-- acceptance rate and time to merge, and why pull requests closed unmerged;
-- what human reviewers asked to change, clustered: each cluster is a
-  candidate rule or check;
-- follow-up fixes and reverts of merged work.
+## Review lessons
+
+For each pull request an agent wrote in the window, sampled when there are
+many:
+
+- review-bot findings (code-review bots in CI, AI reviewers) and whether each
+  was fixed, rejected, or left open;
+- human review comments and requested changes, weighting maintainers of
+  projects the user doesn't own highest;
+- commits someone else pushed onto the branch, and the maintainer's edits
+  between the last agent commit and the merged result: the diff shows what
+  the agent got wrong;
+- follow-up fixes and reverts after merge.
+
+Cluster by mistake, not by reviewer: a missing test, a convention the agent
+didn't know, a wrong assumption about behavior, noise in the diff. Count each
+cluster, link two or three examples, and check whether an existing skill,
+playbook, rule, or check already claims to prevent it; a lesson already
+written down that keeps recurring means that text doesn't work.
+
+Cost to production per merged pull request: commits after opening, review
+rounds, CI runs and reruns, CI minutes, and time from first commit to merge
+and to deploy where the forge records it.
 
 CI usage, per repository, sampled from the forge's run history and billing:
 

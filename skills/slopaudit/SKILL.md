@@ -34,14 +34,19 @@ Where to look and what to measure: [sources.md](references/sources.md).
 3. **Shipped work.** From the forge: output by area, time spent on agent
    tooling versus product, churn, merges that beat review, and unresolved
    review threads after merge. For contributions to other people's projects,
-   what maintainers accepted, rejected, and asked to change. For CI, what it
-   costs in money and waiting, and how often it fails or reruns.
-4. **Setup.** Duplicated rules, contradictions, instructions a capable model
+   what maintainers accepted and rejected.
+4. **Review lessons.** The mistakes agents keep making, as caught by the
+   people and review bots who read their pull requests: findings, requested
+   changes, and commits reviewers or maintainers pushed onto the branch.
+   Cluster them; each recurring cluster is a lesson with a proposed owner.
+   Also measure the cost from first commit to production per merged pull
+   request: rework commits, review rounds, CI runs, reruns, and minutes.
+5. **Setup.** Duplicated rules, contradictions, instructions a capable model
    already follows, stale references, skills competing for one request,
    context leaking into places it doesn't belong (public repositories,
    another employer's machine), and the guardrails around repositories,
    pipelines, and agents that serve other people.
-5. **External**, when asked: compare popular skill collections against the
+6. **External**, when asked: compare popular skill collections against the
    user's own and say what is worth adopting, adapting, or skipping.
 
 A lane is done when its report cites a file and line, a count with its query,
@@ -57,7 +62,9 @@ move on.
 ## Report
 
 Lead with the diagnosis in a sentence or two, then ranked findings. For each:
-the evidence, the smallest fix, and its owner. Prefer deleting or narrowing an
+the evidence, the smallest fix, and its owner. For a lesson the owner is the
+strongest one that fits: a type, lint rule, or CI check that fails on the
+mistake, then the skill or playbook for that kind of work, then a global rule. Prefer deleting or narrowing an
 instruction to adding one, and prefer the user's existing mechanisms to new
 hooks, scripts, or infrastructure. Group decisions the user must make into a
 short numbered list.
