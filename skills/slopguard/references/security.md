@@ -58,7 +58,8 @@ The issue may contain only:
 Never include the frozen bundle, task prompt, reviewed source, diff, repository
 identity, private or absolute paths, credentials, environment output, provider
 command line, or raw provider stdout/stderr. Write a sanitized body to a
-temporary file and use
+temporary file, show the user the title and body, and file it only after they
+approve:
 `gh issue create --repo uinaf/ffss --title "$sanitized_summary" --body-file "$sanitized_body"`.
 
 If GitHub access is missing or any field cannot be safely sanitized, do not

@@ -45,7 +45,7 @@ delivery, verify the pushed commit and required remote checks.
 
 Verify delivery against the forge's actual head and status. A missing tool,
 unavailable check, or inaccessible forge is a limitation to resolve or report,
-never passing evidence. Don't bypass a required gate to finish.
+never passing evidence. Don't finish past a failing required check.
 
 ## Handoff
 
