@@ -7,12 +7,12 @@
     {
       "name": "Result-first title",
       "max_score": 20,
-      "description": "pr.md's title names the behavior change (exponential backoff for retries), in Conventional Commits form or plain words."
+      "description": "pr.md's title names the change or its user-visible result (exponential backoff, or retries no longer hammering the upstream), in Conventional Commits form or plain words."
     },
     {
       "name": "Body carries the facts",
       "max_score": 35,
-      "description": "The body states the backoff behavior (200 ms doubling, 5 s cap, ±20% jitter), links or closes #51, and gives the verification (pnpm test, 23 tests passing)."
+      "description": "The body states the backoff behavior (200 ms doubling, 5 s cap, ±20% jitter) and links or closes #51. Restating the passing test run is optional, since CI shows it."
     },
     {
       "name": "Exact command",
