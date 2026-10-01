@@ -1,19 +1,12 @@
 {
   "name": "skill-evals",
   "private": true,
-  "description": "npm surface for skillcheck, the skills lint/eval tool (uinaf/skillcheck)",
+  "description": "npm surface for skillcheck lint (uinaf/skillcheck)",
   "scripts": {
     "lint": "skillcheck lint --root ../..",
-    "run": "skillcheck run --root ../..",
-    "sweep": "skillcheck sweep --root ../..",
-    "summarize": "skillcheck summarize --root ../..",
     "audit": "npm audit --audit-level=high"
   },
   "devDependencies": {
     "@uinaf/skillcheck": "1.6.0"
-  },
-  "overrides": {
-    "adm-zip@<0.6.1": "^0.6.1",
-    "sharp@<0.35.4": "^0.35.4"
   }
 }

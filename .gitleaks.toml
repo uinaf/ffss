@@ -2,13 +2,6 @@
 useDefault = true
 
 [[allowlists]]
-description = "Skill-eval scratch manifest AVAILABLE_ACCESS.md content digest"
-condition = "AND"
-paths = ['''^tools/skill-evals/scratch/[^/]+/manifest\.json$''']
-regexTarget = "line"
-regexes = ['''^\s*"AVAILABLE_ACCESS\.md":\s*"[0-9a-f]{64}",?\s*$''']
-
-[[allowlists]]
 description = "autoreview config test placeholder environment assignment"
 condition = "AND"
 paths = ['''autoreview/internal/config/config_test\.go$''']
