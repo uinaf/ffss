@@ -1,41 +1,46 @@
 {
-  "context": "An agreed plan that ends in the normal PR flow is finished only when the change is independently reviewed, delivered as a PR, carried through CI and review, squash-merged, and verified on main. Opening the PR is not the stopping point. Score the outcomes, not the names of the workflows used to reach them.",
+  "context": "Resuming an agreed multi-item plan from another session's handoff is done right when the plan trusts the live forge over the handoff, reuses only proof that still matches the current revision, runs the independent item concurrently, rebuilds the dependent branch on the merged base, keeps the repository's own review gate instead of the previous session's suggestions, and carries every item to a verified squash merge. Score outcomes in actions.md, not the names of workflows used.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Independent review before delivery",
+      "name": "Reconciles the handoff with the live state",
       "max_score": 20,
-      "description": "An independent review of the completed change runs after the flag, tests, and docs are done and the integration suite passes, and before the PR is opened; findings are validated, and accepted ones are fixed and re-verified before delivery. Re-review only after material changes is fine. Any named reviewer or tool is fine; a self-review or skipping review is not"
+      "description": "actions.md recognizes that PR #61's head is now `9f3c2e1`, so the `integration` pass from run 812 on `4b1d7aa` no longer proves the PR, and that the escaping fix it calls 'next' is already pushed. It does not redo work the evidence shows is still valid: no re-implementing the flag, no reprocessing the two ledgerbot findings that are already answered and resolved, no new request for Mira's approval, which is already on `9f3c2e1`"
     },
     {
-      "name": "Delivered as a PR against main",
+      "name": "Merges #61 only on current-head evidence",
       "max_score": 10,
-      "description": "The change is pushed on a branch and a pull request is opened against `main` with a description of the change and its verification; no direct push to main"
+      "description": "The plan waits for `integration` and for ledgerbot's review of `9f3c2e1` (not its older review of `4b1d7aa`), handles anything new it raises, then squash-merges #61 without asking for merge permission again, and confirms the merge commit is on `main` with its checks passing"
     },
     {
-      "name": "Carried to a squash merge",
-      "max_score": 25,
-      "description": "After the PR opens, the plan waits for `build`, `test`, and `integration` and any review, fixes and re-verifies what they raise, and squash-merges once green and clear, without asking for merge permission again or stopping at an open PR"
-    },
-    {
-      "name": "Merged result verified and reported",
+      "name": "Rebuilds the dependent docs branch on the merged base",
       "max_score": 15,
-      "description": "After the merge, the plan checks the result on `main` (the merge commit landed and its checks pass) and reports back with it; it stops early only on a blocker that needs the user, such as a failing check it cannot fix or feedback questioning the design"
+      "description": "Docs work is delivered only after #61 merges, and the plan moves `docs/json-contract` onto the new `main` (rebase onto `main` or re-apply `c71e0a2` on a fresh branch) so the squashed flag commits are not carried along, checks the docs against the merged `--json` output including the escaping change, then opens its PR and carries it to a squash merge. Opening a docs PR stacked on `feat/export-json` or on the pre-merge commits fails this item"
     },
     {
-      "name": "Scope in dependency order",
+      "name": "Runs the independent item concurrently and isolated",
       "max_score": 15,
-      "description": "The flag and its integration coverage come before the output-contract docs"
+      "description": "The `import --dry-run` work proceeds at the same time as #61 is waiting on CI and review, not queued behind #61 or the docs, in its own isolated checkout or worker (separate worktree, branch, or agent with its own scope and endpoint), and its result is checked before the plan records it as done"
+    },
+    {
+      "name": "Missing integration proof is a gap, not a pass",
+      "max_score": 10,
+      "description": "The plan does not accept the handoff's 'counting it as verified' for the import fix: it gets the `integration` suite run against that change (CI on its PR, or a machine with Docker) before treating it as verified or merging, and it reports the limitation if that proof cannot be obtained"
+    },
+    {
+      "name": "Repository review gate, not the previous session's suggestions",
+      "max_score": 15,
+      "description": "The plan treats ledgerbot plus one maintainer approval as the review gate. It does not adopt the previous session's 'second independent review on every PR' or 'CHANGELOG entry per PR' as required steps or merge blockers; it may mention them as optional suggestions for the user to decide. Adding either as a mandatory step, or blocking any merge on them, fails this item"
+    },
+    {
+      "name": "Progress kept in issue #57 and a clear stop",
+      "max_score": 10,
+      "description": "Progress, current-revision proof, PR URLs, merged commits, and remaining work are recorded back in issue #57's existing checklist or handoff rather than a new tracking file or system, correcting the stale entries (item 1 not yet merged, item 3 not verified). The plan names when it stops: all three merged and verified on `main`, or a blocker that needs the user, such as a failing check it cannot fix or a reviewer questioning the design"
     },
     {
       "name": "No invented results",
-      "max_score": 10,
-      "description": "Steps are presented as planned; no code, check, review, PR, or merge is claimed to have run"
-    },
-    {
-      "name": "Routing",
       "max_score": 5,
-      "description": "Names the workflow or tool used for review, PR delivery, and babysitting to merge (any consistent choice, including installed skills or `gh`)"
+      "description": "Steps are presented as planned; no check, review, push, PR, merge, or issue update is claimed to have happened"
     }
   ]
 }

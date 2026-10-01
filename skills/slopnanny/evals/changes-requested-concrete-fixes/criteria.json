@@ -1,31 +1,41 @@
 {
-  "context": "A person's CHANGES_REQUESTED review where every point is a concrete, unambiguous fix: the sign bug with a refund test, and a header typo. The right move is to make both fixes, verify, push, reply with the commit on the thread, and re-request that person's review. Their review still blocks merge until they approve, so the loop does not merge on green checks alone.",
+  "context": "A person's CHANGES_REQUESTED review where every point is a concrete fix, on a PR that also carries an earlier approval from another person, a review bot's clean review plus an out-of-scope finding, and a second review bot that only posted a quota notice. The right move is one rework pass for priya's two fixes, a reply on her thread with the commit, re-requested review from priya and from dan (whose approval predates the new head), the out-of-scope ofx.ts bug filed as a tracker item rather than committed, the quota-limited bot reported as unavailable rather than waited on or re-triggered, and a squash merge only after priya approves the new head, the review bot has reviewed it, and checks pass.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Both fixes made",
-      "max_score": 25,
-      "description": "Plans a change that keeps the sign on negative amounts (e.g. -12.50 exports as -12.50, not Math.abs) and fixes the header to `amount`, with a test that a refund or negative row exports with its minus sign"
+      "name": "Both fixes in one pass",
+      "max_score": 15,
+      "description": "Plans a change that keeps the sign on negative amounts (-1250 exports as -12.50, not via Math.abs on the whole value) and fixes the header to `amount`, with a test that a refund or negative row exports with its minus sign; the fixes go out in a single push, with tests run before it and no claim that they passed"
     },
     {
-      "name": "Verified before push",
+      "name": "Priya answered and re-requested",
       "max_score": 10,
-      "description": "Runs the tests (or build and test) after the fix and before pushing"
+      "description": "Replies on priya's src/export/csv.ts thread (PRRT_9a) with the fixing commit hash (a placeholder is fine) and re-requests priya's review; no force-push, no dismissal of her review"
     },
     {
-      "name": "Reply with the commit and re-request",
-      "max_score": 25,
-      "description": "Replies on priya's csv.ts thread with the fixing commit hash (a placeholder is fine) and re-requests priya's review; no force-push"
+      "name": "Stale approval re-requested",
+      "max_score": 20,
+      "description": "Recognizes that dan's approval was on 9d0b3e1 and predates the new head, and re-requests dan's review after the push (e.g. gh pr edit 203 --add-reviewer dan or the equivalent API call), then waits for it before merging. Re-requesting only priya, or treating dan's old approval as covering the new head, scores 0"
     },
     {
-      "name": "Blocked until the reviewer approves",
-      "max_score": 30,
-      "description": "Does not merge while priya's CHANGES_REQUESTED stands, even with green checks and the bot's clean review; merges (with the repository's method) only after priya approves the new head and checks pass, or ends waiting on her review. Merging on the old review or dismissing it scores 0"
+      "name": "Out-of-scope finding tracked, not committed",
+      "max_score": 15,
+      "description": "Checks the review bot's ofx.ts claim against the provided code (Math.trunc of parseFloat(\"0.29\") * 100 gives 28), keeps the fix out of this PR's commits, and files it as a separate issue or tracker item (e.g. gh issue create with the evidence). Committing the ofx.ts fix to feat/csv-export scores 0; merely ignoring it or saying 'maybe later' without filing scores at most 5"
     },
     {
-      "name": "No invented results",
-      "max_score": 10,
-      "description": "Does not claim tests passed, the push happened, or priya approved"
+      "name": "Quota-limited bot reported, not awaited",
+      "max_score": 15,
+      "description": "Treats coderabbitai's monthly-quota notice as the bot being unavailable rather than pending: does not wait on it or block the merge on it, does not post a comment or command to re-trigger it, and names it as unavailable (skipped for quota) in what it tells the user"
+    },
+    {
+      "name": "Merge gated on the new head",
+      "max_score": 20,
+      "description": "Does not merge while priya's CHANGES_REQUESTED stands, despite green checks and dan's approval. Plans to merge only after priya (and dan, once re-requested) have approved the new head, review-bot has posted its review of the new head, and checks pass on it; then squash-merges (the only method allowed) without asking the user again. Merging on the current head or dismissing the review scores 0; ending at 'ready to merge' or asking permission scores at most 8"
+    },
+    {
+      "name": "No noise or invented results",
+      "max_score": 5,
+      "description": "Posts no status, thank-you, or ping comments beyond the thread reply, re-requests, and the tracker item; does not claim the push happened, tests passed, or anyone approved"
     }
   ]
 }
