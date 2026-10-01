@@ -16,6 +16,10 @@ Assessment and preparation requests authorize only those deliverables. Respect
 an explicit hold or narrower endpoint. Track progress in the existing plan or
 harness task list; don't create a second tracking system.
 
+User instructions take precedence over skill guidance. If a skill would stop
+authorized work, identify its exact instruction and check whether it applies
+before treating it as a blocker.
+
 ## Execute
 
 - Run independent items (no shared files or ordering, each with its own
@@ -39,7 +43,7 @@ delivery, verify the pushed commit and required remote checks.
 
 Verify delivery against the forge's actual head and status. A missing tool,
 unavailable check, or inaccessible forge is a limitation to resolve or report,
-never passing evidence.
+never passing evidence. Don't finish past a failing required check.
 
 ## Handoff
 
