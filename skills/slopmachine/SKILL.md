@@ -30,18 +30,15 @@ before treating it as a blocker.
   tracking surface, and validate each result before recording it.
 - After a dependency lands, reconcile dependent branches with the new base
   before verifying and merging.
-- The repository's review bots and required reviewers are the review gate.
-  Run [slopguard](../slopguard/SKILL.md) only when the user asks for it or the
-  repository has no automated review on change requests, once on the verified
-  change before opening the change request; if that's unclear, ask the user
-  once.
+- The repository's review bots and required reviewers are the review gate;
+  [slopguard](../slopguard/SKILL.md) decides when an extra review runs, before
+  the change request opens.
 
 ## Deliver
 
 For a change request, open it with [slopcourier](../slopcourier/SKILL.md), then
 run [slopnanny](../slopnanny/SKILL.md) through review, CI, and merge unless the
-user requested a hold or delivery-only endpoint. Creating a change request is
-not completion when the agreed outcome includes merge. For authorized direct
+user requested a hold or delivery-only endpoint. For authorized direct
 delivery, verify the pushed commit and required remote checks.
 
 Verify delivery against the forge's actual head and status. A missing tool,
