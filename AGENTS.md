@@ -13,14 +13,13 @@ install it.
 | [cli/lib/](cli/lib/) | Shared Go module for the CLIs, tagged `cli/lib/vX.Y.Z` ([README](cli/lib/README.md)) |
 | [rules/](rules/) | Global agent rules consumers fetch raw from `main`; skills must work without them |
 | [plugin.json](plugin.json), [.claude-plugin/](.claude-plugin/) | Portable and Claude-compatible plugin manifests and marketplace |
-| [tools/skill-evals/](tools/skill-evals/) | npm surface for the skillcheck lint and eval harness |
-| `.skillcheck/scorecards/` | Committed eval scorecards; `results/` and `scratch/` are disposable |
+| [tools/skill-evals/](tools/skill-evals/) | npm surface for `skillcheck lint`; evals run outside this repo ([skill-evals](tools/skill-evals/README.md)) |
 
 ## Commands
 
 | Change | Gate |
 |---|---|
-| `skills/`, `cli/*/skills/` | `npm ci && npm run lint && npm run audit` in `tools/skill-evals` ([evals](tools/skill-evals/README.md)) |
+| `skills/`, `cli/*/skills/` | `npm ci && npm run lint && npm run audit` in `tools/skill-evals` ([skill-evals](tools/skill-evals/README.md)) |
 | `cli/slopguard/` | `mise run verify` in `cli/slopguard` |
 | `cli/lib/` | `mise run verify` in `cli/lib` |
 

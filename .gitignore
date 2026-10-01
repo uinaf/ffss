@@ -1,5 +1,4 @@
 .claude/worktrees/
-.skillcheck/results/
-.skillcheck/scratch/
+.skillcheck/
 /cli/*/bin/
 /cli/*/dist/
