@@ -1,0 +1,28 @@
+{
+  "context": "A request to open a PR for finished, tested work. Opening it is the whole job; watching it to merge was not asked.",
+  "type": "weighted_checklist",
+  "skill_use": "forbidden",
+  "install": "all",
+  "checklist": [
+    {
+      "name": "Result-first title",
+      "max_score": 20,
+      "description": "pr.md's title names the behavior change (exponential backoff for retries), in Conventional Commits form or plain words."
+    },
+    {
+      "name": "Body carries the facts",
+      "max_score": 35,
+      "description": "The body states the backoff behavior (200 ms doubling, 5 s cap, ±20% jitter), links or closes #51, and gives the verification (pnpm test, 23 tests passing)."
+    },
+    {
+      "name": "Exact command",
+      "max_score": 25,
+      "description": "actions.md has a gh pr create command for feat/retry-backoff against main that uses the title and body from pr.md."
+    },
+    {
+      "name": "Stops at open",
+      "max_score": 20,
+      "description": "Nothing merges the PR or commits to babysitting it to merge; the agent stops once the PR would be open."
+    }
+  ]
+}

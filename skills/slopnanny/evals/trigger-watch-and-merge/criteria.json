@@ -1,0 +1,32 @@
+{
+  "context": "A terse request to watch an open PR to merge: green checks on the current head but one unresolved concrete bot finding, so the agent fixes it, pushes, resolves the thread, and merges only once the new head is green.",
+  "type": "weighted_checklist",
+  "install": "all",
+  "checklist": [
+    {
+      "name": "Finding fixed",
+      "max_score": 25,
+      "description": "src/retry.ts is changed so maxAttempts=3 makes at most three attempts (the off-by-one is gone), without unrelated rewrites."
+    },
+    {
+      "name": "Not merged on the stale green",
+      "max_score": 25,
+      "description": "actions.md does not merge head a1b2c3d while the thread is unresolved; the merge comes only after the fix is pushed."
+    },
+    {
+      "name": "Thread closed out",
+      "max_score": 15,
+      "description": "actions.md pushes the fix and resolves PRRT_1 (optionally with a short reply naming the fix commit)."
+    },
+    {
+      "name": "Waits on the new head",
+      "max_score": 20,
+      "description": "Before merging, actions.md waits for checks and the bot's re-review on the new head and states that merge depends on them passing."
+    },
+    {
+      "name": "Repository merge method",
+      "max_score": 15,
+      "description": "The merge uses squash, the only method the repository allows, and nothing asks the user for permission the request already gave."
+    }
+  ]
+}
