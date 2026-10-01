@@ -34,6 +34,6 @@ body:
     attributes:
       label: Affected component and version
       description: Name the CLI or skill and its release version or commit.
-      placeholder: slopguard vX.Y.Z or slopmachine skill at commit abc1234
+      placeholder: slopguard vX.Y.Z or slopnanny skill at commit abc1234
     validations:
       required: true
