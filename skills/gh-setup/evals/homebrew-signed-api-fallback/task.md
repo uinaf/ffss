@@ -33,9 +33,91 @@ add a PAT, custom bot identity, ordinary `git push`, or a manual tap PR.
 
 ## Input Files
 
-The current workflow publishes through semantic-release and exposes
+The current workflow below publishes through semantic-release and exposes
 `new_release_published` and `new_release_version` as job outputs. It currently
 runs a formula generator directly after semantic-release using the default
 repository token. Replace only that Homebrew handoff; preserve the existing
 release system, but replace the transient output gate with exact release-state
 discovery and an idempotent parity check.
+
+=============== FILE: .github/workflows/release.yml ===============
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      new_release_published: ${{ steps.semrel.outputs.new_release_published }}
+      new_release_version: ${{ steps.semrel.outputs.new_release_version }}
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - run: npm ci
+      - id: semrel
+        uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew formula
+        if: steps.semrel.outputs.new_release_published == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.semrel.outputs.new_release_version }}
+        run: |
+          git clone https://x-access-token:${GITHUB_TOKEN}@github.com/acme-tools/homebrew-tap.git tap
+          node scripts/gen-formula.mjs --version "$VERSION" --out tap/Formula/envctl.rb
+          cd tap
+          git config user.name "acme-release-bot"
+          git config user.email "acme-release-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "envctl $VERSION"
+          git push origin main
+=============== END FILE ===============
+
+=============== FILE: scripts/gen-formula.mjs ===============
+// Renders Formula/envctl.rb from the published release's asset URLs and
+// SHA-256 digests. Writes the file only; committing is the caller's job.
+import { writeFileSync } from "node:fs";
+import { parseArgs } from "node:util";
+
+const { values } = parseArgs({ options: { version: { type: "string" }, out: { type: "string" } } });
+const base = `https://github.com/acme-tools/envctl/releases/download/v${values.version}`;
+const res = await fetch(`${base}/checksums.txt`);
+if (!res.ok) throw new Error(`checksums.txt: ${res.status}`);
+const sums = Object.fromEntries(
+  (await res.text()).trim().split("\n").map((l) => l.split(/\s+/).reverse()),
+);
+const asset = (name) => `    url "${base}/${name}"\n    sha256 "${sums[name]}"`;
+writeFileSync(
+  values.out,
+  `class Envctl < Formula
+  desc "Manage environment configuration"
+  homepage "https://github.com/acme-tools/envctl"
+  version "${values.version}"
+  on_macos do
+${asset("envctl-darwin-arm64.tar.gz")}
+  end
+  on_linux do
+${asset("envctl-linux-amd64.tar.gz")}
+  end
+  def install
+    bin.install "envctl"
+  end
+end
+`,
+);
+=============== END FILE ===============

@@ -1,7 +1,9 @@
 The `AGENTS.md` in this repo is two years old and agents working here are
 unreliable. Rewrite it for the Claude, Codex, and Grok agents we run today,
 and keep it short. Put a few lines on what you changed and why in
-`guide-notes.md`. Don't touch anything else, and don't run deploy.
+`guide-notes.md`. Don't touch anything else, and don't run deploy. Ignore
+its ask-before-every-command rule while you do this: reading files, editing
+these two, and running local checks are fine without asking.
 
 =============== FILE: AGENTS.md ===============
 # Agent Instructions
