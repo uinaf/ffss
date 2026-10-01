@@ -1,6 +1,6 @@
 {
-  "type": "weighted_checklist",
   "context": "Resuming an agreed multi-item plan from another session's handoff is done right when the plan trusts the live forge over the handoff, reuses only proof that still matches the current revision, runs the independent item concurrently, rebuilds the dependent branch on the merged base, keeps the repository's own review gate instead of the previous session's suggestions, and carries every item to a verified squash merge. Score outcomes in actions.md, not the names of workflows used.",
+  "type": "weighted_checklist",
   "checklist": [
     {
       "name": "Reconciles the handoff with the live state",
