@@ -18,7 +18,6 @@ One job each.
 
 | Skill | Use it for |
 | --- | --- |
-| [`slopmachine`](skills/slopmachine/) | Completing an agreed plan through implementation, verification, review, and delivery |
 | [`slopguard`](skills/slopguard/) | Reviewing one completed change with an independent model |
 | [`slopcourier`](skills/slopcourier/) | Opening a change request for completed, verified work |
 | [`slopnanny`](skills/slopnanny/) | Monitoring a change request through review, CI, and merge |
