@@ -125,8 +125,9 @@ choosing a technique below.
   setup time and both figures before proposing shards, and cut setup first
   when it dominates.
 - Work that gates nothing (cache markers, coverage upload, summaries,
-  notifications) moves to a job after the required check when latency is the
-  target; the second job pays another runner start
+  notifications) moves to one job after the required check when latency is the
+  target; shards upload their outputs, and that job merges them and reports
+  once, paying one more runner start
   ([GitHub](https://github.blog/engineering/infrastructure/making-github-ci-workflow-3x-faster/),
   deferred compliance).
 - Speedups that reduce test isolation (shared module state, reused containers,

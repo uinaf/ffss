@@ -26,7 +26,9 @@ repositories: [npm trusted publishing supports GitHub-hosted runners
 only](https://docs.npmjs.com/trusted-publishers/), so the release job stays
 GitHub-hosted in repositories that otherwise run on Blacksmith. Configure the package
 for the exact repository, workflow file, and Environment; grant
-`id-token: write`; remove `NPM_TOKEN`. Use a granular package-scoped token on
+`id-token: write`; remove `NPM_TOKEN`. Trusted publishing adds provenance from
+public repositories only; never pass `--provenance` or require an attestation
+from a private one. Use a granular package-scoped token on
 the release Environment only when trusted publishing is unavailable.
 
 Before enabling automation, prove the package already exists or perform the
@@ -79,8 +81,10 @@ tap-only installation token.
 
 Use the publisher's native GitHub-App commit support when available. Otherwise
 generate the formula or cask deterministically and use a narrow API commit that
-checks the tap head observed before generation. Read back signature
-verification and run the tap's applicable `brew audit` path.
+checks the tap head observed before generation. Read back the tap's
+default-branch head: require `verification.verified: true` and formula
+version and digests matching the release assets, then run the tap's applicable
+`brew audit` path.
 
 Compute URLs and checksums from the exact immutable source release. A tap update
 is downstream reconciliation and must be repairable without mutating that

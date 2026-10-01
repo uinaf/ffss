@@ -5,7 +5,7 @@
     {
       "name": "Independent review before delivery",
       "max_score": 20,
-      "description": "An independent review of the completed change runs once, after the flag, tests, and docs are done and the integration suite passes, and before the PR is opened; its findings are validated, and accepted ones are fixed and re-verified before delivery. Any named reviewer or tool is fine; a self-review or skipping review is not"
+      "description": "An independent review of the completed change runs after the flag, tests, and docs are done and the integration suite passes, and before the PR is opened; findings are validated, and accepted ones are fixed and re-verified before delivery. Re-review only after material changes is fine. Any named reviewer or tool is fine; a self-review or skipping review is not"
     },
     {
       "name": "Delivered as a PR against main",

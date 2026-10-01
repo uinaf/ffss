@@ -41,6 +41,7 @@ Where to look and what to measure: [sources.md](references/sources.md).
    Cluster them; each recurring cluster is a lesson with a proposed owner.
    Also measure the cost from first commit to production per merged pull
    request: rework commits, review rounds, CI runs, reruns, and minutes.
+   Report it per pull request, naming the costliest and any still unmerged.
 5. **Setup.** Duplicated rules, contradictions, instructions a capable model
    already follows, stale references, skills competing for one request,
    context leaking into places it doesn't belong (public repositories,
@@ -62,8 +63,8 @@ move on.
 ## Report
 
 Lead with the diagnosis in a sentence or two, then ranked findings. For each:
-the evidence, the smallest fix, and its owner. For a lesson the owner is the
-strongest one that fits: a type, lint rule, or CI check that fails on the
+the evidence, the smallest fix, and its owner. For a lesson, name one owner: the
+strongest that fits, a type, lint rule, or CI check that fails on that exact
 mistake, then the skill or playbook for that kind of work, then a global
 rule. Prefer deleting or narrowing an instruction to adding one, and prefer
 the user's existing mechanisms to new hooks, scripts, or infrastructure. Group

@@ -14,5 +14,5 @@ non-merge commit: `--mode commit --commit "$commit"`.
 
 `--context-file` (repeatable) takes only existing repository-relative evidence.
 Keep `--output json` for the canonical report, failures included.
-`--prompt-file -` is trusted instruction input; distill repository material
-before passing it.
+`--prompt-file -` is trusted instruction input; pipe the distilled prompt on
+stdin rather than writing a file into the reviewed tree.

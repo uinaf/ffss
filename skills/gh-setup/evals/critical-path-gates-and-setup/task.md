@@ -2,7 +2,7 @@
 
 ## Problem/Feature Description
 
-A pnpm workspace with packages `api`, `web`, and `shared` runs the workflow
+A public pnpm workspace with packages `api`, `web`, and `shared` runs the workflow
 below on every pull request. The required check is the `verify` gate. Median
 wait is nine minutes; the actual test time inside the `api-test` shards is
 under three. Engineers want the wait cut without dropping any check.

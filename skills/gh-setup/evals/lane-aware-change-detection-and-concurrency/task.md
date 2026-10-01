@@ -2,7 +2,7 @@
 
 ## Problem/Feature Description
 
-A platform team runs a monorepo that contains two deployable apps: `apps/dashboard` (a TypeScript React frontend) and `apps/api` (a Node.js Express backend). Both apps share a `packages/` directory of internal libraries and a root `pnpm-lock.yaml`.
+A platform team runs a public monorepo that contains two deployable apps: `apps/dashboard` (a TypeScript React frontend) and `apps/api` (a Node.js Express backend). Both apps share a `packages/` directory of internal libraries and a root `pnpm-lock.yaml`.
 
 The team has two pressing problems. First, every push to `main` triggers a full rebuild and redeploy of both apps even when only one of them changed. This doubles CI time and has caused accidental rollbacks when a clean deploy of one app brought along stale code from the other. Second, when engineers push rapid fixes to `main` during incidents, deploys sometimes race each other and the wrong artifact ends up on the host. At the same time, they need a way for an on-call engineer to manually re-deploy a verified artifact or image for a specific app and validated git ref without re-running all the tests.
 

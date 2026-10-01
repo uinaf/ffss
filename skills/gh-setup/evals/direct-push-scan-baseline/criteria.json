@@ -5,7 +5,7 @@
     {
       "name": "Scan inside verify",
       "max_score": 14,
-      "description": "Runs the scan as steps of the existing verify job instead of a separate scan job, citing GitHub's per-job rounding up to a whole minute"
+      "description": "Runs the scan as steps of the existing verify job instead of a separate scan job, citing per-job rounding up to a whole minute (GitHub's or the runner provider's) and the extra runner start"
     },
     {
       "name": "Push-time only",

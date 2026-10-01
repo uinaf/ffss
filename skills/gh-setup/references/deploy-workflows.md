@@ -34,15 +34,16 @@ workflow. Detect no-op lanes inside the workflow and end with one stable result
 job that runs under `always()`, fails closed on unexpected skips, and reports
 why a lane ran or did not run.
 
-Detect lanes with a pinned maintained filter. On `pull_request` events it lists
+Detect lanes with a pinned maintained filter at its current major
+(`dorny/paths-filter` v4). On `pull_request` events it lists
 files through the API, so the detect job needs `pull-requests: read` and no
 checkout; [runner cost](runner-cost.md#critical-path) covers push and merge
 queue events and the file-count limit.
 
 A deploy job downstream of conditional lanes needs an explicit status function,
 or GitHub ANDs the implicit `success()` and a skipped lane suppresses it. Gate on
-`!cancelled() && needs.<job>.result == 'success'` for each upstream it ships
-from. An `always()` job's own result is what downstream jobs read, so an
+`!cancelled() && needs.<job>.result == 'success'` for every job in its
+`needs`, not only the last link. An `always()` job's own result is what downstream jobs read, so an
 aggregator fails whenever an underlying result is neither success nor an
 expected skip.
 
@@ -57,7 +58,9 @@ The same payload crosses build, e2e, and deploy:
 
 Do not rebuild after e2e. GitHub Actions artifacts are acceptable as short
 same-run scratch storage only when the repository accepts their quota and
-retention coupling; they are not the default production registry.
+retention coupling; they are not the default production registry. Upload them
+with `if-no-files-found: error`, `retention-days` of 1 to 3, a lane-specific
+name, and the recorded `artifact-digest`.
 
 Manual redeploys identify the source commit, producing run, payload reference,
 and digest. Prove payload existence before loading deploy credentials.
