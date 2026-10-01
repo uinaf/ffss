@@ -1,41 +1,56 @@
 {
-  "context": "Review data for eight agent PRs shows three recurring mistakes: a missing changeset (four PRs, two fixed by the maintainer pushing a commit), untested error paths (three PRs), and unsafe shell quoting (three PRs), plus one-off noise. Two of the clusters recur despite written rules, which means the text isn't working. A good answer clusters by mistake, counts and cites them, proposes the strongest owner for each (a CI check before a rule), measures review cost, and changes nothing.",
+  "context": "Ten agent PRs show four recurring mistakes: missing changesets (311, 318, 327, 339), untested error paths (322, 330, 341), unsafe shell quoting (311, 322, 341), and unrelated formatting churn in PRs to fmtkit, a project the user doesn't own (88 and 91 fixed silently by its maintainer, 94 closed over it). The JSDoc findings come from a bot rule that contradicts CONTRIBUTING.md, and the `tok` rename is noise. Changesets and quoting recur after last month's retro added CLAUDE.md rules for them, so those rules don't work. A good answer gives each lesson one owner, the strongest that fits: CI jobs built on the changesets and shellcheck tooling acme/cli already has, the existing testing and contributing-upstream skills, and the existing review-bot config. It proposes deleting the global rules those owners supersede instead of adding or strengthening rules, measures cost per PR against August's baseline, saves the retro next to last month's, and changes no supplied file.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Clusters by mistake with counts",
-      "max_score": 25,
-      "description": "Groups the findings by mistake rather than by reviewer or PR, and reports all three recurring clusters with counts and PR numbers: missing changeset (311, 318, 327, 339), untested error paths (322, 330, 341), and shell quoting (311, 322, 341). Counts may differ by one if the reasoning is stated"
-    },
-    {
-      "name": "Maintainer-pushed commits counted",
+      "name": "Own-repo clusters with counts",
       "max_score": 10,
-      "description": "Treats Dana's 'chore: add changeset' commits on 318 and 339 as review lessons (the maintainer fixed what the agent missed), not as clean merges"
+      "description": "Groups findings by mistake, not by reviewer or PR, and reports the three acme clusters with counts and PR numbers: missing changeset (311, 318, 327, 339, counting Dana's 'chore: add changeset' commits on 318 and 339), untested error paths (322, 330, 341), and shell quoting (311, 322, 341). Counts may differ by one if the reasoning is stated."
     },
     {
-      "name": "Written rules that don't work",
+      "name": "Upstream churn found from maintainer edits and ranked high",
+      "max_score": 10,
+      "description": "Reports unrelated formatting churn in fmtkit PRs as a recurring lesson, citing the maintainer's silent reverts on 88 and 91 (which have no review comments) and the closure of 94. Ranks it among the top two findings, or explicitly weights it higher than its count because it comes from a maintainer of a project the user doesn't own and cost a closed PR."
+    },
+    {
+      "name": "Recurrence measured against last month",
+      "max_score": 10,
+      "description": "Compares with retros/2026-08.md: changesets (3 to 4 PRs) and shell quoting (2 to 3 PRs) recurred after August's CLAUDE.md rules were added, so those rules did not work. Compares at least one August baseline number with this month's value, e.g. PRs needing someone else's commit or edit (1 to 3, or 5 counting fmtkit edits) or rework commits per merged PR (1.6 to about 2.0 or 2.5, with the denominator stated)."
+    },
+    {
+      "name": "One strongest owner per lesson",
       "max_score": 15,
-      "description": "Notes that the changeset cluster recurs despite CONTRIBUTING.md and the error-path cluster recurs despite the CLAUDE.md rule, so repeating or restating those rules is not the fix"
+      "description": "Each lesson names exactly one owner, and it is the strongest that fits. Changeset: a CI job that fails without a changeset. Shell quoting: shellcheck run in CI, because CI lint is ESLint only. Error paths: the existing testing skill, or a CI check that actually fails when an error branch is untested. Upstream churn: the contributing-upstream skill, since no check can be added to someone else's repository. Fails if any lesson's fix is a new or reworded global rule in CLAUDE.md, or pairs a check with a new rule."
     },
     {
-      "name": "Strongest owner per lesson",
-      "max_score": 25,
-      "description": "Proposes an enforcing check where one fits: a CI job that fails without a changeset (e.g. changeset status) and a shell linter such as shellcheck in CI, since lint is ESLint only; error-path coverage goes to a skill, playbook, or review guidance rather than another global rule. Each lesson names one owner"
+      "name": "Superseded rules deleted, not added",
+      "max_score": 20,
+      "description": "Proposes deleting or narrowing the home/.claude/CLAUDE.md lines that the new owners make redundant: the changeset line and the shell-quoting line once their CI checks exist, and the error-path line once the testing skill owns it. For upstream churn, it proposes narrowing or rewriting the contributing-upstream skill's 'Run the project's formatter before committing' line, e.g. to format only changed lines or files, rather than adding a new line on top of it. Full credit requires removal proposals for at least two of the three CLAUDE.md lines and no new global rule anywhere. Half credit if it removes only one, or says the rules failed but leaves them in place."
     },
     {
-      "name": "Review cost measured",
+      "name": "Existing mechanisms reused",
       "max_score": 10,
-      "description": "Reports rework cost per merged PR from the data (commits after open, review rounds, or CI runs), e.g. that 322 took 3 rounds and 7 CI runs, and notes 341 is still unmerged with open findings"
+      "description": "Builds the fixes on what the setup already has instead of new hooks, pre-commit frameworks, husky, or new scripts: the existing `lint:sh` script and shellcheck devDependency wired into ci.yml, the existing @changesets/cli (e.g. `changeset status`) for the changeset gate, and repo/.github/review-bot.yml for the JSDoc noise."
     },
     {
-      "name": "Noise not promoted",
+      "name": "Bot rule against convention handled",
       "max_score": 5,
-      "description": "Does not turn the rejected `tok` rename into a lesson"
+      "description": "Does not treat missing JSDoc as an agent omission. Notes that review-bot's jsdoc-required rule contradicts CONTRIBUTING.md, that the agent applied it on 318 and 322 and Dana pushed commits removing it, and proposes dropping that rule from review-bot.yml. Does not turn the rejected `tok` rename into a lesson."
     },
     {
-      "name": "Read-only",
+      "name": "Cost per PR",
       "max_score": 10,
-      "description": "No supplied file is modified or deleted; any new files are notes or reports only, and fixes are proposed for discussion"
+      "description": "Reports rework cost per PR from the data: commits after open, review rounds, CI runs, and time open. Names 322 as the costliest merged PR (5 commits, 3 rounds, 8 CI runs, about three days), and names 341 as unmerged with open findings and fmtkit 94 as closed unmerged."
+    },
+    {
+      "name": "Retro saved next to last month's",
+      "max_score": 5,
+      "description": "Writes this month's findings and a baseline comparable to August's (merged PRs, rework commits per PR, review rounds per PR, PRs needing someone else's commit) into a new file beside retros/2026-08.md, e.g. retros/2026-09.md."
+    },
+    {
+      "name": "Read-only, decisions grouped",
+      "max_score": 5,
+      "description": "No supplied file is modified or deleted; new files are notes or reports only. Fixes are proposed for discussion, and the choices the user must make are grouped into a short numbered list."
     }
   ]
 }

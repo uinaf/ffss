@@ -1,31 +1,51 @@
 {
-  "context": "After opening a change request under an explicit 'get it merged once CI and review pass', delivery is not the end: the agent keeps carrying CI, review, and merge to a verified result, with the user's merge authority intact. Score that outcome, not the name of the workflow that carries it.",
+  "context": "Continuing an authorized fix-to-merge task after the fix changed under an already-open draft PR: the agent updates that PR rather than filing another, rewrites its title and body to describe the change as it now stands, marks it ready, and carries CI and review to a squash merge on the new head with the user's merge authority intact, gating on every review bot the repository runs and on a fresh human approval.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Carries CI and review forward",
-      "max_score": 30,
-      "description": "actions.md keeps working the PR rather than ending at 'PR open': it waits for e2e, reads the review and any threads or bot comments when they land, and fixes, re-verifies, and replies to concrete findings before merging. Handing off to a named babysitting workflow is fine when the same work is described"
+      "name": "Updates PR 42 and marks it ready",
+      "max_score": 10,
+      "description": "actions.md pushes the two local commits to fix/export-crash without force, edits PR #42 instead of running `gh pr create`, and marks #42 ready for review (for example `gh pr ready 42`), since the user never asked for a draft."
     },
     {
-      "name": "Merge authority kept",
-      "max_score": 25,
-      "description": "The plan merges once e2e passes and review approves, without asking the user for merge permission again."
+      "name": "Outcome title in repo form",
+      "max_score": 8,
+      "description": "The new title is a conventional-commit title naming the user-visible outcome (exports with null dates no longer crash or fail) in the shape of #39-#41, not the mechanism (not 'wrap csv writer in try/catch', not 'write empty cells for null created_at' alone)."
     },
     {
-      "name": "Stop condition and merged-result check",
-      "max_score": 25,
-      "description": "The plan names when it stops (merged and verified on the default branch, or blocked on a failing check or feedback that needs the user) and includes verifying the merged result."
+      "name": "Body describes the change as it stands",
+      "max_score": 17,
+      "description": "The PR body states the problem (null created_at crashed the export), the fix, and any real risk. It does not mention the try/catch first attempt, the revert, the Codex bot's finding, Dana's earlier approval, commit hashes such as 7e8f9a0 or c4d5e6f, or an iteration narrative; it does not list touched files or restate the npm test run, and it has no Summary/Changes/Testing/Test plan scaffold. Full marks only if none of these appear."
+    },
+    {
+      "name": "Every review bot reviews the new head",
+      "max_score": 20,
+      "description": "Before merging, actions.md waits for chatgpt-codex-connector[bot] to review the pushed head (c4d5e6f or the head after the push), not just its old review on a1b2c3d, even though it is not in reviewRequests; it treats the bot as a known reviewer of this repository. It does not merge on green checks plus an approval alone."
+    },
+    {
+      "name": "Stale approval not counted",
+      "max_score": 12,
+      "description": "actions.md recognises that Dana's APPROVED review is on a1b2c3d, the reverted approach, re-requests Dana's review on the new head, and merges only after an approval that covers it (or stops and reports if none comes)."
+    },
+    {
+      "name": "Usage-limited bot reported, not waited on",
+      "max_score": 8,
+      "description": "cursor[bot] is treated as unavailable because its only output is a usage-limit notice: the plan neither waits for it nor treats it as blocking, and it tells the user that Bugbot did not review."
+    },
+    {
+      "name": "Merges with existing authority",
+      "max_score": 13,
+      "description": "Once checks are green on the new head, review is clear, and PRRT_4 is answered (a reply pointing at the date fix and resolution), actions.md squash-merges #42 without asking the user for merge permission again and reports the merged commit."
+    },
+    {
+      "name": "Stop condition",
+      "max_score": 6,
+      "description": "The plan names when it stops: merged and verified on main, or blocked on a failing check, a bot or reviewer that never finishes by a stated deadline, or feedback that needs the user. Any branch deletion happens only after GitHub shows #42 merged."
     },
     {
       "name": "Simulation honest",
-      "max_score": 15,
-      "description": "actions.md records intended actions without claiming any merge, comment, or other GitHub action happened."
-    },
-    {
-      "name": "Routing",
-      "max_score": 5,
-      "description": "Names the workflow or tool that owns the remaining CI, review, and merge work (an installed babysitting skill, or `gh` directly)"
+      "max_score": 6,
+      "description": "actions.md and the final message record intended actions; neither claims that a push, edit, review request, reply, or merge happened."
     }
   ]
 }
