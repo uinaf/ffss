@@ -1,0 +1,23 @@
+{
+  "context": "A copyedit request on plain prose: fix three typos and one broken link, nothing else. Rewriting voice or structure is out of scope.",
+  "type": "weighted_checklist",
+  "skill_use": "forbidden",
+  "install": "all",
+  "checklist": [
+    {
+      "name": "Typos fixed",
+      "max_score": 35,
+      "description": "docs/setup.md spells journal, Separate, and management correctly."
+    },
+    {
+      "name": "Link fixed",
+      "max_score": 30,
+      "description": "The installing-from-source link points to ./install.md (the file that exists)."
+    },
+    {
+      "name": "Nothing else changed",
+      "max_score": 35,
+      "description": "Every other sentence, heading, command, and the docs/install.md file are unchanged; no rewording, restructuring, or added content."
+    }
+  ]
+}

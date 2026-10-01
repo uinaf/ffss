@@ -1,0 +1,28 @@
+{
+  "context": "Review feedback on an already-open PR: fix the concrete finding, push, resolve, and merge once the new head is green. The PR's title and body are already accurate, so nothing about the change request itself needs composing.",
+  "type": "weighted_checklist",
+  "skill_use": "forbidden",
+  "install": "all",
+  "checklist": [
+    {
+      "name": "Finding fixed",
+      "max_score": 30,
+      "description": "src/queue.ts compares against max (queued > max * 0.8 or equivalent), not the hardcoded 100."
+    },
+    {
+      "name": "Thread closed out",
+      "max_score": 20,
+      "description": "actions.md pushes the fix and resolves PRRT_9 (optionally with a short reply naming the fix)."
+    },
+    {
+      "name": "Merges only on the new head",
+      "max_score": 30,
+      "description": "actions.md waits for checks and the bot's re-review on the pushed head, then squash-merges; it does not merge d4e5f6a."
+    },
+    {
+      "name": "PR text left alone",
+      "max_score": 20,
+      "description": "The PR title and body are not rewritten; they already describe the change accurately."
+    }
+  ]
+}

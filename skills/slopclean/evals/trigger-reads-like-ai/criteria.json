@@ -1,0 +1,32 @@
+{
+  "context": "A terse request to de-AI a changelog entry: the 2.4.0 entry loses its promotional voice while every fact and the older entry survive.",
+  "type": "weighted_checklist",
+  "install": "all",
+  "checklist": [
+    {
+      "name": "Facts kept",
+      "max_score": 30,
+      "description": "The 2.4.0 entry still states: reads pause when the outbound queue passes 80% of queue.max instead of dropping batches; zstd is the default codec with roughly 35% less bandwidth than gzip; --legacy-ack is removed (deprecated in 2.1.0) and marked breaking; the date 2026-09-28."
+    },
+    {
+      "name": "Promotion cut",
+      "max_score": 30,
+      "description": "The thrilled/game-changing/next-level opener, the fast-paced-world paragraph, the 'In Conclusion' section, the emoji, and words like seamless, robust, empowers, blazing-fast are gone, not rephrased into new filler."
+    },
+    {
+      "name": "Breaking change prominent",
+      "max_score": 15,
+      "description": "The --legacy-ack removal is easy to spot as breaking (labeled breaking or in its own breaking section), not buried in prose."
+    },
+    {
+      "name": "Rest untouched",
+      "max_score": 15,
+      "description": "The 2.3.1 entry and the file's heading structure are unchanged; nothing outside the 2.4.0 entry is rewritten."
+    },
+    {
+      "name": "No invented content",
+      "max_score": 10,
+      "description": "No new claims, numbers, migration steps, or features appear that the original entry did not state."
+    }
+  ]
+}
