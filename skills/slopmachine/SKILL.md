@@ -20,37 +20,19 @@ User instructions take precedence over skill guidance. If a skill would stop
 authorized work, identify its exact instruction and check whether it applies
 before treating it as a blocker.
 
-## Execute
-
-- Run independent items (no shared files or ordering, each with its own
-  endpoint) in parallel with the harness's own mechanism: subagents,
-  background agents, or separate sessions. Give each worker that changes files
-  its own worktree in the harness's worktree folder, and a brief with its
-  item, endpoint, rules, and report format. Keep status in the existing
-  tracking surface, and validate each result before recording it.
-- After a dependency lands, reconcile dependent branches with the new base
-  before verifying and merging.
-- The repository's review bots and required reviewers are the review gate;
-  [slopguard](../slopguard/SKILL.md) decides when an extra review runs, before
-  the change request opens.
-
 ## Deliver
 
-For a change request, open it with [slopcourier](../slopcourier/SKILL.md), then
-run [slopnanny](../slopnanny/SKILL.md) through review, CI, and merge unless the
-user requested a hold or delivery-only endpoint. For authorized direct
-delivery, verify the pushed commit and required remote checks.
-
-Verify delivery against the forge's actual head and status. A missing tool,
-unavailable check, or inaccessible forge is a limitation to resolve or report,
-never passing evidence. Don't finish past a failing required check.
+Review, open, and babysit the change with [slopguard](../slopguard/SKILL.md)
+when it applies, before the change request opens, then
+[slopcourier](../slopcourier/SKILL.md) and [slopnanny](../slopnanny/SKILL.md)
+through merge, unless the user requested a hold or delivery-only endpoint. For
+authorized direct delivery, verify the pushed commit and required remote
+checks. Verify delivery against the forge's actual head and status, and don't
+finish past a failing required check.
 
 ## Handoff
 
 As milestones land and before a handoff, record in the existing tracking
 surface: the agreed scope, authorization, decisions, completed work, valid
-proof and its revision, delivery URLs, and outstanding work. On resume,
-reconcile that record with the worktree and forge, reuse valid proof, and
-continue from the actual state. Keep user and repository requirements distinct
-from earlier agent suggestions; review history must not become a new mandatory
-gate in the handoff.
+proof and its revision, delivery URLs, and outstanding work. On resume, continue
+from that record and the actual state.
