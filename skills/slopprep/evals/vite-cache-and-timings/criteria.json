@@ -1,31 +1,36 @@
 {
-  "context": "Speeding up a Vite+ verify graph. The skill-specific part: a global `run.cache: true` also caches impure package scripts (deploy, release, migrate), so package-script caching stays off; speed claims rest on four named timings with provisioning separated from task time; affected-input policy is not copied into CI path filters.",
+  "context": "Speeding up a Vite+ verify graph where caching is already on and CI already restores a task cache. A good answer stops caching package scripts, puts the Node runtime pin and HARBOR_REGION in the cached tasks' fingerprints, makes the secret-bearing deploy job install fresh without any restored cache, removes the CI path filter as a second affected-input map, keeps a forced full uncached path, and defines four distinct timings (unchanged, relevant change, warm full, cold full) with the slowest lane and provisioning reported separately instead of claiming a speedup.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "Global script caching rejected",
-      "max_score": 15,
-      "description": "Does not enable `run: { cache: true }` globally, and explains that it would also cache package scripts such as deploy, release, or db:migrate; caching is limited to the pure verify tasks (typecheck, test, lint)"
+      "name": "Script caching turned off",
+      "max_score": 10,
+      "description": "Removes or replaces the existing `cache: true` in vite.config.ts so package.json scripts are no longer cached while typecheck, test, and lint still are, and says why: the global setting also caches scripts such as db:migrate, deploy, or release, which deploy.yml runs through `vp run`. Leaving `cache: true` in place scores 0."
     },
     {
-      "name": "Four timings named",
+      "name": "Four distinct timings",
       "max_score": 30,
-      "description": "perf-plan.md defines how to measure unchanged, relevant-change, warm-full, and cold-full runs, reports the slowest lane (or, when nothing could be run, states it is unknown and how it will be found), separates task time from provisioning, tool install, cache restore, and queue time, and labels any numbers not actually measured as unverified"
+      "description": "perf-plan.md plans the four timings by name: unchanged, relevant change, warm full, and cold full, each as a timed case. It reports the slowest lane, or says the slowest lane is unknown and how it will be found, and separates task time from provisioning, tool or dependency install, cache restore, and runner queue time. Numbers not actually measured are labeled unmeasured or a target. If a timing is missing, or the relevant-change case is only an invalidation check without a timing, award at most a third."
     },
     {
-      "name": "Path policy has one owner",
+      "name": "Runtime and region fingerprinted",
       "max_score": 20,
-      "description": "Removes or declines to extend the dorny/paths-filter path list in the workflow so affected-input policy lives in the task graph, rather than keeping a second copy of source globs in CI that can skip verification (for example on a config or lockfile change)"
+      "description": "The cached typecheck, test, and lint tasks' inputs include the task-graph definition (vite.config.ts), the lockfile or package manifest, and a Node runtime version pin (such as .node-version, .nvmrc, or engines), so a local or CI run on a different Node version cannot replay an older result; the test task also fingerprints HARBOR_REGION so the eu and us legs cannot replay each other. Any persistent CI task-cache key includes operating system and Node version. If the Node version appears only in the CI cache key and not in the task fingerprints, award at most half; if HARBOR_REGION is not fingerprinted, award at most half."
     },
     {
-      "name": "Cache inputs are complete",
+      "name": "Deploy job installs fresh",
       "max_score": 20,
-      "description": "Cached task inputs include the task-graph definition and toolchain or runtime pins (such as vite.config.ts, package.json or lockfile, Node version) that can change results, and any persistent CI cache is keyed by lockfile or source revision plus OS and toolchain, with the lockfile reaching the result through the key or the task fingerprint"
+      "description": "deploy.yml, which holds production secrets, no longer restores any cache: both the shared `node_modules/.vite` task-cache step and the setup-node `cache: pnpm` dependency cache are removed, so it installs dependencies fresh, and db:migrate and deploy cannot be satisfied by a cache hit. Removing only the task-cache step while keeping `cache: pnpm` earns at most half; flagging the problem in perf-plan.md without editing deploy.yml earns at most a quarter."
     },
     {
-      "name": "Exhaustive path kept",
-      "max_score": 15,
-      "description": "Keeps a forced full, uncached verify command and leaves deploy, release, and migrations outside selection and caching; no deploy, publish, push, or migration was run"
+      "name": "Path filter removed",
+      "max_score": 10,
+      "description": "Removes the dorny/paths-filter job and its globs so verify runs on every pull request and affected-input policy lives only in the task graph. Keeping the filter, even with a longer glob list that adds config or lockfile paths, scores 0."
+    },
+    {
+      "name": "Exhaustive path and no side effects",
+      "max_score": 10,
+      "description": "Keeps one exhaustive, non-cached way to run every check (a command, script, or documented invocation with task caching off), and no deploy, publish, push, or migration was run."
     }
   ]
 }

@@ -37,7 +37,9 @@ checks are gaps, not failed executions.
   [verification-contract.md](references/verification-contract.md).
 - Slow gates, affected selection, caching:
   [fast-portable-execution.md](references/fast-portable-execution.md). Measure
-  unchanged, relevant-change, warm-full, and cold-full paths before optimizing.
+  unchanged, relevant-change, warm-full, and cold-full paths before optimizing,
+  and put runtime and toolchain pins in every cached task's inputs, not only in
+  CI cache keys.
 - Migrating to Vite+ or across its releases: [vite-plus.md](references/vite-plus.md).
 - Boot, doctor, resource ownership, mechanical enforcement (linters, hooks,
   anti-slop rules), identity, isolation, recovery:
