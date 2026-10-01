@@ -15,7 +15,7 @@
     {
       "name": "Stale note corrected",
       "max_score": 20,
-      "description": "Does not repeat the previous audit: says changelog is used (two /changelog invocations) and diagram has no use in the history, so diagram, not changelog, is the pruning candidate."
+      "description": "Does not repeat the previous audit: says changelog is used (two /changelog invocations) and diagram has no use in the history, so diagram, not changelog, is the pruning candidate; noting that prompt history alone cannot rule out model-invoked use is fine if diagram is still named as the candidate."
     },
     {
       "name": "Default-behavior noise",

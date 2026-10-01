@@ -77,7 +77,10 @@ One real release for each distinct workflow shape must prove every applicable
 boundary:
 
 - published, non-draft, immutable GitHub Release
-- release verification and exact asset manifest
+- `gh release verify <tag>` and `gh release verify-asset` for each asset in the
+  exact manifest, run by the workflow; the API `immutable` field alone is not
+  verification
+  ([integrity](https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/verifying-the-integrity-of-a-release))
 - peeled tag resolves to the intended commit
 - protected-branch writeback is verified and contained in the live default branch
 - version files at the release commit match the published version

@@ -32,8 +32,9 @@ before treating it as a blocker.
   before verifying and merging.
 - The repository's review bots and required reviewers are the review gate.
   Run [slopguard](../slopguard/SKILL.md) only when the user asks for it or the
-  repository has no automated review on change requests; if that's unclear,
-  ask the user once.
+  repository has no automated review on change requests, once on the verified
+  change before opening the change request; if that's unclear, ask the user
+  once.
 
 ## Deliver
 

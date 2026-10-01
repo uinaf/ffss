@@ -13,7 +13,7 @@ weekly minute cost.
   ([push protection](https://docs.github.com/en/code-security/secret-scanning/introduction/about-push-protection)).
 - Private repositories: the Gitleaks CLI on the pushed range.
 - Actionlint and Zizmor when a push changes `.github/`, action metadata, or
-  their configuration.
+  their configuration, and on every dispatch.
 - Renovate for updates and vulnerability pull requests, with Dependabot alerts
   on (free on every repository).
 - SHA pinning required in the Actions policy for the organization or

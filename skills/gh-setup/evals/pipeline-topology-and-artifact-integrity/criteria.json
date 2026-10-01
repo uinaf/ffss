@@ -75,7 +75,7 @@
     {
       "name": "Stable no-op result",
       "max_score": 6,
-      "description": "The workflow avoids trigger-level path skips for required checks and uses an internal changes/no-op path plus a stable final result job for branch protection"
+      "description": "If the workflow introduces conditional lanes or a required check, it avoids trigger-level path skips for required checks and uses an internal changes/no-op path plus a stable final result job for branch protection; otherwise this item passes"
     },
     {
       "name": "Matrix controls",

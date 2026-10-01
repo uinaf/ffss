@@ -14,6 +14,8 @@ canonical home per contract and link to it with a task-shaped label.
 Treat code and structured config as documentation for the facts they express.
 Link to the owning file and identify the relevant key, section, or symbol;
 do not maintain prose copies of inventories, defaults, schemas, or task lists.
+Entrypoints are the exception: README and AGENTS.md name the exact install,
+setup, run, and verify commands instead of pointing at the script file.
 For example, link to an inventory group instead of listing every host and
 repeating the same command for each one. A value change should not require
 a matching Markdown edit just to keep a second copy current.
@@ -26,10 +28,10 @@ from the owner over maintaining it by hand.
 
 ## Negative-state rule
 
-Document what exists. Remove absent, retired, or never-deployed systems, their
-unset settings, and "there is no X" summaries; the reader will not look for
-what the doc never mentions. Keep a limit only when a reader would otherwise
-build or call the wrong thing, and state it beside the supported path.
+Document what exists. Remove absent, retired, deprecated, or never-deployed
+systems, their unset settings, and "there is no X" summaries; the reader will
+not look for what the doc never mentions. Keep a limit only when a reader would
+otherwise build or call the wrong thing, and state it beside the supported path.
 
 ## Choose the reference
 
@@ -49,5 +51,6 @@ distinct and continue separately authorized work.
 Check changed links, commands, and moved references against current sources.
 Use the repository's doc checks; running a documented command is a separate
 action whose scope and side effects still need authorization. Report what
-changed, what was verified, and any remaining gap. Do not create a report file
+changed, what was verified, what you left out by category and whose decision
+would adopt it, and any remaining gap. Do not create a report file
 unless requested or required by the repository.

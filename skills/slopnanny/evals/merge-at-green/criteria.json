@@ -20,7 +20,7 @@
     {
       "name": "Merged result reported",
       "max_score": 14,
-      "description": "The outcome reports the merge as the settled state (merged commit or PR #42 merged), not merely 'ready'"
+      "description": "actions.md confirms the merge on the forge (state MERGED and the merge commit; a placeholder is fine) and reports PR #42 merged with that commit as the settled outcome, not merely 'ready'. Dry-run framing that nothing was executed is not a failure"
     },
     {
       "name": "No noise posted",

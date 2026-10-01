@@ -24,14 +24,17 @@ Search for existing work before creating artifacts. Update the canonical item
 when the request started there, preserving its agreed criteria and metadata.
 For multiple tickets, each one delivers a behavior through every layer it
 needs; no foundation, data-model, layer, or test-only tickets. Block only where
-a ticket cannot start or verify without another. Show the delivered behavior
-and blocking edges before publication unless that decomposition is already
-approved.
+a ticket cannot start or verify without behavior another ticket ships;
+fixtures, stubs, or a shared contract do not remove that dependency, and
+choosing to verify through another ticket does not create one. Show the
+delivered behavior and blocking edges before publication unless that
+decomposition is already approved.
 
 Create blockers before dependents. Use native hierarchy/dependency operations
 when available, otherwise explicit links in the same tracker. Re-read the
 published artifacts to confirm content, metadata, relationships, and links.
 
 Return the canonical URL or key, what can start now, and any blocker. When
-publication is unavailable, return a paste-ready draft for the intended tracker
-and the exact missing access; do not switch trackers or save local plan files.
+publication is unavailable, return a paste-ready draft for the intended tracker,
+the exact missing access, and that its published key or URL is the resume
+point; do not switch trackers or save local plan files.

@@ -19,7 +19,7 @@ extra checks named after the old scan jobs.
 The owner wants the fewest CI minutes and least money while still catching
 leaked secrets, unsafe workflow changes, and vulnerable dependencies. Hard
 constraints: no local git hooks, no notification channel beyond GitHub's own,
-scans never block a push or merge, and at most one required check.
+CI scans never block a push or merge (GitHub push protection, which the pusher can bypass, is allowed), and at most one required check.
 
 ## Output Specification
 

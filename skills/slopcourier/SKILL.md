@@ -34,7 +34,8 @@ continues through its owning workflow, so this lane does not end the task.
    upstream tracking, no force-push without approval.
 3. Update the branch's existing change request instead of filing a duplicate.
    Open ready for review unless a draft was requested.
-4. Follow recent merged titles and the repository template; without one, the
+4. Title the user-visible outcome, not the mechanism, in the form of recent
+   merged titles. Follow the repository template; without one, the
    owner's `<owner>/.github` default template. Without either, use the
    [house style](../slopscriber/references/style.md): problem, solution, real
    risks, proof only when CI cannot show it, headings only when needed. No

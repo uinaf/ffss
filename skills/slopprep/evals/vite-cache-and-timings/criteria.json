@@ -10,7 +10,7 @@
     {
       "name": "Four timings named",
       "max_score": 30,
-      "description": "perf-plan.md defines how to measure unchanged, relevant-change, warm-full, and cold-full runs, reports the slowest lane, separates task time from provisioning, tool install, cache restore, and queue time, and labels any numbers not actually measured as unverified"
+      "description": "perf-plan.md defines how to measure unchanged, relevant-change, warm-full, and cold-full runs, reports the slowest lane (or, when nothing could be run, states it is unknown and how it will be found), separates task time from provisioning, tool install, cache restore, and queue time, and labels any numbers not actually measured as unverified"
     },
     {
       "name": "Path policy has one owner",
@@ -20,7 +20,7 @@
     {
       "name": "Cache inputs are complete",
       "max_score": 20,
-      "description": "Cached task inputs include the task-graph definition and toolchain or runtime pins (such as vite.config.ts, package.json or lockfile, Node version) that can change results, and any persistent CI cache is keyed by lockfile plus OS and toolchain"
+      "description": "Cached task inputs include the task-graph definition and toolchain or runtime pins (such as vite.config.ts, package.json or lockfile, Node version) that can change results, and any persistent CI cache is keyed by lockfile or source revision plus OS and toolchain, with the lockfile reaching the result through the key or the task fingerprint"
     },
     {
       "name": "Exhaustive path kept",
