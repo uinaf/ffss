@@ -24,8 +24,9 @@ Search for existing work before creating artifacts. Update the canonical item
 when the request started there, preserving its agreed criteria and metadata.
 For multiple tickets, each one delivers a behavior through every layer it
 needs; no foundation, data-model, layer, or test-only tickets. Block only where
-a ticket cannot start or verify without another; fixtures, stubs, or a shared
-contract do not remove a dependency on behavior another ticket ships. Show the
+a ticket cannot start or verify without behavior another ticket ships;
+fixtures, stubs, or a shared contract do not remove that dependency, and
+choosing to verify through another ticket does not create one. Show the
 delivered behavior and blocking edges before publication unless that
 decomposition is already approved.
 

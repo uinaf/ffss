@@ -29,10 +29,10 @@ from the owner over maintaining it by hand.
 ## Negative-state rule
 
 Document what exists. Remove absent, retired, deprecated, or never-deployed
-systems, their unset settings, and "there is no X" or "don't use old X" notes;
-the reader will not look for what the doc never mentions. Keep a limit only
-when a reader would otherwise build or call the wrong thing, and state it
-beside the supported path.
+systems, their unset settings, "there is no X" summaries, and warnings about
+retired paths; the reader will not look for what the doc never mentions. Keep
+a limit only when a reader would otherwise build or call the wrong thing, and
+state it beside the supported path.
 
 ## Choose the reference
 
