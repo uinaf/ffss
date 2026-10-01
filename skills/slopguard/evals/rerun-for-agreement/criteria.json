@@ -15,7 +15,7 @@
     {
       "name": "One re-review, original provider only",
       "max_score": 35,
-      "description": "The only review command planned after the fix is a single branch-mode run against main with Codex at medium effort, the provider and mode of the original run. Score 0 if response.md plans any Claude or other second-engine run, any additional effort level, or reading several reviews together, at any stage, even framed as an independent check or second opinion on the fixed code. Saying the user may choose Claude instead of Codex for a future review is fine; running both is not"
+      "description": "The only review command planned after the fix is a single branch-mode run against main with Codex at medium effort, the provider and mode of the original run. Score 0 if response.md plans any Claude or other second-engine run, any additional effort level, or reading several reviews together, at any stage, even framed as an independent check or second opinion on the fixed code. Leaving another provider explicitly to the user's decision (instead of Codex, or as an extra the user would have to ask for) is fine; planning, recommending, or scheduling it is not"
     },
     {
       "name": "Fix planned at the owner",
