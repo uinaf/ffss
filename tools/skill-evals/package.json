@@ -10,7 +10,7 @@
     "audit": "npm audit --audit-level=high"
   },
   "devDependencies": {
-    "@uinaf/skillcheck": "1.5.3"
+    "@uinaf/skillcheck": "1.6.0"
   },
   "overrides": {
     "adm-zip@<0.6.1": "^0.6.1",
