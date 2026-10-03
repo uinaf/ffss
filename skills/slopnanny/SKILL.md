@@ -73,9 +73,12 @@ hashes, nothing that doesn't advance the thread.
 Once the change request merges, by you or anyone else, watch the runs the merge
 started on the default branch.
 
-- List them by the full merge SHA from `gh pr view <n> --json mergeCommit`
-  (an abbreviated SHA lists nothing) with
-  `gh run list --commit <merge-sha> --limit 100` or
+- Take the full merge SHA; an abbreviated one lists nothing. Read
+  `mergeCommit` from `gh pr view <number> --json mergeCommit,headRefOid`, or
+  `merge_commit_sha`, then `squash_commit_sha`, from
+  `glab mr view <number> -F json`. A fast-forward or indirect merge has
+  neither; use the head commit that landed (`headRefOid` or `sha`).
+- List the runs with `gh run list --commit <merge-sha> --limit 100` or
   `glab ci list --sha <merge-sha>`, skipping scheduled and manual runs. Runs
   can take a minute to appear; if none do, say so and stop.
 - Wait once, re-polling, until they finish: at most 30 minutes unless the user
