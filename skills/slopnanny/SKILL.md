@@ -22,7 +22,7 @@ belongs to the required reviewer.
   push when it reviewed an earlier head of this change request. A bot that
   never touched this change request isn't pending, even if it reviews others;
   some run only for certain authors or accounts.
-- Wait for a pending bot to about 15 minutes, or to the user's deadline if
+- Wait for a pending bot at most 5 minutes, or to the user's deadline if
   sooner, re-polling; then continue without it and name it in the receipt. A
   usage-limit or quota notice means unavailable: say so and continue.
 - Never summon a review bot with a mention, comment, or review request unless
