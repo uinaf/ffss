@@ -1,6 +1,6 @@
 ---
 name: slopnanny
-description: "Resolve review feedback and CI on an open change request, then merge when green unless asked to hold. Use for babysitting delivered work."
+description: "Resolve review feedback and CI on an open change request, merge when green unless asked to hold, then watch the runs the merge starts. Use for babysitting delivered work."
 ---
 
 # Slopnanny
@@ -73,7 +73,12 @@ hashes, nothing that doesn't advance the thread.
 Once the change request merges, by you or anyone else, watch the runs the merge
 started on the default branch.
 
-- List them with `gh run list --commit <merge-sha> --limit 100` or
+- Take the full merge SHA; an abbreviated one lists nothing. Read
+  `mergeCommit` from `gh pr view <number> --json mergeCommit,headRefOid`, or
+  `merge_commit_sha`, then `squash_commit_sha`, from
+  `glab mr view <number> -F json`. A fast-forward or indirect merge has
+  neither; use the head commit that landed (`headRefOid` or `sha`).
+- List the runs with `gh run list --commit <merge-sha> --limit 100` or
   `glab ci list --sha <merge-sha>`, skipping scheduled and manual runs. Runs
   can take a minute to appear; if none do, say so and stop.
 - Wait once, re-polling, until they finish: at most 30 minutes unless the user
