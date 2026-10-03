@@ -14,7 +14,7 @@ would take, in order, with every forge command, and your report to the user, to
 $ gh pr view 73 --json state,mergeCommit,mergedBy,baseRefName
 {
   "state": "MERGED",
-  "mergeCommit": {"oid": "9a8b7c6"},
+  "mergeCommit": {"oid": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"},
   "mergedBy": {"login": "maintainer"},
   "baseRefName": "main"
 }
@@ -22,7 +22,7 @@ $ gh pr view 73 --json state,mergeCommit,mergedBy,baseRefName
 $ gh pr diff 73 -- src/config.ts
 +export const webhookSecret = requireEnv("PAYMENTS_WEBHOOK_SECRET");
 
-$ gh run list --commit 9a8b7c6 --json databaseId,workflowName,event,status,conclusion,url
+$ gh run list --commit 9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b --json databaseId,workflowName,event,status,conclusion,url
 [
   {"databaseId": 4241, "workflowName": "CI", "event": "push", "status": "completed", "conclusion": "success", "url": "https://github.com/example/widgets/actions/runs/4241"},
   {"databaseId": 4242, "workflowName": "Deploy", "event": "workflow_run", "status": "completed", "conclusion": "failure", "url": "https://github.com/example/widgets/actions/runs/4242"}

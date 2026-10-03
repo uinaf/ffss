@@ -1,7 +1,7 @@
 interface:
   display_name: "slopnanny"
   short_description: "Babysit a change request to a settled outcome"
-  default_prompt: "Use $slopnanny to resolve review and CI on this change request and merge when its gates pass, unless asked to hold."
+  default_prompt: "Use $slopnanny to resolve review and CI on this change request and merge when its gates pass, unless asked to hold, then watch the runs the merge starts."
 
 policy:
   allow_implicit_invocation: true
