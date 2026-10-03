@@ -82,10 +82,11 @@ started on the default branch.
   the deadline, report what is still running, with links, and stop.
 - On a failure, report the run link, the likely cause from the failed job's
   log, and the exact revert command repository policy allows:
-  `gh pr revert <number>`, or, where the default branch takes direct pushes,
-  `git revert <merge-sha>` (`-m 1` for a merge commit) on an up-to-date
-  default branch. Revert or redeploy only under authority the user already
-  gave.
+  `gh pr revert <number>` (on GitLab, a revert branch and `glab mr create`),
+  or, where the default branch takes direct pushes, `git revert <merge-sha>`
+  on an up-to-date default branch, with `-m 1` for a merge commit or the full
+  range for a rebase merge. Revert or redeploy only under authority the user
+  already gave.
 - On success, say so in one line.
 - Delete the branch or worktree only once the forge shows the change request
   merged and this watch ends; a deleted head branch closes an open one.
