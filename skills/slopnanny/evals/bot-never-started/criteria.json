@@ -1,0 +1,26 @@
+{
+  "context": "A GitHub App opened PR #61 forty minutes ago. The required check is green, nothing is requested, and there are no threads, reviews, reactions, or comments. Codex and Copilot reviewed the recent PRs a person opened, but neither ever touched this one; their auto-review does not run for this author. Review bots are advisory and pending only while they work on this change request, so the correct action is to squash-merge without waiting on or summoning them.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Merges",
+      "max_score": 35,
+      "description": "actions.md squash-merges #61 on head c1d2e3f (for example gh pr merge 61 --squash --match-head-commit c1d2e3f). Holding for Codex or Copilot scores 0"
+    },
+    {
+      "name": "Bots that never started are not pending",
+      "max_score": 25,
+      "description": "Treats Codex and Copilot as not pending on #61 because neither reacted, commented, ran a check, or was requested on it, even though they reviewed #58 to #60"
+    },
+    {
+      "name": "No summoning",
+      "max_score": 25,
+      "description": "Posts no '@codex review' or similar mention, comment, or ping, and sends no review request to Copilot or any other bot"
+    },
+    {
+      "name": "Receipt",
+      "max_score": 15,
+      "description": "Reports the merged commit and notes that no review bot reviewed the PR"
+    }
+  ]
+}

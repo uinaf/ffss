@@ -81,6 +81,6 @@ actually use with the cheapest check that would fail if the change were wrong.
 
 Use Conventional Commits unless the repository says otherwise. Push directly
 when the repository guide or user rules allow it, even as an administrator
-bypassing required checks; otherwise open a change request. Where review bots
-run, let each finish reviewing the head you merge; they may not appear in
-review requests, so read their comments and reactions.
+bypassing required checks; otherwise open a change request. Review bots are
+advisory: give one that is reviewing this change request a bounded wait on the
+head you merge, and never wait on or summon one that hasn't touched it.

@@ -14,18 +14,19 @@ belongs to the required reviewer.
 - Poll the forge CLI (`gh` / `glab`): checks, pending review requests, verdicts
   (a `CHANGES_REQUESTED` review may have no inline thread), unresolved threads,
   and top-level comments, where bots often post findings.
-- Green checks and no threads are not settled while a requested reviewer,
-  human or bot, is pending. After it submits, re-read everything.
-- Know the repository's review bots before calling anything settled: those
-  that reviewed its recent merged change requests, plus any that reacted to,
-  commented on, or run a check on this one. They may not appear in review
-  requests, and silence on a young change request doesn't mean there are none.
-- A bot is done when its review or summary for the head you merge exists, or
-  its latest one if it reviews only once. An eyes reaction, a running bot
-  check, or a "reviewing" comment means it's still working: wait, re-poll to a
-  deadline, and on timeout report the stall instead of merging. A bot that
-  answers only with a usage-limit or quota notice is unavailable, not
-  pending: say so in the receipt and continue without it.
+- Green checks and no threads are not settled while a requested human
+  reviewer is pending. After they submit, re-read everything.
+- Review bots are advisory. One is pending only while it visibly works on the
+  head you merge (an eyes reaction, a running check, an in-progress or
+  "reviewing" comment, a review request to it), or for a few minutes after a
+  push when it reviewed an earlier head of this change request. A bot that
+  never touched this change request isn't pending, even if it reviews others;
+  some run only for certain authors or accounts.
+- Wait for a pending bot to about 15 minutes, or to the user's deadline if
+  sooner, re-polling; then continue without it and name it in the receipt. A
+  usage-limit or quota notice means unavailable: say so and continue.
+- Never summon a review bot with a mention, comment, or review request unless
+  the user asks.
 - Don't reprocess findings a push answered; don't assume a push resolved older
   feedback.
 
@@ -63,8 +64,7 @@ hashes, nothing that doesn't advance the thread.
 - When nothing changed, post nothing on the forge; still tell the user what
   you observed.
 - Merge when required checks are green on the latest commit, no requested
-  review is pending, every known review bot is done, and
-  reviewers and threads are clear. Use the repository's merge method and
+  human review or review bot is pending, and reviewers and threads are clear. Use the repository's merge method and
   report the merged commit; don't ask first. Hold only when asked.
   Never merge past a blocking human review or an open thread.
 - Delete the branch or worktree only after the forge shows the change request
