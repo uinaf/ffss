@@ -67,5 +67,26 @@ hashes, nothing that doesn't advance the thread.
   human review or review bot is pending, and reviewers and threads are clear. Use the repository's merge method and
   report the merged commit; don't ask first. Hold only when asked.
   Never merge past a blocking human review or an open thread.
-- Delete the branch or worktree only after the forge shows the change request
-  merged; a deleted head branch closes an open one.
+
+## After merge
+
+Once the change request merges, by you or anyone else, watch the runs the merge
+started on the default branch.
+
+- List them with `gh run list --commit <merge-sha> --limit 100` or
+  `glab ci list --sha <merge-sha>`, skipping scheduled and manual runs. Runs
+  can take a minute to appear; if none do, say so and stop.
+- Wait once, re-polling, until they finish: at most 30 minutes unless the user
+  set a deadline. Runs they trigger, such as a deploy after CI or a downstream
+  pipeline, join the wait; re-list a minute after the last one finishes. At
+  the deadline, report what is still running, with links, and stop.
+- On a failure, report the run link, the likely cause from the failed job's
+  log, and the exact revert command repository policy allows:
+  `gh pr revert <number>` (on GitLab, a revert branch and `glab mr create`),
+  or, where the default branch takes direct pushes, `git revert <merge-sha>`
+  on an up-to-date default branch, with `-m 1` for a merge commit or the full
+  range for a rebase merge. Revert or redeploy only under authority the user
+  already gave.
+- On success, say so in one line.
+- Delete the branch or worktree only once the forge shows the change request
+  merged and this watch ends; a deleted head branch closes an open one.

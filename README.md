@@ -20,7 +20,7 @@ One job each.
 | --- | --- |
 | [`slopguard`](skills/slopguard/) | Reviewing one completed change with an independent model |
 | [`slopcourier`](skills/slopcourier/) | Opening a change request for completed, verified work |
-| [`slopnanny`](skills/slopnanny/) | Monitoring a change request through review, CI, and merge |
+| [`slopnanny`](skills/slopnanny/) | Monitoring a change request through review, CI, merge, and the runs the merge starts |
 | [`slopclean`](skills/slopclean/) | Removing AI tells from prose, code, and tests |
 | [`slopspec`](skills/slopspec/) | Saving agreed work as issues, epics, or durable plans |
 | [`slopscriber`](skills/slopscriber/) | Auditing and updating repository documentation |
