@@ -49,6 +49,5 @@ continues through its owning workflow, so this lane does not end the task.
 6. Return the URL and delivered commit. Babysitting or merge, if requested,
    continues with [slopnanny](../slopnanny/SKILL.md), carrying the user's
    existing authority across the handoff. Delivery alone grants no merge,
-   auto-merge, branch deletion, or rework authority.
-   When the repository runs review bots, the change request isn't
-   mergeable until each has reviewed the head being merged.
+   auto-merge, branch deletion, or rework authority. Review bots are
+   advisory; slopnanny decides when to wait for one.

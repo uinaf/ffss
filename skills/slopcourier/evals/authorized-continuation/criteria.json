@@ -1,5 +1,5 @@
 {
-  "context": "Continuing an authorized fix-to-merge task after the fix changed under an already-open draft PR: the agent updates that PR rather than filing another, rewrites its title and body to describe the change as it now stands, marks it ready, and carries CI and review to a squash merge on the new head with the user's merge authority intact, gating on every review bot the repository runs and on a fresh human approval.",
+  "context": "Continuing an authorized fix-to-merge task after the fix changed under an already-open draft PR: the agent updates that PR rather than filing another, rewrites its title and body to describe the change as it now stands, marks it ready, and carries CI and review to a squash merge on the new head with the user's merge authority intact, gating on the review bot that already reviewed this PR and on a fresh human approval.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -20,7 +20,7 @@
     {
       "name": "Every review bot reviews the new head",
       "max_score": 20,
-      "description": "Before merging, actions.md waits for chatgpt-codex-connector[bot] to review the pushed head (c4d5e6f or the head after the push), not just its old review on a1b2c3d, even though it is not in reviewRequests; it treats the bot as a known reviewer of this repository. It does not merge on green checks plus an approval alone."
+      "description": "Before merging, actions.md waits for chatgpt-codex-connector[bot] to review the pushed head (c4d5e6f or the head after the push), not just its old review on a1b2c3d, even though it is not in reviewRequests, because the bot reviewed an earlier head of this PR. It does not merge on green checks plus an approval alone."
     },
     {
       "name": "Stale approval not counted",
