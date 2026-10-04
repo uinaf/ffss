@@ -97,11 +97,12 @@ with Contents write permission.
 
 - Semantic Release owns version selection, release notes, the Git tag, and a
   mutable draft GitHub Release.
-- GoReleaser adopts that draft, Developer ID signs both macOS binaries, waits
-  for Apple to accept both notarization submissions, uploads all archives, the
-  checksum manifest, and the Sigstore bundle.
-- The workflow verifies those outputs and provenance before publishing the
-  draft; publication makes the release assets and tag immutable.
+- GoReleaser builds without publishing: it Developer ID signs both macOS
+  binaries, waits for Apple to accept both notarization submissions, and
+  writes the archives, the checksum manifest, and the Sigstore bundle.
+- The workflow verifies those outputs and provenance, uploads them to the
+  draft, then publishes it; publication makes the release assets and tag
+  immutable.
 - The cask script then writes the Homebrew cask to the tap only after
   `brew style` and `brew audit --strict --online` pass on it.
 - Exact-tag release discovery fails closed instead of skipping publication.
