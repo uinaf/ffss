@@ -22,9 +22,11 @@ install it.
 | `skills/`, `cli/*/skills/` | `npm ci && npm run lint && npm run audit` in `tools/skill-evals` ([skill-evals](tools/skill-evals/README.md)) |
 | `cli/slopguard/` | `mise run verify` in `cli/slopguard` |
 | `cli/lib/` | `mise run verify` in `cli/lib` |
+| Root docs, `rules/` | none; no lane covers them |
 
 [Verify](.github/workflows/verify.yml) runs only the lanes a change touches and
-requires them through its `verify` job.
+requires them through its `verify` job, the required check for merging a pull
+request.
 
 ## Release
 
