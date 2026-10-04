@@ -1,8 +1,9 @@
 # Releases
 
 `slopguard` evaluates a CLI release after every successful push to protected
-`main`. Conventional Commits determine whether that evaluation publishes a
-version; merges with no consumer-facing release type stop without a tag.
+`main` that touches `cli/slopguard/`. Only commits that touch that directory
+count: their Conventional Commits determine whether that evaluation publishes
+a version, and merges with no consumer-facing release type stop without a tag.
 Release notes are generated from those commits on each
 [GitHub Release](https://github.com/uinaf/ffss/releases?q=slopguard); this file
 holds no changelog.
@@ -98,9 +99,11 @@ with Contents write permission.
   mutable draft GitHub Release.
 - GoReleaser adopts that draft, Developer ID signs both macOS binaries, waits
   for Apple to accept both notarization submissions, uploads all archives, the
-  checksum manifest, and the Sigstore bundle, then updates the Homebrew cask.
+  checksum manifest, and the Sigstore bundle.
 - The workflow verifies those outputs and provenance before publishing the
   draft; publication makes the release assets and tag immutable.
+- The cask script then writes the Homebrew cask to the tap only after
+  `brew style` and `brew audit --strict --online` pass on it.
 - Exact-tag release discovery fails closed instead of skipping publication.
 - GoReleaser OSS needs a plain semver tag and, from 2.18, drops commit
   metadata when that tag does not exist, so the release job and
