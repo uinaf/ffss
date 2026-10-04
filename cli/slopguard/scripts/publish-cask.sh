@@ -7,10 +7,13 @@ set -euo pipefail
 
 member=${1:?member name required}
 case "$member" in
-  slopguard) depends_stanza='  depends_on formula: "git"
+  slopguard)
+    description="Structured independent code review as a CLI and agent skill"
+    depends_stanza='  depends_on formula: "git"
 
-' ;;
-  *) depends_stanza='' ;;
+'
+    ;;
+  *) echo "no cask metadata for member: $member" >&2; exit 1 ;;
 esac
 [[ "${VERSION:-}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "VERSION missing or invalid" >&2; exit 1; }
 [[ "${TAG:-}" == "$member/$VERSION" ]] || { echo "TAG must be $member/VERSION" >&2; exit 1; }
@@ -33,10 +36,6 @@ done
 # Release-download URLs URL-encode the slash in the member-prefixed tag.
 # Ruby #{version} interpolation keeps `brew audit` treating the URL as versioned.
 base='https://github.com/uinaf/ffss/releases/download/'"${member}"'%2Fv#{version}'
-case "$member" in
-  slopguard) description="Structured independent code review as a CLI and agent skill" ;;
-  *) description="$member" ;;
-esac
 
 # The tap's default branch requires signed commits. The contents API gives
 # each write a GitHub signature, while the sha parameter makes it a
@@ -84,6 +83,17 @@ cask "${member}" do
 ${depends_stanza}  binary "${member}"
 end
 CASK
+
+# Gate the cask before any tap write. `brew audit` skips the RuboCop cask
+# cops that `brew style` runs; both need the cask inside a tap, and naming
+# it in full lets Homebrew load this untrusted scratch tap.
+gate_tap="uinaf/ffss-cask-gate"
+gate_root="$(brew --repository)/Library/Taps/uinaf/homebrew-ffss-cask-gate"
+trap 'rm -f "$rendered"; rm -rf "$gate_root"' EXIT
+mkdir -p "$gate_root/Casks"
+cp "$rendered" "$gate_root/Casks/${member}.rb"
+brew style --cask "${gate_tap}/${member}"
+brew audit --strict --online --cask "${gate_tap}/${member}"
 
 content_b64=$(base64 < "$rendered" | tr -d '\n')
 
