@@ -8,6 +8,7 @@ set -euo pipefail
 member=${1:?member name required}
 case "$member" in
   slopguard) depends_stanza='  depends_on formula: "git"
+
 ' ;;
   *) depends_stanza='' ;;
 esac
@@ -50,26 +51,29 @@ cask "${member}" do
   version "${VERSION#v}"
 
   on_macos do
-    on_intel do
-      sha256 "${darwin_amd64}"
-      url "${base}/${member}_v#{version}_darwin_amd64.tar.gz"
-    end
     on_arm do
       sha256 "${darwin_arm64}"
       url "${base}/${member}_v#{version}_darwin_arm64.tar.gz"
     end
-  end
-
-  on_linux do
     on_intel do
-      sha256 "${linux_amd64}"
-      url "${base}/${member}_v#{version}_linux_amd64.tar.gz"
+      sha256 "${darwin_amd64}"
+      url "${base}/${member}_v#{version}_darwin_amd64.tar.gz"
     end
+  end
+  on_linux do
     on_arm do
       sha256 "${linux_arm64}"
       url "${base}/${member}_v#{version}_linux_arm64.tar.gz"
     end
+    on_intel do
+      sha256 "${linux_amd64}"
+      url "${base}/${member}_v#{version}_linux_amd64.tar.gz"
+    end
   end
+
+  name "${member}"
+  desc "${description}"
+  homepage "https://github.com/uinaf/ffss"
 
   livecheck do
     url :homepage
@@ -77,12 +81,7 @@ cask "${member}" do
     strategy :github_releases
   end
 
-${depends_stanza}  name "${member}"
-
-  binary "${member}"
-
-  homepage "https://github.com/uinaf/ffss"
-  desc "${description}"
+${depends_stanza}  binary "${member}"
 end
 CASK
 
