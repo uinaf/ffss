@@ -35,9 +35,8 @@ script pins with checksums stay manual, or let the target fetch the upstream
   repositories with a token that cannot see private presets, and the failure is a
   "Cannot find preset's package" issue on every public consumer.
 - The [uinaf preset](https://github.com/uinaf/renovate-config) runs daily with
-  a seven-day `minimumReleaseAge`, one day for `github-actions` and `docker`,
-  none for `uinaf/.github`, and one day for patch and minor updates to mise tool pins
-  and the `packageManager` field; patch and minor updates group per manager and
+  a three-day `minimumReleaseAge`, one day for `github-actions` and `docker`,
+  and none for `uinaf/.github`; patch and minor updates group per manager and
   majors stay separate.
 - Use [GitHub-native automerge](#faster-github-automerge) when enforceable
   required checks are ready. Keep `platformAutomerge: false` for repositories
