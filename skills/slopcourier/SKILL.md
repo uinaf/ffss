@@ -53,8 +53,8 @@ continues through its owning workflow, so this lane does not end the task.
    [visual-evidence.md](references/visual-evidence.md).
 7. Check the body before posting or editing it: from the target repository,
    run `go run <this skill's directory>/scripts/bodycheck/main.go body.md`,
-   adding `-before <current body>` for an edit and `-footer <line>` when an
-   attribution line is required. Fix what it flags, or tell the user why a
+   adding `-before <file with the current body>` for an edit and
+   `-footer <line>` when an attribution line is required. Fix what it flags, or tell the user why a
    flag is wrong. Without Go, apply its limits by hand and say it didn't run.
 8. Return the URL and delivered commit. Babysitting or merge, if requested,
    continues with [slopnanny](../slopnanny/SKILL.md), carrying the user's
