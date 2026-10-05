@@ -13,6 +13,7 @@ permissions:
 concurrency:
   group: release-slopguard
   cancel-in-progress: false
+  queue: max
 
 jobs:
   verify:
