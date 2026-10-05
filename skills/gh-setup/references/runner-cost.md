@@ -36,10 +36,19 @@ the cheapest shape that still proves the contract.
   end of the existing `verify` job on push. Keep required-check names stable;
   a job skipped by `if:` reports success, while a workflow skipped by path
   filters leaves a required check pending.
-- Every verification workflow declares workflow-level concurrency:
-  `group: ${{ github.workflow }}-${{ github.ref }}`,
+- Every verification workflow declares workflow-level concurrency that groups
+  pull-request runs by ref and gives every other run its own group, so no
+  pushed range goes unscanned ([security baseline](security-baseline.md#shape)):
+  `group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}`,
   `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`. Release,
   publish, and deploy critical sections keep their own non-cancellable keys.
+  A release or deploy workflow that also runs the scan, such as one calling
+  `verify` through `workflow_call` on push, adds `queue: max` so its group
+  holds up to 100 pending runs instead of one; GitHub rejects `queue: max`
+  with `cancel-in-progress: true`
+  ([concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)).
+  Actionlint 1.7.12 rejects the key, so `.github/actionlint.yaml` ignores
+  `unexpected key "queue" for "concurrency" section` for that file only.
 - A workflow triggered on both `push: [main]` and `pull_request` pays twice per
   merged change. Where direct pushes are allowed, `verify` runs on both, since
   the push run is the only check a direct push gets and carries the scan. Keep

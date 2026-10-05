@@ -33,8 +33,12 @@ weekly minute cost.
 - Merges land as pushes, so the push scan covers them. New advisories arrive
   as Dependabot alerts and Renovate pull requests. Dispatch a full-history
   scan after a scanner-rule upgrade.
-- Concurrency cancels superseded pull-request runs only; every push run
-  finishes so its range is scanned.
+- Concurrency never cancels a push or dispatch run, so each pushed range is
+  scanned. A group holds one pending run by default and cancels it when a
+  newer run arrives
+  ([concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)),
+  so pull-request runs share a group per ref, which cancels superseded ones,
+  and every other run gets its own ([runner cost](runner-cost.md)).
 - A finding fails the pushed commit's `verify` run, and GitHub's failed-run
   email is the notification.
 
