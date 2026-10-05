@@ -136,6 +136,37 @@ func TestRequiresTemplateHeadings(t *testing.T) {
 	requireProblem(t, problemsFor(t, body), `missing template heading "## Validation"`)
 }
 
+func TestAllowsDroppingTemplateSectionsMarkedDeletable(t *testing.T) {
+	deletable := `## Problem
+
+<!-- as the requester stated it; screenshots are optional -->
+
+## Solution
+
+### Risks
+
+## Proof
+
+<!-- only what CI cannot show.
+     Delete this section when CI covers everything. -->
+
+### Media
+
+## Notes (optional)
+`
+	body := "## Problem\n\nStale failure.\n\n## Solution\n\n### Risks\n\n| a |\n| --- |\n"
+	for _, problem := range check(body, deletable, "", "", defaults) {
+		if strings.Contains(problem, "missing template heading") {
+			t.Fatalf("deletable section required: %q", problem)
+		}
+	}
+
+	problems := check(strings.Replace(body, "### Risks", "", 1), deletable, "", "", defaults)
+	requireProblem(t, problems, `missing template heading "### Risks"`)
+	problems = check(strings.Replace(body, "## Problem", "## Context", 1), deletable, "", "", defaults)
+	requireProblem(t, problems, `missing template heading "## Problem"`)
+}
+
 func TestFlagsDroppedClosingReferences(t *testing.T) {
 	before := "Closes #31\nFixes putdotio/putio-ios#5\nResolves: https://gitlab.com/g/p/-/issues/9\nRefs #2"
 	problems := check(good, template, before, "", defaults)

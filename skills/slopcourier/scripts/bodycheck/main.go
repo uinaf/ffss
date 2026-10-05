@@ -30,7 +30,7 @@ func main() {
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("bodycheck", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	templatePath := flags.String("template", "", "template whose headings the body keeps (default: the repository's change-request template)")
+	templatePath := flags.String("template", "", "template whose required headings the body keeps (default: the repository's change-request template)")
 	beforePath := flags.String("before", "", "body this one replaces; flags closing references it drops")
 	footer := flags.String("footer", "", "line the body must end with, such as an attribution")
 	var lim limits
@@ -160,6 +160,9 @@ var (
 	testCount    = regexp.MustCompile(`(?i)\b\d[\d,]*\s+(?:passed|passing|failed|failing|skipped|tests?|assertions)\b|\b\d+/\d+\s+(?:passed|tests?)\b`)
 	fullSHA      = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
 	closingRef   = regexp.MustCompile(`(?i)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+((?:[\w.-]+/[\w.-]+)?#\d+|https?://\S+/(?:issues|pull|merge_requests)/\d+)`)
+	comment      = regexp.MustCompile(`(?s)<!--(.*?)-->`)
+	optionalNote = regexp.MustCompile(`(?i)\b(?:delete|remove|omit|drop|skip)\s+(?:this|the)\s+(?:section|heading)\b|\bsection\s+is\s+optional\b|\boptional\s+section\b`)
+	optionalName = regexp.MustCompile(`(?i)\boptional\b`)
 )
 
 // classify splits a body into lines tagged as prose, heading, table, code,
@@ -251,6 +254,44 @@ func headings(text string) []string {
 	return found
 }
 
+// requiredHeadings lists the template headings a body must keep. A section is
+// optional when its heading says so or one of its own comments says it is
+// optional or may be deleted; its subsections go with it.
+func requiredHeadings(template string) []string {
+	type section struct {
+		heading string
+		level   int
+		text    strings.Builder
+	}
+	var sections []*section
+	for _, item := range classify(template) {
+		switch {
+		case item.kind == headingKind:
+			heading := strings.TrimSpace(item.text)
+			sections = append(sections, &section{heading: heading, level: len(heading) - len(strings.TrimLeft(heading, "#"))})
+		case item.kind != codeLine && len(sections) > 0:
+			sections[len(sections)-1].text.WriteString(item.text + "\n")
+		}
+	}
+	var required []string
+	var optionalLevels []int
+	for _, current := range sections {
+		for len(optionalLevels) > 0 && optionalLevels[len(optionalLevels)-1] >= current.level {
+			optionalLevels = optionalLevels[:len(optionalLevels)-1]
+		}
+		optional := len(optionalLevels) > 0 || optionalName.MatchString(current.heading)
+		for _, note := range comment.FindAllStringSubmatch(current.text.String(), -1) {
+			optional = optional || optionalNote.MatchString(note[1])
+		}
+		if optional {
+			optionalLevels = append(optionalLevels, current.level)
+		} else {
+			required = append(required, current.heading)
+		}
+	}
+	return required
+}
+
 func closingRefs(text string) map[string]string {
 	refs := map[string]string{}
 	for _, match := range closingRef.FindAllStringSubmatch(text, -1) {
@@ -310,7 +351,7 @@ func check(body, template, before, footer string, lim limits) []string {
 	for _, heading := range headings(body) {
 		have[strings.ToLower(heading)] = true
 	}
-	for _, heading := range headings(template) {
+	for _, heading := range requiredHeadings(template) {
 		if !have[strings.ToLower(heading)] {
 			add("missing template heading %q", heading)
 		}
