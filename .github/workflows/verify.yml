@@ -167,6 +167,13 @@ jobs:
       - name: Audit the harness dependencies
         run: npm run audit
         working-directory: tools/skill-evals
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: skills/slopcourier/scripts/bodycheck/go.mod
+          cache: false
+      - name: Test the slopcourier body check
+        run: test -z "$(gofmt -l .)" && go vet ./... && go test ./...
+        working-directory: skills/slopcourier/scripts/bodycheck
 
   verify:
     if: always()

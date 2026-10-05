@@ -51,7 +51,12 @@ continues through its owning workflow, so this lane does not end the task.
    flow, a table for numbers, or a short before/after code sample for an API
    or contract. Mechanics:
    [visual-evidence.md](references/visual-evidence.md).
-7. Return the URL and delivered commit. Babysitting or merge, if requested,
+7. Check the body before posting or editing it: from the target repository,
+   run `go run <this skill's directory>/scripts/bodycheck/main.go body.md`,
+   adding `-before <current body>` for an edit and `-footer <line>` when an
+   attribution line is required. Fix what it flags, or tell the user why a
+   flag is wrong. Without Go, apply its limits by hand and say it didn't run.
+8. Return the URL and delivered commit. Babysitting or merge, if requested,
    continues with [slopnanny](../slopnanny/SKILL.md), carrying the user's
    existing authority across the handoff. Delivery alone grants no merge,
    auto-merge, branch deletion, or rework authority. Review bots are
