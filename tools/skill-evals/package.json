@@ -7,6 +7,6 @@
     "audit": "npm audit --audit-level=high"
   },
   "devDependencies": {
-    "@uinaf/skillcheck": "1.6.0"
+    "@uinaf/skillcheck": "1.7.4"
   }
 }
