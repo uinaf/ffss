@@ -20,6 +20,7 @@ install it.
 | Change | Gate |
 |---|---|
 | `skills/`, `cli/*/skills/` | `npm ci && npm run lint && npm run audit` in `tools/skill-evals` ([skill-evals](tools/skill-evals/README.md)) |
+| `skills/slopcourier/scripts/bodycheck/` | `gofmt -l .`, `go vet ./...`, and `go test ./...` there |
 | `cli/slopguard/` | `mise run verify` in `cli/slopguard` |
 | `cli/lib/` | `mise run verify` in `cli/lib` |
 | Root docs, `rules/` | none; no lane covers them |
