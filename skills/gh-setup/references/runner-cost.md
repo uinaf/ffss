@@ -36,10 +36,27 @@ the cheapest shape that still proves the contract.
   end of the existing `verify` job on push. Keep required-check names stable;
   a job skipped by `if:` reports success, while a workflow skipped by path
   filters leaves a required check pending.
-- Every verification workflow declares workflow-level concurrency:
-  `group: ${{ github.workflow }}-${{ github.ref }}`,
-  `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`. Release,
-  publish, and deploy critical sections keep their own non-cancellable keys.
+- Every verification workflow declares workflow-level concurrency that groups
+  pull-request runs by ref and gives every other run its own group, so no
+  pushed range goes unscanned ([security baseline](security-baseline.md#shape)):
+  `group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}`,
+  `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`.
+- Release, publish, and deploy critical sections keep their own
+  non-cancellable groups. A per-run verify group no longer serializes such a
+  job in the same workflow, so it takes a job-level group shared by every job
+  that publishes the same thing, such as `release-${{ github.repository }}-main`,
+  and checks out `github.sha`, not a branch, with a release tool that skips
+  once the branch has moved on, as semantic-release does.
+- Release groups use `queue: max`, which holds up to 100 pending runs instead
+  of one; GitHub rejects it with `cancel-in-progress: true`
+  ([concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)).
+  Verify runs finish out of order, so with one pending slot an older release
+  replaces a newer pending one and then skips because the branch has moved
+  on, leaving the newer commits unreleased until the next push. A release or deploy workflow whose group also covers the scan, such as
+  one calling `verify` through `workflow_call` on push, adds `queue: max` so
+  no pushed range is dropped. Actionlint 1.7.12 rejects the key, so
+  `.github/actionlint.yaml` ignores
+  `unexpected key "queue" for "concurrency" section` for those files only.
 - A workflow triggered on both `push: [main]` and `pull_request` pays twice per
   merged change. Where direct pushes are allowed, `verify` runs on both, since
   the push run is the only check a direct push gets and carries the scan. Keep
