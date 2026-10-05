@@ -12,7 +12,8 @@ immutable artifact.
 - Manual release or backfill inputs are validated in a secretless job and
   resolve to one immutable SHA or trusted tag before checkout or credentials.
 - Release concurrency is non-cancellable and serialized for the publication
-  boundary. Verification concurrency may remain cancellable.
+  boundary. Verification cancels only superseded pull-request runs
+  ([runner cost](runner-cost.md)).
 - Use one release-state owner. Multiple tools must not race to create the same
   tag or GitHub Release.
 

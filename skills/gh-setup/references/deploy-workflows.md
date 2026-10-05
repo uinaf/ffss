@@ -67,7 +67,8 @@ and digest. Prove payload existence before loading deploy credentials.
 
 ## Concurrency, Permissions, and Caches
 
-- Verification may cancel superseded runs.
+- Verification cancels only superseded pull-request runs
+  ([runner cost](runner-cost.md)).
 - Deploys serialize with one non-cancellable key per environment and lane,
   shared by automatic and manual paths.
 - Workflow permissions start read-only and add OIDC or provider scopes only to

@@ -32,7 +32,8 @@ request.
 ## Release
 
 - Skills and plugin: merging to `main` publishes; installs pin the commit SHA.
-- `slopguard`: every push to `main` evaluates a Conventional Commits release
+- `slopguard`: every push to `main` that touches `cli/slopguard/` evaluates a
+  Conventional Commits release from the commits there
   ([releases](cli/slopguard/docs/RELEASES.md)).
 - `cli/lib`: tag a module version before a consumer depends on it.
 - `rules/`: consumers read `main` directly, so a merge is live on their next sync.
