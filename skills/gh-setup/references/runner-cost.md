@@ -42,7 +42,12 @@ the cheapest shape that still proves the contract.
   `group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}`,
   `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`. Release,
   publish, and deploy critical sections keep their own non-cancellable keys.
-  A release or deploy workflow that also runs the scan, such as one calling
+  The per-run group no longer serializes such a job in the same workflow, so
+  it takes a job-level group shared by every job that publishes the same
+  thing, such as `release-${{ github.repository }}-main` with
+  `cancel-in-progress: false`, and checks out `github.sha`, not a branch,
+  with a release tool that skips once the branch has moved on, as
+  semantic-release does. A release or deploy workflow that also runs the scan, such as one calling
   `verify` through `workflow_call` on push, adds `queue: max` so its group
   holds up to 100 pending runs instead of one; GitHub rejects `queue: max`
   with `cancel-in-progress: true`
