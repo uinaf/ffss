@@ -4,8 +4,8 @@
   "checklist": [
     { "name": "fetch-depth verify", "max_score": 4, "description": "The verify checkout keeps the default depth and does not set fetch-depth: 0." },
     { "name": "fetch-depth release", "max_score": 4, "description": "The release checkout uses fetch-depth: 0." },
-    { "name": "Verify concurrency", "max_score": 5, "description": "Verification has a cancellable concurrency group." },
-    { "name": "Release concurrency", "max_score": 5, "description": "Release has a job-level non-cancellable concurrency group." },
+    { "name": "Verify concurrency", "max_score": 5, "description": "Verification cancels only superseded pull-request runs and gives every push run its own group, such as `${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}` with `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`; a group that cancels push runs does not qualify." },
+    { "name": "Release concurrency", "max_score": 5, "description": "Release has a job-level concurrency group with `cancel-in-progress: false` and `queue: max`, so no pending release is cancelled or replaced." },
     { "name": "skip ci verify", "max_score": 4, "description": "Verification skips commits whose message contains [skip ci]." },
     { "name": "skip ci release", "max_score": 4, "description": "Release skips commits whose message contains [skip ci]." },
     { "name": "Atomic App-signed writeback", "max_score": 9, "description": "The workflow either uses @jno21/semantic-release-github-commit@1.0.1 under a named concrete external branch lease that blocks merges and direct pushes from before release analysis through its ref update, or a full-SHA-pinned App-signed API integration with the analyzed SHA as expected head. Preflight and Actions concurrency alone do not qualify. Pins: when the task supplies no SHA, an explicit placeholder that names the exact version and is listed as a required follow-up satisfies a full-SHA pin; an invented SHA does not." },

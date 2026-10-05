@@ -1,5 +1,5 @@
 {
-  "context": "Tests whether the agent sets up lane-independent change detection that only builds/deploys affected apps, uses correct concurrency settings (non-cancellable deploy, cancellable verification/e2e, same group key across main.yml and deploy.yml), and uses the correct job condition syntax for deploy gates.",
+  "context": "Tests whether the agent sets up lane-independent change detection that only builds/deploys affected apps, uses correct concurrency settings (non-cancellable queued deploys, verification/e2e that cancel only superseded pull-request runs, same group key across main.yml and deploy.yml), and uses the correct job condition syntax for deploy gates.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -25,12 +25,12 @@
     {
       "name": "Deploy non-cancellable",
       "max_score": 10,
-      "description": "The deploy job(s) include `concurrency: { cancel-in-progress: false }` (or equivalent)"
+      "description": "The deploy job(s) use a concurrency group with `cancel-in-progress: false` and `queue: max`, so no pending deploy is cancelled or replaced"
     },
     {
-      "name": "Verification/e2e cancellable",
+      "name": "Verification/e2e cancel only PR runs",
       "max_score": 8,
-      "description": "At least one verification or e2e job includes `concurrency: { cancel-in-progress: true }` (or equivalent)"
+      "description": "Pull-request verification cancels superseded runs of the same ref, while push-triggered verification and e2e give every run its own group (for example keyed on `github.run_id`) and never cancel; unconditional `cancel-in-progress: true` on a push-triggered verification or e2e job does not qualify"
     },
     {
       "name": "Concurrency group lane-scoped",
