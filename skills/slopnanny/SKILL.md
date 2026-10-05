@@ -50,6 +50,9 @@ requests stay in this loop.
    [slopguard's convergence rule](../slopguard/SKILL.md#validate-and-close) to
    repeated findings; an unresolved blocking review still prevents merge.
 3. Push verified fixes; reply on each addressed thread with the commit hash.
+   Rework that changes what the change request does updates its title and
+   body through [slopcourier](../slopcourier/SKILL.md); otherwise leave them
+   alone. The body never gains fix hashes, finding counts, or test runs.
    No force-push without approval. Let requested reviewers finish on the new
    head; don't start duplicates. Re-request review from an approver whose
    approval predates the new head.

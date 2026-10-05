@@ -1,18 +1,19 @@
 # Visual evidence ladder
 
-Prefer an aid to a paragraph, and reuse existing evidence before capturing
-more. Pick the smallest view that answers the review question: a focused
-diff, a shallow call tree or Mermaid diagram for control flow, sanitized
-input/output for a contract, a screenshot or short recording for UI. Label
+Every change request carries one aid; reuse existing evidence before capturing
+more. Pick the smallest view that answers the review question: a focused diff
+or short code sample, a shallow call tree or Mermaid diagram for control flow,
+a table for numbers, sanitized input/output for a contract, a screenshot or
+short recording for UI. Label
 examples and diagrams as explanatory: they do not prove execution. Keep the aid
 beside the claim it supports; no standalone HTML explainers.
 
 Selection principle adapted from [HumanLayer's show-me skill](https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md).
 
-## Attach only when needed
+## Upload routes
 
-Inline text and Mermaid need no upload. For captured media, use the first
-applicable attachment route below.
+Inline text, tables, code, and Mermaid need no upload. Captured media goes
+through the first applicable route below.
 
 - Forge rungs apply only to the forge the delivery dispatched to; never upload
   through the other forge's API because its CLI happens to be installed.

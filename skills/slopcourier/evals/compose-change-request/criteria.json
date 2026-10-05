@@ -33,9 +33,9 @@
       "description": "The planned `gh pr create` opens the PR ready for review, not as a draft, and the plan checks for an existing PR on the branch first."
     },
     {
-      "name": "Measured proof and outcome title",
+      "name": "Measured aid and outcome title",
       "max_score": 10,
-      "description": "The 41 KB to 11 KB staging measurement appears as proof, and the conventional-commit title leads with the user-visible outcome rather than the mechanism."
+      "description": "The 41 KB to 11 KB staging measurement appears as the body's visual aid, such as a small before/after table, and the conventional-commit title leads with the user-visible outcome rather than the mechanism."
     },
     {
       "name": "Nothing executed remotely",

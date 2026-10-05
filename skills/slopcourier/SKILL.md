@@ -35,21 +35,23 @@ continues through its owning workflow, so this lane does not end the task.
 3. Update the branch's existing change request instead of filing a duplicate.
    Open ready for review unless a draft was requested.
 4. Title the user-visible outcome, not the mechanism, in the form of recent
-   merged titles. Follow the repository template; without one, the
-   owner's `<owner>/.github` default template. Without either, use the
+   merged titles. Follow the repository template; without one, the owner's
+   `<owner>/.github` default template; without either, the
    [house style](../slopscriber/references/style.md): problem, solution, real
-   risks, proof only when CI cannot show it, headings only when needed. No
-   implementation inventory. The body
-   describes the change as it stands: no review history, finding counts, fix
-   hashes, reviewer names, or iteration narrative. Review results go to the
-   user and to thread replies. Keep it as short as the change allows, usually
-   an outcome sentence and a few one-line bullets; test counts, command logs,
-   fixture ids, and file lists stay out.
-5. Show instead of describing: a screenshot or short recording for UI, a
-   Mermaid diagram for a flow, in place of the prose it makes redundant. A
-   clear diff may suffice. Media mechanics:
+   risks, headings only when needed.
+5. Keep the body as short as the change allows, describing the change as it
+   stands: an outcome sentence, one visual aid, and at most a few one-line
+   bullets for what the aid doesn't show. Proof only when CI cannot show it.
+   Out: implementation inventory, file lists, test counts, command logs,
+   fixture ids, review history, finding counts, fix hashes, reviewer names,
+   and iteration narrative. Review results go to the user and to thread
+   replies.
+6. Every change request carries a visual aid in place of the prose it makes
+   redundant: a screenshot or short recording for UI, a Mermaid diagram for a
+   flow, a table for numbers, or a short before/after code sample for an API
+   or contract. Mechanics:
    [visual-evidence.md](references/visual-evidence.md).
-6. Return the URL and delivered commit. Babysitting or merge, if requested,
+7. Return the URL and delivered commit. Babysitting or merge, if requested,
    continues with [slopnanny](../slopnanny/SKILL.md), carrying the user's
    existing authority across the handoff. Delivery alone grants no merge,
    auto-merge, branch deletion, or rework authority. Review bots are
