@@ -13,6 +13,11 @@ layout; use these defaults when redistributing overloaded docs.
 Coordination workspaces may lead with ownership, quick start, and their
 source-of-truth registry.
 
+READMEs name entrypoint commands but not runners, runner variables, or the
+repository's own CI and infrastructure config, such as triggers, jobs, tool
+pins, or Renovate and ruleset settings; link the owning file where a reader
+needs it.
+
 Move established contributor or security policy out of an overloaded README,
 but never invent contacts, support promises, or governance. Security guidance
 directs reporters to the verified private route, not public issues.

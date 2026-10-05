@@ -56,7 +56,7 @@ requires it.
   `.sh` file; shell may only dispatch a few already-defined commands.
 - Workflow files carry only pin annotations (`# v1.2.3`) and scanner
   suppressions (`# zizmor: ignore[...]`, `# shellcheck disable=...`).
-  Rationale lives in the README or the owning doc.
+  Rationale lives in `CONTRIBUTING.md` or the owning deep doc, not the README.
 
 ## Payloads and Artifacts
 
