@@ -110,9 +110,10 @@ with Contents write permission.
   metadata when that tag does not exist, so the release job and
   `release:snapshot` alias `HEAD` with a local tag that is never pushed; the
   member prefix lives only on the pushed tag.
-- The workflow's fixed `release-slopguard` concurrency group ensures a queued run cannot
-  replace another member's pending release; Homebrew tap write races are
-  handled by the cask script's bounded retry.
+- The workflow's fixed `release-slopguard` concurrency group runs one release
+  at a time, and `queue: max` keeps every pending run, so a newer push cannot
+  replace a pending release; Homebrew tap write races are handled by the cask
+  script's bounded retry.
 - No release commit is pushed to `main`.
 
 If publication fails after the tag is created, rerunning the failed workflow is
