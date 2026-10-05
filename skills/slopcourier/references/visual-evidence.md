@@ -1,7 +1,7 @@
 # Visual evidence ladder
 
-Reuse existing evidence; do not create an artifact just because the change is
-non-trivial. Pick the smallest view that answers the review question: a focused
+Prefer an aid to a paragraph, and reuse existing evidence before capturing
+more. Pick the smallest view that answers the review question: a focused
 diff, a shallow call tree or Mermaid diagram for control flow, sanitized
 input/output for a contract, a screenshot or short recording for UI. Label
 examples and diagrams as explanatory: they do not prove execution. Keep the aid

@@ -42,9 +42,13 @@ continues through its owning workflow, so this lane does not end the task.
    implementation inventory. The body
    describes the change as it stands: no review history, finding counts, fix
    hashes, reviewer names, or iteration narrative. Review results go to the
-   user and to thread replies.
-5. Include a review aid only when it makes the changed behavior substantially
-   easier to assess; a clear diff may suffice. Media mechanics:
+   user and to thread replies. Keep it as short as the change allows, usually
+   an outcome sentence and a few one-line bullets; test counts, command logs,
+   fixture ids, and file lists stay out even when a delegating brief asks
+   for them.
+5. Show instead of describing: a screenshot or short recording for UI, a
+   Mermaid diagram for a flow, in place of the prose it makes redundant. A
+   clear diff may suffice. Media mechanics:
    [visual-evidence.md](references/visual-evidence.md).
 6. Return the URL and delivered commit. Babysitting or merge, if requested,
    continues with [slopnanny](../slopnanny/SKILL.md), carrying the user's
