@@ -38,10 +38,23 @@ the user's.
   decisions, finished work, proof and its revision, delivery links, and what
   remains; on resume, continue from that record checked against the actual
   state.
+
+### Orchestrating agents
+
 - Delegate large independent work with a scope and expected output, then
   validate the result. Out-of-scope findings get a reply or a tracker item,
   not rework. Don't poll delegates; poll only external state that reports to
   nobody, with a deadline and a failure exit.
+- A brief gives the goal, scope, authority, constraints, and what to report
+  back. Name the skill that owns each artifact and let it set the format;
+  never prescribe a change-request body or other public text yourself.
+- Keep the report and the artifact apart: proof detail, commands, and review
+  findings come back to you, not into public text.
+- Repeat standing limits the delegate can't see, such as forbidden
+  credentials, shared devices, or actions that need the user, in every brief,
+  follow-ups included.
+- Before merging or posting a delegate's work, read its public text as well as
+  its diff and checks.
 
 ### Implementation
 
