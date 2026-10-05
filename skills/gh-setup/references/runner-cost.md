@@ -52,9 +52,10 @@ the cheapest shape that still proves the contract.
   ([concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)).
   Verify runs finish out of order, so with one pending slot an older release
   replaces a newer pending one and then skips because the branch has moved
-  on, leaving the newer commits unreleased until the next push. A release or deploy workflow whose group also covers the scan, such as
-  one calling `verify` through `workflow_call` on push, adds `queue: max` so
-  no pushed range is dropped. Actionlint 1.7.12 rejects the key, so
+  on, leaving the newer commits unreleased until the next push. A release or
+  deploy workflow whose group also covers the scan, such as one calling
+  `verify` through `workflow_call` on push, adds `queue: max` so no pushed
+  range is dropped. Actionlint 1.7.12 rejects the key, so
   `.github/actionlint.yaml` ignores
   `unexpected key "queue" for "concurrency" section` for those files only.
 - A workflow triggered on both `push: [main]` and `pull_request` pays twice per
