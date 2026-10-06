@@ -27,6 +27,12 @@ the cheapest shape that still proves the contract.
   repository declaring a non-GitHub runner label lists it under
   `self-hosted-runner.labels` in `.github/actionlint.yaml`
   ([actionlint](https://github.com/rhysd/actionlint/blob/main/docs/config.md)).
+- When the owner routes private jobs off GitHub-hosted runners, every job
+  reads one variable with a GitHub-hosted fallback,
+  `runs-on: ${{ fromJSON(vars.CI_RUNNER || '"ubuntu-24.04-arm"') }}`, so a
+  provider move or an outage is a variable change, not a workflow edit.
+  Self-hosted runners never take fork pull requests
+  ([hardening](https://docs.github.com/en/actions/reference/security/secure-use#hardening-for-self-hosted-runners)).
 - Provider requirements override that policy: npm trusted publishing supports
   GitHub-hosted runners only
   ([npm](https://docs.npmjs.com/trusted-publishers)), so a repository on
