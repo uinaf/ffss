@@ -54,7 +54,11 @@ Verification details: [slopguard](cli/slopguard/README.md#install).
 
 ### Plugin
 
-Install the skills through the ffss Agent Plugins marketplace:
+After [Cursor Marketplace](https://cursor.com/marketplace) listing, install ffss via
+**Grok Bot Plugins** or **Cursor Customize → Marketplace**. Maintainers submit at
+[cursor.com/marketplace/publish](https://cursor.com/marketplace/publish).
+
+CLI / local marketplace installs (unchanged):
 
 ```text
 # Claude Code

@@ -1,0 +1,13 @@
+{
+  "name": "ffss",
+  "displayName": "ffss",
+  "description": "The flipflopslopstack skill set: review with slopguard, deliver, babysit, plan, maintain docs, prepare repos, equip stack skills, audit agent setups, and de-slop.",
+  "author": {
+    "name": "uinaf"
+  },
+  "homepage": "https://github.com/uinaf/ffss",
+  "repository": "https://github.com/uinaf/ffss",
+  "license": "MIT",
+  "keywords": ["skills", "workflow", "review", "delivery", "slopguard"],
+  "category": "workflow"
+}
