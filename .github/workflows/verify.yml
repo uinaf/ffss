@@ -26,7 +26,7 @@ jobs:
       skills: ${{ contains(fromJSON(steps.changes.outputs.changes), 'skills') }}
     steps:
       - id: changes
-        uses: uinaf/.github/.github/actions/changes@53b7216da41dce9b5307831668b346bf778308ae # v3.0.4
+        uses: uinaf/.github/.github/actions/changes@e9223faa52862ab2b448e0bd050f1561a787e505 # v3.0.5
         with:
           filters: |
             clilib:
@@ -215,4 +215,4 @@ jobs:
 
       - name: Scan
         if: ${{ !cancelled() }}
-        uses: uinaf/.github/.github/actions/scan@53b7216da41dce9b5307831668b346bf778308ae # v3.0.4
+        uses: uinaf/.github/.github/actions/scan@e9223faa52862ab2b448e0bd050f1561a787e505 # v3.0.5
