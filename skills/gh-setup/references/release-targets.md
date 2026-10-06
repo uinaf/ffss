@@ -24,7 +24,8 @@ artifact.
 Use GitHub-hosted Actions for npm trusted publishing, including private
 repositories: [npm trusted publishing supports GitHub-hosted runners
 only](https://docs.npmjs.com/trusted-publishers/), so the release job stays
-GitHub-hosted in repositories that otherwise run on Blacksmith. Configure the package
+GitHub-hosted in repositories that otherwise run on self-hosted or third-party
+runners. Configure the package
 for the exact repository, workflow file, and Environment; grant
 `id-token: write`; remove `NPM_TOKEN`. Trusted publishing adds provenance from
 public repositories only; never pass `--provenance` or require an attestation
