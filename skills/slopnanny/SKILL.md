@@ -11,9 +11,18 @@ belongs to the required reviewer.
 
 ## Observe
 
-- Poll the forge CLI (`gh` / `glab`): checks, pending review requests, verdicts
-  (a `CHANGES_REQUESTED` review may have no inline thread), unresolved threads,
-  and top-level comments, where bots often post findings.
+- On GitHub, never write a polling loop: wait with
+  `go run <this skill's directory>/scripts/prwatch/main.go <number or URL>`
+  (`-R owner/repo` outside the checkout). It reads checks, review requests,
+  verdicts, unresolved threads, and top-level comments, waits for late checks
+  and working bots, and exits on the first thing to act on: `ready` (0);
+  `checks-failed`, `activity`, `pushed`, `blocked`, or `closed` (1); a `gh`
+  failure (2); or `timeout` after 30 minutes (3). Act on what it prints, then
+  rerun it with `-since` set to its `since:` line so nothing between runs is
+  missed. Without Go, or on GitLab, poll `gh` / `glab` for the same evidence
+  and say prwatch didn't run.
+- A `CHANGES_REQUESTED` review may have no inline thread, and bots often post
+  findings as top-level comments.
 - Green checks and no threads are not settled while a requested human
   reviewer is pending. After they submit, re-read everything.
 - Review bots are advisory. One is pending only while it visibly works on the
@@ -76,18 +85,24 @@ hashes, nothing that doesn't advance the thread.
 Once the change request merges, by you or anyone else, watch the runs the merge
 started on the default branch.
 
-- Take the full merge SHA; an abbreviated one lists nothing. Read
-  `mergeCommit` from `gh pr view <number> --json mergeCommit,headRefOid`, or
-  `merge_commit_sha`, then `squash_commit_sha`, from
-  `glab mr view <number> -F json`. A fast-forward or indirect merge has
-  neither; use the head commit that landed (`headRefOid` or `sha`).
-- List the runs with `gh run list --commit <merge-sha> --limit 100` or
-  `glab ci list --sha <merge-sha>`, skipping scheduled and manual runs. Runs
-  can take a minute to appear; if none do, say so and stop.
-- Wait once, re-polling, until they finish: at most 30 minutes unless the user
-  set a deadline. Runs they trigger, such as a deploy after CI or a downstream
-  pipeline, join the wait; re-list a minute after the last one finishes. At
-  the deadline, report what is still running, with links, and stop.
+- On GitHub, run prwatch on the merged change request once. It finds the
+  merge commit, skips scheduled and manual runs, waits for the runs it starts
+  and the ones they trigger, and prints each with its link and failed jobs:
+  `runs-passed` or `no-runs` (0), `runs-failed` (1), `timeout` (3).
+- Without prwatch, do the same by hand:
+  - Take the full merge SHA; an abbreviated one lists nothing. Read
+    `mergeCommit` from `gh pr view <number> --json mergeCommit,headRefOid`, or
+    `merge_commit_sha`, then `squash_commit_sha`, from
+    `glab mr view <number> -F json`. A fast-forward or indirect merge has
+    neither; use the head commit that landed (`headRefOid` or `sha`).
+  - List the runs with `gh run list --commit <merge-sha> --limit 100` or
+    `glab ci list --sha <merge-sha>`, skipping scheduled and manual runs. Runs
+    can take a minute to appear; if none do, say so and stop.
+  - Wait once, re-polling, until they finish: at most 30 minutes unless the
+    user set a deadline. Runs they trigger, such as a deploy after CI or a
+    downstream pipeline, join the wait; re-list a minute after the last one
+    finishes.
+- At the deadline, report what is still running, with links, and stop.
 - On a failure, report the run link, the likely cause from the failed job's
   log, and the exact revert command repository policy allows:
   `gh pr revert <number>` (on GitLab, a revert branch and `glab mr create`),
