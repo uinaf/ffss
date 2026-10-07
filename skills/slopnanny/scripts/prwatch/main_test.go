@@ -34,6 +34,8 @@ type fakeForge struct {
 	jobs    map[int64][]job
 	eyesErr error
 	jobsErr error
+	runFn   func(n int) ([]workflowRun, error)
+	runPoll int
 	polls   int
 }
 
@@ -58,6 +60,10 @@ func (f *fakeForge) BotEyes(context.Context, string, int) ([]string, error) {
 }
 
 func (f *fakeForge) Runs(context.Context, string, string, string) ([]workflowRun, error) {
+	if f.runFn != nil {
+		f.runPoll++
+		return f.runFn(f.runPoll)
+	}
 	return at(f.clock, f.runs), nil
 }
 
@@ -522,5 +528,38 @@ func TestExplicitRepoStillUsesOriginHost(t *testing.T) {
 	run(context.Background(), []string{"-R", "group/other", "-forge", "gitlab", "7"}, d, io.Discard, io.Discard)
 	if host != "gitlab.corp.example" {
 		t.Fatalf("glab would query host %q", host)
+	}
+}
+
+func TestDefaultSinceIncludesTheStartingSecond(t *testing.T) {
+	f := newFake()
+	f.prs[0] = with(open(running("ci")), func(p *pr) {
+		p.Comments = []comment{{Author: actor{Login: "ann"}, Created: t0, Body: "stamped to the second"}}
+	})
+	clock := &fakeClock{now: t0.Add(700 * time.Millisecond)}
+	f.clock = clock
+	d := deps{forge: func(string, string) forge { return f }, origin: func(context.Context) (string, error) { return "git@github.com:o/r.git", nil }, clock: clock}
+	var out bytes.Buffer
+	if code := run(context.Background(), []string{"7"}, d, &out, io.Discard); code != exitAttention {
+		t.Fatalf("code %d, output:\n%s", code, out.String())
+	}
+}
+
+func TestRunErrorsMustBeConsecutive(t *testing.T) {
+	f := newFake()
+	f.prs[0] = with(open(), func(p *pr) { p.State, p.MergeCommit = "MERGED", "bbbbbbb2" })
+	boom := &cliError{name: "gh", args: []string{"api"}, stderr: "HTTP 502", err: errors.New("exit 1")}
+	pending := []workflowRun{{ID: 1, Name: "CI", Event: "push", Status: "in_progress"}}
+	f.runFn = func(n int) ([]workflowRun, error) {
+		if n%2 == 1 {
+			return nil, boom
+		}
+		if n < 8 {
+			return pending, nil
+		}
+		return []workflowRun{{ID: 1, Name: "CI", Event: "push", Status: "completed", Conclusion: "success"}}, nil
+	}
+	if code, out, _ := watchFor(t, f); code != exitDone {
+		t.Fatalf("separated failures ended the watch; code %d, output:\n%s", code, out)
 	}
 }

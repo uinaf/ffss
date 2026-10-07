@@ -619,7 +619,7 @@ func (w *watcher) watchRuns(ctx context.Context, p pr) int {
 				if code, stop := w.failed(err, &errorsInRow); stop {
 					return code
 				}
-			} else if done {
+			} else if errorsInRow = 0; done {
 				return code
 			}
 		}
@@ -885,7 +885,7 @@ const prQuery = `query($owner: String!, $repo: String!, $number: Int!, $checks: 
       reviewThreads(first: 100, after: $threads) {
         pageInfo { hasNextPage endCursor }
         nodes { isResolved isOutdated path line originalLine
-          comments(last: 5) { nodes { author { __typename login } createdAt url body } } }
+          comments(last: 50) { nodes { author { __typename login } createdAt url body } } }
       }
     }
   }
