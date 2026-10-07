@@ -1,15 +1,16 @@
-// Command prwatch waits on a GitHub pull request until slopnanny has something
-// to act on, then prints what it saw and exits. Run it where `gh` is signed in:
+// Command prwatch waits on a GitHub pull request or GitLab merge request until
+// slopnanny has something to act on, then prints what it saw and exits. Run it
+// where `gh` or `glab` is signed in:
 //
 //	go run <skill dir>/scripts/prwatch/main.go [flags] <number | url>
 //
-// An open pull request is watched until its checks fail, someone else posts a
-// review or comment, its head moves, it merges or closes, or its checks settle
-// and it is ready or blocked. A merged one has the runs its merge commit
-// started watched until they finish. One poll is one GraphQL query.
+// An open change request is watched until its checks fail, someone else posts
+// a review or comment, its head moves, it merges or closes, or its checks
+// settle and it is ready or blocked. A merged one has the runs or pipelines
+// its merge commit started watched until they finish.
 //
 // Exit codes: 0 ready, merged, or runs passed; 1 needs attention; 2 usage or
-// gh failure; 3 deadline reached.
+// forge CLI failure; 3 deadline reached.
 package main
 
 import (
@@ -20,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -38,7 +40,7 @@ const (
 )
 
 type options struct {
-	repo                      string
+	kind, host, repo          string
 	number                    int
 	timeout, interval, settle time.Duration
 	appear, botWait           time.Duration
@@ -49,15 +51,35 @@ type options struct {
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	os.Exit(run(ctx, os.Args[1:], ghForge{}, realClock{}, os.Stdout, os.Stderr))
+	os.Exit(run(ctx, os.Args[1:], deps{forge: newForge, origin: originURL, clock: realClock{}}, os.Stdout, os.Stderr))
 }
 
-func run(ctx context.Context, args []string, f forge, clock clock, stdout, stderr io.Writer) int {
+type deps struct {
+	forge  func(kind, host string) forge
+	origin func(ctx context.Context) (string, error)
+	clock  clock
+}
+
+func newForge(kind, host string) forge {
+	if kind == "gitlab" {
+		return &glabForge{host: host}
+	}
+	return ghForge{}
+}
+
+func originURL(ctx context.Context) (string, error) {
+	out, err := cli(ctx, "git", "remote", "get-url", "origin")
+	return strings.TrimSpace(string(out)), err
+}
+
+func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) int {
+	clock := d.clock
 	flags := flag.NewFlagSet("prwatch", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	var opts options
 	var since string
-	flags.StringVar(&opts.repo, "R", "", "owner/repo (default: the repository of the current directory, or the URL's)")
+	flags.StringVar(&opts.repo, "R", "", "owner/repo or GitLab group/project (default: the URL's, or the origin remote's)")
+	flags.StringVar(&opts.kind, "forge", "", "github or gitlab (default: from the URL or the origin remote's host)")
 	flags.DurationVar(&opts.timeout, "timeout", 30*time.Minute, "give up and report what is still pending after this long")
 	flags.DurationVar(&opts.interval, "interval", 30*time.Second, "time between polls")
 	flags.DurationVar(&opts.settle, "settle", time.Minute, "how long finished checks or runs must stay unchanged before they count as settled, so late ones are caught")
@@ -76,6 +98,10 @@ func run(ctx context.Context, args []string, f forge, clock clock, stdout, stder
 		return exitError
 	}
 	opts.maxErrors = 3
+	if opts.kind != "" && opts.kind != "github" && opts.kind != "gitlab" {
+		fmt.Fprintln(stderr, "prwatch: -forge must be github or gitlab")
+		return exitError
+	}
 	if err := parseTarget(flags.Arg(0), &opts); err != nil {
 		fmt.Fprintln(stderr, "prwatch:", err)
 		return exitError
@@ -89,47 +115,92 @@ func run(ctx context.Context, args []string, f forge, clock clock, stdout, stder
 		}
 		opts.since = t
 	}
-	if opts.repo == "" {
-		repo, err := f.CurrentRepo(ctx)
-		if err != nil {
-			fmt.Fprintln(stderr, "prwatch: no -R and no repository here:", err)
+	if opts.repo == "" || (opts.kind == "" && opts.host == "") {
+		remote, err := d.origin(ctx)
+		host, repo, ok := parseRemote(remote)
+		switch {
+		case ok:
+			if opts.repo == "" {
+				opts.repo = repo
+			}
+			if opts.host == "" {
+				opts.host = host
+			}
+		case opts.repo == "":
+			fmt.Fprintln(stderr, "prwatch: pass -R or a URL; no origin remote to read:", err)
 			return exitError
 		}
-		opts.repo = repo
 	}
-	w := &watcher{f: f, clock: clock, opts: opts, out: stdout, log: stderr}
+	if opts.kind == "" {
+		opts.kind = forgeOf(opts.host)
+		if opts.kind == "" {
+			fmt.Fprintf(stderr, "prwatch: can't tell which forge %s is; pass -forge\n", opts.host)
+			return exitError
+		}
+	}
+	w := &watcher{f: d.forge(opts.kind, opts.host), clock: clock, opts: opts, out: stdout, log: stderr}
 	return w.watch(ctx)
 }
 
-var prURL = regexp.MustCompile(`^https?://[^/]+/([^/]+/[^/]+)/pull/(\d+)`)
+var (
+	githubURL = regexp.MustCompile(`^https?://([^/]+)/([^/]+/[^/]+)/pull/(\d+)`)
+	gitlabURL = regexp.MustCompile(`^https?://([^/]+)/(.+?)/-/merge_requests/(\d+)`)
+	remoteURL = regexp.MustCompile(`^(?:[a-z+]+://)?(?:[^@/]+@)?([^/:]+)(?::\d+)?[:/](.+?)(?:\.git)?/?$`)
+)
 
 func parseTarget(arg string, opts *options) error {
-	if m := prURL.FindStringSubmatch(arg); m != nil {
-		if opts.repo == "" {
-			opts.repo = m[1]
+	for kind, re := range map[string]*regexp.Regexp{"github": githubURL, "gitlab": gitlabURL} {
+		if m := re.FindStringSubmatch(arg); m != nil {
+			if opts.kind == "" {
+				opts.kind = kind
+			}
+			if opts.repo == "" {
+				opts.repo = m[2]
+			}
+			opts.host, arg = m[1], m[3]
 		}
-		arg = m[2]
 	}
-	n, err := strconv.Atoi(strings.TrimPrefix(arg, "#"))
+	n, err := strconv.Atoi(strings.TrimLeft(arg, "#!"))
 	if err != nil || n <= 0 {
-		return fmt.Errorf("want a pull request number or URL, got %q", arg)
+		return fmt.Errorf("want a change request number or URL, got %q", arg)
 	}
 	opts.number = n
 	return nil
+}
+
+func parseRemote(remote string) (host, repo string, ok bool) {
+	m := remoteURL.FindStringSubmatch(strings.TrimSpace(remote))
+	if m == nil {
+		return "", "", false
+	}
+	return m[1], m[2], true
+}
+
+func forgeOf(host string) string {
+	switch {
+	case host == "" || strings.Contains(host, "github"):
+		return "github"
+	case strings.Contains(host, "gitlab"):
+		return "gitlab"
+	}
+	return ""
 }
 
 // Forge data, as prwatch needs it.
 
 type pr struct {
 	Viewer, URL, State, MergeState string
-	Draft                          bool
-	Head, MergeCommit              string
-	HeadCommitted                  time.Time
-	Checks                         []check
-	ReviewRequests                 []actor
-	Reviews                        []review
-	Comments                       []comment
-	Threads                        []thread
+	// MergeDetail is the forge's own reason a merge is blocked, when it says.
+	MergeDetail       string
+	Base              string
+	Draft             bool
+	Head, MergeCommit string
+	HeadCommitted     time.Time
+	Checks            []check
+	ReviewRequests    []actor
+	Reviews           []review
+	Comments          []comment
+	Threads           []thread
 }
 
 type actor struct {
@@ -174,10 +245,9 @@ type job struct {
 }
 
 type forge interface {
-	CurrentRepo(ctx context.Context) (string, error)
 	PullRequest(ctx context.Context, repo string, number int) (pr, error)
 	BotEyes(ctx context.Context, repo string, number int) ([]string, error)
-	Runs(ctx context.Context, repo, sha string) ([]workflowRun, error)
+	Runs(ctx context.Context, repo, sha, branch string) ([]workflowRun, error)
 	FailedJobs(ctx context.Context, repo string, runID int64) ([]job, error)
 }
 
@@ -259,7 +329,7 @@ func (w *watcher) watch(ctx context.Context) int {
 	}
 }
 
-// failed reports a gh failure and says whether to give up. Rate limits and
+// failed reports a forge CLI failure and says whether to give up. Rate limits and
 // repeated failures end the watch; nothing is retried silently.
 func (w *watcher) failed(err error, inRow *int) (int, bool) {
 	*inRow++
@@ -475,7 +545,11 @@ func blockers(p pr) []string {
 	case "BEHIND":
 		out = append(out, "branch is behind its base")
 	case "BLOCKED":
-		out = append(out, "merge blocked by repository rules (a required review or check)")
+		if p.MergeDetail != "" {
+			out = append(out, "merge blocked: "+p.MergeDetail)
+		} else {
+			out = append(out, "merge blocked by repository rules (a required review or check)")
+		}
 	}
 	return out
 }
@@ -533,7 +607,7 @@ func (w *watcher) watchRuns(ctx context.Context, p pr) int {
 	var runs []workflowRun
 	for {
 		now := w.clock.Now()
-		all, err := w.f.Runs(ctx, w.opts.repo, sha)
+		all, err := w.f.Runs(ctx, w.opts.repo, sha, p.Base)
 		if err != nil {
 			if code, stop := w.failed(err, &errorsInRow); stop {
 				return code
@@ -609,7 +683,11 @@ func (w *watcher) judgeRuns(ctx context.Context, p pr, sha string, runs []workfl
 // Output.
 
 func (w *watcher) header(state string, p pr, at string) {
-	fmt.Fprintf(w.out, "%s: %s#%d %s (%s)\n", state, w.opts.repo, w.opts.number, at, w.clock.Now().Sub(w.start).Round(time.Second))
+	sep := "#"
+	if w.opts.kind == "gitlab" {
+		sep = "!"
+	}
+	fmt.Fprintf(w.out, "%s: %s%s%d %s (%s)\n", state, w.opts.repo, sep, w.opts.number, at, w.clock.Now().Sub(w.start).Round(time.Second))
 	fmt.Fprintln(w.out, p.URL)
 }
 
@@ -730,54 +808,58 @@ func dedupe(items []string) []string {
 	return out
 }
 
-// gh.
+// Forge CLIs.
 
-type ghForge struct{}
-
-type ghError struct {
+type cliError struct {
+	name   string
 	args   []string
 	stderr string
 	err    error
 }
 
-func (e *ghError) Error() string {
+func (e *cliError) Error() string {
 	msg := strings.TrimSpace(e.stderr)
 	if msg == "" {
 		msg = e.err.Error()
 	}
-	return fmt.Sprintf("gh %s: %s", strings.Join(e.args[:min(2, len(e.args))], " "), msg)
+	return fmt.Sprintf("%s %s: %s", e.name, strings.Join(e.args[:min(2, len(e.args))], " "), msg)
 }
 
-func (e *ghError) Unwrap() error { return e.err }
+func (e *cliError) Unwrap() error { return e.err }
 
 func isRateLimit(err error) bool {
-	var ge *ghError
-	return errors.As(err, &ge) && strings.Contains(strings.ToLower(ge.stderr), "rate limit")
+	var ce *cliError
+	if !errors.As(err, &ce) {
+		return false
+	}
+	msg := strings.ToLower(ce.stderr)
+	return strings.Contains(msg, "rate limit") || strings.Contains(msg, "429")
 }
 
-func gh(ctx context.Context, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, "gh", args...)
+func cli(ctx context.Context, name string, args ...string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, name, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
 		if ctx.Err() != nil {
 			err = ctx.Err()
 		}
-		return nil, &ghError{args: args, stderr: stderr.String(), err: err}
+		return nil, &cliError{name: name, args: args, stderr: stderr.String(), err: err}
 	}
 	return stdout.Bytes(), nil
 }
 
-func (ghForge) CurrentRepo(ctx context.Context) (string, error) {
-	out, err := gh(ctx, "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner")
-	return strings.TrimSpace(string(out)), err
-}
+// GitHub.
+
+type ghForge struct{}
+
+func gh(ctx context.Context, args ...string) ([]byte, error) { return cli(ctx, "gh", args...) }
 
 const prQuery = `query($owner: String!, $repo: String!, $number: Int!, $checks: String, $threads: String) {
   viewer { login }
   repository(owner: $owner, name: $repo) {
     pullRequest(number: $number) {
-      url state isDraft mergeStateStatus headRefOid
+      url state isDraft mergeStateStatus headRefOid baseRefName
       mergeCommit { oid }
       commits(last: 1) { nodes { commit { committedDate statusCheckRollup {
         contexts(first: 100, after: $checks) {
@@ -841,6 +923,7 @@ type prResponse struct {
 				IsDraft          bool                  `json:"isDraft"`
 				MergeStateStatus string                `json:"mergeStateStatus"`
 				HeadRefOid       string                `json:"headRefOid"`
+				BaseRefName      string                `json:"baseRefName"`
 				MergeCommit      *struct{ Oid string } `json:"mergeCommit"`
 				Commits          struct {
 					Nodes []struct {
@@ -936,7 +1019,7 @@ func (ghForge) PullRequest(ctx context.Context, repo string, number int) (pr, er
 		}
 		if first {
 			p = pr{Viewer: resp.Data.Viewer.Login, URL: raw.URL, State: raw.State, Draft: raw.IsDraft,
-				MergeState: raw.MergeStateStatus, Head: raw.HeadRefOid}
+				MergeState: raw.MergeStateStatus, Head: raw.HeadRefOid, Base: raw.BaseRefName}
 			if raw.MergeCommit != nil {
 				p.MergeCommit = raw.MergeCommit.Oid
 			}
@@ -1016,7 +1099,7 @@ func (ghForge) BotEyes(ctx context.Context, repo string, number int) ([]string, 
 	return strings.Fields(string(out)), nil
 }
 
-func (ghForge) Runs(ctx context.Context, repo, sha string) ([]workflowRun, error) {
+func (ghForge) Runs(ctx context.Context, repo, sha, _ string) ([]workflowRun, error) {
 	out, err := gh(ctx, "api", "--paginate", fmt.Sprintf("repos/%s/actions/runs?head_sha=%s&per_page=100", repo, sha),
 		"--jq", `.workflow_runs[] | {id, name, event, status, conclusion: (.conclusion // ""), url: .html_url}`)
 	if err != nil {
@@ -1053,4 +1136,290 @@ func (ghForge) FailedJobs(ctx context.Context, repo string, runID int64) ([]job,
 		jobs = append(jobs, j)
 	}
 	return jobs, nil
+}
+
+// GitLab.
+
+type glabForge struct {
+	host   string
+	viewer string
+}
+
+func (g *glabForge) get(ctx context.Context, path string, out any) error {
+	args := []string{"api", path}
+	if g.host != "" {
+		args = append(args, "--hostname", g.host)
+	}
+	data, err := cli(ctx, "glab", args...)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, out); err != nil {
+		return fmt.Errorf("decode %s: %w", path, err)
+	}
+	return nil
+}
+
+// list reads every page of a GitLab list endpoint; --paginate prints one JSON
+// array per page.
+func list[T any](ctx context.Context, g *glabForge, path string) ([]T, error) {
+	args := []string{"api", "--paginate", path}
+	if g.host != "" {
+		args = append(args, "--hostname", g.host)
+	}
+	data, err := cli(ctx, "glab", args...)
+	if err != nil {
+		return nil, err
+	}
+	var all []T
+	dec := json.NewDecoder(bytes.NewReader(data))
+	for dec.More() {
+		var page []T
+		if err := dec.Decode(&page); err != nil {
+			return nil, fmt.Errorf("decode %s: %w", path, err)
+		}
+		all = append(all, page...)
+	}
+	return all, nil
+}
+
+func project(repo string) string { return "projects/" + url.PathEscape(repo) }
+
+type glUser struct {
+	Username string `json:"username"`
+	Bot      bool   `json:"bot"`
+}
+
+var botName = regexp.MustCompile(`(?i)(^|[-_\[])bot($|[-_\]\d])|^gitlabduo$`)
+
+func (u glUser) actor() actor {
+	return actor{Login: u.Username, Bot: u.Bot || botName.MatchString(u.Username)}
+}
+
+type glNote struct {
+	ID         int64     `json:"id"`
+	Body       string    `json:"body"`
+	Author     glUser    `json:"author"`
+	CreatedAt  time.Time `json:"created_at"`
+	System     bool      `json:"system"`
+	Resolvable bool      `json:"resolvable"`
+	Resolved   bool      `json:"resolved"`
+	Position   *struct {
+		NewPath string `json:"new_path"`
+		NewLine int    `json:"new_line"`
+		OldPath string `json:"old_path"`
+		OldLine int    `json:"old_line"`
+	} `json:"position"`
+}
+
+// glStatus maps a GitLab job or pipeline status onto GitHub check vocabulary.
+// Manual jobs never start on their own, so they count as finished.
+func glStatus(status string) (state, conclusion string) {
+	switch status {
+	case "success":
+		return "COMPLETED", "SUCCESS"
+	case "failed":
+		return "COMPLETED", "FAILURE"
+	case "canceled", "canceling":
+		return "COMPLETED", "CANCELLED"
+	case "skipped":
+		return "COMPLETED", "SKIPPED"
+	case "manual":
+		return "COMPLETED", "NEUTRAL"
+	}
+	return "IN_PROGRESS", ""
+}
+
+var glMergeStates = map[string]string{
+	"unchecked": "UNKNOWN", "checking": "UNKNOWN", "preparing": "UNKNOWN", "approvals_syncing": "UNKNOWN",
+	"mergeable": "CLEAN", "ci_must_pass": "CLEAN", "ci_still_running": "CLEAN", "draft_status": "CLEAN",
+	"discussions_not_resolved": "CLEAN", "requested_changes": "CLEAN",
+	"conflict": "DIRTY", "broken_status": "DIRTY", "need_rebase": "BEHIND",
+}
+
+func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (pr, error) {
+	base := fmt.Sprintf("%s/merge_requests/%d", project(repo), number)
+	if g.viewer == "" {
+		var me glUser
+		if err := g.get(ctx, "user", &me); err != nil {
+			return pr{}, err
+		}
+		g.viewer = me.Username
+	}
+	var mr struct {
+		State               string `json:"state"`
+		Draft               bool   `json:"draft"`
+		WebURL              string `json:"web_url"`
+		SHA                 string `json:"sha"`
+		MergeCommitSHA      string `json:"merge_commit_sha"`
+		SquashCommitSHA     string `json:"squash_commit_sha"`
+		TargetBranch        string `json:"target_branch"`
+		DetailedMergeStatus string `json:"detailed_merge_status"`
+		// GitLab only reports a head pipeline that ran for the current head.
+		HeadPipeline *struct {
+			ID        int64  `json:"id"`
+			ProjectID int64  `json:"project_id"`
+			Status    string `json:"status"`
+			WebURL    string `json:"web_url"`
+		} `json:"head_pipeline"`
+	}
+	if err := g.get(ctx, base, &mr); err != nil {
+		return pr{}, err
+	}
+	p := pr{Viewer: g.viewer, URL: mr.WebURL, Draft: mr.Draft, Head: mr.SHA, Base: mr.TargetBranch}
+	p.State = map[string]string{"opened": "OPEN", "merged": "MERGED"}[mr.State]
+	if p.State == "" {
+		p.State = "CLOSED"
+	}
+	p.MergeCommit = mr.MergeCommitSHA
+	if p.MergeCommit == "" {
+		p.MergeCommit = mr.SquashCommitSHA
+	}
+	if p.MergeState = glMergeStates[mr.DetailedMergeStatus]; p.MergeState == "" {
+		p.MergeState, p.MergeDetail = "BLOCKED", mr.DetailedMergeStatus
+	}
+	if p.State != "OPEN" {
+		return p, nil
+	}
+
+	if hp := mr.HeadPipeline; hp != nil {
+		// A fork's merge request runs its pipeline in the fork.
+		jobs, err := list[struct {
+			Name         string `json:"name"`
+			Status       string `json:"status"`
+			AllowFailure bool   `json:"allow_failure"`
+			WebURL       string `json:"web_url"`
+		}](ctx, g, fmt.Sprintf("projects/%d/pipelines/%d/jobs?per_page=100", hp.ProjectID, hp.ID))
+		if err != nil {
+			return pr{}, err
+		}
+		for _, j := range jobs {
+			state, conclusion := glStatus(j.Status)
+			p.Checks = append(p.Checks, check{Name: j.Name, Status: state, Conclusion: conclusion, URL: j.WebURL, Required: !j.AllowFailure})
+		}
+		// The pipeline's own status also covers bridge jobs and child pipelines.
+		state, conclusion := glStatus(hp.Status)
+		p.Checks = append(p.Checks, check{Name: fmt.Sprintf("pipeline %d", hp.ID), Status: state, Conclusion: conclusion, URL: hp.WebURL, Required: true})
+	}
+
+	reviewers, err := list[struct {
+		User  glUser `json:"user"`
+		State string `json:"state"`
+	}](ctx, g, base+"/reviewers")
+	if err != nil {
+		return pr{}, err
+	}
+	for _, r := range reviewers {
+		switch r.State {
+		case "requested_changes":
+			p.Reviews = append(p.Reviews, review{Author: r.User.actor(), State: "CHANGES_REQUESTED"})
+		case "approved":
+			p.Reviews = append(p.Reviews, review{Author: r.User.actor(), State: "APPROVED"})
+		case "unreviewed", "review_started":
+			p.ReviewRequests = append(p.ReviewRequests, r.User.actor())
+		}
+	}
+
+	discussions, err := list[struct {
+		IndividualNote bool     `json:"individual_note"`
+		Notes          []glNote `json:"notes"`
+	}](ctx, g, base+"/discussions?per_page=100")
+	if err != nil {
+		return pr{}, err
+	}
+	for _, d := range discussions {
+		var notes []glNote
+		open := false
+		for _, n := range d.Notes {
+			if !n.System {
+				notes = append(notes, n)
+			}
+			open = open || (n.Resolvable && !n.Resolved)
+		}
+		if len(notes) == 0 {
+			continue
+		}
+		toComment := func(n glNote) comment {
+			return comment{Author: n.Author.actor(), Created: n.CreatedAt, URL: fmt.Sprintf("%s#note_%d", mr.WebURL, n.ID), Body: n.Body}
+		}
+		if !open {
+			for _, n := range notes {
+				if d.IndividualNote || !n.Resolvable {
+					p.Comments = append(p.Comments, toComment(n))
+				}
+			}
+			continue
+		}
+		t := thread{Last: toComment(notes[len(notes)-1])}
+		if pos := notes[0].Position; pos != nil {
+			t.Path, t.Line = pos.NewPath, pos.NewLine
+			if t.Path == "" {
+				t.Path, t.Line = pos.OldPath, pos.OldLine
+			}
+		}
+		p.Threads = append(p.Threads, t)
+	}
+	return p, nil
+}
+
+func (g *glabForge) BotEyes(ctx context.Context, repo string, number int) ([]string, error) {
+	awards, err := list[struct {
+		Name string `json:"name"`
+		User glUser `json:"user"`
+	}](ctx, g, fmt.Sprintf("%s/merge_requests/%d/award_emoji?per_page=100", project(repo), number))
+	if err != nil {
+		return nil, err
+	}
+	var bots []string
+	for _, a := range awards {
+		if a.Name == "eyes" && a.User.actor().Bot {
+			bots = append(bots, a.User.Username)
+		}
+	}
+	return bots, nil
+}
+
+func (g *glabForge) Runs(ctx context.Context, repo, sha, branch string) ([]workflowRun, error) {
+	pipelines, err := list[struct {
+		ID     int64  `json:"id"`
+		Status string `json:"status"`
+		Source string `json:"source"`
+		Ref    string `json:"ref"`
+		WebURL string `json:"web_url"`
+	}](ctx, g, fmt.Sprintf("%s/pipelines?sha=%s&ref=%s&per_page=100", project(repo), sha, url.QueryEscape(branch)))
+	if err != nil {
+		return nil, err
+	}
+	var runs []workflowRun
+	for _, pl := range pipelines {
+		event := pl.Source
+		if event == "web" {
+			event = "workflow_dispatch"
+		}
+		r := workflowRun{ID: pl.ID, Name: fmt.Sprintf("pipeline %d", pl.ID), Event: event, URL: pl.WebURL, Status: "in_progress"}
+		if state, conclusion := glStatus(pl.Status); state == "COMPLETED" {
+			r.Status, r.Conclusion = "completed", strings.ToLower(conclusion)
+		}
+		runs = append(runs, r)
+	}
+	return runs, nil
+}
+
+func (g *glabForge) FailedJobs(ctx context.Context, repo string, runID int64) ([]job, error) {
+	jobs, err := list[struct {
+		Name         string `json:"name"`
+		Status       string `json:"status"`
+		AllowFailure bool   `json:"allow_failure"`
+		WebURL       string `json:"web_url"`
+	}](ctx, g, fmt.Sprintf("%s/pipelines/%d/jobs?scope[]=failed&per_page=100", project(repo), runID))
+	if err != nil {
+		return nil, err
+	}
+	var out []job
+	for _, j := range jobs {
+		if !j.AllowFailure {
+			out = append(out, job{Name: j.Name, Conclusion: j.Status, URL: j.WebURL})
+		}
+	}
+	return out, nil
 }

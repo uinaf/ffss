@@ -11,16 +11,17 @@ belongs to the required reviewer.
 
 ## Observe
 
-- On GitHub, never write a polling loop: wait with
+- Never write a polling loop: wait with
   `go run <this skill's directory>/scripts/prwatch/main.go <number or URL>`
-  (`-R owner/repo` outside the checkout). It reads checks, review requests,
+  on GitHub or GitLab (`-R <repository path>` outside the checkout; `-forge`
+  when the host name doesn't say which). It reads checks, review requests,
   verdicts, unresolved threads, and top-level comments, waits for late checks
   and working bots, and exits on the first thing to act on: `ready` (0);
-  `checks-failed`, `activity`, `pushed`, `blocked`, or `closed` (1); a `gh`
-  failure (2); or `timeout` after 30 minutes (3). Act on what it prints, then
-  rerun it with `-since` set to its `since:` line so nothing between runs is
-  missed. Without Go, or on GitLab, poll `gh` / `glab` for the same evidence
-  and say prwatch didn't run.
+  `checks-failed`, `activity`, `pushed`, `blocked`, or `closed` (1); a `gh` /
+  `glab` failure (2); or `timeout` after 30 minutes (3). Act on what it
+  prints, then rerun it with `-since` set to its `since:` line so nothing
+  between runs is missed. Without Go, poll `gh` / `glab` for the same
+  evidence and say prwatch didn't run.
 - A `CHANGES_REQUESTED` review may have no inline thread, and bots often post
   findings as top-level comments.
 - Green checks and no threads are not settled while a requested human
@@ -85,9 +86,10 @@ hashes, nothing that doesn't advance the thread.
 Once the change request merges, by you or anyone else, watch the runs the merge
 started on the default branch.
 
-- On GitHub, run prwatch on the merged change request once. It finds the
-  merge commit, skips scheduled and manual runs, waits for the runs it starts
-  and the ones they trigger, and prints each with its link and failed jobs:
+- Run prwatch on the merged change request once. It finds the merge commit,
+  skips scheduled and manual runs, waits for the runs or pipelines it starts
+  on the target branch and the ones they trigger, and prints each with its
+  link and failed jobs:
   `runs-passed` or `no-runs` (0), `runs-failed` (1), `timeout` (3).
 - Without prwatch, do the same by hand:
   - Take the full merge SHA; an abbreviated one lists nothing. Read
