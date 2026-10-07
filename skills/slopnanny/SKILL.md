@@ -16,11 +16,12 @@ belongs to the required reviewer.
   on GitHub or GitLab (`-R <repository path>` outside the checkout; `-forge`
   when the host name doesn't say which). It reads checks, review requests,
   verdicts, unresolved threads, and top-level comments, waits for late checks
-  and working bots, and exits on the first thing to act on: `ready` (0);
-  `checks-failed`, `activity`, `pushed`, `blocked`, or `closed` (1); a `gh` /
-  `glab` failure (2); or `timeout` after 30 minutes (3). Act on what it
-  prints, then rerun it with `-since` set to its `since:` line so nothing
-  between runs is missed. Without Go, poll `gh` / `glab` for the same
+  and working bots, and exits on the first thing to act on. Its first output
+  line names the state (`go run` folds every failing exit code into 1):
+  `ready`; `checks-failed`, `activity`, `pushed`, `blocked`, or `closed`;
+  `error` for a `gh` / `glab` failure; or `timeout` after 30 minutes. Act on
+  what it prints, then rerun it with `-since` set to its `since:` line so
+  nothing between runs is missed. Without Go, poll `gh` / `glab` for the same
   evidence and say prwatch didn't run.
 - A `CHANGES_REQUESTED` review may have no inline thread, and bots often post
   findings as top-level comments.
@@ -89,8 +90,8 @@ started on the default branch.
 - Run prwatch on the merged change request once. It finds the merge commit,
   skips scheduled and manual runs, waits for the runs or pipelines it starts
   on the target branch and the ones they trigger, and prints each with its
-  link and failed jobs:
-  `runs-passed` or `no-runs` (0), `runs-failed` (1), `timeout` (3).
+  link and failed jobs: `runs-passed`, `no-runs`, `runs-failed`, or
+  `timeout`.
 - Without prwatch, do the same by hand:
   - Take the full merge SHA; an abbreviated one lists nothing. Read
     `mergeCommit` from `gh pr view <number> --json mergeCommit,headRefOid`, or

@@ -106,7 +106,7 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 		fmt.Fprintln(stderr, "prwatch:", err)
 		return exitError
 	}
-	opts.since = clock.Now()
+	opts.since = clock.Now().Truncate(time.Second)
 	if since != "" {
 		t, err := time.Parse(time.RFC3339, since)
 		if err != nil {
@@ -115,7 +115,7 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 		}
 		opts.since = t
 	}
-	if opts.repo == "" || (opts.kind == "" && opts.host == "") {
+	if opts.repo == "" || opts.host == "" {
 		remote, err := d.origin(ctx)
 		host, repo, ok := parseRemote(remote)
 		switch {
@@ -151,9 +151,10 @@ var (
 func parseTarget(arg string, opts *options) error {
 	for kind, re := range map[string]*regexp.Regexp{"github": githubURL, "gitlab": gitlabURL} {
 		if m := re.FindStringSubmatch(arg); m != nil {
-			if opts.kind == "" {
-				opts.kind = kind
+			if opts.kind != "" && opts.kind != kind {
+				return fmt.Errorf("-forge %s contradicts the %s URL", opts.kind, kind)
 			}
+			opts.kind = kind
 			if opts.repo == "" {
 				opts.repo = m[2]
 			}
@@ -198,9 +199,15 @@ type pr struct {
 	HeadCommitted     time.Time
 	Checks            []check
 	ReviewRequests    []actor
-	Reviews           []review
-	Comments          []comment
-	Threads           []thread
+	// Reviews are review events, for activity; Verdicts are each reviewer's
+	// standing approval or change request.
+	Reviews  []review
+	Verdicts []review
+	Comments []comment
+	// ThreadComments holds every recent comment in every review thread,
+	// resolved or not; Threads only the unresolved ones.
+	ThreadComments []comment
+	Threads        []thread
 }
 
 type actor struct {
@@ -304,15 +311,17 @@ func (w *watcher) watch(ctx context.Context) int {
 		p, err := w.f.PullRequest(ctx, w.opts.repo, w.opts.number)
 		var v *verdict
 		if err == nil {
-			errorsInRow = 0
 			last, lastPolled = p, polled
 			if p.State == "MERGED" {
 				return w.watchRuns(ctx, p)
 			}
 			v, err = w.judge(ctx, p, polled)
-			if err == nil && v != nil {
-				w.report(p, *v, polled)
-				return v.code
+			if err == nil {
+				errorsInRow = 0
+				if v != nil {
+					w.report(p, *v, polled)
+					return v.code
+				}
 			}
 		}
 		if err != nil {
@@ -426,8 +435,8 @@ func (w *watcher) judge(ctx context.Context, p pr, now time.Time) (*verdict, err
 		w.note("waiting on %d/%d checks: %s", len(waiting), len(gate), strings.Join(waiting, ", "))
 		return nil, nil
 	}
-	if p.MergeState == "UNKNOWN" && now.Sub(w.start) < w.opts.appear {
-		w.note("waiting for GitHub to compute the merge state")
+	if p.MergeState == "UNKNOWN" {
+		w.note("waiting for the forge to compute the merge state")
 		return nil, nil
 	}
 	var notes []string
@@ -468,23 +477,27 @@ func checkSignature(checks []check) string {
 	return strings.Join(parts, ";")
 }
 
-// newActivity lists reviews and comments from anyone but the viewer posted
-// after since.
+// since counts an event at exactly the since second as new: forges stamp
+// events to the second, and the printed since line is truncated to it.
+func isNew(at, since time.Time) bool { return !at.Before(since) }
+
+// newActivity lists reviews and comments, threaded or not, resolved or not,
+// from anyone but the viewer at or after since.
 func newActivity(p pr, since time.Time) []string {
 	var news []string
 	for _, r := range p.Reviews {
-		if r.Author.Login != p.Viewer && r.Submitted.After(since) {
+		if r.Author.Login != p.Viewer && isNew(r.Submitted, since) {
 			news = append(news, fmt.Sprintf("%s reviewed: %s", r.Author.Login, r.State))
 		}
 	}
 	for _, c := range p.Comments {
-		if c.Author.Login != p.Viewer && c.Created.After(since) {
+		if c.Author.Login != p.Viewer && isNew(c.Created, since) {
 			news = append(news, c.Author.Login+" commented")
 		}
 	}
-	for _, t := range p.Threads {
-		if t.Last.Author.Login != p.Viewer && t.Last.Created.After(since) {
-			news = append(news, fmt.Sprintf("%s replied on %s", t.Last.Author.Login, t.Path))
+	for _, c := range p.ThreadComments {
+		if c.Author.Login != p.Viewer && isNew(c.Created, since) {
+			news = append(news, c.Author.Login+" commented in a thread")
 		}
 	}
 	return dedupe(news)
@@ -529,7 +542,7 @@ func blockers(p pr) []string {
 	if n := len(p.Threads); n > 0 {
 		out = append(out, fmt.Sprintf("%d unresolved thread(s)", n))
 	}
-	for _, r := range latestReviews(p.Reviews) {
+	for _, r := range p.Verdicts {
 		if r.State == "CHANGES_REQUESTED" {
 			out = append(out, r.Author.Login+" requested changes")
 		}
@@ -554,27 +567,6 @@ func blockers(p pr) []string {
 	return out
 }
 
-// latestReviews keeps each author's last approving, rejecting, or dismissed
-// review; comment-only reviews don't change a verdict.
-func latestReviews(reviews []review) []review {
-	last := map[string]review{}
-	var order []string
-	for _, r := range reviews {
-		if r.State == "COMMENTED" || r.State == "PENDING" {
-			continue
-		}
-		if _, seen := last[r.Author.Login]; !seen {
-			order = append(order, r.Author.Login)
-		}
-		last[r.Author.Login] = r
-	}
-	out := make([]review, 0, len(order))
-	for _, login := range order {
-		out = append(out, last[login])
-	}
-	return out
-}
-
 func pendingReasons(p pr, opts options) []string {
 	var waiting []string
 	for _, c := range gating(p.Checks) {
@@ -586,12 +578,15 @@ func pendingReasons(p pr, opts options) []string {
 	if len(waiting) > 0 {
 		reasons = append(reasons, "still running: "+strings.Join(waiting, ", "))
 	}
+	if p.MergeState == "UNKNOWN" {
+		reasons = append(reasons, "merge state still unknown")
+	}
 	return append(reasons, blockers(p)...)
 }
 
 // After merge.
 
-var skippedEvents = map[string]bool{"schedule": true, "workflow_dispatch": true, "repository_dispatch": true}
+var skippedEvents = map[string]bool{"schedule": true, "workflow_dispatch": true}
 
 var passing = map[string]bool{"success": true, "skipped": true, "neutral": true}
 
@@ -613,14 +608,18 @@ func (w *watcher) watchRuns(ctx context.Context, p pr) int {
 				return code
 			}
 		} else {
-			errorsInRow = 0
 			runs = runs[:0]
 			for _, r := range all {
 				if !skippedEvents[r.Event] {
 					runs = append(runs, r)
 				}
 			}
-			if code, done := w.judgeRuns(ctx, p, sha, runs, now); done {
+			code, done, err := w.judgeRuns(ctx, p, sha, runs, now)
+			if err != nil {
+				if code, stop := w.failed(err, &errorsInRow); stop {
+					return code
+				}
+			} else if done {
 				return code
 			}
 		}
@@ -633,14 +632,14 @@ func (w *watcher) watchRuns(ctx context.Context, p pr) int {
 	}
 }
 
-func (w *watcher) judgeRuns(ctx context.Context, p pr, sha string, runs []workflowRun, now time.Time) (int, bool) {
+func (w *watcher) judgeRuns(ctx context.Context, p pr, sha string, runs []workflowRun, now time.Time) (int, bool, error) {
 	if len(runs) == 0 {
 		if now.Sub(w.start) < w.opts.appear {
 			w.note("merged as %s; no runs yet", short(sha))
-			return 0, false
+			return 0, false, nil
 		}
 		w.reportRuns(p, sha, "no-runs", nil, nil)
-		return exitDone, true
+		return exitDone, true, nil
 	}
 	var running, failed []string
 	parts := make([]string, 0, len(runs))
@@ -656,28 +655,28 @@ func (w *watcher) judgeRuns(ctx context.Context, p pr, sha string, runs []workfl
 	if len(running) > 0 {
 		w.stable("running", now)
 		w.note("merged as %s; running: %s", short(sha), strings.Join(running, ", "))
-		return 0, false
+		return 0, false, nil
 	}
 	if !w.stable(strings.Join(parts, ";"), now) {
 		w.note("runs finished; settling for %s in case they trigger more", w.opts.settle)
-		return 0, false
+		return 0, false, nil
 	}
 	if len(failed) == 0 {
 		w.reportRuns(p, sha, "runs-passed", runs, nil)
-		return exitDone, true
+		return exitDone, true, nil
 	}
 	jobs := map[int64][]job{}
 	for _, r := range runs {
 		if r.Status == "completed" && !passing[r.Conclusion] {
 			js, err := w.f.FailedJobs(ctx, w.opts.repo, r.ID)
 			if err != nil {
-				fmt.Fprintf(w.log, "prwatch: jobs of run %d: %v\n", r.ID, err)
+				return 0, false, err
 			}
 			jobs[r.ID] = js
 		}
 	}
 	w.reportRuns(p, sha, "runs-failed", runs, jobs)
-	return exitAttention, true
+	return exitAttention, true, nil
 }
 
 // Output.
@@ -717,7 +716,7 @@ func (w *watcher) report(p pr, v verdict, polled time.Time) {
 	}
 	section(w.out, "review requests", requests)
 	var reviews []string
-	for _, r := range latestReviews(p.Reviews) {
+	for _, r := range p.Verdicts {
 		reviews = append(reviews, fmt.Sprintf("%s %s on %s %s", r.Author.Login, r.State, short(r.Commit), r.URL))
 	}
 	section(w.out, "reviews", reviews)
@@ -735,12 +734,12 @@ func (w *watcher) report(p pr, v verdict, polled time.Time) {
 	section(w.out, "unresolved threads", threads)
 	var news []string
 	for _, r := range p.Reviews {
-		if r.Author.Login != p.Viewer && r.Submitted.After(w.opts.since) && strings.TrimSpace(r.Body) != "" {
+		if r.Author.Login != p.Viewer && isNew(r.Submitted, w.opts.since) && strings.TrimSpace(r.Body) != "" {
 			news = append(news, fmt.Sprintf("%s review: %s %s", r.Author.Login, firstLine(r.Body), r.URL))
 		}
 	}
-	for _, c := range p.Comments {
-		if c.Author.Login != p.Viewer && c.Created.After(w.opts.since) {
+	for _, c := range append(append([]comment{}, p.Comments...), p.ThreadComments...) {
+		if c.Author.Login != p.Viewer && isNew(c.Created, w.opts.since) {
 			news = append(news, fmt.Sprintf("%s: %s %s", c.Author.Login, firstLine(c.Body), c.URL))
 		}
 	}
@@ -836,7 +835,13 @@ func isRateLimit(err error) bool {
 	return strings.Contains(msg, "rate limit") || strings.Contains(msg, "429")
 }
 
+// cliTimeout bounds one forge CLI call so a hung process can't outlive the
+// watch deadline by more than this.
+const cliTimeout = 2 * time.Minute
+
 func cli(ctx context.Context, name string, args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, cliTimeout)
+	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
@@ -875,11 +880,12 @@ const prQuery = `query($owner: String!, $repo: String!, $number: Int!, $checks: 
         __typename ... on User { login } ... on Bot { login } ... on Team { slug } ... on Mannequin { login }
       } } }
       reviews(last: 100) { nodes { author { __typename login } state submittedAt url body commit { oid } } }
+      latestOpinionatedReviews(first: 100) { nodes { author { __typename login } state submittedAt url body commit { oid } } }
       comments(last: 100) { nodes { author { __typename login } createdAt url body } }
       reviewThreads(first: 100, after: $threads) {
         pageInfo { hasNextPage endCursor }
         nodes { isResolved isOutdated path line originalLine
-          comments(last: 1) { nodes { author { __typename login } createdAt url body } } }
+          comments(last: 5) { nodes { author { __typename login } createdAt url body } } }
       }
     }
   }
@@ -906,6 +912,23 @@ type gqlComment struct {
 
 func (c gqlComment) comment() comment {
 	return comment{Author: c.Author.actor(), Created: c.CreatedAt, URL: c.URL, Body: c.Body}
+}
+
+type gqlReview struct {
+	Author      *gqlAuthor            `json:"author"`
+	State       string                `json:"state"`
+	SubmittedAt time.Time             `json:"submittedAt"`
+	URL         string                `json:"url"`
+	Body        string                `json:"body"`
+	Commit      *struct{ Oid string } `json:"commit"`
+}
+
+func (r gqlReview) review() review {
+	rv := review{Author: r.Author.actor(), State: r.State, Submitted: r.SubmittedAt, URL: r.URL, Body: r.Body}
+	if r.Commit != nil {
+		rv.Commit = r.Commit.Oid
+	}
+	return rv
 }
 
 type pageInfo struct {
@@ -958,15 +981,11 @@ type prResponse struct {
 					} `json:"nodes"`
 				} `json:"reviewRequests"`
 				Reviews struct {
-					Nodes []struct {
-						Author      *gqlAuthor            `json:"author"`
-						State       string                `json:"state"`
-						SubmittedAt time.Time             `json:"submittedAt"`
-						URL         string                `json:"url"`
-						Body        string                `json:"body"`
-						Commit      *struct{ Oid string } `json:"commit"`
-					} `json:"nodes"`
+					Nodes []gqlReview `json:"nodes"`
 				} `json:"reviews"`
+				LatestOpinionatedReviews struct {
+					Nodes []gqlReview `json:"nodes"`
+				} `json:"latestOpinionatedReviews"`
 				Comments struct {
 					Nodes []gqlComment `json:"nodes"`
 				} `json:"comments"`
@@ -1033,11 +1052,12 @@ func (ghForge) PullRequest(ctx context.Context, repo string, number int) (pr, er
 				}
 			}
 			for _, r := range raw.Reviews.Nodes {
-				rv := review{Author: r.Author.actor(), State: r.State, Submitted: r.SubmittedAt, URL: r.URL, Body: r.Body}
-				if r.Commit != nil {
-					rv.Commit = r.Commit.Oid
+				p.Reviews = append(p.Reviews, r.review())
+			}
+			for _, r := range raw.LatestOpinionatedReviews.Nodes {
+				if r.State == "CHANGES_REQUESTED" || r.State == "APPROVED" {
+					p.Verdicts = append(p.Verdicts, r.review())
 				}
-				p.Reviews = append(p.Reviews, rv)
 			}
 			for _, c := range raw.Comments.Nodes {
 				p.Comments = append(p.Comments, c.comment())
@@ -1065,6 +1085,9 @@ func (ghForge) PullRequest(ctx context.Context, repo string, number int) (pr, er
 		}
 		if first || threadsAfter != "" {
 			for _, t := range raw.ReviewThreads.Nodes {
+				for _, c := range t.Comments.Nodes {
+					p.ThreadComments = append(p.ThreadComments, c.comment())
+				}
 				if t.IsResolved || len(t.Comments.Nodes) == 0 {
 					continue
 				}
@@ -1072,7 +1095,7 @@ func (ghForge) PullRequest(ctx context.Context, repo string, number int) (pr, er
 				if line == 0 {
 					line = t.OriginalLine
 				}
-				p.Threads = append(p.Threads, thread{Path: t.Path, Line: line, Outdated: t.IsOutdated, Last: t.Comments.Nodes[0].comment()})
+				p.Threads = append(p.Threads, thread{Path: t.Path, Line: line, Outdated: t.IsOutdated, Last: t.Comments.Nodes[len(t.Comments.Nodes)-1].comment()})
 			}
 			threadsNext = raw.ReviewThreads.PageInfo.HasNextPage
 			threadsAfter = raw.ReviewThreads.PageInfo.EndCursor
@@ -1213,8 +1236,9 @@ type glNote struct {
 }
 
 // glStatus maps a GitLab job or pipeline status onto GitHub check vocabulary.
-// Manual jobs never start on their own, so they count as finished.
-func glStatus(status string) (state, conclusion string) {
+// Manual jobs never start on their own: an optional one counts as finished,
+// a blocking one (or a pipeline waiting on one) needs someone to act.
+func glStatus(status string, optional bool) (state, conclusion string) {
 	switch status {
 	case "success":
 		return "COMPLETED", "SUCCESS"
@@ -1225,14 +1249,23 @@ func glStatus(status string) (state, conclusion string) {
 	case "skipped":
 		return "COMPLETED", "SKIPPED"
 	case "manual":
-		return "COMPLETED", "NEUTRAL"
+		if optional {
+			return "COMPLETED", "NEUTRAL"
+		}
+		return "COMPLETED", "ACTION_REQUIRED"
 	}
 	return "IN_PROGRESS", ""
 }
 
+// Approving or requesting changes without a comment leaves only a system note.
+var glReviewNote = regexp.MustCompile(`(?i)^(approved|unapproved|requested changes)\b`)
+
+var glReviewStates = map[string]string{"approved": "APPROVED", "unapproved": "DISMISSED", "requested changes": "CHANGES_REQUESTED"}
+
 var glMergeStates = map[string]string{
 	"unchecked": "UNKNOWN", "checking": "UNKNOWN", "preparing": "UNKNOWN", "approvals_syncing": "UNKNOWN",
-	"mergeable": "CLEAN", "ci_must_pass": "CLEAN", "ci_still_running": "CLEAN", "draft_status": "CLEAN",
+	"ci_still_running": "UNKNOWN",
+	"mergeable":        "CLEAN", "draft_status": "CLEAN",
 	"discussions_not_resolved": "CLEAN", "requested_changes": "CLEAN",
 	"conflict": "DIRTY", "broken_status": "DIRTY", "need_rebase": "BEHIND",
 }
@@ -1294,11 +1327,11 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 			return pr{}, err
 		}
 		for _, j := range jobs {
-			state, conclusion := glStatus(j.Status)
+			state, conclusion := glStatus(j.Status, j.AllowFailure)
 			p.Checks = append(p.Checks, check{Name: j.Name, Status: state, Conclusion: conclusion, URL: j.WebURL, Required: !j.AllowFailure})
 		}
 		// The pipeline's own status also covers bridge jobs and child pipelines.
-		state, conclusion := glStatus(hp.Status)
+		state, conclusion := glStatus(hp.Status, false)
 		p.Checks = append(p.Checks, check{Name: fmt.Sprintf("pipeline %d", hp.ID), Status: state, Conclusion: conclusion, URL: hp.WebURL, Required: true})
 	}
 
@@ -1312,9 +1345,9 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 	for _, r := range reviewers {
 		switch r.State {
 		case "requested_changes":
-			p.Reviews = append(p.Reviews, review{Author: r.User.actor(), State: "CHANGES_REQUESTED"})
+			p.Verdicts = append(p.Verdicts, review{Author: r.User.actor(), State: "CHANGES_REQUESTED"})
 		case "approved":
-			p.Reviews = append(p.Reviews, review{Author: r.User.actor(), State: "APPROVED"})
+			p.Verdicts = append(p.Verdicts, review{Author: r.User.actor(), State: "APPROVED"})
 		case "unreviewed", "review_started":
 			p.ReviewRequests = append(p.ReviewRequests, r.User.actor())
 		}
@@ -1333,6 +1366,8 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 		for _, n := range d.Notes {
 			if !n.System {
 				notes = append(notes, n)
+			} else if m := glReviewNote.FindStringSubmatch(n.Body); m != nil {
+				p.Reviews = append(p.Reviews, review{Author: n.Author.actor(), State: glReviewStates[strings.ToLower(m[1])], Submitted: n.CreatedAt})
 			}
 			open = open || (n.Resolvable && !n.Resolved)
 		}
@@ -1342,12 +1377,16 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 		toComment := func(n glNote) comment {
 			return comment{Author: n.Author.actor(), Created: n.CreatedAt, URL: fmt.Sprintf("%s#note_%d", mr.WebURL, n.ID), Body: n.Body}
 		}
-		if !open {
+		if d.IndividualNote {
 			for _, n := range notes {
-				if d.IndividualNote || !n.Resolvable {
-					p.Comments = append(p.Comments, toComment(n))
-				}
+				p.Comments = append(p.Comments, toComment(n))
 			}
+			continue
+		}
+		for _, n := range notes {
+			p.ThreadComments = append(p.ThreadComments, toComment(n))
+		}
+		if !open {
 			continue
 		}
 		t := thread{Last: toComment(notes[len(notes)-1])}
@@ -1380,16 +1419,24 @@ func (g *glabForge) BotEyes(ctx context.Context, repo string, number int) ([]str
 }
 
 func (g *glabForge) Runs(ctx context.Context, repo, sha, branch string) ([]workflowRun, error) {
-	pipelines, err := list[struct {
+	type pipeline struct {
 		ID     int64  `json:"id"`
 		Status string `json:"status"`
 		Source string `json:"source"`
 		Ref    string `json:"ref"`
 		WebURL string `json:"web_url"`
-	}](ctx, g, fmt.Sprintf("%s/pipelines?sha=%s&ref=%s&per_page=100", project(repo), sha, url.QueryEscape(branch)))
+	}
+	query := fmt.Sprintf("%s/pipelines?sha=%s&ref=%s&per_page=100", project(repo), sha, url.QueryEscape(branch))
+	pipelines, err := list[pipeline](ctx, g, query)
 	if err != nil {
 		return nil, err
 	}
+	// The list omits child pipelines unless asked for them by source.
+	children, err := list[pipeline](ctx, g, query+"&source=parent_pipeline")
+	if err != nil {
+		return nil, err
+	}
+	pipelines = append(pipelines, children...)
 	var runs []workflowRun
 	for _, pl := range pipelines {
 		event := pl.Source
@@ -1397,7 +1444,7 @@ func (g *glabForge) Runs(ctx context.Context, repo, sha, branch string) ([]workf
 			event = "workflow_dispatch"
 		}
 		r := workflowRun{ID: pl.ID, Name: fmt.Sprintf("pipeline %d", pl.ID), Event: event, URL: pl.WebURL, Status: "in_progress"}
-		if state, conclusion := glStatus(pl.Status); state == "COMPLETED" {
+		if state, conclusion := glStatus(pl.Status, false); state == "COMPLETED" {
 			r.Status, r.Conclusion = "completed", strings.ToLower(conclusion)
 		}
 		runs = append(runs, r)

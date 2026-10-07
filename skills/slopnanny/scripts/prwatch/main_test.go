@@ -27,12 +27,14 @@ func (c *fakeClock) Sleep(_ context.Context, d time.Duration) error {
 // fakeForge answers each poll from a timeline keyed by minutes since t0: the
 // latest entry at or before the current time wins.
 type fakeForge struct {
-	clock *fakeClock
-	prs   map[int]func() (pr, error)
-	runs  map[int][]workflowRun
-	eyes  map[int][]string
-	jobs  map[int64][]job
-	polls int
+	clock   *fakeClock
+	prs     map[int]func() (pr, error)
+	runs    map[int][]workflowRun
+	eyes    map[int][]string
+	jobs    map[int64][]job
+	eyesErr error
+	jobsErr error
+	polls   int
 }
 
 func at[T any](c *fakeClock, timeline map[int]T) T {
@@ -52,7 +54,7 @@ func (f *fakeForge) PullRequest(context.Context, string, int) (pr, error) {
 }
 
 func (f *fakeForge) BotEyes(context.Context, string, int) ([]string, error) {
-	return at(f.clock, f.eyes), nil
+	return at(f.clock, f.eyes), f.eyesErr
 }
 
 func (f *fakeForge) Runs(context.Context, string, string, string) ([]workflowRun, error) {
@@ -60,7 +62,7 @@ func (f *fakeForge) Runs(context.Context, string, string, string) ([]workflowRun
 }
 
 func (f *fakeForge) FailedJobs(_ context.Context, _ string, id int64) ([]job, error) {
-	return f.jobs[id], nil
+	return f.jobs[id], f.jobsErr
 }
 
 func open(checks ...check) func() (pr, error) {
@@ -91,7 +93,7 @@ func watchFor(t *testing.T, f *fakeForge, args ...string) (int, string, time.Dur
 	var stdout, stderr bytes.Buffer
 	d := deps{forge: func(string, string) forge { return f }, origin: func(context.Context) (string, error) { return "git@github.com:o/r.git", nil }, clock: f.clock}
 	code := run(context.Background(), append(args, "7"), d, &stdout, &stderr)
-	return code, stdout.String(), f.clock.now.Sub(t0)
+	return code, stdout.String() + stderr.String(), f.clock.now.Sub(t0)
 }
 
 func newFake() *fakeForge {
@@ -141,8 +143,26 @@ func TestSurfacesGhErrors(t *testing.T) {
 		f := newFake()
 		f.prs[0] = func() (pr, error) { return pr{}, boom }
 		f.prs[1] = open(passed("ci"))
-		if code, out, _ := watchFor(t, f); code != exitDone {
-			t.Fatalf("one failed poll should be retried; code %d, output:\n%s", code, out)
+		code, out, _ := watchFor(t, f)
+		if code != exitDone || !strings.Contains(out, "poll 1/3 failed: gh api graphql: HTTP 502") {
+			t.Fatalf("one failed poll should be printed and retried; code %d, output:\n%s", code, out)
+		}
+	})
+	t.Run("repeated after the pull request read", func(t *testing.T) {
+		f := newFake()
+		f.prs[0] = open(passed("ci"))
+		f.eyesErr = boom
+		if code, out, _ := watchFor(t, f); code != exitError || !strings.Contains(out, "poll 3/3 failed") {
+			t.Fatalf("code %d, output:\n%s", code, out)
+		}
+	})
+	t.Run("failed job lookup", func(t *testing.T) {
+		f := newFake()
+		f.prs[0] = with(open(), func(p *pr) { p.State, p.MergeCommit = "MERGED", "bbbbbbb2" })
+		f.runs[0] = []workflowRun{{ID: 1, Name: "CI", Event: "push", Status: "completed", Conclusion: "failure"}}
+		f.jobsErr = boom
+		if code, out, _ := watchFor(t, f); code != exitError || strings.Contains(out, "runs-failed") {
+			t.Fatalf("an incomplete failure report must not pass as one; code %d, output:\n%s", code, out)
 		}
 	})
 	t.Run("repeated", func(t *testing.T) {
@@ -195,10 +215,7 @@ func TestBlockedByThreadsAndChangesRequested(t *testing.T) {
 	f := newFake()
 	f.prs[0] = with(open(passed("ci")), func(p *pr) {
 		p.Threads = []thread{{Path: "a.go", Line: 3, Last: comment{Author: actor{Login: "ann"}, Body: "this leaks"}}}
-		p.Reviews = []review{
-			{Author: actor{Login: "ann"}, State: "CHANGES_REQUESTED", Submitted: t0.Add(-time.Hour)},
-			{Author: actor{Login: "ann"}, State: "COMMENTED", Submitted: t0.Add(-time.Minute)},
-		}
+		p.Verdicts = []review{{Author: actor{Login: "ann"}, State: "CHANGES_REQUESTED", Submitted: t0.Add(-time.Hour)}}
 	})
 	code, out, _ := watchFor(t, f)
 	for _, want := range []string{"blocked:", "1 unresolved thread", "ann requested changes", "a.go:3 ann: this leaks"} {
@@ -356,9 +373,10 @@ func TestGitLabMergeWatchesDefaultBranchPipelines(t *testing.T) {
 			"merge_commit_sha":null,"squash_commit_sha":"squash99","target_branch":"main","detailed_merge_status":"not_open"}`,
 		"projects/group%2Fsub%2Fapp/pipelines?sha=squash99&ref=main&per_page=100": `[
 			{"id":601,"status":"success","source":"push","ref":"main","web_url":"https://p/601"},
-			{"id":602,"status":"failed","source":"parent_pipeline","ref":"main","web_url":"https://p/602"},
 			{"id":603,"status":"failed","source":"schedule","ref":"main","web_url":"https://p/603"},
 			{"id":604,"status":"failed","source":"web","ref":"main","web_url":"https://p/604"}]`,
+		"projects/group%2Fsub%2Fapp/pipelines?sha=squash99&ref=main&per_page=100&source=parent_pipeline": `[
+			{"id":602,"status":"failed","source":"parent_pipeline","ref":"main","web_url":"https://p/602"}]`,
 		"projects/group%2Fsub%2Fapp/pipelines/602/jobs?scope[]=failed&per_page=100": `[
 			{"name":"deploy","status":"failed","allow_failure":false,"web_url":"https://j/deploy"},
 			{"name":"lint-optional","status":"failed","allow_failure":true,"web_url":"https://j/opt"}]`,
@@ -405,5 +423,104 @@ func TestPicksForge(t *testing.T) {
 		if got != c.want || (c.want == "" && code != exitError) {
 			t.Errorf("%s %q: picked %q (exit %d), want %q", c.remote, c.args, got, code, c.want)
 		}
+	}
+}
+
+func TestThreadActivityEvenAfterViewerRepliesOrResolves(t *testing.T) {
+	f := newFake()
+	f.prs[0] = open(running("ci"))
+	f.prs[3] = with(open(running("ci")), func(p *pr) {
+		p.ThreadComments = []comment{
+			{Author: actor{Login: "ann"}, Created: t0.Add(2 * time.Minute), Body: "off by one"},
+			{Author: actor{Login: "me"}, Created: t0.Add(3 * time.Minute), Body: "fixed"},
+		}
+	})
+	code, out, _ := watchFor(t, f)
+	if code != exitAttention || !strings.Contains(out, "ann: off by one") {
+		t.Fatalf("code %d, output:\n%s", code, out)
+	}
+}
+
+func TestEventInTheSinceSecondCounts(t *testing.T) {
+	f := newFake()
+	f.prs[0] = with(open(running("ci")), func(p *pr) {
+		p.Comments = []comment{{Author: actor{Login: "ann"}, Created: t0, Body: "same second"}}
+	})
+	if code, out, _ := watchFor(t, f, "-since", t0.Format(time.RFC3339)); code != exitAttention {
+		t.Fatalf("code %d, output:\n%s", code, out)
+	}
+}
+
+func TestUnknownMergeStateNeverReportsReady(t *testing.T) {
+	f := newFake()
+	f.prs[0] = with(open(passed("ci")), func(p *pr) { p.MergeState = "UNKNOWN" })
+	code, out, _ := watchFor(t, f, "-timeout", "10m")
+	if code != exitTimeout || !strings.Contains(out, "merge state still unknown") {
+		t.Fatalf("code %d, output:\n%s", code, out)
+	}
+}
+
+func TestRepositoryDispatchRunsCount(t *testing.T) {
+	f := newFake()
+	f.prs[0] = with(open(), func(p *pr) { p.State, p.MergeCommit = "MERGED", "bbbbbbb2" })
+	f.runs[0] = []workflowRun{
+		{ID: 1, Name: "CI", Event: "push", Status: "completed", Conclusion: "success"},
+		{ID: 2, Name: "Deploy", Event: "repository_dispatch", Status: "completed", Conclusion: "failure"},
+	}
+	if code, out, _ := watchFor(t, f); code != exitAttention || !strings.Contains(out, "Deploy (repository_dispatch) failure") {
+		t.Fatalf("code %d, output:\n%s", code, out)
+	}
+}
+
+func TestGitLabRequiredManualJobNeedsAttention(t *testing.T) {
+	fakeGlab(t, glabOpenMR(
+		`{"id":500,"project_id":99,"status":"manual","web_url":"https://p/500"}`,
+		`[{"name":"approve-release","status":"manual","allow_failure":false,"web_url":"https://j/9"}]`,
+		`[]`, `[]`, "mergeable"))
+	code, out := watchGitLab(t)
+	if code != exitAttention || !strings.Contains(out, "approve-release (required) action_required https://j/9") {
+		t.Fatalf("code %d, output:\n%s", code, out)
+	}
+}
+
+func TestGitLabPipelineRequiredButMissing(t *testing.T) {
+	fakeGlab(t, glabOpenMR(`null`, `[]`, `[]`, `[]`, "ci_must_pass"))
+	code, out := watchGitLab(t)
+	if code != exitAttention || !strings.Contains(out, "merge blocked: ci_must_pass") {
+		t.Fatalf("code %d, output:\n%s", code, out)
+	}
+}
+
+func TestGitLabApprovalWithoutCommentIsActivity(t *testing.T) {
+	fakeGlab(t, glabOpenMR(`{"id":500,"project_id":99,"status":"running","web_url":"https://p/500"}`,
+		`[{"name":"lint","status":"running","allow_failure":false,"web_url":"https://j/1"}]`,
+		`[{"individual_note":true,"notes":[{"id":5,"body":"approved this merge request","author":{"username":"ann"},"created_at":"2026-10-07T12:00:30Z","system":true}]}]`,
+		`[{"user":{"username":"ann"},"state":"approved"}]`, "ci_still_running"))
+	code, out := watchGitLab(t, "-since", "2026-10-07T12:00:00Z")
+	if code != exitAttention || !strings.Contains(out, "ann reviewed: APPROVED") {
+		t.Fatalf("code %d, output:\n%s", code, out)
+	}
+}
+
+func TestForgeFlagMustAgreeWithURL(t *testing.T) {
+	code, out := watchGitLab(t, "-forge", "github")
+	if code != exitError || !strings.Contains(out, "contradicts") {
+		t.Fatalf("code %d, output:\n%s", code, out)
+	}
+}
+
+func TestExplicitRepoStillUsesOriginHost(t *testing.T) {
+	var host string
+	d := deps{
+		forge: func(_, h string) forge {
+			host = h
+			return &fakeForge{clock: &fakeClock{now: t0}, prs: map[int]func() (pr, error){0: open(failed("ci"))}}
+		},
+		origin: func(context.Context) (string, error) { return "git@gitlab.corp.example:group/app.git", nil },
+		clock:  &fakeClock{now: t0},
+	}
+	run(context.Background(), []string{"-R", "group/other", "-forge", "gitlab", "7"}, d, io.Discard, io.Discard)
+	if host != "gitlab.corp.example" {
+		t.Fatalf("glab would query host %q", host)
 	}
 }
