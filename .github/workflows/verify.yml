@@ -174,6 +174,9 @@ jobs:
       - name: Test the slopcourier body check
         run: test -z "$(gofmt -l .)" && go vet ./... && go test ./...
         working-directory: skills/slopcourier/scripts/bodycheck
+      - name: Test the slopnanny pull request watcher
+        run: test -z "$(gofmt -l .)" && go vet ./... && go test ./...
+        working-directory: skills/slopnanny/scripts/prwatch
 
   verify:
     if: always()
