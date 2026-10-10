@@ -563,3 +563,55 @@ func TestRunErrorsMustBeConsecutive(t *testing.T) {
 		t.Fatalf("separated failures ended the watch; code %d, output:\n%s", code, out)
 	}
 }
+
+func TestGitHubUsesTargetHost(t *testing.T) {
+	for _, tc := range []struct {
+		name, host, ambient, target, origin, state, want string
+		code                                             int
+	}{
+		{"explicit URL", "github.com", "github.corp.example", "https://github.com/o/r/pull/7", "", "OPEN", "ready: o/r#7", exitDone},
+		{"origin after merge", "github.corp.example", "github.com", "7", "git@github.corp.example:o/r.git", "MERGED", "job build failure https://ci/job", exitAttention},
+		{"CLI default", "github.corp.example", "github.corp.example", "7", "", "OPEN", "ready: o/r#7", exitDone},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			script := `#!/bin/sh
+selected_host=${GH_HOST:-github.com}
+endpoint=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --hostname) selected_host=$2; shift ;;
+    graphql|repos/*) endpoint=$1 ;;
+  esac
+  shift
+done
+if [ "$selected_host" != '__HOST__' ]; then
+  echo "wrong forge selected: $selected_host" >&2
+  exit 1
+fi
+case "$endpoint" in
+  graphql)
+    echo '{"data":{"viewer":{"login":"me"},"repository":{"pullRequest":{"url":"https://__HOST__/o/r/pull/7","state":"__STATE__","mergeStateStatus":"CLEAN","headRefOid":"aaaaaaa1","baseRefName":"main","mergeCommit":{"oid":"bbbbbbb2"}}}}}' ;;
+  repos/o/r/issues/7/reactions*) ;;
+  repos/o/r/actions/runs\?*)
+    echo '{"id":1,"name":"CI","event":"push","status":"completed","conclusion":"failure","url":"https://ci/run"}' ;;
+  repos/o/r/actions/runs/1/jobs*)
+    echo '{"name":"build","conclusion":"failure","url":"https://ci/job"}' ;;
+  *) echo "unexpected endpoint: $endpoint" >&2; exit 1 ;;
+esac
+`
+			script = strings.NewReplacer("__HOST__", tc.host, "__STATE__", tc.state).Replace(script)
+			if err := os.WriteFile(filepath.Join(dir, "gh"), []byte(script), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+			t.Setenv("GH_HOST", tc.ambient)
+			d := deps{forge: newForge, origin: func(context.Context) (string, error) { return tc.origin, nil }, clock: &fakeClock{now: t0}}
+			var out bytes.Buffer
+			code := run(context.Background(), []string{"-R", "o/r", "-appear", "0s", "-settle", "0s", tc.target}, d, &out, &out)
+			if code != tc.code || !strings.Contains(out.String(), tc.want) {
+				t.Fatalf("code %d, output:\n%s", code, out.String())
+			}
+		})
+	}
+}

@@ -64,7 +64,7 @@ func newForge(kind, host string) forge {
 	if kind == "gitlab" {
 		return &glabForge{host: host}
 	}
-	return ghForge{}
+	return ghForge{host: host}
 }
 
 func originURL(ctx context.Context) (string, error) {
@@ -856,9 +856,14 @@ func cli(ctx context.Context, name string, args ...string) ([]byte, error) {
 
 // GitHub.
 
-type ghForge struct{}
+type ghForge struct{ host string }
 
-func gh(ctx context.Context, args ...string) ([]byte, error) { return cli(ctx, "gh", args...) }
+func (g ghForge) call(ctx context.Context, args ...string) ([]byte, error) {
+	if g.host != "" {
+		args = append(args, "--hostname", g.host)
+	}
+	return cli(ctx, "gh", args...)
+}
 
 const prQuery = `query($owner: String!, $repo: String!, $number: Int!, $checks: String, $threads: String) {
   viewer { login }
@@ -1008,7 +1013,7 @@ type prResponse struct {
 	Errors []struct{ Message string } `json:"errors"`
 }
 
-func (ghForge) PullRequest(ctx context.Context, repo string, number int) (pr, error) {
+func (g ghForge) PullRequest(ctx context.Context, repo string, number int) (pr, error) {
 	owner, name, _ := strings.Cut(repo, "/")
 	var p pr
 	var checksAfter, threadsAfter string
@@ -1021,7 +1026,7 @@ func (ghForge) PullRequest(ctx context.Context, repo string, number int) (pr, er
 		if threadsAfter != "" {
 			args = append(args, "-f", "threads="+threadsAfter)
 		}
-		out, err := gh(ctx, args...)
+		out, err := g.call(ctx, args...)
 		if err != nil {
 			return pr{}, err
 		}
@@ -1113,8 +1118,8 @@ func (ghForge) PullRequest(ctx context.Context, repo string, number int) (pr, er
 	}
 }
 
-func (ghForge) BotEyes(ctx context.Context, repo string, number int) ([]string, error) {
-	out, err := gh(ctx, "api", "--paginate", fmt.Sprintf("repos/%s/issues/%d/reactions?content=eyes&per_page=100", repo, number),
+func (g ghForge) BotEyes(ctx context.Context, repo string, number int) ([]string, error) {
+	out, err := g.call(ctx, "api", "--paginate", fmt.Sprintf("repos/%s/issues/%d/reactions?content=eyes&per_page=100", repo, number),
 		"--jq", `.[] | select(.user.type == "Bot") | .user.login`)
 	if err != nil {
 		return nil, err
@@ -1122,8 +1127,8 @@ func (ghForge) BotEyes(ctx context.Context, repo string, number int) ([]string, 
 	return strings.Fields(string(out)), nil
 }
 
-func (ghForge) Runs(ctx context.Context, repo, sha, _ string) ([]workflowRun, error) {
-	out, err := gh(ctx, "api", "--paginate", fmt.Sprintf("repos/%s/actions/runs?head_sha=%s&per_page=100", repo, sha),
+func (g ghForge) Runs(ctx context.Context, repo, sha, _ string) ([]workflowRun, error) {
+	out, err := g.call(ctx, "api", "--paginate", fmt.Sprintf("repos/%s/actions/runs?head_sha=%s&per_page=100", repo, sha),
 		"--jq", `.workflow_runs[] | {id, name, event, status, conclusion: (.conclusion // ""), url: .html_url}`)
 	if err != nil {
 		return nil, err
@@ -1143,8 +1148,8 @@ func (ghForge) Runs(ctx context.Context, repo, sha, _ string) ([]workflowRun, er
 	return runs, nil
 }
 
-func (ghForge) FailedJobs(ctx context.Context, repo string, runID int64) ([]job, error) {
-	out, err := gh(ctx, "api", "--paginate", fmt.Sprintf("repos/%s/actions/runs/%d/jobs?filter=latest&per_page=100", repo, runID),
+func (g ghForge) FailedJobs(ctx context.Context, repo string, runID int64) ([]job, error) {
+	out, err := g.call(ctx, "api", "--paginate", fmt.Sprintf("repos/%s/actions/runs/%d/jobs?filter=latest&per_page=100", repo, runID),
 		"--jq", `.jobs[] | select(.conclusion != "success" and .conclusion != "skipped" and .conclusion != null) | {name, conclusion, url: .html_url}`)
 	if err != nil {
 		return nil, err
