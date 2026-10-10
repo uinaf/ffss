@@ -28,16 +28,26 @@ script pins with checksums stay manual, or let the target fetch the upstream
 
 ## Renovate
 
-- Extend the target organization’s shared preset and keep
-  repository files to opt-outs, approvals, and gated automerge opt-ins. Encode
-  schedule, release age, grouping, commit prefixes, and registry overrides
-  once. The preset repository must be public: the hosted app reads public
-  repositories with a token that cannot see private presets, and the failure is a
-  "Cannot find preset's package" issue on every public consumer.
-- The [uinaf preset](https://github.com/uinaf/renovate-config) runs daily with
+- Each owner keeps one preset as `renovate-config.json` in its public
+  `<owner>/.github` repository; consumers extend
+  `github><owner>/.github:renovate-config`. Do not add a separate preset
+  repository. Keep repository files to opt-outs, approvals, and gated
+  automerge opt-ins. Encode schedule, release age, grouping, commit prefixes,
+  and registry overrides once. The `.github` repository must be public: the
+  hosted app reads public repositories with a token that cannot see private
+  presets, and the failure is a "Cannot find preset's package" issue on every
+  public consumer.
+- A personal account extends the organization preset it shares a maintainer
+  with and adds only its overrides. An organization you work for keeps a
+  standalone copy, so its policy never depends on another owner's repository;
+  diff the copy against the source when either changes.
+- The [uinaf preset](https://github.com/uinaf/.github#renovate) runs daily with
   a three-day `minimumReleaseAge`, one day for `github-actions` and `docker`,
-  and none for `uinaf/.github`; patch and minor updates group per manager and
-  majors stay separate.
+  and none for `uinaf/.github`; patch and minor updates group per manager,
+  majors wait for dashboard approval.
+- The preset's `.github` repository verifies it on pull requests with
+  `renovate-config-validator --strict` plus a script that calls Renovate's
+  `resolveConfigPresets`, because the validator does not resolve preset names.
 - Use [GitHub-native automerge](#faster-github-automerge) when enforceable
   required checks are ready. Keep `platformAutomerge: false` for repositories
   without those gates; Renovate then waits for visible checks on a later run.
@@ -48,9 +58,19 @@ script pins with checksums stay manual, or let the target fetch the upstream
   unmigrated repositories receive nothing while they still run Dependabot.
   Turn **Create onboarding PRs** off when migrating by commit.
 - Migrate a repository in one commit: add `renovate.json`, delete
-  `.github/dependabot.yml`, update any documentation that names Dependabot.
-  Renovate skips onboarding when a config already exists on the default
-  branch.
+  `.github/dependabot.yml`, update any documentation that names Dependabot,
+  and drop Dependabot-only lint settings such as zizmor's
+  `dependabot-cooldown`. Close open Dependabot pull requests with
+  `--delete-branch`. Renovate skips onboarding when a config already exists
+  on the default branch.
+- Commits made through the contents API with a user token are unsigned and
+  fail a signed-commit rule; commit locally with signing for those
+  repositories.
+- Vulnerability pull requests bypass release age and dashboard approval, so
+  the first run on a neglected repository can open majors at once; review
+  them by hand.
+- When moving a preset, leave the old location extending the new one before
+  archiving it, so consumers you missed keep resolving.
 - OpenTofu repositories set `registryUrls` to `https://registry.opentofu.org`
   for the `terraform-provider` and `terraform-module` datasources and disable
   the `hashicorp/terraform` dependency, which otherwise tracks Terraform
