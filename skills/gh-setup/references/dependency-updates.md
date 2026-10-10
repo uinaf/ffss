@@ -48,6 +48,13 @@ script pins with checksums stay manual, or let the target fetch the upstream
 - The preset's `.github` repository verifies it on pull requests with
   `renovate-config-validator --strict` plus a script that calls Renovate's
   `resolveConfigPresets`, because the validator does not resolve preset names.
+- Set the commit type with `:semanticCommitTypeAll(deps)` in `extends`,
+  after `config:recommended`, and keep `ci` for `github-actions` as a
+  `packageRules` entry in the preset itself. Never set a top-level
+  `semanticCommitType`: `config:recommended` includes
+  `:semanticPrefixFixDepsChoreOthers`, whose package rules override it and
+  commit production dependency bumps as `fix:`, which semantic-release
+  publishes.
 - Use [GitHub-native automerge](#faster-github-automerge) when enforceable
   required checks are ready. Keep `platformAutomerge: false` for repositories
   without those gates; Renovate then waits for visible checks on a later run.
@@ -154,5 +161,6 @@ changing the config alone does not cancel GitHub's queued merges.
 
 After the first run, confirm the bot opened pull requests with the expected
 prefix, grouping, and registry, and that the retired bot opened none. For
-Renovate, the hosted job log on the Mend developer portal shows why a
-repository produced nothing.
+Renovate, the first pull request titles start with `deps:` or `ci:`, never
+`fix:` or `chore:`, and the hosted job log on the Mend developer portal
+shows why a repository produced nothing.
