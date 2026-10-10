@@ -9,7 +9,7 @@ guessing.
 
 Audit the guide's shape against
 [../../slopscriber/references/agent-first.md](../../slopscriber/references/agent-first.md):
-one authored source with a `CLAUDE.md` symlink or import, root content versus
+one authored source with a `CLAUDE.md` `@AGENTS.md` import, root content versus
 task-shaped pointers, the working model a product repository needs, abstract
 preferences translated into decisions. This reference adds only owner context,
 the cross-model contract, the audit procedure, and grade effects.

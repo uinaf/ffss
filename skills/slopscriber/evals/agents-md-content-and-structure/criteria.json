@@ -1,5 +1,5 @@
 {
-  "context": "An overloaded agent guide duplicated as AGENTS.md and CLAUDE.md. A good rewrite leaves one authored guide that CLAUDE.md imports or symlinks, keeps the exact lifecycle commands and repository hazards, maps kinds of change to their checks, links deeper docs by the question they answer, and drops the directory tour, API copy, generated table, and process checkpoints that have no task-specific reason.",
+  "context": "An overloaded agent guide duplicated as AGENTS.md and CLAUDE.md. A good rewrite leaves one authored guide that CLAUDE.md imports, keeps the exact lifecycle commands and repository hazards, maps kinds of change to their checks, links deeper docs by the question they answer, and drops the directory tour, API copy, generated table, and process checkpoints that have no task-specific reason.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -10,7 +10,7 @@
     {
       "name": "One authored source",
       "max_score": 15,
-      "description": "CLAUDE.md is a symlink to AGENTS.md or contains only an `@AGENTS.md` import (optionally with a one-line note). A CLAUDE.md that carries its own copy of the guide, synced or not, earns nothing."
+      "description": "CLAUDE.md is a regular file containing only an `@AGENTS.md` import (optionally with a one-line note). A symlink, or a CLAUDE.md that carries its own copy of the guide, synced or not, earns nothing."
     },
     {
       "name": "Hazards kept",
