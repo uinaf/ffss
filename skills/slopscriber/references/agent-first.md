@@ -57,9 +57,9 @@ Harnesses cap what they load: guide text past a size limit and skills past a
 discovery limit can be cut or omitted. Check the current harness documentation
 before adding root content or skills.
 
-Keep one authored source. When a repository uses AGENTS.md, use a CLAUDE.md
-symlink or supported `@AGENTS.md` import, not a copy. Preserve an existing
-valid import. Check current harness documentation before changing hierarchy,
+Keep one authored source. When a repository uses AGENTS.md, make CLAUDE.md a
+regular file containing only `@AGENTS.md`, not a copy or a symlink: some plugin
+installers and fetchers reject repositories that contain symlinks. Check current harness documentation before changing hierarchy,
 filenames, or import behavior: [Codex](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
 and [Claude Code](https://code.claude.com/docs/en/memory).
 
