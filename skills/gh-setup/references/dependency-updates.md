@@ -50,8 +50,8 @@ script pins with checksums stay manual, or let the target fetch the upstream
   `resolveConfigPresets`, because the validator does not resolve preset names.
 - Set the commit type with `:semanticCommitTypeAll(deps)` in `extends`,
   after `config:recommended`, and keep `ci` for `github-actions` as a
-  `packageRules` entry in the preset itself. Never set a top-level
-  `semanticCommitType`: `config:recommended` includes
+  `packageRules` entry in the preset itself. Set `semanticCommitScope: null`,
+  or titles read `deps(deps):`. Never set a top-level `semanticCommitType`: `config:recommended` includes
   `:semanticPrefixFixDepsChoreOthers`, whose package rules override it and
   commit production dependency bumps as `fix:`, which semantic-release
   publishes.
