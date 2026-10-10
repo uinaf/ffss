@@ -566,12 +566,15 @@ func TestRunErrorsMustBeConsecutive(t *testing.T) {
 
 func TestGitHubUsesTargetHost(t *testing.T) {
 	for _, tc := range []struct {
-		name, host, ambient, target, origin, state, want string
-		code                                             int
+		name, host, ambient, target, origin, state, want, kind string
+		code                                                   int
 	}{
-		{"explicit URL", "github.com", "github.corp.example", "https://github.com/o/r/pull/7", "", "OPEN", "ready: o/r#7", exitDone},
-		{"origin after merge", "github.corp.example", "github.com", "7", "git@github.corp.example:o/r.git", "MERGED", "job build failure https://ci/job", exitAttention},
-		{"CLI default", "github.corp.example", "github.corp.example", "7", "", "OPEN", "ready: o/r#7", exitDone},
+		{"explicit URL", "github.com", "github.corp.example", "https://github.com/o/r/pull/7", "", "OPEN", "ready: o/r#7", "", exitDone},
+		{"origin after merge", "github.corp.example", "github.com", "7", "git@github.corp.example:o/r.git", "MERGED", "job build failure https://ci/job", "", exitAttention},
+		{"SSH over HTTPS", "github.com", "github.corp.example", "7", "ssh://git@ssh.github.com:443/o/r.git", "OPEN", "ready: o/r#7", "", exitDone},
+		{"www URL", "github.com", "github.corp.example", "https://www.github.com/o/r/pull/7", "", "OPEN", "ready: o/r#7", "", exitDone},
+		{"different origin forge", "github.corp.example", "github.corp.example", "7", "git@gitlab.com:o/r.git", "OPEN", "ready: o/r#7", "github", exitDone},
+		{"CLI default", "github.corp.example", "github.corp.example", "7", "", "OPEN", "ready: o/r#7", "", exitDone},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -608,7 +611,7 @@ esac
 			t.Setenv("GH_HOST", tc.ambient)
 			d := deps{forge: newForge, origin: func(context.Context) (string, error) { return tc.origin, nil }, clock: &fakeClock{now: t0}}
 			var out bytes.Buffer
-			code := run(context.Background(), []string{"-R", "o/r", "-appear", "0s", "-settle", "0s", tc.target}, d, &out, &out)
+			code := run(context.Background(), []string{"-R", "o/r", "-forge", tc.kind, "-appear", "0s", "-settle", "0s", tc.target}, d, &out, &out)
 			if code != tc.code || !strings.Contains(out.String(), tc.want) {
 				t.Fatalf("code %d, output:\n%s", code, out.String())
 			}

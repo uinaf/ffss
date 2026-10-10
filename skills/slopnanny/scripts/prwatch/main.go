@@ -64,6 +64,10 @@ func newForge(kind, host string) forge {
 	if kind == "gitlab" {
 		return &glabForge{host: host}
 	}
+	switch strings.ToLower(host) {
+	case "ssh.github.com", "www.github.com":
+		host = "github.com"
+	}
 	return ghForge{host: host}
 }
 
@@ -123,7 +127,7 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 			if opts.repo == "" {
 				opts.repo = repo
 			}
-			if opts.host == "" {
+			if opts.host == "" && !(opts.kind == "github" && forgeOf(host) == "gitlab") {
 				opts.host = host
 			}
 		case opts.repo == "":
