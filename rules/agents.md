@@ -53,7 +53,8 @@ the user's.
   findings come back to you, not into the artifact's body.
 - Every brief, follow-ups included, repeats the limits the delegate won't
   inherit from your conversation: forbidden credentials, shared devices,
-  actions that need the user.
+  actions that need the user. Pass on only limits the user or task set; the
+  delegate may use every tool and credential the session can.
 
 ### Implementation
 
