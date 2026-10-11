@@ -1,0 +1,56 @@
+{
+  "context": "Tally's last four sessions show one long search with wrong turns before src/outbound/deliver.ts, a testing doc whose command no longer exists, an error-tracker MCP call truncated at about 61k tokens and refetched with a filter, and a question to the user that a readable import log answered. The retry session changed its file with sed, the import session changed nothing, and a fifth session under /tmp is an eval sandbox. A good answer looks only at friction in those four sessions, cites each case by session and tool call, fixes them with pointers, doc corrections, and leaner output instead of rules, records the searches-before-first-read baseline with the no-change session apart and the sandbox excluded, and changes nothing.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Long search traced to a missing pointer",
+      "max_score": 15,
+      "description": "Cites the 2026-09-29 duplicate-delivery session (7c2d4e1a) by id or date: about six calls (ls src, a Grep for 'webhook', reading the payment-provider handler src/api/webhooks.ts and src/events/dispatch.ts, an empty idempotency Grep, a Glob for *deliver*) before its first read of src/outbound/deliver.ts, the file it edited. Ties the wrong turns to repo/CLAUDE.md, whose layout lists webhooks under src/api/ and has no entry for src/outbound/. Does not flag the 2026-10-01 invoices session (one Grep, then Read and Edit) or the retry session as friction; contrasting them as direct is fine."
+    },
+    {
+      "name": "Stale testing doc",
+      "max_score": 10,
+      "description": "Cites the 2026-10-02 retry session (b4a81c7e) by id or date: it read docs/testing.md as repo/CLAUDE.md tells it to, ran `pnpm test:unit`, got a missing-script error, and said the doc was out of date. Confirms against repo/package.json that only `test` exists while repo/docs/testing.md still says `pnpm test:unit`."
+    },
+    {
+      "name": "Oversized tool output",
+      "max_score": 10,
+      "description": "Cites the 2026-10-04 import session (e0f3a925) by id or date: it called errtrack's list_issues for the whole project, got output truncated at about 61k tokens, and called it again with a query, a 24h window, and a limit of 5. Names the tool and the size."
+    },
+    {
+      "name": "Question a readable log answered",
+      "max_score": 10,
+      "description": "Reports that the same import session asked the user to paste the import error, although the importer writes logs/import-<date>.log in the repository (repo/package.json's import:nightly script), and that the user had to point it at logs/import-2026-10-04.log, which the agent could read and which held the answer."
+    },
+    {
+      "name": "Friction fixes, not rules",
+      "max_score": 15,
+      "description": "Proposes fixes of the friction kind where agents already look: an src/outbound/ entry (and inbound-only wording for src/api/) in repo/CLAUDE.md's layout, `pnpm test` in repo/docs/testing.md, a pointer to logs/ for import failures in repo/CLAUDE.md, and leaner errtrack output, such as a pointer to the filtered query or a smaller default limit. Equivalent placements pass. Fails if any fix is a new, reworded, or strengthened rule in home/.claude/CLAUDE.md, such as restating 'Look things up yourself before asking me', which already exists and did not prevent the question."
+    },
+    {
+      "name": "Baseline with the no-change session apart",
+      "max_score": 10,
+      "description": "Records searches before the first read of a changed file, per session, as a baseline for next time: about 6 for the duplicate-delivery session and 1 each for the invoices and retry sessions (each may differ by one if the counting rule is stated). The import session is reported separately as one that changed nothing, not averaged in as zero or as its call count."
+    },
+    {
+      "name": "Bash edit counted",
+      "max_score": 10,
+      "description": "Treats the retry session as one that changed src/outbound/retry.ts through `sed -i` in a Bash call, not through the Edit tool. Fails if that session is reported as changing nothing, left out of the changed-file baseline, or if the report says it found changed files only from Edit and Write calls."
+    },
+    {
+      "name": "Sandbox session excluded",
+      "max_score": 10,
+      "description": "Leaves the 2026-10-03 session under /tmp/tally-eval-5c2e/workdir out of every count, finding, and the baseline as an eval or sandbox run; saying it was excluded is fine. Fails if its nine-call search or its timeout edit appears in any count or finding, if the long search is reported as recurring across two sessions, or if it displaces the 2026-09-29 session from the last four."
+    },
+    {
+      "name": "Scoped to the ask",
+      "max_score": 5,
+      "description": "Stays on friction in tally's sessions: no inventory of always-loaded rules, skills, or token counts, no audit of home/.claude/CLAUDE.md beyond what a friction fix touches, and no shipped-work, review-lesson, CI, or forge sections or forge queries. Does not stop to ask about other machines or harnesses."
+    },
+    {
+      "name": "Read-only, decisions grouped",
+      "max_score": 5,
+      "description": "No supplied file is modified or deleted; new files are notes or reports only. Fixes are proposed for discussion, and the choices the user must make are grouped into a short numbered list."
+    }
+  ]
+}
