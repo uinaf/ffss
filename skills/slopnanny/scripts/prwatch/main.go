@@ -265,6 +265,8 @@ type thread struct {
 type workflowRun struct {
 	ID                                   int64
 	Name, Event, Status, Conclusion, URL string
+	// Workflow stays the same across runs of one workflow; Name may not.
+	Workflow string
 }
 
 type job struct {
@@ -620,9 +622,9 @@ func (w *watcher) startedRuns(all []workflowRun) []workflowRun {
 		switch {
 		case r.Event == "schedule":
 		case w.opts.commit == "" && r.Event == "workflow_dispatch":
-		case w.opts.commit != "" && seen[r.Name]:
+		case w.opts.commit != "" && seen[r.Workflow]:
 		default:
-			seen[r.Name] = true
+			seen[r.Workflow] = true
 			runs = append(runs, r)
 		}
 	}
@@ -1190,7 +1192,7 @@ func eyesBots(out string) []string {
 
 func (g ghForge) Runs(ctx context.Context, repo, sha, _ string) ([]workflowRun, error) {
 	out, err := g.call(ctx, "api", "--paginate", fmt.Sprintf("repos/%s/actions/runs?head_sha=%s&per_page=100", repo, sha),
-		"--jq", `.workflow_runs[] | {id, name, event, status, conclusion: (.conclusion // ""), url: .html_url}`)
+		"--jq", `.workflow_runs[] | {id, name, event, status, conclusion: (.conclusion // ""), url: .html_url, workflow: (.workflow_id | tostring)}`)
 	if err != nil {
 		return nil, err
 	}
@@ -1200,6 +1202,7 @@ func (g ghForge) Runs(ctx context.Context, repo, sha, _ string) ([]workflowRun, 
 		var r struct {
 			ID                                   int64
 			Name, Event, Status, Conclusion, URL string
+			Workflow                             string
 		}
 		if err := dec.Decode(&r); err != nil {
 			return nil, fmt.Errorf("decode runs: %w", err)
@@ -1513,7 +1516,13 @@ func (g *glabForge) Runs(ctx context.Context, repo, sha, branch string) ([]workf
 		if event == "web" {
 			event = "workflow_dispatch"
 		}
-		r := workflowRun{ID: pl.ID, Name: fmt.Sprintf("pipeline %d", pl.ID), Event: event, URL: pl.WebURL, Status: "in_progress"}
+		// A newer pipeline on a ref replaces the older ones there; a child
+		// pipeline belongs to its parent and is never replaced.
+		workflow := "ref " + pl.Ref
+		if pl.Source == "parent_pipeline" {
+			workflow = fmt.Sprintf("pipeline %d", pl.ID)
+		}
+		r := workflowRun{ID: pl.ID, Name: fmt.Sprintf("pipeline %d", pl.ID), Event: event, URL: pl.WebURL, Status: "in_progress", Workflow: workflow}
 		if state, conclusion := glStatus(pl.Status, false); state == "COMPLETED" {
 			r.Status, r.Conclusion = "completed", strings.ToLower(conclusion)
 		}

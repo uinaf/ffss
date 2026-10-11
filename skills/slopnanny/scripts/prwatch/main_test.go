@@ -277,16 +277,45 @@ func TestMergeWatchesRunsItTriggers(t *testing.T) {
 func TestCommitWatchesLatestRunOfEachWorkflow(t *testing.T) {
 	const sha = "0123456789abcdef0123456789abcdef01234567"
 	f := newFake()
-	nightly := workflowRun{ID: 9, Name: "Nightly", Event: "schedule", Status: "completed", Conclusion: "failure"}
-	oldDeploy := workflowRun{ID: 3, Name: "Deploy", Event: "workflow_dispatch", Status: "completed", Conclusion: "failure"}
-	ci := workflowRun{ID: 1, Name: "CI", Event: "push", Status: "completed", Conclusion: "success"}
-	deploy := workflowRun{ID: 4, Name: "Deploy", Event: "workflow_dispatch", Status: "in_progress"}
+	nightly := workflowRun{ID: 9, Name: "Nightly", Event: "schedule", Status: "completed", Conclusion: "failure", Workflow: "30"}
+	oldDeploy := workflowRun{ID: 3, Name: "Deploy", Event: "workflow_dispatch", Status: "completed", Conclusion: "failure", Workflow: "20"}
+	ci := workflowRun{ID: 1, Name: "CI", Event: "push", Status: "completed", Conclusion: "success", Workflow: "10"}
+	deploy := workflowRun{ID: 4, Name: "Deploy", Event: "workflow_dispatch", Status: "in_progress", Workflow: "20"}
 	f.runs[0] = []workflowRun{deploy, ci, oldDeploy, nightly}
 	deploy.Status, deploy.Conclusion = "completed", "success"
 	f.runs[3] = []workflowRun{deploy, ci, oldDeploy, nightly}
 	code, out, took := runArgs(t, f, "-commit", sha)
 	if code != exitDone || !strings.HasPrefix(out, "runs-passed: o/r@"+sha) || !strings.Contains(out, "Deploy (workflow_dispatch) success") || strings.Contains(out, "Nightly") || took < 3*time.Minute {
 		t.Fatalf("code %d after %s, output:\n%s", code, took, out)
+	}
+}
+
+func TestCommitKeepsWorkflowsThatShareAName(t *testing.T) {
+	f := newFake()
+	f.runs[0] = []workflowRun{
+		{ID: 2, Name: "CI", Event: "push", Status: "completed", Conclusion: "success", Workflow: "10"},
+		{ID: 1, Name: "CI", Event: "push", Status: "completed", Conclusion: "failure", Workflow: "11"},
+	}
+	if code, out, _ := runArgs(t, f, "-commit", "0123456789abcdef0123456789abcdef01234567"); code != exitAttention || !strings.HasPrefix(out, "runs-failed:") {
+		t.Fatalf("code %d, output:\n%s", code, out)
+	}
+}
+
+func TestGitLabCommitWatchesLatestPipelineOnEachRef(t *testing.T) {
+	const sha = "0123456789abcdef0123456789abcdef01234567"
+	pipelines := "projects/group%2Fsub%2Fapp/pipelines?sha=" + sha + "&per_page=100"
+	fakeGlab(t, map[string]string{
+		pipelines: `[
+			{"id":705,"status":"success","source":"web","ref":"main","web_url":"https://p/705"},
+			{"id":701,"status":"failed","source":"push","ref":"main","web_url":"https://p/701"}]`,
+		pipelines + "&source=parent_pipeline": `[
+			{"id":706,"status":"success","source":"parent_pipeline","ref":"main","web_url":"https://p/706"}]`,
+	})
+	d := deps{forge: newForge, origin: func(context.Context) (string, error) { return "git@gitlab.example.com:group/sub/app.git", nil }, clock: &fakeClock{now: t0}}
+	var out bytes.Buffer
+	code := run(context.Background(), []string{"-appear", "0s", "-settle", "0s", "-commit", sha}, d, &out, &out)
+	if code != exitDone || !strings.HasPrefix(out.String(), "runs-passed: group/sub/app@"+sha) || !strings.Contains(out.String(), "https://p/706") || strings.Contains(out.String(), "701") {
+		t.Fatalf("code %d, output:\n%s", code, out.String())
 	}
 }
 
