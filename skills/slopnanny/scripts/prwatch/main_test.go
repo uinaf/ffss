@@ -95,10 +95,15 @@ var (
 
 func watchFor(t *testing.T, f *fakeForge, args ...string) (int, string, time.Duration) {
 	t.Helper()
+	return runArgs(t, f, append(args, "7")...)
+}
+
+func runArgs(t *testing.T, f *fakeForge, args ...string) (int, string, time.Duration) {
+	t.Helper()
 	f.clock.now = t0
 	var stdout, stderr bytes.Buffer
 	d := deps{forge: func(string, string) forge { return f }, origin: func(context.Context) (string, error) { return "git@github.com:o/r.git", nil }, clock: f.clock}
-	code := run(context.Background(), append(args, "7"), d, &stdout, &stderr)
+	code := run(context.Background(), args, d, &stdout, &stderr)
 	return code, stdout.String() + stderr.String(), f.clock.now.Sub(t0)
 }
 
@@ -266,6 +271,30 @@ func TestMergeWatchesRunsItTriggers(t *testing.T) {
 	code, out, _ := watchFor(t, f)
 	if code != exitAttention || !strings.HasPrefix(out, "runs-failed:") || !strings.Contains(out, "job smoke failure https://jobs/smoke") || strings.Contains(out, "Nightly") {
 		t.Fatalf("code %d, output:\n%s", code, out)
+	}
+}
+
+func TestCommitWatchesLatestRunOfEachWorkflow(t *testing.T) {
+	const sha = "0123456789abcdef0123456789abcdef01234567"
+	f := newFake()
+	nightly := workflowRun{ID: 9, Name: "Nightly", Event: "schedule", Status: "completed", Conclusion: "failure"}
+	oldDeploy := workflowRun{ID: 3, Name: "Deploy", Event: "workflow_dispatch", Status: "completed", Conclusion: "failure"}
+	ci := workflowRun{ID: 1, Name: "CI", Event: "push", Status: "completed", Conclusion: "success"}
+	deploy := workflowRun{ID: 4, Name: "Deploy", Event: "workflow_dispatch", Status: "in_progress"}
+	f.runs[0] = []workflowRun{deploy, ci, oldDeploy, nightly}
+	deploy.Status, deploy.Conclusion = "completed", "success"
+	f.runs[3] = []workflowRun{deploy, ci, oldDeploy, nightly}
+	code, out, took := runArgs(t, f, "-commit", sha)
+	if code != exitDone || !strings.HasPrefix(out, "runs-passed: o/r@"+sha) || !strings.Contains(out, "Deploy (workflow_dispatch) success") || strings.Contains(out, "Nightly") || took < 3*time.Minute {
+		t.Fatalf("code %d after %s, output:\n%s", code, took, out)
+	}
+}
+
+func TestCommitNeedsFullSHAAndNoTarget(t *testing.T) {
+	for _, args := range [][]string{{"-commit", "0123abc"}, {"-commit", "0123456789abcdef0123456789abcdef01234567", "7"}} {
+		if code, out, _ := runArgs(t, newFake(), args...); code != exitError {
+			t.Fatalf("%v: code %d, output:\n%s", args, code, out)
+		}
 	}
 }
 

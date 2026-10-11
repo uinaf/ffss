@@ -7,7 +7,10 @@
 // An open change request is watched until its checks fail, someone else posts
 // a review or comment, its head moves, it merges or closes, or its checks
 // settle and it is ready or blocked. A merged one has the runs or pipelines
-// its merge commit started watched until they finish.
+// its merge commit started watched until they finish. With -commit, so do the
+// runs a pushed or dispatched commit started, without a change request:
+//
+//	go run <skill dir>/scripts/prwatch/main.go [flags] -commit <full sha>
 //
 // Exit codes: 0 ready, merged, or runs passed; 1 needs attention; 2 usage or
 // forge CLI failure; 3 deadline reached.
@@ -42,6 +45,7 @@ const (
 type options struct {
 	kind, host, repo          string
 	number                    int
+	commit                    string
 	timeout, interval, settle time.Duration
 	appear, botWait           time.Duration
 	since                     time.Time
@@ -90,15 +94,24 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 	flags.DurationVar(&opts.appear, "appear", 2*time.Minute, "how long to wait for the first check or run to appear")
 	flags.DurationVar(&opts.botWait, "bot-wait", 5*time.Minute, "how long to wait for a review bot that is visibly working")
 	flags.StringVar(&since, "since", "", "RFC 3339 time; reviews and comments after it count as new (default: now). Pass the previous run's since line")
+	flags.StringVar(&opts.commit, "commit", "", "full SHA of a pushed or dispatched commit whose runs to watch, instead of a change request")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "usage: prwatch [flags] <number | url>")
+		fmt.Fprintln(stderr, "usage: prwatch [flags] <number | url>\n       prwatch [flags] -commit <full sha>")
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args); err != nil {
 		return exitError
 	}
-	if flags.NArg() != 1 || opts.interval <= 0 {
+	targets := 1
+	if opts.commit != "" {
+		targets = 0
+	}
+	if flags.NArg() != targets || opts.interval <= 0 {
 		flags.Usage()
+		return exitError
+	}
+	if opts.commit != "" && !fullSHA.MatchString(opts.commit) {
+		fmt.Fprintln(stderr, "prwatch: -commit needs a full SHA, such as from git rev-parse HEAD; forges list nothing for a short one")
 		return exitError
 	}
 	opts.maxErrors = 3
@@ -106,9 +119,11 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 		fmt.Fprintln(stderr, "prwatch: -forge must be github or gitlab")
 		return exitError
 	}
-	if err := parseTarget(flags.Arg(0), &opts); err != nil {
-		fmt.Fprintln(stderr, "prwatch:", err)
-		return exitError
+	if opts.commit == "" {
+		if err := parseTarget(flags.Arg(0), &opts); err != nil {
+			fmt.Fprintln(stderr, "prwatch:", err)
+			return exitError
+		}
 	}
 	opts.since = clock.Now().Truncate(time.Second)
 	if since != "" {
@@ -147,6 +162,7 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 }
 
 var (
+	fullSHA   = regexp.MustCompile(`^[0-9a-f]{40}([0-9a-f]{24})?$`)
 	githubURL = regexp.MustCompile(`^https?://([^/]+)/([^/]+/[^/]+)/pull/(\d+)`)
 	gitlabURL = regexp.MustCompile(`^https?://([^/]+)/(.+?)/-/merge_requests/(\d+)`)
 	remoteURL = regexp.MustCompile(`^(?:[a-z+]+://)?(?:[^@/]+@)?([^/:]+)(?::\d+)?[:/](.+?)(?:\.git)?/?$`)
@@ -305,6 +321,9 @@ type verdict struct {
 }
 
 func (w *watcher) watch(ctx context.Context) int {
+	if w.opts.commit != "" {
+		return w.watchRuns(ctx, pr{Head: w.opts.commit})
+	}
 	w.start = w.clock.Now()
 	w.deadline = w.start.Add(w.opts.timeout)
 	errorsInRow := 0
@@ -588,9 +607,35 @@ func pendingReasons(p pr, opts options) []string {
 	return append(reasons, blockers(p)...)
 }
 
-// After merge.
+// After merge, or after a push or dispatch.
 
-var skippedEvents = map[string]bool{"schedule": true, "workflow_dispatch": true}
+// startedRuns drops runs the watched event didn't start. A merge starts no
+// scheduled or manual runs. A watched commit may be what a manual run built,
+// and a workflow run again on it counts only by its latest run; forges list
+// runs newest first.
+func (w *watcher) startedRuns(all []workflowRun) []workflowRun {
+	var runs []workflowRun
+	seen := map[string]bool{}
+	for _, r := range all {
+		switch {
+		case r.Event == "schedule":
+		case w.opts.commit == "" && r.Event == "workflow_dispatch":
+		case w.opts.commit != "" && seen[r.Name]:
+		default:
+			seen[r.Name] = true
+			runs = append(runs, r)
+		}
+	}
+	return runs
+}
+
+// startedBy names what started the watched runs.
+func (w *watcher) startedBy(sha string) string {
+	if w.opts.commit != "" {
+		return "commit " + short(sha)
+	}
+	return "merged as " + short(sha)
+}
 
 var passing = map[string]bool{"success": true, "skipped": true, "neutral": true}
 
@@ -612,12 +657,7 @@ func (w *watcher) watchRuns(ctx context.Context, p pr) int {
 				return code
 			}
 		} else {
-			runs = runs[:0]
-			for _, r := range all {
-				if !skippedEvents[r.Event] {
-					runs = append(runs, r)
-				}
-			}
+			runs = w.startedRuns(all)
 			code, done, err := w.judgeRuns(ctx, p, sha, runs, now)
 			if err != nil {
 				if code, stop := w.failed(err, &errorsInRow); stop {
@@ -639,7 +679,7 @@ func (w *watcher) watchRuns(ctx context.Context, p pr) int {
 func (w *watcher) judgeRuns(ctx context.Context, p pr, sha string, runs []workflowRun, now time.Time) (int, bool, error) {
 	if len(runs) == 0 {
 		if now.Sub(w.start) < w.opts.appear {
-			w.note("merged as %s; no runs yet", short(sha))
+			w.note("%s; no runs yet", w.startedBy(sha))
 			return 0, false, nil
 		}
 		w.reportRuns(p, sha, "no-runs", nil, nil)
@@ -658,7 +698,7 @@ func (w *watcher) judgeRuns(ctx context.Context, p pr, sha string, runs []workfl
 	sort.Strings(parts)
 	if len(running) > 0 {
 		w.stable("running", now)
-		w.note("merged as %s; running: %s", short(sha), strings.Join(running, ", "))
+		w.note("%s; running: %s", w.startedBy(sha), strings.Join(running, ", "))
 		return 0, false, nil
 	}
 	if !w.stable(strings.Join(parts, ";"), now) {
@@ -686,6 +726,10 @@ func (w *watcher) judgeRuns(ctx context.Context, p pr, sha string, runs []workfl
 // Output.
 
 func (w *watcher) header(state string, p pr, at string) {
+	if w.opts.commit != "" {
+		fmt.Fprintf(w.out, "%s: %s@%s (%s)\n", state, w.opts.repo, w.opts.commit, w.clock.Now().Sub(w.start).Round(time.Second))
+		return
+	}
 	sep := "#"
 	if w.opts.kind == "gitlab" {
 		sep = "!"
@@ -1448,7 +1492,11 @@ func (g *glabForge) Runs(ctx context.Context, repo, sha, branch string) ([]workf
 		Ref    string `json:"ref"`
 		WebURL string `json:"web_url"`
 	}
-	query := fmt.Sprintf("%s/pipelines?sha=%s&ref=%s&per_page=100", project(repo), sha, url.QueryEscape(branch))
+	ref := ""
+	if branch != "" {
+		ref = "&ref=" + url.QueryEscape(branch)
+	}
+	query := fmt.Sprintf("%s/pipelines?sha=%s%s&per_page=100", project(repo), sha, ref)
 	pipelines, err := list[pipeline](ctx, g, query)
 	if err != nil {
 		return nil, err
