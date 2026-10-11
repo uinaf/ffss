@@ -13,10 +13,11 @@ only after the user approves it.
 
 Default to this machine, every harness with local history, and the last 30
 days. A narrower ask, such as one repository's last ten sessions, runs only
-the lanes that answer it. Ask only for what cannot be discovered: other machines, which harnesses
-to include, and contexts to keep out, such as an employer's or a client's
-work. Write notes and delegate reports to a scratch directory outside every
-repository, and keep a running notes file there so the discussion can resume.
+the lanes that answer it. Ask only for what cannot be discovered: other
+machines, which harnesses to include, and contexts to keep out, such as an
+employer's or a client's work. Write notes and delegate reports to a scratch
+directory outside every repository, and keep a running notes file there so the
+discussion can resume.
 
 ## Lanes
 
@@ -48,10 +49,11 @@ Where to look and what to measure: [sources.md](references/sources.md).
    request: rework commits, review rounds, CI runs, reruns, and minutes.
    Report it per pull request, naming the costliest and any still unmerged.
 6. **Setup.** Duplicated rules, contradictions, instructions a capable model
-   already follows, stale references, skills competing for one request,
-   checks and review rules that mostly fire on correct work, context leaking into places it doesn't belong (public repositories,
-   another employer's machine), and the guardrails around repositories,
-   pipelines, and agents that serve other people.
+   already follows, stale references, skills competing for one request, checks
+   and review rules that mostly fire on correct work, context leaking into
+   places it doesn't belong (public repositories, another employer's machine),
+   and the guardrails around repositories, pipelines, and agents that serve
+   other people.
 7. **External**, when asked: compare popular skill collections against the
    user's own and say what is worth adopting, adapting, or skipping.
 
@@ -68,10 +70,12 @@ move on.
 ## Report
 
 Lead with the diagnosis in a sentence or two, then ranked findings. For each:
-the evidence, the smallest fix, and its owner. For a lesson, name one owner: the
-strongest that fits, a type, lint rule, or CI check that fails on that exact
-mistake, then the skill or playbook for that kind of work, then a global
-rule. For friction, the fix is a pointer from a file agents already read, a
+the evidence, the smallest fix, and its owner. For a lesson, name one owner,
+the strongest that fits: a change that removes the wrong way to do it, then a
+type, lint rule, or CI check that fails on that exact mistake, then the skill
+or playbook for that kind of work, then a global rule
+([enforcement](../slopprep/references/setup-patterns.md#mechanical-enforcement)).
+For friction, the fix is a pointer from a file agents already read, a
 corrected doc, leaner tool output, or read access, not a new rule. Prefer
 deleting or narrowing an instruction to adding one, and prefer the user's
 existing mechanisms, including checks that exist but aren't wired in or
@@ -89,5 +93,6 @@ and are deleted after the run.
 
 Apply approved findings in their owning repositories, with each repository's
 own gates and delivery rules, and re-sync the installed copies. Verify each
-installed result, not only the source change. Keep the notes file current
-with what shipped, its commit, and its proof.
+installed result, not only the source change; a new check must fail on a real
+past instance of its mistake. Keep the notes file current with what shipped,
+its commit, and its proof.

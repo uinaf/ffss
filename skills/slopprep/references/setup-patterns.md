@@ -57,12 +57,20 @@ Proof selection and failure requirements:
 
 ## Mechanical Enforcement
 
-Put deterministic policy in the narrowest existing mechanical surface:
-compiler, linter, or type checker; schema validator; test-framework extension;
-task graph for ordering; the canonical local gate; CI or branch policy only for
-unavoidable merge enforcement. Git hooks are optional adapters to the gate,
-never the owner of policy. Adopt an existing linter before adding another;
-baseline noisy checks before making them blocking.
+Agents copy the nearest example, so first remove the wrong way to do a thing:
+one owner for each piece of state, one supported path for each task, internals
+that can't be imported, one source for a list kept in sync by hand, and the old
+way deleted.
+
+Put the remaining deterministic policy in the narrowest existing mechanical
+surface: compiler, linter, or type checker; schema validator; test-framework
+extension; task graph for ordering; the canonical local gate; CI or branch
+policy only for unavoidable merge enforcement. Git hooks are optional adapters
+to the gate, never the owner of policy. Adopt an existing linter before adding
+another; baseline noisy checks before making them blocking, and where a
+pattern is already common, fail only on new instances. A check's error names
+what to use instead. Prove a new check fails on a real past instance of its
+mistake. Exceptions sit on the offending line with a reason and an expiry.
 
 For TypeScript repos already linting with Oxlint, offer vendoring the
 [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) rules: copy and
