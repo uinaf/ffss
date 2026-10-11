@@ -1,6 +1,6 @@
 ---
 name: slopaudit
-description: "Audit a person's whole agentic setup: loaded rules and skills, how they are actually used in session logs, recent shipped work, and the repositories, machines, MCP servers, and pipelines agents touch. Use for a periodic retro or when asked what to prune, fix, or add in an agent workflow; not for reviewing one change or auditing one codebase."
+description: "Audit a person's whole agentic setup: loaded rules and skills, how they are actually used in session logs, recent shipped work, and the repositories, machines, MCP servers, and pipelines agents touch. Use for a periodic retro, or when asked where agents struggle or what to prune, fix, or add in an agent workflow; not for reviewing one change or auditing one codebase."
 ---
 
 # Slopaudit
@@ -12,7 +12,8 @@ only after the user approves it.
 ## Scope
 
 Default to this machine, every harness with local history, and the last 30
-days. Ask only for what cannot be discovered: other machines, which harnesses
+days. A narrower ask, such as one repository's last ten sessions, runs only
+the lanes that answer it. Ask only for what cannot be discovered: other machines, which harnesses
 to include, and contexts to keep out, such as an employer's or a client's
 work. Write notes and delegate reports to a scratch directory outside every
 repository, and keep a running notes file there so the discussion can resume.
@@ -31,23 +32,27 @@ Where to look and what to measure: [sources.md](references/sources.md).
    frustration, bare approvals after the agent asked, status polling, skills
    invoked by the model versus typed by the user, never-loaded skills, and
    permission denials.
-3. **Shipped work.** From the forge: output by area, time spent on agent
+3. **Friction.** From the agents' own tool calls: where they searched long
+   before finding the right file or fact, followed a doc the code
+   contradicts, paid for tool output they barely used, or guessed because
+   a log, service, or fact was out of reach.
+4. **Shipped work.** From the forge: output by area, time spent on agent
    tooling versus product, churn, merges that beat review, and unresolved
    review threads after merge. For contributions to other people's projects,
    what maintainers accepted and rejected.
-4. **Review lessons.** The mistakes agents keep making, as caught by the
+5. **Review lessons.** The mistakes agents keep making, as caught by the
    people and review bots who read their pull requests: findings, requested
    changes, and commits reviewers or maintainers pushed onto the branch.
    Cluster them; each recurring cluster is a lesson with a proposed owner.
    Also measure the cost from first commit to production per merged pull
    request: rework commits, review rounds, CI runs, reruns, and minutes.
    Report it per pull request, naming the costliest and any still unmerged.
-5. **Setup.** Duplicated rules, contradictions, instructions a capable model
+6. **Setup.** Duplicated rules, contradictions, instructions a capable model
    already follows, stale references, skills competing for one request,
-   context leaking into places it doesn't belong (public repositories,
+   checks and review rules that mostly fire on correct work, context leaking into places it doesn't belong (public repositories,
    another employer's machine), and the guardrails around repositories,
    pipelines, and agents that serve other people.
-6. **External**, when asked: compare popular skill collections against the
+7. **External**, when asked: compare popular skill collections against the
    user's own and say what is worth adopting, adapting, or skipping.
 
 A lane is done when its report cites a file and line, a count with its query,
@@ -66,12 +71,16 @@ Lead with the diagnosis in a sentence or two, then ranked findings. For each:
 the evidence, the smallest fix, and its owner. For a lesson, name one owner: the
 strongest that fits, a type, lint rule, or CI check that fails on that exact
 mistake, then the skill or playbook for that kind of work, then a global
-rule. Prefer deleting or narrowing an instruction to adding one, and prefer
-the user's existing mechanisms to new hooks, scripts, or infrastructure. Group
-decisions the user must make into a short numbered list.
+rule. For friction, the fix is a pointer from a file agents already read, a
+corrected doc, leaner tool output, or read access, not a new rule. Prefer
+deleting or narrowing an instruction to adding one, and prefer the user's
+existing mechanisms, including checks that exist but aren't wired in or
+silently pass, to new hooks, scripts, or infrastructure. Group decisions the
+user must make into a short numbered list.
 
-Record a baseline for next time: corrections per completed outcome, the
-always-loaded token count, and the top repeated instructions. Save the report
+Record a baseline for next time: corrections per completed outcome, search
+calls before the first relevant read, the always-loaded token count, and the
+top repeated instructions. Save the report
 and baseline where the user keeps knowledge, next to earlier runs so the trend
 shows; file follow-up work in their tracker. Raw log excerpts stay in scratch
 and are deleted after the run.
