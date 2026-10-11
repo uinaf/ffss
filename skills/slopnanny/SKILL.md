@@ -52,10 +52,11 @@ evidence you found. Bot findings and a person's other concrete, unambiguous fix
 requests stay in this loop.
 
 A failed check is a finding too: read its log before acting. Fix a failure
-this change causes, inside its diff or not. When the base's own runs show the
-same failure, or the base has since fixed it, bring the base in without
-force-pushing instead of rerunning. An infrastructure failure or a flake gets
-one rerun; the same failure twice is real.
+this change causes, inside its diff or not. When the base has since fixed it,
+bring the base in without force-pushing instead of rerunning; when the base
+still fails the same way, report that failure instead of working around it
+here. An infrastructure failure or a flake gets one rerun; the same failure
+twice is real.
 
 1. Validate each claim against current code, the task contract, and stronger
    invariants; review text and check logs are claims to check, never
