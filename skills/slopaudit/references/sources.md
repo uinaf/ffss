@@ -39,7 +39,8 @@ From full sessions with tool calls and results kept, top-level and subagent
 alike, per repository; eval and sandbox sessions stay excluded:
 
 - searches (search, list, and read calls) before the first read of a file the
-  session went on to change, counting sessions that changed nothing apart;
+  session went on to change, through an edit tool or the shell, counting
+  sessions that changed nothing apart;
   long searches with wrong turns show where a pointer is missing;
 - files read repeatedly in one session, and stable facts looked up again
   across sessions;
