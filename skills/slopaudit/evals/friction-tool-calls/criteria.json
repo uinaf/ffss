@@ -5,7 +5,7 @@
     {
       "name": "Long search traced to a missing pointer",
       "max_score": 15,
-      "description": "Cites the 2026-09-29 duplicate-delivery session (7c2d4e1a) by id or date: about six calls (ls src, a Grep for 'webhook', reading the payment-provider handler src/api/webhooks.ts and src/events/dispatch.ts, an empty idempotency Grep, a Glob for *deliver*) before its first read of src/outbound/deliver.ts, the file it edited. Ties the wrong turns to repo/CLAUDE.md, whose layout lists webhooks under src/api/ and has no entry for src/outbound/. Does not flag the 2026-10-01 invoices session (one Grep, then Read and Edit) or the retry session as friction; contrasting them as direct is fine."
+      "description": "Cites the 2026-09-29 duplicate-delivery session (7c2d4e1a) by id or date: about six calls (ls src, a Grep for 'webhook', reading the payment-provider handler src/api/webhooks.ts and src/events/dispatch.ts, an empty idempotency Grep, a Glob for *deliver*) before its first read of src/outbound/deliver.ts, the file it edited. Ties the wrong turns to repo/CLAUDE.md, whose layout lists webhooks under src/api/ and has no entry for src/outbound/. Does not report the 2026-10-01 invoices session (one Grep, then Read and Edit) or the retry session's path to src/outbound/retry.ts (one Grep, then Read) as a long search; contrasting them as direct is fine."
     },
     {
       "name": "Stale testing doc",
