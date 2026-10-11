@@ -1124,11 +1124,24 @@ func (g ghForge) PullRequest(ctx context.Context, repo string, number int) (pr, 
 
 func (g ghForge) BotEyes(ctx context.Context, repo string, number int) ([]string, error) {
 	out, err := g.call(ctx, "api", "--paginate", fmt.Sprintf("repos/%s/issues/%d/reactions?content=eyes&per_page=100", repo, number),
-		"--jq", `.[] | select(.user.type == "Bot") | .user.login`)
+		"--jq", `.[] | .user.login + " " + .user.type`)
 	if err != nil {
 		return nil, err
 	}
-	return strings.Fields(string(out)), nil
+	return eyesBots(string(out)), nil
+}
+
+// eyesBots reads "login type" lines. GitHub types some app accounts, such as
+// chatgpt-codex-connector[bot], as User on reactions, so the login counts too.
+func eyesBots(out string) []string {
+	var bots []string
+	for _, line := range strings.Split(out, "\n") {
+		login, kind, _ := strings.Cut(strings.TrimSpace(line), " ")
+		if login != "" && (kind == "Bot" || botName.MatchString(login)) {
+			bots = append(bots, login)
+		}
+	}
+	return bots
 }
 
 func (g ghForge) Runs(ctx context.Context, repo, sha, _ string) ([]workflowRun, error) {

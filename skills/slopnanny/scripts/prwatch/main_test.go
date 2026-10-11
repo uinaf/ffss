@@ -244,6 +244,13 @@ func TestWaitsForWorkingBotThenGivesUp(t *testing.T) {
 	}
 }
 
+func TestEyesBotsCountsAppsTypedAsUsers(t *testing.T) {
+	got := eyesBots("chatgpt-codex-connector[bot] User\nsomeone User\ncoderabbitai Bot\n")
+	if strings.Join(got, ",") != "chatgpt-codex-connector[bot],coderabbitai" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestMergeWatchesRunsItTriggers(t *testing.T) {
 	f := newFake()
 	f.prs[0] = with(open(passed("ci")), func(p *pr) { p.State, p.MergeCommit = "MERGED", "bbbbbbb2" })
