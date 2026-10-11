@@ -1,6 +1,6 @@
 ---
 name: slopnanny
-description: "Resolve review feedback and CI on an open change request, merge when green unless asked to hold, then watch the runs the merge starts. Use for babysitting delivered work."
+description: "Resolve review feedback and CI on an open change request, merge when green unless asked to hold, then watch the runs the merge starts; also watch the runs a direct push or dispatched workflow starts. Use for babysitting delivered work."
 ---
 
 # Slopnanny
@@ -107,14 +107,16 @@ started on the default branch.
   with `-commit <full sha>` instead of a number. It watches that commit's runs
   the same way, counting manual runs and only the latest run of each workflow.
 - Only without Go, do the same by hand:
-  - Take the full merge SHA; an abbreviated one lists nothing. Read
+  - Take the full SHA; an abbreviated one lists nothing. For a push or
+    dispatch, that is the commit's (`git rev-parse`). After a merge, read
     `mergeCommit` from `gh pr view <number> --json mergeCommit,headRefOid`, or
     `merge_commit_sha`, then `squash_commit_sha`, from
     `glab mr view <number> -F json`. A fast-forward or indirect merge has
     neither; use the head commit that landed (`headRefOid` or `sha`).
-  - List the runs with `gh run list --commit <merge-sha> --limit 100` or
-    `glab ci list --sha <merge-sha>`, skipping scheduled and manual runs. Runs
-    can take a minute to appear; if none do, say so and stop.
+  - List the runs with `gh run list --commit <sha> --limit 100` or
+    `glab ci list --sha <sha>`, skipping scheduled runs. After a merge, skip
+    manual runs too; for a push or dispatch, keep only the latest run of each
+    workflow. Runs can take a minute to appear; if none do, say so and stop.
   - Wait once, re-polling, until they finish: at most 30 minutes unless the
     user set a deadline. Runs they trigger, such as a deploy after CI or a
     downstream pipeline, join the wait; re-list a minute after the last one
