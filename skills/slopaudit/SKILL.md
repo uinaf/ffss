@@ -34,8 +34,8 @@ Where to look and what to measure: [sources.md](references/sources.md).
    permission denials.
 3. **Friction.** From the agents' own tool calls: where they searched long
    before finding the right file or fact, followed a doc the code
-   contradicts, paid for tool output they barely used, or guessed because
-   a log, service, or fact was out of reach.
+   contradicts, fetched oversized or repeated tool output, or guessed
+   because a log, service, or fact was out of reach.
 4. **Shipped work.** From the forge: output by area, time spent on agent
    tooling versus product, churn, merges that beat review, and unresolved
    review threads after merge. For contributions to other people's projects,
@@ -78,9 +78,9 @@ existing mechanisms, including checks that exist but aren't wired in or
 silently pass, to new hooks, scripts, or infrastructure. Group decisions the
 user must make into a short numbered list.
 
-Record a baseline for next time: corrections per completed outcome, search
-calls before the first relevant read, the always-loaded token count, and the
-top repeated instructions. Save the report
+Record a baseline for next time from the lanes that ran: corrections per
+completed outcome, searches before the first read of a changed file, the
+always-loaded token count, and the top repeated instructions. Save the report
 and baseline where the user keeps knowledge, next to earlier runs so the trend
 shows; file follow-up work in their tracker. Raw log excerpts stay in scratch
 and are deleted after the run.

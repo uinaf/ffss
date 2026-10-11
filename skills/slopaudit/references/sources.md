@@ -35,16 +35,18 @@ Measure per week so trends show:
 
 ## Friction
 
-From full sessions, top-level and subagent alike, per repository:
+From full sessions with tool calls and results kept, top-level and subagent
+alike, per repository; eval and sandbox sessions stay excluded:
 
-- search, list, and read calls before the first read of a file the session
-  went on to change; the longest searches show where a pointer is missing;
+- searches (search, list, and read calls) before the first read of a file the
+  session went on to change, counting sessions that changed nothing apart; the
+  longest searches show where a pointer is missing;
 - files read repeatedly in one session, and facts looked up again across
   sessions;
 - docs, guides, and skills the agent read and then found wrong: a path,
   command, or name that no longer exists, or the agent saying so;
 - tool output size by tool and MCP server: the largest calls, the totals, and
-  output truncated or rerun with a filter;
+  output truncated, fetched again, or rerun with a filter;
 - guesses, and questions to the user, that a log, file, or read-only service
   could have answered.
 
