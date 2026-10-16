@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "ffss",
-      "source": ".",
+      "source": "./",
       "description": "Workflow skills for implementation, review, delivery, planning, documentation, readiness, repo-local stack skills, setup audits, and prose cleanup.",
       "category": "workflow"
     }
