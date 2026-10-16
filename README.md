@@ -54,11 +54,9 @@ Verification details: [slopguard](cli/slopguard/README.md#install).
 
 ### Plugin
 
-After [Cursor Marketplace](https://cursor.com/marketplace) listing, install ffss via
-**Grok Bot Plugins** or **Cursor Customize → Marketplace**. Maintainers submit at
-[cursor.com/marketplace/publish](https://cursor.com/marketplace/publish).
-
-CLI / local marketplace installs (unchanged):
+Once ffss is listed on the [Cursor Marketplace](https://cursor.com/marketplace),
+install it through **Grok Bot Plugins** or **Cursor Customize → Marketplace**.
+From a CLI, add this repository's marketplace:
 
 ```text
 # Claude Code
