@@ -28,11 +28,11 @@ the cheapest shape that still proves the contract.
   `self-hosted-runner.labels` in `.github/actionlint.yaml`
   ([actionlint](https://github.com/rhysd/actionlint/blob/main/docs/config.md)).
 - When the owner routes private jobs off GitHub-hosted runners, every job
-  reads one plain-string variable with a GitHub-hosted fallback,
-  `runs-on: ${{ vars.CI_RUNNER_ARM64 || 'ubuntu-24.04-arm' }}`, so a
-  provider move or an outage is a variable change, not a workflow edit.
-  Private repositories on GitHub Free can't read organization variables, so
-  there each repository sets its own.
+  reads one plain-string variable, `runs-on: ${{ vars.CI_RUNNER_ARM64 }}`, so
+  a provider move or an outage is a variable change, not a workflow edit.
+  There is no fallback: every repository that reads it needs a value, such as
+  `ubuntu-24.04-arm` for GitHub-hosted. Private repositories on GitHub Free
+  can't read organization variables, so there each repository sets its own.
   Self-hosted runners never take fork pull requests
   ([hardening](https://docs.github.com/en/actions/reference/security/secure-use#hardening-for-self-hosted-runners)).
 - Provider requirements override that policy: npm trusted publishing supports
