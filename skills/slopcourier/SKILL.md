@@ -13,6 +13,8 @@ at After merge. Stop where the request stops: "open the PR" ends at Open, while
 
 ## Preconditions
 
+- Every forge write is authorized by the user's request or agreed plan;
+  finishing an implementation is not a request to publish it.
 - Required gates passed on this revision; report missing or failing gates
   instead of delivering. Don't repeat passing proof without new changes.
 - Proof fits the change: a bug fix has a regression check that fails before the
