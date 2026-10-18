@@ -1,5 +1,5 @@
 // Command prwatch waits on a GitHub pull request or GitLab merge request until
-// slopnanny has something to act on, then prints what it saw and exits. Run it
+// slopcourier has something to act on, then prints what it saw and exits. Run it
 // where `gh` or `glab` is signed in:
 //
 //	go run <skill dir>/scripts/prwatch/main.go [flags] <number | url>
@@ -427,7 +427,7 @@ func pending(c check) bool {
 	return c.Status != "COMPLETED" && c.Status != ""
 }
 
-// judge returns a verdict once the pull request needs slopnanny, or nil to
+// judge returns a verdict once the pull request needs slopcourier, or nil to
 // keep waiting.
 func (w *watcher) judge(ctx context.Context, p pr, now time.Time) (*verdict, error) {
 	if w.head == "" {

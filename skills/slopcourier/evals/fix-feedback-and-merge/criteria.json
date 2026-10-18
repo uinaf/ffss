@@ -1,7 +1,6 @@
 {
   "context": "Review feedback on an already-open PR: fix the concrete finding, push, resolve, and merge once the new head is green. The PR's title and body are already accurate, so nothing about the change request itself needs composing.",
   "type": "weighted_checklist",
-  "skill_use": "forbidden",
   "install": "all",
   "checklist": [
     {

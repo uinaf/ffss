@@ -1,7 +1,6 @@
 {
   "context": "A request to open a PR for finished, tested work. Opening it is the whole job; watching it to merge was not asked.",
   "type": "weighted_checklist",
-  "skill_use": "forbidden",
   "install": "all",
   "checklist": [
     {

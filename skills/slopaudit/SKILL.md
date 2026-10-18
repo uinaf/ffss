@@ -73,8 +73,9 @@ Lead with the diagnosis in a sentence or two, then ranked findings. For each:
 the evidence, the smallest fix, and its owner. For a lesson, name one owner,
 the strongest that fits: a change that removes the wrong way to do it, then a
 type, lint rule, or CI check that fails on that exact mistake, then the skill
-or playbook for that kind of work, then a global rule
-([enforcement](../slopprep/references/setup-patterns.md#mechanical-enforcement)).
+or playbook for that kind of work, then a global rule. Put a check in the
+narrowest existing surface (compiler, linter, schema, test framework, the
+local gate) before CI or a git hook, and name what to use instead in its error.
 For friction, the fix is a pointer from a file agents already read, a
 corrected doc, leaner tool output, or read access, not a new rule. Prefer
 deleting or narrowing an instruction to adding one, and prefer the user's
