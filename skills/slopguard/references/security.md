@@ -9,8 +9,10 @@ target may go to that provider; if the harness asks for approval, say what
 leaves the machine and to whom.
 
 slopguard's refusals (sensitive path, size, binary, invalid UTF-8, symlink,
-revision, capability, source change) are the boundary: fix the target. A
-split oversized bundle doesn't prove the whole change clean.
+revision, capability, source change) are the boundary. Report a refusal as a
+blocker unless the change itself was wrong and you fix it. A review covers
+only the target it ran on, so a reduced or split bundle is a partial review;
+say so.
 
 Web access lets repo content steer the reviewer to attacker-chosen URLs.
 Turn it off for targets that must stay off the network.

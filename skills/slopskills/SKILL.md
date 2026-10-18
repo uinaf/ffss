@@ -27,7 +27,8 @@ Install the stack skills a repository needs into that repository.
    task that should load the skill and one that shouldn't. Installed means
    available, not invoked; say which you tested.
 
-For advice-only requests, stop after step 3 and give the install commands.
+For advice-only requests, list the source and compose the step 4 commands,
+then stop before installing.
 
 Report each skill with its stack evidence, its state (installed or already
 there), and gaps.

@@ -37,7 +37,8 @@ ones. What leaves the machine: [security.md](references/security.md).
    defect or unmet requirement; reject the rest with a short reason. Fix
    accepted findings together, in the next frozen target (worktree for
    local, a commit for branch, an amended commit for commit mode).
-6. **Re-review** the final target with the same provider and mode.
+6. **Re-review** after accepted fixes change the target: the final target,
+   same provider and mode.
 
 ## Done
 

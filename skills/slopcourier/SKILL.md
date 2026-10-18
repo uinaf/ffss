@@ -60,6 +60,8 @@ go run <this skill's dir>/scripts/prwatch/main.go [-R owner/repo] [-since <since
 - Act, then rerun with `-since <its since: line>` so nothing between runs is
   missed.
 - One background run per PR. For several PRs, start one each.
+- **No Go:** poll `gh pr view` / `gh pr checks` (or `glab mr view`) for the
+  same evidence, and say prwatch didn't run.
 
 Read everything it surfaces: a `CHANGES_REQUESTED` review can have no inline
 thread, and bots often post top-level comments. A requested human reviewer who

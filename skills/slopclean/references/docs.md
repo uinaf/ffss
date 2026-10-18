@@ -28,7 +28,8 @@ decisions.
   user decision. Link deeper docs, saying when to open each. No mandatory
   reading lists, test-after-every-edit reminders, review checkpoints, or
   commit caps.
-- **`CLAUDE.md`:** a regular file containing only `@AGENTS.md`.
+- **`CLAUDE.md`:** when the repo uses `AGENTS.md`, a regular file containing
+  only `@AGENTS.md`.
 - **README:** purpose, install and start, first use, links. Contributor setup
   goes in CONTRIBUTING, private reporting in SECURITY. Don't invent contacts
   or promises.
