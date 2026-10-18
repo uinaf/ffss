@@ -1,116 +1,61 @@
-# Visual evidence ladder
+# Visual evidence
 
-Every change request carries one aid; reuse existing evidence before capturing
-more. Pick the smallest view that answers the review question: a focused diff
-or short code sample, a shallow call tree or Mermaid diagram for control flow,
-a table for numbers, sanitized input/output for a contract, a screenshot or
-short recording for UI. Label
-examples and diagrams as explanatory: they do not prove execution. Keep the aid
-beside the claim it supports; no standalone HTML explainers.
+Reuse existing evidence first. Pick the smallest view that answers the review
+question: a focused diff or code sample, a call tree or Mermaid diagram, a
+table, sanitized input/output, a screenshot or short recording. Put it next to
+the claim it supports. Label diagrams and examples as explanatory; they don't
+prove execution.
 
-Selection principle adapted from [HumanLayer's show-me skill](https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md).
+Text, tables, code, and Mermaid need no upload. Media goes up through the
+PR's own forge. Proof assets are never committed to the repo.
 
-## Upload routes
+## Recordings
 
-Inline text, tables, code, and Mermaid need no upload. Captured media goes
-through the first applicable route below.
+- Start within about 2 seconds of the first relevant action; end when the
+  outcome is visible.
+- Trim instead of re-recording: `ffmpeg -ss <start> -to <end> -i in.mp4 -c copy out.mp4`.
+  Check the result with `ffprobe` before attaching.
+- Transcode webm first: `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4`.
+- Show a long wait as a before/after pair or a short clip of the transition.
+- Over about 15 seconds, a labeled screenshot sequence reads better.
 
-- Forge rungs apply only to the forge the delivery dispatched to; never upload
-  through the other forge's API because its CLI happens to be installed.
-- Never commit proof assets to any product repository branch (no
-  `.github/pr-assets` or similar).
+## GitHub
 
-## Recording content
-
-A recording proves an interaction; the reviewer's time starts at frame one.
-
-- Start at (or within ~2 seconds of) the first relevant action and end when
-  the outcome is visible. App launch, setup, and waiting are not evidence.
-- Review the artifact before attaching: check the duration with `ffprobe` and
-  confirm the opening frames show relevant state, not an idle screen.
-- Trim dead time instead of re-recording:
-  `ffmpeg -ss <start> -to <end> -i in.mp4 -c copy out.mp4`.
-- When the wait itself is the behavior (a progress or loading state), compress
-  it: a before/after screenshot pair or a short clip of the transition, never
-  real-time idle footage.
-- Prefer roughly 15 seconds or less; beyond that, a labeled screenshot
-  sequence usually reads better.
-
-## 1. github.com deliveries (`gh --attach`)
-
-`gh` 2.99+ uploads media natively; check `gh --version` first (older `gh`
-uses the fallback below). `gh pr create`, `gh pr edit`, `gh pr comment`, and
-the `issue` equivalents take a repeatable `--attach <file>` flag (limits and
-alt-text rules: `gh pr create --help`). `gh pr review`
-does not; use `gh pr comment` for review media. The asset inherits repository
-visibility.
+`gh` 2.99+ takes a repeatable `--attach` on
+`pr create`, `pr edit`, `pr comment`, and the `issue` equivalents.
+`gh pr review` doesn't; use `gh pr comment` for review media.
 
 ```bash
-gh pr create --attach './after.png#Login error state'   # alt text after '#', quoted
+gh pr create --attach './after.png#Login error state'   # alt text after '#'
 gh pr comment 13 --attach ./before.png --attach ./after.png
 gh pr edit 13 --attach ./flow.mp4                       # video takes no alt text
 ```
 
-- Video is embedded as a bare URL on its own line, where GitHub renders a
-  player. Never wrap it in `![]()` yourself or give it alt text.
-- Transcode Playwright's webm for broad playback first:
-  `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4`.
-- `--attach` does not combine with `--web` or `--dry-run`.
-- Retry failed uploads with `gh pr edit --attach`.
-- Requires an OAuth token, classic PAT, or fine-grained PAT, and WRITE or
-  higher on the repository. The upload endpoint 404s GitHub App installation
-  tokens ([cli/cli#14309](https://github.com/cli/cli/issues/14309)), so
-  runtimes on App tokens skip the fallback below and go to rung 3.
+- Video embeds as a bare URL on its own line. No `![]()`, no alt text.
+- `--attach` doesn't work with `--web` or `--dry-run`. Retry a failed upload
+  with `gh pr edit --attach`.
+- GitHub App installation tokens get a 404 from the upload endpoint
+  ([cli/cli#14309](https://github.com/cli/cli/issues/14309)); fall through to
+  [No upload route](#no-upload-route).
 
-<details><summary>Fallback: gh below 2.99 with an OAuth token or PAT</summary>
-
-Upload to the CDN the web drag-drop uses, then embed the returned `.url`
-(images as markdown, video as a bare line):
-
-```bash
-repo_id=$(gh api repos/{owner}/{repo} -q .id)
-name=$(jq -rn --arg v "<file basename>" '$v|@uri')
-curl -s "https://uploads.github.com/user-attachments/assets?name=${name}&content_type=<mime>&repository_id=${repo_id}" \
-  -X POST \
-  -H @- \
-  --data-binary @<file> <<EOF
-Authorization: Bearer $(GH_HOST=github.com gh auth token)
-Accept: application/json
-EOF
-```
-
-The heredoc keeps the token out of the process argument list. 422 =
-unsupported content type; 404 = bad repository id or no push permission.
-
-</details>
-
-## 2. GitLab deliveries (`glab`)
-
-Upload through the project uploads API and embed the returned markdown:
+## GitLab
 
 ```bash
 glab api "projects/:id/uploads" --form "file=@evidence.png"
 ```
 
-- The response carries a `markdown` field (`![…](/uploads/…)`); paste it into
-  the change-request description or a comment.
-- Uploads inherit project visibility.
+Paste the response's `markdown` field into the description or a comment.
 
 ## Embedding
 
-Structure the evidence; never paste bare images that take over the page:
+- Constrain size, especially mobile screenshots: `<img src="…" width="300">`.
+- Put comparisons side by side in a table with labeled columns.
+- One primary aid inline; collapse the rest in `<details>`.
 
-- Constrain size with an HTML img tag, especially mobile screenshots
-  (`<img src="…" width="300">`).
-- Put comparisons side by side in a table (before/after, light/dark,
-  breakpoints), one labeled column each.
-- Collapse anything long or secondary in `<details><summary>…</summary>`.
-- One primary aid inline; everything else collapsed or linked.
+## No upload route
 
-## 3. Non-media artifacts or endpoint failure
+Paste the decisive excerpt as fenced, sanitized text, or link an artifact the
+forge already hosts (CI artifact, check run). If nothing works, deliver
+without the aid and say so.
 
-- Do not force non-media artifacts through a media endpoint.
-- Fall back to the change request itself: paste the decisive excerpt as
-  fenced, sanitized text (contract input/output, log lines), or link an
-  artifact the forge already hosts, such as a CI job artifact or check run.
-- If no honest attachment path exists, deliver without the aid and say so.
+Selection adapted from [HumanLayer's show-me skill](https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md).

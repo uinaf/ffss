@@ -1,75 +1,31 @@
-# Security and issue reporting
+# Security
 
-- The CLI freezes one explicit local, branch, or commit target into a bounded
-  UTF-8 bundle and labels repository material as untrusted.
-- It sends the complete frozen bundle, including deleted bytes and context, to
-  the selected provider without credential scanning. Binary content is never
-  sent: tracked binaries appear as Git's summary line with blob IDs, untracked
-  binaries as size and SHA-256.
-- It invokes provider executables outside the reviewed repository and refuses
-  stale source after provider execution.
+## What leaves the machine
 
-- Do not bypass a sensitive-path, size, binary-context, invalid-UTF-8,
-  symlink, revision, capability, or source-change refusal.
-- Confirm the frozen target is authorized for disclosure to the selected
-  provider; Slopguard does not scan it for credentials.
-- Do not split an oversized bundle and claim whole-change cleanliness.
+The whole frozen bundle, deleted lines and context included, goes to the
+provider unscanned for credentials. Binaries are never sent (tracked ones
+appear as Git's summary line, untracked as size and SHA-256). Make sure the
+target may go to that provider; if the harness asks for approval, say what
+leaves the machine and to whom.
 
-## Execution approval
+slopguard's refusals (sensitive path, size, binary, invalid UTF-8, symlink,
+revision, capability, source change) are the boundary: fix the target. A
+split oversized bundle doesn't prove the whole change clean.
 
-Slopguard is a local launcher, not a hosted review service. The selected harness
-sends the frozen bundle to its configured model provider; disabling web search
-does not make that processing offline.
+Web access lets repo content steer the reviewer to attacker-chosen URLs.
+Turn it off for targets that must stay off the network.
 
-Web access is on by default. Repository content under review can steer the
-reviewer toward attacker-chosen URLs and leak bundle content through fetches.
-Pass `--web-access=false` for targets that must not reach the network.
+## Filing a slopguard bug
 
-Use the task's existing authorization for that repository, target, and provider.
-When execution needs approval, state those facts, what content leaves the
-machine, and that the reviewer only reports. Installation, login, or this skill
-alone does not authorize disclosure. Do not expose credential values to prove
-the route.
+Search first:
+`gh issue list --repo uinaf/ffss --state all --search "<summary> in:title"`.
+Show the user the sanitized issue before `gh issue create --repo uinaf/ffss`.
 
-If approval is denied, report the reason and continue independent work. Do not
-hide the transfer, switch providers, weaken the sandbox, or retry through
-another command. An unresolved disclosure boundary needs a scoped user decision;
-see [Codex auto-review](https://learn.chatgpt.com/docs/sandboxing/auto-review).
+It holds only: version, OS and arch, provider, web-access state, failure
+class (plus protocol reason and rule), a repro on public or synthetic input,
+and expected versus actual behavior. Nothing from the bundle, prompt, source,
+diff, repo, paths, credentials, environment, or raw provider output.
 
-## Public defects
-
-Create a public issue only for a reproducible non-security slopguard defect.
-Search open and closed issues first:
-
-```bash
-gh issue list --repo uinaf/ffss --state all --search "$sanitized_summary in:title"
-```
-
-The issue may contain only:
-
-- slopguard version
-- operating system and architecture
-- provider name and web-access state
-- stable failure class, plus the protocol reason and violated rule for
-  protocol failures
-- sanitized reproduction steps using public or synthetic input
-- expected behavior and high-level actual behavior
-
-Never include the frozen bundle, task prompt, reviewed source, diff, repository
-identity, private or absolute paths, credentials, environment output, provider
-command line, or raw provider stdout/stderr. Write a sanitized body to a
-temporary file, show the user the title and body, and file it only after they
-approve:
-`gh issue create --repo uinaf/ffss --title "$sanitized_summary" --body-file "$sanitized_body"`.
-
-If GitHub access is missing or any field cannot be safely sanitized, do not
-create the issue; tell the user what prevented safe reporting.
-
-## Vulnerabilities
-
-- Never open a public issue for suspected secret exposure, command injection,
-  path traversal, unsafe provider execution, sandbox escape, bundle-boundary
-  failure, or malformed output accepted as clean.
-- Use private vulnerability reporting from the `uinaf/ffss` repository
-  Security tab, with synthetic, high-level reproduction details.
-- The same exclusion list applies to private reports.
+Security bugs (secret exposure, injection, path traversal, sandbox escape,
+bundle-boundary failures, malformed output accepted as clean) go to private
+vulnerability reporting on the `uinaf/ffss` Security tab, same exclusions.

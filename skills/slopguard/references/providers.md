@@ -1,19 +1,12 @@
-# Provider selection
+# Providers
 
-- Select one provider for the entire review.
-- Honor the user's provider, model, and reasoning-effort choices first, then
-  trusted repository or account configuration. Pass explicit user model and
-  effort choices as CLI flags.
-- If no source chooses a provider, use Codex with medium reasoning.
-- Do not run multiple providers, fall back after failure, or claim consensus.
+- One provider per review: the user's choice, then trusted repo or account
+  config, else Codex at medium reasoning. Pass the user's model and effort as
+  flags.
+- No panels, no consensus, no fallback to another engine after a failure.
+  Auth and capability failures are results to report.
+- When the user approves a substitute for an unavailable engine, keep that
+  engine's default model and step effort down one level.
 
-Engines, defaults, and per-engine constraints: `slopguard review --help`,
-`slopguard config`, and the
-[engine docs](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/engines/README.md).
-
-- When the user authorizes an alternative for an unavailable configuration,
-  keep the engine's default model and step the effort down one level.
-- A capability or authentication failure is an operational result, not
-  permission to switch engines.
-
-Web-access policy lives in [configuration.md](configuration.md).
+Engines and their constraints: `slopguard review --help`, `slopguard config`,
+and the [engine docs](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/engines/README.md).

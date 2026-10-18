@@ -1,30 +1,11 @@
-# Results and failures
+# Results
 
-- Terminal and JSON output represent the same locally validated report.
-- Review results go to stdout; progress and diagnostics go to stderr.
-- With an unambiguous `review --output json`, representable argument, flag,
-  and configuration failures also use the canonical failure report instead of
-  prose. Help stays human-readable.
+Results go to stdout, progress to stderr; terminal and JSON carry the same
+report. Each finding has priority, confidence, category, and a location in
+the frozen target.
 
-| Exit | Status | Meaning |
-| ---: | --- | --- |
-| 0 | `clean` | Valid review with no findings |
-| 1 | `findings` | Valid review with one or more findings |
-| 2 | `failure` | No trustworthy review result |
+Exit 2 failure classes include `authentication`, `capability`, `timeout`, and
+`source_changed`. slopguard retries once, only for a malformed protocol
+response; everything else is reported as is.
 
-- Every valid finding is reported regardless of confidence, with a priority,
-  confidence, category, and a location inside the frozen target.
-- Exit 2 carries a stable failure class, such as `authentication`,
-  `capability`, `timeout`, or `source_changed`. Never reinterpret an
-  operational failure as a clean review.
-- Field and enum details:
-  [result contract](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/RESULT_SCHEMA.md).
-
-- Slopguard performs at most one configured retry, only for a malformed
-  protocol response, using the same frozen bundle and provider.
-  Authentication, capability, timeout, cancellation, and provider failures
-  are not retried. Report them; another engine needs explicit scope, as
-  [providers.md](providers.md) states.
-
-After any provider return, slopguard recollects the target. A changed snapshot
-produces `source_changed`: discard the findings and rerun from a new freeze.
+Fields and enums: [result contract](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/RESULT_SCHEMA.md).

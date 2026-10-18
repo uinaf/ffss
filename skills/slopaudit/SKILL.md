@@ -1,99 +1,73 @@
 ---
 name: slopaudit
-description: "Audit a person's whole agentic setup: loaded rules and skills, how they are actually used in session logs, recent shipped work, and the repositories, machines, MCP servers, and pipelines agents touch. Use for a periodic retro, or when asked where agents struggle or what to prune, fix, or add in an agent workflow; not for reviewing one change or auditing one codebase."
+description: "Audit a person's whole agent setup: loaded rules and skills, session logs, shipped work, and the repos, machines, MCP servers, and pipelines agents touch. Use for a periodic retro, or when asked where agents struggle or what to prune, fix, or add."
 ---
 
 # Slopaudit
 
 Find what to prune, fix, or add so the user can tell agents less and trust
-them more. The audit is read-only and ends in a discussion; apply a finding
-only after the user approves it.
+them more. The audit is read-only and ends in a discussion.
 
 ## Scope
 
-Default to this machine, every harness with local history, and the last 30
-days. A narrower ask, such as one repository's last ten sessions, runs only
-the lanes that answer it. Ask only for what cannot be discovered: other
-machines, which harnesses to include, and contexts to keep out, such as an
-employer's or a client's work. Write notes and delegate reports to a scratch
-directory outside every repository, and keep a running notes file there so the
-discussion can resume.
+Default: this machine, every harness with local history, the last 30 days.
+A narrower ask runs only the lanes that answer it. Ask about other machines,
+harnesses to include, and contexts to keep out (employer or client work).
+Keep notes and lane reports in a scratch directory outside every repo.
 
 ## Lanes
 
-Run independent lanes in parallel, delegating when the harness allows. Each
-lane writes a full report with evidence and returns a short summary.
-Where to look and what to measure: [sources.md](references/sources.md).
+Run independent lanes in parallel. Each writes a report with evidence and
+returns a short summary. Where to look and what to measure:
+[sources.md](references/sources.md).
 
-1. **Inventory.** Every always-loaded instruction and installed skill, plugin,
-   MCP server, hook, and permission rule per harness: its source, how it is
-   installed, and which machines or profiles get it. Estimate always-loaded
-   tokens.
-2. **Usage.** From session logs: repeated instructions, corrections and
-   frustration, bare approvals after the agent asked, status polling, skills
-   invoked by the model versus typed by the user, never-loaded skills, and
-   permission denials.
-3. **Friction.** From the agents' own tool calls: where they searched long
-   before finding the right file or fact, followed a doc the code
-   contradicts, fetched oversized or repeated tool output, or guessed
-   because a log, service, or fact was out of reach.
-4. **Shipped work.** From the forge: output by area, time spent on agent
-   tooling versus product, churn, merges that beat review, and unresolved
-   review threads after merge. For contributions to other people's projects,
-   what maintainers accepted and rejected.
-5. **Review lessons.** The mistakes agents keep making, as caught by the
-   people and review bots who read their pull requests: findings, requested
-   changes, and commits reviewers or maintainers pushed onto the branch.
-   Cluster them; each recurring cluster is a lesson with a proposed owner.
-   Also measure the cost from first commit to production per merged pull
-   request: rework commits, review rounds, CI runs, reruns, and minutes.
-   Report it per pull request, naming the costliest and any still unmerged.
-6. **Setup.** Duplicated rules, contradictions, instructions a capable model
-   already follows, stale references, skills competing for one request, checks
-   and review rules that mostly fire on correct work, context leaking into
-   places it doesn't belong (public repositories, another employer's machine),
-   and the guardrails around repositories, pipelines, and agents that serve
-   other people.
-7. **External**, when asked: compare popular skill collections against the
-   user's own and say what is worth adopting, adapting, or skipping.
+1. **Inventory.** Always-loaded rules, skills, plugins, MCP servers, hooks,
+   and permissions per harness and machine, with a token estimate.
+2. **Usage.** What the user repeats, corrects, rubber-stamps, and never uses.
+3. **Friction.** Where agents searched long, followed wrong docs, pulled
+   oversized output, or guessed.
+4. **Shipped work.** Output, churn, and review outcomes on the forge,
+   including other people's projects.
+5. **Review lessons.** Mistakes reviewers keep catching, clustered by
+   mistake, and the cost per merged PR from first commit to production.
+6. **Setup.** Duplicates, contradictions, no-op instructions, stale
+   references, competing skills, noisy checks, context leaks, and guardrails
+   on agents that serve other people.
+7. **External** (when asked). Popular skill collections: adopt, adapt, or
+   skip.
 
-A lane is done when its report cites a file and line, a count with its query,
-or a link for every claim.
+Done when every claim cites a file and line, a count with its query, or a
+link.
 
 ## Validate
 
-Delegate reports overstate. Before a finding reaches the user, check its
-evidence yourself against the current source, and drop or narrow what doesn't
-hold. A behavior the user set on purpose is not a defect; note it once and
-move on.
+Check each finding against the current source yourself. Drop or narrow what
+doesn't hold. A behavior the user set on purpose is not a defect.
 
 ## Report
 
-Lead with the diagnosis in a sentence or two, then ranked findings. For each:
-the evidence, the smallest fix, and its owner. For a lesson, name one owner,
-the strongest that fits: a change that removes the wrong way to do it, then a
-type, lint rule, or CI check that fails on that exact mistake, then the skill
-or playbook for that kind of work, then a global rule. Put a check in the
-narrowest existing surface (compiler, linter, schema, test framework, the
-local gate) before CI or a git hook, and name what to use instead in its error.
-For friction, the fix is a pointer from a file agents already read, a
-corrected doc, leaner tool output, or read access, not a new rule. Prefer
-deleting or narrowing an instruction to adding one, and prefer the user's
-existing mechanisms, including checks that exist but aren't wired in or
-silently pass, to new hooks, scripts, or infrastructure. Group decisions the
-user must make into a short numbered list.
+Lead with a one- or two-sentence diagnosis, then ranked findings: evidence,
+smallest fix, owner. End with the user's decisions as a short numbered list.
 
-Record a baseline for next time from the lanes that ran: corrections per
-completed outcome, searches before the first read of a changed file, the
-always-loaded token count, and the top repeated instructions. Save the report
-and baseline where the user keeps knowledge, next to earlier runs so the trend
-shows; file follow-up work in their tracker. Raw log excerpts stay in scratch
-and are deleted after the run.
+**Owner ladder** for a lesson, strongest that fits:
+
+1. Remove the wrong way to do it.
+2. A check that fails on that exact mistake (type, lint rule, schema, test,
+   local gate, then CI or a hook), with an error naming the right way.
+3. The skill or playbook for that kind of work.
+4. A global rule.
+
+Friction gets a pointer, a fixed doc, leaner output, or read access. Prefer
+deleting instructions and wiring existing checks over adding new ones.
+
+**Baseline:** corrections per completed outcome, searches before the first
+read of a changed file, always-loaded tokens, top repeated instructions.
+
+Save the report and baseline where the user keeps knowledge, next to earlier
+runs. File follow-ups in their tracker. Delete raw log excerpts from scratch.
 
 ## Apply
 
-Apply approved findings in their owning repositories, with each repository's
-own gates and delivery rules, and re-sync the installed copies. Verify each
-installed result, not only the source change; a new check must fail on a real
-past instance of its mistake. Keep the notes file current with what shipped,
-its commit, and its proof.
+Once the user approves a finding, apply it in its owning repo with that
+repo's gates and delivery, then re-sync installed copies. A new check must
+fail on a real past instance of its mistake.
