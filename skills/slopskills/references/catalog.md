@@ -25,6 +25,12 @@ runs. When the repository uses a pinned design system, record that system as a
 binding brand commitment there, or the skill treats the existing code as the
 visual authority. Installing it does not authorize enabling its hooks.
 
+## Build tooling
+
+| Skill | Install source | Evidence and use |
+| --- | --- | --- |
+| `vite-plus` | [uinaf/agent-skills](https://github.com/uinaf/agent-skills) | A `vite-plus` dependency or a planned move onto it; `vp migrate`, `vp up`, or Vite+ checks, tasks, and CI. Plain Vite or Vitest does not qualify. |
+
 ## Swift
 
 | Skill | Install source | Evidence and use |
