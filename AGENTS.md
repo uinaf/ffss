@@ -19,12 +19,11 @@ install it.
 
 | Change | Gate |
 |---|---|
-| `skills/`, `cli/*/skills/` | `npm ci && npm run lint && npm run audit` in `tools/skill-evals` ([skill-evals](tools/skill-evals/README.md)) |
-| `skills/slopcourier/scripts/bodycheck/` | `gofmt -l .`, `go vet ./...`, and `go test ./...` there |
-| `skills/slopcourier/scripts/prwatch/` | `gofmt -l .`, `go vet ./...`, and `go test ./...` there |
+| `skills/` | `npm ci && npm run lint && npm run audit` in `tools/skill-evals` ([skill-evals](tools/skill-evals/README.md)) |
+| `skills/slopcourier/scripts/bodycheck/`, `.../prwatch/` | `gofmt -l .`, `go vet ./...`, and `go test ./...` in each |
 | `cli/slopguard/` | `mise run verify` in `cli/slopguard` |
 | `cli/lib/` | `mise run verify` in `cli/lib` |
-| Root docs, `rules/` | none; no lane covers them |
+| Root docs, `rules/` | none |
 
 [Verify](.github/workflows/verify.yml) runs only the lanes a change touches and
 requires them through its `verify` job, the required check for merging a pull

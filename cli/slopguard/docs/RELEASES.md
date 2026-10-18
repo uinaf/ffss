@@ -121,7 +121,7 @@ safe: a release tag at `HEAD` resumes the mutable draft without choosing a new
 version, and a crash between the tag push and draft creation is recovered by
 recreating the draft. If publication succeeded and only the downstream Homebrew
 smoke failed, the rerun detects the published release and skips every mutating
-release step. Never delete or move a published tag to retry a release. Reruns
+release step. Published tags are immutable, so a retry is always a rerun. Reruns
 pin the original commit. Once `main` has advanced, Semantic Release skips
 with "local branch is behind the remote", and a `workflow_dispatch` runs at
 `HEAD`, where the release-tag step only recognizes a tag on that commit; a

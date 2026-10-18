@@ -9,7 +9,7 @@ go build ./cmd/slopguard
 
 ## Validation
 
-Deterministic core checks, before opening or updating a pull request:
+Deterministic checks, before opening or updating a pull request:
 
 ```bash
 mise run verify
@@ -29,8 +29,8 @@ mise run release:check
 mise run release:snapshot
 ```
 
-Freezing the current checkout is separate because it depends on local changes.
-Opt in when target-collection behavior needs the extra smoke check:
+When target collection changes, also freeze the current checkout (it depends
+on local changes, so it stays out of `verify`):
 
 ```bash
 mise run test:current-checkout
@@ -73,11 +73,9 @@ provider list, repeat bounds, per-review timeout, and review cap.
 
 ## Pull Requests
 
-- Start from a GitHub issue.
-- Keep changes focused and use conventional commits.
+- Start from a GitHub issue and use Conventional Commits.
 - Update tests and user-facing documentation with contract changes.
-- Treat AI-review findings as hypotheses: validate them, fix actionable
-  defects, and close the corresponding threads.
+- Validate AI-review findings before fixing them, then close their threads.
 
 ## Releases
 
