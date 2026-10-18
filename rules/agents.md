@@ -69,7 +69,8 @@ the user's.
   cancellable, and limited to idempotent transient work.
 - Keep secrets and sensitive payloads out of logs and artifacts.
 - Comment only invariants and external constraints the code cannot express.
-- Update the owning doc when behavior changes.
+- Update the owning doc when behavior changes. Docs state current behavior;
+  don't cite issues or pull requests as their source.
 
 ### Verification
 
