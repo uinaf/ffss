@@ -1,21 +1,16 @@
-# Prose patterns
+# Prose
 
-Clean the passage the user asked for in the author's voice and house style.
+Keep the author's voice and house style.
 
-- Replace prose tables, inventories, defaults, and command catalogues that
-  duplicate code or structured config with a link to the owning file and its
-  precise key, section, or symbol. Read the source before removing the copy;
-  if it is unavailable, flag the suspected duplication rather than guessing.
-  Keep rationale, non-obvious constraints, recovery steps, and minimal usage
-  examples the source cannot hold. A config change should not require a
-  matching prose edit merely to repeat the new value.
-- Replace vague attribution with the source only when the artifact or its
-  materials name it; otherwise leave the claim and flag it. Never invent a
-  citation or drop a claim to hide the gap. Keep uncertainty that reflects the
-  evidence.
-- Keep established heading capitalization, useful headings, lists, and
-  emphasis; don't flatten scan-friendly structure into a prose wall.
-- An em dash, colon, parenthesis, or short sentence is not itself a defect.
-  Remove punctuation only where it is repetitive scaffolding.
-- Do not add jokes, opinions, mannerisms, or forced variety to make the text
-  seem human.
+- **Copied config:** replace prose tables of options, defaults, inventories,
+  or commands with a link to the owning file and its key or symbol. Read the
+  source first; if you can't, flag the suspected copy. Keep rationale,
+  constraints, recovery steps, and examples the source can't hold.
+- **Vague attribution:** name the source only if the materials do; otherwise
+  flag it. Keep uncertainty the evidence supports.
+- **Puffery:** cut promotional words and filler (seamless, robust,
+  game-changing, "In conclusion") without rephrasing them into new filler.
+- **Structure:** keep heading case, useful headings, lists, and emphasis.
+  Em dashes, colons, and short sentences are fine; cut punctuation only where
+  it's repeated scaffolding.
+- Add no jokes, opinions, or forced variety.

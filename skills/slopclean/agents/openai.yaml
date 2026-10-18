@@ -1,7 +1,7 @@
 interface:
   display_name: "slopclean"
-  short_description: "Strip AI tells from writing, a diff, or a test suite"
-  default_prompt: "Use $slopclean to clean the requested artifact in place. Preserve facts, voice, behavior, public API, and meaningful test coverage; simplify only what adds no value and report defects separately."
+  short_description: "Strip AI tells, prune a test suite, or fix drifted docs"
+  default_prompt: "Use $slopclean to clean the requested artifact in place. Preserve voice, behavior, public API, and meaningful test coverage; in docs and agent guides, correct claims their owning source contradicts. Simplify only what adds no value and report defects separately."
 
 policy:
   allow_implicit_invocation: true

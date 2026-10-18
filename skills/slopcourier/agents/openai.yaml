@@ -1,7 +1,7 @@
 interface:
   display_name: "slopcourier"
-  short_description: "Deliver finished work as a change request"
-  default_prompt: "Use $slopcourier to deliver this completed change as one change request. Require applicable passing gates and proof appropriate to the change, preserve unrelated work, follow forge and template contracts, and return the URL. Preparation-only requests stop at the draft."
+  short_description: "Deliver a change request and see it through to merge"
+  default_prompt: "Use $slopcourier to deliver this completed change as one change request and, when asked, resolve review and CI, merge when its gates pass unless asked to hold, then watch the runs the merge starts."
 
 policy:
   allow_implicit_invocation: true

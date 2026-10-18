@@ -2,5 +2,5 @@
 .skillcheck/
 /cli/*/bin/
 /cli/*/dist/
-/skills/slopnanny/scripts/prwatch/prwatch
+/skills/slopcourier/scripts/prwatch/prwatch
 /skills/slopcourier/scripts/bodycheck/bodycheck

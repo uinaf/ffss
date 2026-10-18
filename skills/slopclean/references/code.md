@@ -1,15 +1,13 @@
-# Code patterns
+# Code
 
-The diff is the unit. Clean only what the change added; leave the surrounding
-code alone, even when it has the same tells, unless asked.
+Clean only what the diff added, unless asked for more.
 
-- TODO with no owner or ticket: delete it and list it in the report as a
-  possible follow-up; never file tracker items from the pass. Keep ticketed
-  TODOs.
-- Unreachable branches kept "for completeness": delete, with the reasoning in
-  the commit message.
-- An exported option or accepted input is a public contract even when this
-  module ignores it; keep it and report removal as separate scope. Rename lying
+- **TODO without an owner or ticket:** delete it and list it in the report
+  as a possible follow-up. Keep ticketed TODOs.
+- **Unreachable branches "for completeness":** delete; explain in the commit
+  message.
+- **Exported options and accepted inputs** are public contracts even when
+  ignored here: keep them and report removal as separate scope. Rename lying
   internal names; report lying public names.
-- A pattern that hides a real defect (a swallow masking a reachable failure) is
-  a finding, not a cleanup; report it.
+- **A pattern hiding a real defect** (a swallow masking a reachable failure)
+  is a finding to report.

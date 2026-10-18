@@ -1,7 +1,0 @@
-interface:
-  display_name: "slopprep"
-  short_description: "Audit repo and runner readiness for autonomous work"
-  default_prompt: "Use $slopprep to inspect or improve the declared repository and runner within the requested authority. Discover real task owners, run applicable authorized proof, and report separate capability grades and evidence; follow the skill for lifecycle and recovery contracts."
-
-policy:
-  allow_implicit_invocation: false
