@@ -74,8 +74,9 @@ at After merge. Stop where the request stops: "open the PR" ends at Open, while
   line names the state (`go run` folds every failing exit code into 1):
   `ready`; `checks-failed`, `activity`, `pushed`, `blocked`, or `closed`;
   `error` for a `gh` / `glab` failure; or `timeout` after 30 minutes. Act on
-  what it prints, then rerun it with `-since` set to its `since:` line so
-  nothing between runs is missed. Run it in the background where the harness
+  what it prints, then rerun it with `-since <its since: line>` so nothing
+  between runs is missed. Flags go before the number or URL; Go stops
+  parsing flags at the first argument. Run it in the background where the harness
   stops foreground commands sooner, one run per change request; for several,
   start one each, never a loop over them. Without Go, poll `gh` / `glab` for
   the same evidence and say prwatch didn't run.
