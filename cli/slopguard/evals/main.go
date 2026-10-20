@@ -90,6 +90,9 @@ func run(slopguard, casesDir, configNames, only string, runs, parallel int, effo
 		if slopguard == "" {
 			return errors.New("-slopguard is required")
 		}
+		if runs < 1 {
+			return errors.New("-runs must be at least 1")
+		}
 		cases, err := loadCases(casesDir, only)
 		if err != nil {
 			return err
@@ -174,7 +177,7 @@ type job struct {
 }
 
 func evaluate(slopguard string, cases []caseSpec, configs []configuration, runs, parallel int, effort string, timeout time.Duration, out string) error {
-	experiment, err := fingerprint(slopguard, effort, cases)
+	experiment, err := fingerprint(slopguard, effort, timeout, cases)
 	if err != nil {
 		return err
 	}
@@ -473,9 +476,9 @@ func withoutSlopguardEnvironment(environment []string) []string {
 	return kept
 }
 
-// fingerprint identifies an experiment by the binary, effort, and case files,
+// fingerprint identifies an experiment by the binary, effort, timeout, and case files,
 // so resuming never mixes rows produced under different settings.
-func fingerprint(slopguard, effort string, cases []caseSpec) (string, error) {
+func fingerprint(slopguard, effort string, timeout time.Duration, cases []caseSpec) (string, error) {
 	hash := sha256.New()
 	binary, err := os.Open(slopguard)
 	if err != nil {
@@ -486,7 +489,7 @@ func fingerprint(slopguard, effort string, cases []caseSpec) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Fprintf(hash, "\x00effort=%s\x00", effort)
+	fmt.Fprintf(hash, "\x00effort=%s\x00timeout=%s\x00", effort, timeout)
 	for _, spec := range cases {
 		err := filepath.WalkDir(spec.directory, func(path string, entry fs.DirEntry, err error) error {
 			if err != nil || entry.IsDir() {
