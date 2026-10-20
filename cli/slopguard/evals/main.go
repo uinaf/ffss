@@ -110,11 +110,17 @@ func parseConfigurations(names string) ([]configuration, error) {
 		"claude-snapshot": {Name: "claude-snapshot", Engine: "claude", RepositoryAccess: true},
 	}
 	var configs []configuration
+	seen := map[string]bool{}
 	for _, name := range strings.Split(names, ",") {
-		config, ok := known[strings.TrimSpace(name)]
+		name = strings.TrimSpace(name)
+		config, ok := known[name]
 		if !ok {
 			return nil, fmt.Errorf("unknown configuration %q", name)
 		}
+		if seen[name] {
+			return nil, fmt.Errorf("duplicate configuration %q", name)
+		}
+		seen[name] = true
 		configs = append(configs, config)
 	}
 	return configs, nil
@@ -198,6 +204,12 @@ func evaluate(slopguard string, cases []caseSpec, configs []configuration, runs,
 	}
 	defer func() { _ = file.Close() }()
 	var writeMu sync.Mutex
+	var writeErr error
+	failed := func() bool {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+		return writeErr != nil
+	}
 	queue := make(chan job)
 	var workers sync.WaitGroup
 	completed := 0
@@ -207,21 +219,30 @@ func evaluate(slopguard string, cases []caseSpec, configs []configuration, runs,
 			defer workers.Done()
 			for next := range queue {
 				row := review(slopguard, configHome, effort, timeout, next)
-				encoded, _ := json.Marshal(row)
+				encoded, err := json.Marshal(row)
 				writeMu.Lock()
-				_, _ = file.Write(append(encoded, '\n'))
+				if err == nil && writeErr == nil {
+					_, err = file.Write(append(encoded, '\n'))
+				}
+				if err != nil && writeErr == nil {
+					writeErr = fmt.Errorf("record %s %s run %d: %w", row.Case, row.Config, row.Run, err)
+				}
 				completed++
 				fmt.Fprintf(os.Stderr, "[%d/%d] %s %s run %d: %s caught=%t findings=%d %.0fs\n", completed, len(jobs), row.Case, row.Config, row.Run, row.Status, row.Caught, row.Findings, row.Seconds)
 				writeMu.Unlock()
 			}
 		}()
 	}
+	// A failed write stops scheduling, so no review spends quota without a row.
 	for _, next := range jobs {
+		if failed() {
+			break
+		}
 		queue <- next
 	}
 	close(queue)
 	workers.Wait()
-	return nil
+	return writeErr
 }
 
 func prepareRepository(workspace string, spec caseSpec) (string, error) {
@@ -291,7 +312,10 @@ func review(slopguard, configHome, effort string, timeout time.Duration, next jo
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	command := exec.CommandContext(ctx, slopguard, arguments...)
-	command.Env = append(os.Environ(), "XDG_CONFIG_HOME="+configHome)
+	// Interrupt instead of kill so slopguard stops its provider process group.
+	command.Cancel = func() error { return command.Process.Signal(os.Interrupt) }
+	command.WaitDelay = time.Minute
+	command.Env = append(withoutSlopguardEnvironment(os.Environ()), "XDG_CONFIG_HOME="+configHome)
 	var stdout bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, io.Discard
 	started := time.Now()
@@ -403,5 +427,21 @@ func median(values []float64) string {
 		return "–"
 	}
 	sort.Float64s(values)
-	return fmt.Sprintf("%.0fs", values[len(values)/2])
+	middle := len(values) / 2
+	if len(values)%2 == 0 {
+		return fmt.Sprintf("%.0fs", (values[middle-1]+values[middle])/2)
+	}
+	return fmt.Sprintf("%.0fs", values[middle])
+}
+
+// withoutSlopguardEnvironment drops SLOPGUARD_* settings so every row runs on
+// engine defaults plus the runner's flags.
+func withoutSlopguardEnvironment(environment []string) []string {
+	kept := make([]string, 0, len(environment))
+	for _, entry := range environment {
+		if !strings.HasPrefix(entry, "SLOPGUARD_") {
+			kept = append(kept, entry)
+		}
+	}
+	return kept
 }
