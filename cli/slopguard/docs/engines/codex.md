@@ -19,6 +19,24 @@ resolves authentication from the preserved Codex configuration, including
 custom model-provider credential helpers. Authentication, capability, timeout,
 cancellation, process, and protocol failures remain distinct.
 
+## Repository access
+
+With `--repository-access`, the adapter runs Codex's own reviewer instead of
+`codex exec` with the bundle. Slopguard writes a fresh two-commit Git
+repository, the redacted base and the redacted target with no other history,
+and runs `codex exec review` there in the read-only sandbox with
+`project_doc_max_bytes=0`. The trusted task prompt goes on stdin after an
+instruction to review `HEAD~1..HEAD`. The probe also requires `--ephemeral`,
+`--output-last-message`, and `--json` on `exec review`.
+
+`exec review` ignores `--output-schema` and prints its findings in a fixed
+text template: a summary, then `- [P1] title — /path:start-end` lines with
+indented bodies. The adapter converts that template into the review document
+and fails closed on any other line, a finding before the findings heading, or
+a path outside the review repository. The template reports no confidence or
+category, so every finding records confidence 0.5 and category `bug`, and the
+review records overall confidence 0.5.
+
 ## Web access
 
 On by default, which adds only `--search`. When off, the adapter passes

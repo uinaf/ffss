@@ -84,7 +84,8 @@ workspace, so the reviewer can read callers and tests.
 - Neither engine loads the snapshot's own instruction files. Claude keeps the
   empty workspace and gets the snapshot through `--add-dir`, with
   `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0`, so its `CLAUDE.md` stays
-  data; codex runs in the snapshot with project `AGENTS.md` loading turned
+  data; codex runs [its native reviewer](engines/codex.md#repository-access)
+  in a redacted two-commit repository with project `AGENTS.md` loading turned
   off.
 - Claude gets `Read`, `Grep`, and `Glob` without pre-approval, so it can read
   only inside the snapshot. Codex runs in its read-only sandbox, which still
