@@ -9,7 +9,7 @@ Slopguard loads one flat, typed configuration in descending precedence:
    `$HOME/.config/slopguard/config.yaml` when `XDG_CONFIG_HOME` is unset
 5. built-in operational defaults
 
-The engine has no default. Select exactly one of `codex`, `claude`, or `grok`
+The engine has no default. Select exactly one of `codex` or `claude`
 through a flag or configuration source. Slopguard never chooses an engine by
 examining `PATH`.
 

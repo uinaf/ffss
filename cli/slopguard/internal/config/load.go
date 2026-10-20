@@ -363,8 +363,6 @@ func applyProviderDefaults(effective *Effective) {
 		switch effective.Engine.Value {
 		case protocol.ProviderCodex, protocol.ProviderClaude:
 			effective.ReasoningEffort.Value = ReasoningMedium
-		case protocol.ProviderGrok:
-			effective.ReasoningEffort.Value = ReasoningHigh
 		}
 	}
 }
@@ -372,7 +370,7 @@ func applyProviderDefaults(effective *Effective) {
 func validateRaw(raw rawConfig, source Source) error {
 	if raw.Engine.set {
 		switch protocol.ProviderName(raw.Engine.value) {
-		case protocol.ProviderCodex, protocol.ProviderClaude, protocol.ProviderGrok:
+		case protocol.ProviderCodex, protocol.ProviderClaude:
 		default:
 			return fmt.Errorf("%s engine: invalid value %q", source, raw.Engine.value)
 		}

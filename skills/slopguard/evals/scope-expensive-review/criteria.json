@@ -2,8 +2,8 @@
   "context": "A consensus-panel request with fallback is scoped down to one slopguard review from one provider; no voting, no fallback chain, and no merge decision derived from the review.",
   "type": "weighted_checklist",
   "checklist": [
-    {"name": "Single provider only", "description": "response.md plans exactly one reviewer run, not three, and the command shape has exactly one `--engine` value", "max_score": 25},
-    {"name": "No voting or consensus", "description": "The plan does not use two-of-three voting or claim consensus, and explains to the maintainer why a panel is not run", "max_score": 20},
+    {"name": "Single provider only", "description": "response.md plans exactly one reviewer run, not two, and the command shape has exactly one `--engine` value", "max_score": 25},
+    {"name": "No voting or consensus", "description": "The plan does not use two-reviewer agreement or claim consensus, and explains to the maintainer why a panel is not run", "max_score": 20},
     {"name": "No fallback chain", "description": "If the chosen reviewer fails, the plan reports the blocker instead of moving on to the next provider", "max_score": 20},
     {"name": "Review does not decide merge", "description": "The response states the review is advisory evidence and does not by itself trigger or decide the merge", "max_score": 15},
     {"name": "Slopguard branch command", "description": "The command shape is `slopguard review --mode branch --base main` with the acceptance criteria piped via `--prompt-file -`", "max_score": 10},

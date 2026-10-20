@@ -42,7 +42,8 @@ const (
 	ProviderClaude ProviderName = "claude"
 	// ProviderCursor appears only in version 1 reports from releases before 3.0.
 	ProviderCursor ProviderName = "cursor"
-	ProviderGrok   ProviderName = "grok"
+	// ProviderGrok appears only in version 1 reports from releases before 5.0.
+	ProviderGrok ProviderName = "grok"
 )
 
 type TargetMode string

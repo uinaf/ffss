@@ -86,7 +86,7 @@ func TestBinaryLiveProviderMatrix(t *testing.T) {
 
 func TestLiveReviewEnvironmentRouting(t *testing.T) {
 	t.Setenv("SLOPGUARD_REASONING_EFFORT", "low")
-	t.Setenv("GROK_HOME", "/provider/state")
+	t.Setenv("CLAUDE_CONFIG_DIR", "/provider/state")
 	t.Setenv("CODEX_API_KEY", "direct-codex-key")
 	t.Setenv("OPENAI_API_KEY", "direct-openai-key")
 	t.Setenv("GIT_CONFIG_GLOBAL", "/host/global.gitconfig")
@@ -102,8 +102,8 @@ func TestLiveReviewEnvironmentRouting(t *testing.T) {
 		}
 		values[name] = value
 	}
-	if values["GROK_HOME"] != "/provider/state" {
-		t.Fatalf("GROK_HOME = %q", values["GROK_HOME"])
+	if values["CLAUDE_CONFIG_DIR"] != "/provider/state" {
+		t.Fatalf("CLAUDE_CONFIG_DIR = %q", values["CLAUDE_CONFIG_DIR"])
 	}
 	if values["GIT_CONFIG_GLOBAL"] != "/dev/null" || values["GIT_CONFIG_SYSTEM"] != "/dev/null" {
 		t.Fatalf("Git config environment = %q, %q", values["GIT_CONFIG_GLOBAL"], values["GIT_CONFIG_SYSTEM"])
@@ -124,10 +124,10 @@ func TestValidateLiveMatrixSize(t *testing.T) {
 		repeat    int
 		wantError bool
 	}{
-		{name: "full matrix maximum", providers: 3, controls: 2, repeat: 6},
-		{name: "selected provider matrix", providers: 1, controls: 2, repeat: 10},
-		{name: "added control exceeds maximum", providers: 3, controls: 5, repeat: 3, wantError: true},
-		{name: "too many reviews", providers: 3, controls: 2, repeat: 7, wantError: true},
+		{name: "full matrix maximum", providers: 2, controls: 2, repeat: 10},
+		{name: "selected provider matrix", providers: 1, controls: 2, repeat: 20},
+		{name: "added control exceeds maximum", providers: 2, controls: 5, repeat: 5, wantError: true},
+		{name: "too many reviews", providers: 2, controls: 2, repeat: 11, wantError: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			err := validateLiveMatrixSize(test.providers, test.controls, test.repeat)
@@ -143,7 +143,6 @@ func selectedLiveProviders(t *testing.T) []liveProvider {
 	available := []liveProvider{
 		{name: protocol.ProviderCodex, executable: "codex", model: provider.DefaultCodexModel, credentials: []string{"CODEX_API_KEY", "OPENAI_API_KEY"}},
 		{name: protocol.ProviderClaude, executable: "claude", model: provider.DefaultClaudeModel, credentials: []string{"ANTHROPIC_API_KEY"}},
-		{name: protocol.ProviderGrok, executable: "grok", model: provider.DefaultGrokModel, credentials: []string{"XAI_API_KEY"}},
 	}
 	selection := strings.TrimSpace(os.Getenv("SLOPGUARD_LIVE_PROVIDERS"))
 	if selection == "" {

@@ -6,6 +6,6 @@
     {"name": "Default Codex model", "description": "The command passes no `--model` value (no invented or carried-over model), leaving Codex's default model", "max_score": 25},
     {"name": "Slopguard local review", "description": "The command is `slopguard review --mode local --engine codex`, not a direct codex invocation", "max_score": 20},
     {"name": "Contract and output", "description": "The command pipes the distilled acceptance criteria with `--prompt-file -` and requests `--output json`", "max_score": 15},
-    {"name": "No further fallback", "description": "response.md does not queue Grok or another engine if Codex fails", "max_score": 10}
+    {"name": "No further fallback", "description": "response.md does not queue Claude or another engine if Codex fails", "max_score": 10}
   ]
 }
