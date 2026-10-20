@@ -108,6 +108,11 @@ func run(slopguard, casesDir, configNames, only string, runs, parallel int, effo
 		default:
 			return fmt.Errorf("unknown -effort %q", effort)
 		}
+		for _, config := range configs {
+			if config.Engine == "claude" && (effort == "minimal" || effort == "ultra") {
+				return fmt.Errorf("claude does not support -effort %q", effort)
+			}
+		}
 		cases, err := loadCases(casesDir, only)
 		if err != nil {
 			return err
