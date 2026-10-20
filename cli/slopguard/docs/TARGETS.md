@@ -60,17 +60,18 @@ boundary without first distilling and authorizing it.
   classification. Other changed `.env` and `.env.*` files enter redacted (see
   below). Explicit context files remain subject to the ordinary sensitive-path
   rejection, including these template and environment names.
-- Redacted environment files keep their line structure. When every
-  non-comment line closes the quotes it opens, no value can span lines, so
-  each `KEY=value` or `export KEY=value` line keeps its key as
-  `KEY=[REDACTED]`. Otherwise, and for every other line, comments included,
-  the whole line becomes `[REDACTED]`; blank lines stay. A quote preceded by a
-  backslash never closes, so a dialect disagreement over-redacts. Each side of
-  a change is judged as a whole file, and the rule covers added, deleted, and
-  untracked content alike. Their diff sections also drop blob IDs
-  (`index [REDACTED]`) and hunk-header function context. Redaction reads each
-  tracked environment file whole, so that read counts against the bundle
-  limit. Untracked binary environment files fail closed.
+- Redacted environment files keep their line structure. Keys stay visible
+  only when every non-comment line is a `KEY=value` or `export KEY=value`
+  assignment that closes every quote, parenthesis, and brace it opens, with no
+  heredoc and no trailing backslash. Then no value can span lines, so each
+  assignment becomes `KEY=[REDACTED]`. Otherwise every line of that file
+  becomes `[REDACTED]`. Comments always become `[REDACTED]`; blank lines stay.
+  A quote preceded by a backslash never closes, so a dialect disagreement
+  over-redacts. Each side of a change is judged as a whole file, and the rule
+  covers added, deleted, and untracked content alike. Their diff sections also
+  drop blob IDs (`index [REDACTED]`) and hunk-header function context.
+  Redaction reads each tracked environment file whole; those reads share one
+  bundle-limit allowance. Untracked binary environment files fail closed.
 - Tracked symlink changes are included as Git's text representation of the
   link target; collectors never follow those links when reading worktree,
   untracked, or context bytes.

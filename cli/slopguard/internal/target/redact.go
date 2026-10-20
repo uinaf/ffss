@@ -31,13 +31,14 @@ func redactEnvironment(content []byte) []byte {
 	return bytes.Join(redactEnvironmentLines(bytes.Split(content, []byte{'\n'})), []byte{'\n'})
 }
 
-// redactEnvironmentLines keeps key names only when no line leaves a quote
-// open. Then no value can continue onto another line in any dotenv dialect, so
-// every KEY= prefix is a real key. Otherwise every line is redacted whole.
+// redactEnvironmentLines keeps key names only when every non-comment line is
+// a KEY=value assignment that closes everything it opens. Then no value can
+// continue onto another line under a dotenv parser or a shell, so every KEY=
+// prefix is a real key. Otherwise every line is redacted whole.
 func redactEnvironmentLines(lines [][]byte) [][]byte {
 	keys := true
 	for _, line := range lines {
-		if !bytes.HasPrefix(bytes.TrimLeft(line, " \t"), []byte{'#'}) && leavesQuoteOpen(line) {
+		if !selfContainedEnvironmentLine(line) {
 			keys = false
 			break
 		}
@@ -60,19 +61,41 @@ func redactEnvironmentLines(lines [][]byte) [][]byte {
 	return redacted
 }
 
-// leavesQuoteOpen treats a quote preceded by a backslash as escaped, whatever
-// the dialect, so a disagreement with the file's parser over-redacts.
-func leavesQuoteOpen(line []byte) bool {
+// selfContainedEnvironmentLine treats a quote preceded by a backslash as
+// escaped and a trailing backslash as a continuation, whatever the dialect, so
+// a disagreement with the file's parser over-redacts.
+func selfContainedEnvironmentLine(line []byte) bool {
+	text := bytes.TrimRight(line, " \t\r")
+	trimmed := bytes.TrimLeft(text, " \t")
+	if len(trimmed) == 0 || trimmed[0] == '#' {
+		return true
+	}
+	end := environmentAssignment.FindIndex(text)
+	if end == nil || bytes.HasSuffix(text, []byte{'\\'}) {
+		return false
+	}
+	value := text[end[1]:]
 	var quote byte
-	for index, character := range line {
+	depth := 0
+	for index, character := range value {
 		switch {
-		case quote == 0 && (character == '"' || character == '\'' || character == '`'):
+		case quote != 0:
+			if character == quote && value[index-1] != '\\' {
+				quote = 0
+			}
+		case character == '"' || character == '\'' || character == '`':
 			quote = character
-		case quote != 0 && character == quote && line[index-1] != '\\':
-			quote = 0
+		case character == '#' && index > 0 && (value[index-1] == ' ' || value[index-1] == '\t'):
+			return depth == 0
+		case character == '(' || character == '{':
+			depth++
+		case character == ')' || character == '}':
+			depth--
+		case character == '<' && index > 0 && value[index-1] == '<':
+			return false
 		}
 	}
-	return quote != 0
+	return quote == 0 && depth == 0
 }
 
 // redactEnvironmentDiff rewrites the dotenv sections of a --unified=0 diff.
@@ -111,10 +134,12 @@ func (collector *Collector) redactEnvironmentDiff(ctx context.Context, root stri
 			file = nil
 			if changed := sectionPaths[section]; environmentFilePath(changed) {
 				var err error
-				file, err = collector.environmentDiffFile(ctx, root, plan, contextCommands[sectionCommands[section]], changed, limit)
+				var read int64
+				file, read, err = collector.environmentDiffFile(ctx, root, plan, contextCommands[sectionCommands[section]], changed, limit)
 				if err != nil {
 					return nil, fmt.Errorf("redact environment file %q: %w", changed, err)
 				}
+				limit -= read
 			}
 		} else if file != nil {
 			redacted, err := file.redact(line)
@@ -137,14 +162,16 @@ type environmentDiffFile struct {
 	oldLine, newLine         int
 }
 
-func (collector *Collector) environmentDiffFile(ctx context.Context, root string, plan *targetPlan, command []string, changed string, limit int64) (*environmentDiffFile, error) {
+// environmentDiffFile reads at most limit bytes; the caller shares one bundle
+// limit across every environment file.
+func (collector *Collector) environmentDiffFile(ctx context.Context, root string, plan *targetPlan, command []string, changed string, limit int64) (*environmentDiffFile, int64, error) {
 	arguments := append(append([]string(nil), command...), ":(literal)"+changed)
 	output := newLimitBuffer(limit)
 	if err := collector.git.runSandboxWithAttributesTo(ctx, root, plan.sandbox, nil, output, arguments...); err != nil {
-		return nil, fmt.Errorf("collect full-context diff: %w", err)
+		return nil, 0, fmt.Errorf("collect full-context diff: %w", err)
 	}
 	if output.exceeded {
-		return nil, fmt.Errorf("full-context diff exceeds %d bytes", limit)
+		return nil, 0, fmt.Errorf("full-context diffs of environment files exceed the bundle limit")
 	}
 	file := &environmentDiffFile{}
 	inHunk := false
@@ -153,7 +180,7 @@ func (collector *Collector) environmentDiffFile(ctx context.Context, root string
 		if bytes.HasPrefix(line, []byte("@@ ")) {
 			oldStart, newStart, err := parseHunkHeader(line)
 			if err != nil {
-				return nil, err
+				return nil, 0, err
 			}
 			inHunk, oldLine, newLine = true, oldStart, newStart
 			continue
@@ -163,25 +190,25 @@ func (collector *Collector) environmentDiffFile(ctx context.Context, root string
 		}
 		if line[0] == ' ' || line[0] == '-' {
 			if oldLine != len(file.oldRaw)+1 {
-				return nil, fmt.Errorf("full-context diff skips old lines")
+				return nil, 0, fmt.Errorf("full-context diff skips old lines")
 			}
 			file.oldRaw = append(file.oldRaw, line[1:])
 			oldLine++
 		}
 		if line[0] == ' ' || line[0] == '+' {
 			if newLine != len(file.newRaw)+1 {
-				return nil, fmt.Errorf("full-context diff skips new lines")
+				return nil, 0, fmt.Errorf("full-context diff skips new lines")
 			}
 			file.newRaw = append(file.newRaw, line[1:])
 			newLine++
 		}
 		if line[0] != ' ' && line[0] != '-' && line[0] != '+' {
-			return nil, fmt.Errorf("full-context diff has an unexpected line")
+			return nil, 0, fmt.Errorf("full-context diff has an unexpected line")
 		}
 	}
 	file.oldRedacted = redactEnvironmentLines(file.oldRaw)
 	file.newRedacted = redactEnvironmentLines(file.newRaw)
-	return file, nil
+	return file, int64(len(output.Bytes())), nil
 }
 
 func (file *environmentDiffFile) redact(line []byte) ([]byte, error) {

@@ -743,6 +743,23 @@ func TestFreezeRedactsEnvironmentFiles(t *testing.T) {
 		}
 	})
 
+	t.Run("full-file reads share the bundle limit", func(t *testing.T) {
+		repository := newRepository(t)
+		filler := strings.Repeat("FILLER=1\n", 140)
+		for _, name := range []string{".env", ".env.local"} {
+			writeFile(t, repository, name, filler+"KEY=old\n")
+		}
+		gitCommand(t, repository, "add", ".")
+		gitCommand(t, repository, "commit", "-m", "base")
+		for _, name := range []string{".env", ".env.local"} {
+			writeFile(t, repository, name, filler+"KEY=new\n")
+		}
+		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 2000})
+		if err == nil || !strings.Contains(err.Error(), "exceed the bundle limit") {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+	})
+
 	t.Run("binary untracked", func(t *testing.T) {
 		repository := committedRepository(t)
 		writeBytes(t, repository, ".env", []byte("TOKEN=\x00secret\n"))
@@ -775,6 +792,9 @@ func TestRedactEnvironmentKeepsKeysAndLineStructure(t *testing.T) {
 		{"PRIVATE_KEY: \"header\nMIIBsecretAAA==\nfooter\"\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
 		{"PRIVATE_KEY: !!str \"header\n  MIIBsecretAAA==\nfooter\"\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
 		{"this isn't metadata\nPRIVATE_KEY=\"header\nowner's payload\nMIIBsecretAAA==\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
+		{"TOKEN=prefix\\\nsensitiveSuffix=\n", "[REDACTED]\n[REDACTED]\n"},
+		{"KEY=$(cat <<EOF\nsecret=1\nEOF\n)\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
+		{"A=1 # it's fine\nB=${HOME}/x\n", "A=[REDACTED]\nB=[REDACTED]\n"},
 	} {
 		if got := string(redactEnvironment([]byte(test.input))); got != test.want {
 			t.Errorf("redactEnvironment(%q) = %q, want %q", test.input, got, test.want)
