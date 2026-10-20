@@ -17,6 +17,7 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
 	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/reviewpolicy"
 	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 )
 
@@ -166,15 +167,16 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		Provider:  protocol.Provider{Name: protocol.ProviderCodex, Model: model, Version: version},
 		WebAccess: request.Config.WebAccess.Value,
 	}
-	arguments := codexArguments(request.Config, runtime.Workspace, schemaPath, outputPath, model)
+	workspace := request.workspace(runtime.Workspace)
+	arguments := codexArguments(request.Config, workspace, schemaPath, outputPath, model)
 	preparationSpan.End()
 	processSpan := phase.Start(reviewContext, phase.ProviderProcess)
 	process, processErr := runProcess(reviewContext, processSpec{
 		Path:        executable,
 		Arguments:   arguments,
-		Directory:   runtime.Workspace,
+		Directory:   workspace,
 		Environment: runtime.Environment(),
-		Input:       request.promptReader(""),
+		Input:       request.promptReader(codexPolicy(request)),
 		Timeout:     time.Duration(request.Config.Timeout.Value),
 		StdoutLimit: providerStdoutLimit,
 		StderrLimit: providerStderrLimit,
@@ -308,6 +310,9 @@ func codexArguments(effective config.Effective, workspace, schemaPath, outputPat
 		arguments = append(arguments, "--search")
 	} else {
 		arguments = append(arguments, "--config", `web_search="disabled"`)
+	}
+	if effective.RepositoryAccess.Value {
+		arguments = append(arguments, "--config", `sandbox_mode="read-only"`)
 	}
 	arguments = append(arguments, "exec", "--json", "--color", "never", "--ephemeral", "--skip-git-repo-check", "--cd", workspace)
 	arguments = append(arguments, "--output-schema", schemaPath, "--output-last-message", outputPath, "-")
@@ -566,4 +571,11 @@ func invalidProviderOutput(name, phase string, reason protocol.ProtocolReason, e
 	failure := newFailure(protocol.FailureProtocol, fmt.Sprintf("%s returned an invalid %s (%s); retry or inspect the provider CLI directly for private diagnostics", name, phase, reason), environment, attempt)
 	failure.Reason = reason
 	return failure
+}
+
+func codexPolicy(request Request) string {
+	if request.Snapshot == "" {
+		return ""
+	}
+	return reviewpolicy.RepositorySnapshotPolicy()
 }

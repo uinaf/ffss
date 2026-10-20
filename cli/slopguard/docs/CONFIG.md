@@ -72,6 +72,19 @@ Providers run from a new empty temporary workspace, receive only the frozen
 review bundle, and inherit the normal provider environment, user configuration,
 and configured provider or session authentication.
 
+Repository access defaults off and has only a flag form: `--repository-access`
+runs codex or claude inside a snapshot of the repository instead of the empty
+workspace, so the reviewer can read callers and tests.
+
+- The snapshot holds the reviewed revision's files, or the frozen working tree
+  for `local`, without Git metadata. Sensitive paths are left out, environment
+  files are [redacted](TARGETS.md), and symlinks and special files are skipped.
+  It is capped at 512 MiB.
+- Claude gets `Read`, `Grep`, and `Glob` without pre-approval, so it can read
+  only inside the snapshot. Codex runs in its read-only sandbox, which still
+  reads the whole disk: repository content under review can steer it to any
+  file the user can read.
+
 ## Effective configuration
 
 Inspect resolved values and their source without printing credentials or the

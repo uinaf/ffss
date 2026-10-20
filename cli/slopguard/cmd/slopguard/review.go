@@ -271,7 +271,7 @@ func reviewTelemetryRequested(arguments []string) bool {
 		}
 		if inline {
 			switch name {
-			case "--web-access", "-web-access":
+			case "--web-access", "-web-access", "--repository-access", "-repository-access":
 				if _, err := strconv.ParseBool(raw); err != nil {
 					return seen && selected
 				}
@@ -295,7 +295,7 @@ func reviewTelemetryRequested(arguments []string) bool {
 		switch argument {
 		case "--help", "-h":
 			return seen && selected
-		case "--web-access", "-web-access":
+		case "--web-access", "-web-access", "--repository-access", "-repository-access":
 			continue
 		default:
 			return seen && selected

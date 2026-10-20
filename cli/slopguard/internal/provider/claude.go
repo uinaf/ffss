@@ -71,7 +71,11 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 		return Result{}, newFailure(protocol.FailureConfig, "provider prompt must be non-empty valid UTF-8", nil, nil)
 	}
 	maximumPrompt := request.Config.MaxBytes.Value + providerPromptAllowance
-	protocolBytes := int64(len(reviewpolicy.ClaudeReviewProtocol()))
+	policy := reviewpolicy.ClaudeReviewProtocol()
+	if request.Snapshot != "" {
+		policy = reviewpolicy.ClaudeRepositoryReviewProtocol()
+	}
+	protocolBytes := int64(len(policy))
 	promptBytes, validLength := request.promptBytes()
 	if !validLength || maximumPrompt < request.Config.MaxBytes.Value || protocolBytes > maximumPrompt || promptBytes > maximumPrompt-protocolBytes {
 		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("Claude combined review input exceeds %d bytes (bundle plus trusted policy)", maximumPrompt), nil, nil)
@@ -134,9 +138,9 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	process, processErr := runProcess(reviewContext, processSpec{
 		Path:        executable,
 		Arguments:   claudeArguments(request.Config, string(providerSchema), model),
-		Directory:   runtime.Workspace,
+		Directory:   request.workspace(runtime.Workspace),
 		Environment: environment,
-		Input:       request.promptReader(reviewpolicy.ClaudeReviewProtocol()),
+		Input:       request.promptReader(policy),
 		Timeout:     time.Duration(request.Config.Timeout.Value),
 		StdoutLimit: providerStdoutLimit,
 		StderrLimit: providerStderrLimit,
@@ -238,7 +242,10 @@ func (claude *Claude) preflight(ctx context.Context, executable, workspace strin
 	return string(match[1]), nil
 }
 
-const claudeWebTools = "WebSearch,WebFetch"
+const (
+	claudeWebTools      = "WebSearch,WebFetch"
+	claudeSnapshotTools = "Read,Grep,Glob"
+)
 
 func claudeArguments(effective config.Effective, schema, model string) []string {
 	arguments := make([]string, 0, 32)
@@ -250,9 +257,16 @@ func claudeArguments(effective config.Effective, schema, model string) []string 
 		"--permission-mode", "dontAsk",
 		"--no-chrome",
 	)
-	if effective.WebAccess.Value {
+	// Snapshot tools stay out of --allowedTools: Claude Code then permits reads
+	// only inside the working directory, and dontAsk denies the rest.
+	switch {
+	case effective.RepositoryAccess.Value && effective.WebAccess.Value:
+		arguments = append(arguments, "--tools", claudeSnapshotTools+","+claudeWebTools, "--allowedTools", claudeWebTools)
+	case effective.RepositoryAccess.Value:
+		arguments = append(arguments, "--tools", claudeSnapshotTools)
+	case effective.WebAccess.Value:
 		arguments = append(arguments, "--tools", claudeWebTools, "--allowedTools", claudeWebTools)
-	} else {
+	default:
 		arguments = append(arguments, "--tools", "")
 	}
 	arguments = append(arguments,

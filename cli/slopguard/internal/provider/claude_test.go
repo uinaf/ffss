@@ -483,3 +483,19 @@ func argumentAfter(arguments []string, flag string) string {
 	}
 	return arguments[index+1]
 }
+
+func TestClaudeSnapshotToolsStayOutOfAllowedTools(t *testing.T) {
+	t.Parallel()
+
+	for _, web := range []bool{false, true} {
+		effective := claudeConfig(web, time.Second)
+		effective.RepositoryAccess = config.Value[bool]{Value: true, Source: config.SourceFlag}
+		arguments := claudeArguments(effective, "{}", "test-model")
+		if tools := argumentAfter(arguments, "--tools"); !strings.Contains(tools, claudeSnapshotTools) {
+			t.Errorf("web=%t --tools = %q, want snapshot tools", web, tools)
+		}
+		if allowed := argumentAfter(arguments, "--allowedTools"); strings.Contains(allowed, "Read") {
+			t.Errorf("web=%t --allowedTools = %q pre-approves reads outside the snapshot", web, allowed)
+		}
+	}
+}

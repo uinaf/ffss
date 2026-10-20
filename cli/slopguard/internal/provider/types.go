@@ -23,6 +23,16 @@ type Request struct {
 	TrustedSuffix string
 	Config        config.Effective
 	Target        protocol.Target
+	// Snapshot is the repository snapshot directory the provider runs in when
+	// repository access is on; empty keeps the empty workspace.
+	Snapshot string
+}
+
+func (request Request) workspace(runtime string) string {
+	if request.Snapshot != "" {
+		return request.Snapshot
+	}
+	return runtime
 }
 
 func (request Request) validPrompt() bool {

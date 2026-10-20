@@ -30,26 +30,28 @@ func parseFlags(flags *flag.FlagSet, arguments []string, stdout, stderr io.Write
 }
 
 type configFlagValues struct {
-	engine    *string
-	model     *string
-	reasoning *string
-	timeout   *string
-	retries   *int
-	maxBytes  *int64
-	webAccess *bool
-	telemetry *bool
+	engine     *string
+	model      *string
+	reasoning  *string
+	timeout    *string
+	retries    *int
+	maxBytes   *int64
+	webAccess  *bool
+	telemetry  *bool
+	repoAccess *bool
 }
 
 func bindConfigFlags(flags *flag.FlagSet) configFlagValues {
 	return configFlagValues{
-		engine:    flags.String("engine", "", "review engine: codex or claude"),
-		model:     flags.String("model", "", "provider model override"),
-		reasoning: flags.String("reasoning-effort", "", "reasoning effort"),
-		timeout:   flags.String("timeout", "", "provider timeout"),
-		retries:   flags.Int("retries", 0, "protocol retry count: 0 or 1"),
-		maxBytes:  flags.Int64("max-bytes", 0, "maximum frozen bundle bytes"),
-		webAccess: flags.Bool("web-access", true, "allow provider web access; --web-access=false disables it"),
-		telemetry: flags.Bool("telemetry", false, "record privacy-minimized local telemetry"),
+		engine:     flags.String("engine", "", "review engine: codex or claude"),
+		model:      flags.String("model", "", "provider model override"),
+		reasoning:  flags.String("reasoning-effort", "", "reasoning effort"),
+		timeout:    flags.String("timeout", "", "provider timeout"),
+		retries:    flags.Int("retries", 0, "protocol retry count: 0 or 1"),
+		maxBytes:   flags.Int64("max-bytes", 0, "maximum frozen bundle bytes"),
+		webAccess:  flags.Bool("web-access", true, "allow provider web access; --web-access=false disables it"),
+		telemetry:  flags.Bool("telemetry", false, "record privacy-minimized local telemetry"),
+		repoAccess: flags.Bool("repository-access", false, "let codex or claude read a redacted, read-only snapshot of the repository"),
 	}
 }
 
@@ -86,6 +88,9 @@ func (values configFlagValues) overrides(flags *flag.FlagSet) (config.Overrides,
 	}
 	if visited["telemetry"] {
 		overrides.Telemetry = values.telemetry
+	}
+	if visited["repository-access"] {
+		overrides.RepositoryAccess = values.repoAccess
 	}
 	return overrides, nil
 }

@@ -129,6 +129,7 @@ func runConfig(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		{name: "max_bytes", value: formatInt64(effective.MaxBytes.Value), source: effective.MaxBytes.Source},
 		{name: "web_access", value: formatBool(effective.WebAccess.Value), source: effective.WebAccess.Source},
 		{name: "telemetry", value: formatBool(effective.Telemetry.Value), source: effective.Telemetry.Source},
+		{name: "repository_access", value: formatBool(effective.RepositoryAccess.Value), source: effective.RepositoryAccess.Source},
 	}
 	for _, value := range values {
 		if err := writeConfigValue(stdout, value.name, value.value, value.source); err != nil {
