@@ -61,9 +61,11 @@ func redactEnvironmentLines(lines [][]byte) [][]byte {
 	return redacted
 }
 
-// selfContainedEnvironmentLine rejects any backslash outside quotes and never
-// lets a quote preceded by a backslash close, whatever the dialect, so a
-// disagreement with the file's parser over-redacts.
+// selfContainedEnvironmentLine accepts only a value that is one literal word,
+// optionally followed by a comment: safe bare characters, single quotes
+// without backslashes, double quotes holding literals, letter escapes, and
+// plain variable references, or a bare variable reference. Anything a dotenv
+// parser or a shell could read past the line end fails closed.
 func selfContainedEnvironmentLine(line []byte) bool {
 	text := bytes.TrimRight(line, " \t\r")
 	trimmed := bytes.TrimLeft(text, " \t")
@@ -74,30 +76,92 @@ func selfContainedEnvironmentLine(line []byte) bool {
 	if end == nil {
 		return false
 	}
-	value := text[end[1]:]
-	var quote byte
-	depth := 0
-	for index, character := range value {
+	value := bytes.TrimLeft(text[end[1]:], " \t")
+	for index := 0; index < len(value); {
+		character := value[index]
 		switch {
-		case quote != 0:
-			if character == quote && value[index-1] != '\\' {
-				quote = 0
+		case character == ' ' || character == '\t':
+			return bytes.HasPrefix(bytes.TrimLeft(value[index:], " \t"), []byte{'#'})
+		case character == '\'':
+			closing := bytes.IndexByte(value[index+1:], '\'')
+			if closing < 0 || bytes.IndexByte(value[index+1:index+1+closing], '\\') >= 0 {
+				return false
 			}
-		case character == '\\':
-			return false
-		case character == '"' || character == '\'' || character == '`':
-			quote = character
-		case character == '#' && index > 0 && (value[index-1] == ' ' || value[index-1] == '\t'):
-			return depth == 0
-		case character == '(' || character == '{':
-			depth++
-		case character == ')' || character == '}':
-			depth--
-		case character == '<' && index > 0 && value[index-1] == '<':
+			index += closing + 2
+		case character == '"':
+			next, ok := doubleQuotedEnd(value, index+1)
+			if !ok {
+				return false
+			}
+			index = next
+		case character == '$':
+			next, ok := variableReferenceEnd(value, index+1)
+			if !ok {
+				return false
+			}
+			index = next
+		case safeEnvironmentByte(character):
+			index++
+		default:
 			return false
 		}
 	}
-	return quote == 0 && depth == 0
+	return true
+}
+
+func doubleQuotedEnd(value []byte, index int) (int, bool) {
+	for index < len(value) {
+		switch character := value[index]; {
+		case character == '"':
+			return index + 1, true
+		case character == '\\':
+			if index+1 >= len(value) || !isAlphanumeric(value[index+1]) {
+				return 0, false
+			}
+			index += 2
+		case character == '$':
+			next, ok := variableReferenceEnd(value, index+1)
+			if !ok {
+				return 0, false
+			}
+			index = next
+		case character == '`':
+			return 0, false
+		default:
+			index++
+		}
+	}
+	return 0, false
+}
+
+// variableReferenceEnd accepts NAME or {NAME} after a dollar sign.
+func variableReferenceEnd(value []byte, index int) (int, bool) {
+	braced := index < len(value) && value[index] == '{'
+	if braced {
+		index++
+	}
+	start := index
+	for index < len(value) && (value[index] == '_' || isAlphanumeric(value[index])) {
+		index++
+	}
+	if index == start || value[start] >= '0' && value[start] <= '9' {
+		return 0, false
+	}
+	if braced {
+		if index >= len(value) || value[index] != '}' {
+			return 0, false
+		}
+		index++
+	}
+	return index, true
+}
+
+func isAlphanumeric(character byte) bool {
+	return character >= 'a' && character <= 'z' || character >= 'A' && character <= 'Z' || character >= '0' && character <= '9'
+}
+
+func safeEnvironmentByte(character byte) bool {
+	return isAlphanumeric(character) || strings.IndexByte("_.,:/@%+=~^#-", character) >= 0
 }
 
 // redactEnvironmentDiff rewrites the dotenv sections of a --unified=0 diff.

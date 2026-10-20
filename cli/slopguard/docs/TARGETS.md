@@ -62,12 +62,13 @@ boundary without first distilling and authorizing it.
   rejection, including these template and environment names.
 - Redacted environment files keep their line structure. Keys stay visible
   only when every non-comment line is a `KEY=value` or `export KEY=value`
-  assignment that closes every quote, parenthesis, and brace it opens, with no
-  heredoc and no backslash outside quotes. Then no value can span lines, so each
-  assignment becomes `KEY=[REDACTED]`. Otherwise every line of that file
-  becomes `[REDACTED]`. Comments always become `[REDACTED]`; blank lines stay.
-  A quote preceded by a backslash never closes, so a dialect disagreement
-  over-redacts. Each side of a change is judged as a whole file, and the rule
+  assignment whose value is one literal word, optionally followed by a
+  comment: safe bare characters, `'single'` quotes without backslashes,
+  `"double"` quotes holding literals, letter escapes such as `\n`, and
+  `$NAME` or `${NAME}`, or a bare `$NAME` or `${NAME}`. Then no value can span
+  lines under a dotenv parser or a shell, so each assignment becomes
+  `KEY=[REDACTED]`. Otherwise every line of that file becomes `[REDACTED]`.
+  Comments always become `[REDACTED]`; blank lines stay. Each side of a change is judged as a whole file, and the rule
   covers added, deleted, and untracked content alike. Their diff sections also
   drop blob IDs (`index [REDACTED]`) and hunk-header function context.
   Redaction reads each tracked environment file whole; those reads share one

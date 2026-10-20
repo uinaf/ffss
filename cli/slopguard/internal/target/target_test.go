@@ -785,7 +785,11 @@ func TestRedactEnvironmentKeepsKeysAndLineStructure(t *testing.T) {
 	for _, test := range []struct{ input, want string }{
 		{"A=1\nexport B = two\n", "A=[REDACTED]\nexport B =[REDACTED]\n"},
 		{"# old: KEY=hunter2\n\n  \nEMPTY=\n", "[REDACTED]\n\n  \nEMPTY=[REDACTED]\n"},
-		{"# don't commit\nA=\"it's\"\nB=`x`\r\n", "[REDACTED]\nA=[REDACTED]\nB=[REDACTED]\r\n"},
+		{"# don't commit\nA=\"it's\"\nB='x'\r\n", "[REDACTED]\nA=[REDACTED]\nB=[REDACTED]\r\n"},
+		{"A=1\nB=`date`\n", "[REDACTED]\n[REDACTED]\n"},
+		{"A=\"$(echo \"\nSECRET_SUFFIX=value\nB=\")\"\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
+		{"A='x\\'\nB=1\n", "[REDACTED]\n[REDACTED]\n"},
+		{"A=1 2\nB=\"${HOME}/$USER\"\n", "[REDACTED]\n[REDACTED]\n"},
 		{"A: yaml-style\nnot a key\n", "[REDACTED]\n[REDACTED]\n"},
 		{"A=1\nB=\"y\\\"\nC=z\"\nD=4", "[REDACTED]\n[REDACTED]\n[REDACTED]\n[REDACTED]"},
 		{"A=`multi\nB=leak`\nC=3\r\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\r\n"},
