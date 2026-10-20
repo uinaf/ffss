@@ -8,6 +8,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -57,6 +59,7 @@ type result struct {
 	Findings     int     `json:"findings"`
 	Unrelated    int     `json:"unrelated"`
 	Seconds      float64 `json:"seconds"`
+	Experiment   string  `json:"experiment"`
 }
 
 func main() {
@@ -152,6 +155,10 @@ func loadCases(directory, only string) ([]caseSpec, error) {
 		}
 		spec.ID, spec.directory = entry.Name(), filepath.Join(directory, entry.Name())
 		cases = append(cases, spec)
+		delete(wanted, entry.Name())
+	}
+	for id := range wanted {
+		return nil, fmt.Errorf("unknown case %q", id)
 	}
 	if len(cases) == 0 {
 		return nil, errors.New("no cases selected")
@@ -167,12 +174,19 @@ type job struct {
 }
 
 func evaluate(slopguard string, cases []caseSpec, configs []configuration, runs, parallel int, effort string, timeout time.Duration, out string) error {
+	experiment, err := fingerprint(slopguard, effort, cases)
+	if err != nil {
+		return err
+	}
 	done, err := readResults(out)
 	if err != nil {
 		return err
 	}
 	finished := map[string]bool{}
 	for _, row := range done {
+		if row.Experiment != experiment {
+			return fmt.Errorf("%s holds rows from another binary, effort, or case set; pass a new -out", out)
+		}
 		finished[fmt.Sprintf("%s/%s/%d", row.Case, row.Config, row.Run)] = true
 	}
 	workspace, err := os.MkdirTemp("", "slopguard-eval-")
@@ -219,6 +233,7 @@ func evaluate(slopguard string, cases []caseSpec, configs []configuration, runs,
 			defer workers.Done()
 			for next := range queue {
 				row := review(slopguard, configHome, effort, timeout, next)
+				row.Experiment = experiment
 				encoded, err := json.Marshal(row)
 				writeMu.Lock()
 				if err == nil && writeErr == nil {
@@ -368,6 +383,11 @@ func readResults(path string) ([]result, error) {
 }
 
 func printSummary(output io.Writer, rows []result, configs []configuration) error {
+	for _, row := range rows {
+		if row.Experiment != rows[0].Experiment {
+			return errors.New("results mix experiments; summarize one -out per experiment")
+		}
+	}
 	fmt.Fprintln(output, "| Config | Bugs caught | Needs-context caught | Clean runs flagged | Unrelated findings per bug run | Failed runs | Median time |")
 	fmt.Fprintln(output, "| --- | --- | --- | --- | --- | --- | --- |")
 	for _, config := range configs {
@@ -379,6 +399,13 @@ func printSummary(output io.Writer, rows []result, configs []configuration) erro
 			}
 			if row.Status == "failure" {
 				failed++
+				// A failed bug review still counts as a missed bug.
+				if !row.Clean {
+					bugRuns++
+					if row.NeedsContext {
+						contextRuns++
+					}
+				}
 				continue
 			}
 			seconds = append(seconds, row.Seconds)
@@ -444,4 +471,38 @@ func withoutSlopguardEnvironment(environment []string) []string {
 		}
 	}
 	return kept
+}
+
+// fingerprint identifies an experiment by the binary, effort, and case files,
+// so resuming never mixes rows produced under different settings.
+func fingerprint(slopguard, effort string, cases []caseSpec) (string, error) {
+	hash := sha256.New()
+	binary, err := os.Open(slopguard)
+	if err != nil {
+		return "", err
+	}
+	_, err = io.Copy(hash, binary)
+	_ = binary.Close()
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintf(hash, "\x00effort=%s\x00", effort)
+	for _, spec := range cases {
+		err := filepath.WalkDir(spec.directory, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil || entry.IsDir() {
+				return err
+			}
+			content, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(hash, "%s\x00%d\x00", filepath.ToSlash(path), len(content))
+			_, _ = hash.Write(content)
+			return nil
+		})
+		if err != nil {
+			return "", err
+		}
+	}
+	return hex.EncodeToString(hash.Sum(nil))[:16], nil
 }
