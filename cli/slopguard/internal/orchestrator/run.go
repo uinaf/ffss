@@ -114,9 +114,13 @@ func Run(ctx context.Context, options Options) protocol.Report {
 		ReasoningEffort:  string(options.Config.ReasoningEffort.Value),
 		WebAccess:        options.Config.WebAccess.Value,
 		RepositoryAccess: options.Config.RepositoryAccess.Value,
+		Retries:          options.Config.Retries.Value,
 	}.Key()
 	if options.Cache != nil {
 		if cached, ok := options.Cache.Load(cacheKey, reviewedTarget.SnapshotHash); ok {
+			if err := verifyUnchanged(ctx, bundle); err != nil {
+				return failure(classify(err), err, &reviewedTarget, []protocol.Attempt{})
+			}
 			progress("reusing the cached review of this snapshot")
 			return cached
 		}

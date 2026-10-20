@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -186,8 +187,12 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 
 	var cache *reviewcache.Store
 	var stateKey []byte
-	if *useCache && dependencies.cacheDirectory != nil {
-		cache, stateKey = openReviewCache(dependencies.cacheDirectory, stderr)
+	if dependencies.cacheDirectory != nil {
+		cache, stateKey = openReviewCache(dependencies.cacheDirectory, repositoryContext.Root(), stderr)
+	}
+	if !*useCache {
+		// The state key still keeps local snapshot hashes stable.
+		cache = nil
 	}
 	newCollector := dependencies.newCollector
 	if newCollector == nil {
@@ -498,8 +503,11 @@ func failureWithElapsed(class protocol.FailureClass, err error, started time.Tim
 
 // openReviewCache treats every cache failure as a miss: the review runs and is
 // not stored.
-func openReviewCache(directory func() (string, error), stderr io.Writer) (*reviewcache.Store, []byte) {
+func openReviewCache(directory func() (string, error), repository string, stderr io.Writer) (*reviewcache.Store, []byte) {
 	path, err := directory()
+	if err == nil && insideDirectory(path, repository) {
+		err = fmt.Errorf("cache directory %q is inside the reviewed repository", path)
+	}
 	if err == nil {
 		var cache *reviewcache.Store
 		if cache, err = reviewcache.Open(path); err == nil {
@@ -511,4 +519,27 @@ func openReviewCache(directory func() (string, error), stderr io.Writer) (*revie
 	}
 	report(stderr, "review cache unavailable: %v\n", err)
 	return nil, nil
+}
+
+// insideDirectory reports whether path is root or below it, resolving
+// symlinks on whatever part of path already exists.
+func insideDirectory(path, root string) bool {
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		resolvedRoot = root
+	}
+	resolved := filepath.Clean(path)
+	for existing := resolved; ; existing = filepath.Dir(existing) {
+		if target, err := filepath.EvalSymlinks(existing); err == nil {
+			if rest, err := filepath.Rel(existing, resolved); err == nil {
+				resolved = filepath.Join(target, rest)
+			}
+			break
+		}
+		if filepath.Dir(existing) == existing {
+			break
+		}
+	}
+	relative, err := filepath.Rel(resolvedRoot, resolved)
+	return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }

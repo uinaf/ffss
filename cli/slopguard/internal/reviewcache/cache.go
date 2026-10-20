@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"sort"
 	"syscall"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
@@ -21,6 +22,7 @@ import (
 const (
 	stateKeyBytes   = 32
 	maxEntryBytes   = int64(16 << 20)
+	maxEntries      = 512
 	reviewsDirName  = "reviews"
 	stateKeyName    = "state-key"
 	temporaryPrefix = ".tmp-"
@@ -40,6 +42,7 @@ type KeyParts struct {
 	ReasoningEffort  string `json:"reasoning_effort"`
 	WebAccess        bool   `json:"web_access"`
 	RepositoryAccess bool   `json:"repository_access"`
+	Retries          int    `json:"retries"`
 }
 
 func (parts KeyParts) Key() string {
@@ -157,7 +160,42 @@ func (store *Store) Save(key string, report protocol.Report) error {
 	if int64(len(data)) > maxEntryBytes {
 		return fmt.Errorf("cached review exceeds %d bytes", maxEntryBytes)
 	}
-	return writePrivateFile(filepath.Join(store.directory, reviewsDirName), store.entryPath(key), data)
+	if err := writePrivateFile(filepath.Join(store.directory, reviewsDirName), store.entryPath(key), data); err != nil {
+		return err
+	}
+	return store.prune()
+}
+
+// prune keeps the newest maxEntries reviews so the cache cannot grow without
+// bound.
+func (store *Store) prune() error {
+	directory := filepath.Join(store.directory, reviewsDirName)
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return fmt.Errorf("read review cache: %w", err)
+	}
+	type entry struct {
+		name     string
+		modified int64
+	}
+	reviews := make([]entry, 0, len(entries))
+	for _, item := range entries {
+		info, err := item.Info()
+		if err != nil || !info.Mode().IsRegular() || filepath.Ext(item.Name()) != ".json" {
+			continue
+		}
+		reviews = append(reviews, entry{name: item.Name(), modified: info.ModTime().UnixNano()})
+	}
+	if len(reviews) <= maxEntries {
+		return nil
+	}
+	sort.Slice(reviews, func(i, j int) bool { return reviews[i].modified > reviews[j].modified })
+	for _, stale := range reviews[maxEntries:] {
+		if err := os.Remove(filepath.Join(directory, stale.name)); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("prune review cache: %w", err)
+		}
+	}
+	return nil
 }
 
 func (store *Store) entryPath(key string) string {

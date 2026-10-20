@@ -97,16 +97,17 @@ workspace, so the reviewer can read callers and tests.
 ## Result cache
 
 `review` reuses a completed clean or findings result when the snapshot hash,
-engine, model, reasoning effort, web access, repository access, and slopguard
-version all match, and prints `reusing the cached review of this snapshot` to
-stderr. The snapshot hash already covers the diff, prompt, and context files.
+engine, model, reasoning effort, retries, web access, repository access, and
+slopguard version all match, the source still passes the unchanged check, and
+prints `reusing the cached review of this snapshot` to stderr. The snapshot hash already covers the diff, prompt, and context files.
 Pass `--cache=false` to review again.
 
 - Entries live under `$XDG_CACHE_HOME/slopguard`, or `~/.cache/slopguard`,
   as files only the current user can read; a shared or symlinked entry is
   ignored, and any cache error falls back to a fresh, unstored review.
 - Failures are never cached. A cached result keeps its original attempts and
-  duration.
+  duration. The newest 512 results are kept.
+- A cache directory inside the reviewed repository disables the cache.
 - Local snapshot hashes use a per-user `state-key` kept in the same directory,
   so an unchanged local target reproduces its hash across runs.
 

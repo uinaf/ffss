@@ -67,3 +67,31 @@ func TestReviewReusesCachedResultForUnchangedSnapshot(t *testing.T) {
 		t.Fatalf("changed snapshot reused the cache: %s after %d calls", third.Status, len(reviewer.prompts))
 	}
 }
+
+func TestReviewCacheKeepsStateKeyWithoutReuseAndStaysOutsideRepository(t *testing.T) {
+	t.Parallel()
+
+	repository := reviewRepository(t)
+	reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}, {result: cleanResult()}}}
+	dependencies := reviewDependencies(t, reviewer)
+	cache := t.TempDir()
+	dependencies.cacheDirectory = func() (string, error) { return cache, nil }
+	var stdout, stderr bytes.Buffer
+	run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Check.", "--output", "json", "--cache=false"}, &stdout, &stderr, dependencies)
+	if _, err := os.Stat(filepath.Join(cache, "state-key")); err != nil {
+		t.Fatalf("--cache=false skipped the state key: %v", err)
+	}
+	if entries, _ := os.ReadDir(filepath.Join(cache, "reviews")); len(entries) != 0 {
+		t.Fatalf("--cache=false stored %d reviews", len(entries))
+	}
+
+	dependencies.cacheDirectory = func() (string, error) { return filepath.Join(repository, ".cache"), nil }
+	stderr.Reset()
+	run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Check.", "--output", "json"}, &stdout, &stderr, dependencies)
+	if !strings.Contains(stderr.String(), "inside the reviewed repository") {
+		t.Fatalf("stderr = %q, want the in-repository refusal", stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(repository, ".cache")); !os.IsNotExist(err) {
+		t.Fatalf("cache wrote inside the repository: %v", err)
+	}
+}

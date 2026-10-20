@@ -112,3 +112,25 @@ func TestStateKeyPersists(t *testing.T) {
 		t.Fatalf("second StateKey = %x, %v; want %x", again, err, key)
 	}
 }
+
+func TestStorePrunesToNewestEntries(t *testing.T) {
+	t.Parallel()
+
+	store, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	report := fixture(t)
+	for index := range maxEntries + 3 {
+		if err := store.Save(KeyParts{Retries: index}.Key(), report); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, err := os.ReadDir(filepath.Join(store.directory, reviewsDirName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != maxEntries {
+		t.Fatalf("cache holds %d entries, want %d", len(entries), maxEntries)
+	}
+}
