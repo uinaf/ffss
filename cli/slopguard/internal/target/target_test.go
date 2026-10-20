@@ -2050,3 +2050,18 @@ func TestExportSnapshotIgnoresArchiveAttributes(t *testing.T) {
 		}
 	}
 }
+
+func TestSnapshotWriterChargesEveryFileAndRejectsEscapes(t *testing.T) {
+	t.Parallel()
+
+	writer := &snapshotWriter{directory: t.TempDir(), remaining: 2*snapshotEntryBytes - 1}
+	if err := writer.write("empty-1", nil); err != nil {
+		t.Fatalf("first empty file: %v", err)
+	}
+	if err := writer.write("empty-2", nil); err == nil || !strings.Contains(err.Error(), "repository snapshot exceeds") {
+		t.Fatalf("second empty file error = %v, want the cap", err)
+	}
+	if err := (&snapshotWriter{directory: t.TempDir(), remaining: MaximumSnapshotBytes}).write("../escape", []byte("x")); err == nil {
+		t.Fatal("write accepted a path outside the snapshot")
+	}
+}

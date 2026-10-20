@@ -14,8 +14,13 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
 
-// MaximumSnapshotBytes bounds the file content a repository snapshot writes.
-const MaximumSnapshotBytes = int64(512 << 20)
+// MaximumSnapshotBytes bounds what a repository snapshot writes: file content
+// plus snapshotEntryBytes and the path length for every file, so a tree of
+// many empty files cannot exhaust inodes or memory.
+const (
+	MaximumSnapshotBytes = int64(512 << 20)
+	snapshotEntryBytes   = int64(512)
+)
 
 // ExportSnapshot writes the reviewed side of the target into directory as plain
 // files without Git metadata, so history cannot reveal what the snapshot
@@ -59,7 +64,7 @@ func (collector *Collector) exportRevision(ctx context.Context, root string, san
 			return fmt.Errorf("git returned a malformed tree entry")
 		}
 		relative := string(path)
-		if (fields[0] != "100644" && fields[0] != "100755") || fields[1] != "blob" || protocolPath(relative) != nil || !writer.wanted(relative) {
+		if (fields[0] != "100644" && fields[0] != "100755") || fields[1] != "blob" || !writer.wanted(relative) {
 			return nil
 		}
 		if !validObjectID(fields[2]) {
@@ -152,7 +157,7 @@ func (batch *snapshotBatchWriter) Write(data []byte) (int, error) {
 				break
 			}
 			input = input[1:]
-			batch.err = batch.writer.write(entry.path, bytes.NewReader(batch.content))
+			batch.err = batch.writer.write(entry.path, batch.content)
 			batch.content = nil
 			batch.remaining = -1
 			batch.index++
@@ -187,7 +192,7 @@ func (collector *Collector) exportWorktree(ctx context.Context, root string, san
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if protocolPath(relative) != nil || !writer.wanted(relative) {
+		if !writer.wanted(relative) {
 			continue
 		}
 		info, err := os.Lstat(filepath.Join(root, filepath.FromSlash(relative)))
@@ -201,9 +206,12 @@ func (collector *Collector) exportWorktree(ctx context.Context, root string, san
 		if err != nil {
 			return fmt.Errorf("open snapshot file %q: %w", relative, err)
 		}
-		err = writer.write(relative, file)
+		content, err := io.ReadAll(io.LimitReader(file, writer.remaining+1))
 		_ = file.Close()
 		if err != nil {
+			return fmt.Errorf("read snapshot file %q: %w", relative, err)
+		}
+		if err := writer.write(relative, content); err != nil {
 			return err
 		}
 	}
@@ -219,12 +227,14 @@ func (writer *snapshotWriter) wanted(relative string) bool {
 	return reviewablePath(relative)
 }
 
-func (writer *snapshotWriter) write(relative string, source io.Reader) error {
-	content, err := io.ReadAll(io.LimitReader(source, writer.remaining+1))
-	if err != nil {
-		return fmt.Errorf("read snapshot file %q: %w", relative, err)
+// write rejects a path that could leave the snapshot instead of skipping it,
+// so an unusual name fails the export rather than silently thinning the tree.
+func (writer *snapshotWriter) write(relative string, content []byte) error {
+	if !filepath.IsLocal(filepath.FromSlash(relative)) {
+		return fmt.Errorf("snapshot path %q is not a local path", relative)
 	}
-	if int64(len(content)) > writer.remaining {
+	writer.remaining -= snapshotEntryBytes + int64(len(relative))
+	if writer.remaining < 0 || int64(len(content)) > writer.remaining {
 		return fmt.Errorf("repository snapshot exceeds %d bytes", MaximumSnapshotBytes)
 	}
 	if environmentFilePath(relative) {

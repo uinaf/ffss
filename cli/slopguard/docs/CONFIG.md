@@ -80,7 +80,7 @@ workspace, so the reviewer can read callers and tests.
   tree so `export-ignore` and `export-subst` cannot hide or rewrite them, or the
   frozen working tree for `local`, without Git metadata. Sensitive paths are left out, environment
   files are [redacted](TARGETS.md), and symlinks and special files are skipped.
-  It is capped at 512 MiB.
+  It is capped at 512 MiB, counting 512 bytes plus the path for every file.
 - Neither engine loads the snapshot's own instruction files. Claude keeps the
   empty workspace and gets the snapshot through `--add-dir`, with
   `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0`, so its `CLAUDE.md` stays
@@ -91,7 +91,8 @@ workspace, so the reviewer can read callers and tests.
   reads the whole disk: repository content under review can steer it to any
   file the user can read.
 - The snapshot directory must be outside the reviewed repository; point
-  `TMPDIR` elsewhere if it is not.
+  `TMPDIR` elsewhere if it is not. Keep `TMPDIR` outside Codex-trusted
+  projects too, so Codex cannot apply a reviewed project configuration.
 
 ## Effective configuration
 
