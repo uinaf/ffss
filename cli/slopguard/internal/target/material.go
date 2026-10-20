@@ -834,8 +834,8 @@ func writeContextHash(ctx context.Context, output io.Writer, content []byte) err
 	return ctx.Err()
 }
 
-// The payload carries only redacted untracked environment files, so their raw
-// bytes bind the state hash instead. The hash reaches the provider; the
+// The local state hash covers raw index, diff, and untracked environment bytes
+// while the payload carries their redaction. The hash reaches the provider; the
 // per-process key stops it from confirming guessed values.
 var environmentStateKey = func() []byte {
 	key := make([]byte, 32)
@@ -855,6 +855,12 @@ func (collector *Collector) localSourceStateHash(ctx context.Context, root strin
 		worktreeBase = plan.attributes
 	}
 	hash := sha256.New()
+	if err := hashSourceSection(hash, "key", func(output io.Writer) error {
+		_, err := output.Write(environmentStateKey)
+		return err
+	}); err != nil {
+		return "", fmt.Errorf("fingerprint key: %w", err)
+	}
 	if err := hashSourceSection(hash, "head", func(output io.Writer) error {
 		_, err := output.Write(head)
 		return err
@@ -895,7 +901,6 @@ func (collector *Collector) localSourceStateHash(ctx context.Context, root strin
 	}
 	if len(untrackedEnvironment) > 0 {
 		if err := hashSourceSection(hash, "untracked-environment", func(output io.Writer) error {
-			_, _ = output.Write(environmentStateKey)
 			for _, path := range sortedKeys(untrackedEnvironment) {
 				content := untrackedEnvironment[path]
 				_, _ = fmt.Fprintf(output, "%d:%s%d:", len(path), path, len(content))

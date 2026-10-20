@@ -65,8 +65,9 @@ boundary without first distilling and authorizing it.
   stay, and every other line, comments and the continuation lines of quoted
   multi-line values included, becomes `[REDACTED]`. This applies to added,
   deleted, and untracked content alike. Their diff sections also drop blob IDs
-  (`index [REDACTED]`) and hunk-header function context. Untracked binary
-  environment files fail closed.
+  (`index [REDACTED]`) and hunk-header function context. Redaction reads each
+  tracked environment file whole, so that read counts against the bundle
+  limit. Untracked binary environment files fail closed.
 - Tracked symlink changes are included as Git's text representation of the
   link target; collectors never follow those links when reading worktree,
   untracked, or context bytes.
@@ -111,8 +112,8 @@ chunking or review fan-out above that limit.
   including deleted bytes and appended context.
 - Slopguard rejects known sensitive paths except changed environment templates
   and environment files with the names above. Environment file values never
-  leave the machine; the raw bytes of untracked ones bind the snapshot through
-  a per-process key, so the reported hash cannot confirm a guessed value.
+  leave the machine. Local snapshots bind their raw bytes through a
+  per-process key, so the reported hash cannot confirm a guessed value.
   Slopguard does not scan the payload for credentials or judge whether
   template defaults or environment key names are safe to disclose. A template
   name is not proof that its content is free of secrets.
