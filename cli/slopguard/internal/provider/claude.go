@@ -73,7 +73,7 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	maximumPrompt := request.Config.MaxBytes.Value + providerPromptAllowance
 	policy := reviewpolicy.ClaudeReviewProtocol()
 	if request.Snapshot != "" {
-		policy = reviewpolicy.ClaudeRepositoryReviewProtocol()
+		policy = reviewpolicy.ClaudeRepositoryReviewProtocol(request.Snapshot)
 	}
 	protocolBytes := int64(len(policy))
 	promptBytes, validLength := request.promptBytes()
@@ -137,8 +137,8 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	processSpan := phase.Start(reviewContext, phase.ProviderProcess)
 	process, processErr := runProcess(reviewContext, processSpec{
 		Path:        executable,
-		Arguments:   claudeArguments(request.Config, string(providerSchema), model),
-		Directory:   request.workspace(runtime.Workspace),
+		Arguments:   claudeArguments(request.Config, string(providerSchema), model, request.Snapshot),
+		Directory:   runtime.Workspace,
 		Environment: environment,
 		Input:       request.promptReader(policy),
 		Timeout:     time.Duration(request.Config.Timeout.Value),
@@ -247,7 +247,10 @@ const (
 	claudeSnapshotTools = "Read,Grep,Glob"
 )
 
-func claudeArguments(effective config.Effective, schema, model string) []string {
+// claudeArguments attaches a snapshot with --add-dir instead of running in it,
+// because Claude Code loads CLAUDE.md from the working directory as
+// instructions but not from added directories.
+func claudeArguments(effective config.Effective, schema, model, snapshot string) []string {
 	arguments := make([]string, 0, 32)
 	arguments = append(arguments,
 		"--print",
@@ -268,6 +271,9 @@ func claudeArguments(effective config.Effective, schema, model string) []string 
 		arguments = append(arguments, "--tools", claudeWebTools, "--allowedTools", claudeWebTools)
 	default:
 		arguments = append(arguments, "--tools", "")
+	}
+	if snapshot != "" {
+		arguments = append(arguments, "--add-dir", snapshot)
 	}
 	arguments = append(arguments,
 		"--model", model,

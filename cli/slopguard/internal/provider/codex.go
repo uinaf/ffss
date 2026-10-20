@@ -312,7 +312,9 @@ func codexArguments(effective config.Effective, workspace, schemaPath, outputPat
 		arguments = append(arguments, "--config", `web_search="disabled"`)
 	}
 	if effective.RepositoryAccess.Value {
-		arguments = append(arguments, "--config", `sandbox_mode="read-only"`)
+		// The snapshot is the working directory, so project AGENTS.md files
+		// under review would otherwise load as instructions.
+		arguments = append(arguments, "--config", `sandbox_mode="read-only"`, "--config", "project_doc_max_bytes=0")
 	}
 	arguments = append(arguments, "exec", "--json", "--color", "never", "--ephemeral", "--skip-git-repo-check", "--cd", workspace)
 	arguments = append(arguments, "--output-schema", schemaPath, "--output-last-message", outputPath, "-")
@@ -577,5 +579,5 @@ func codexPolicy(request Request) string {
 	if request.Snapshot == "" {
 		return ""
 	}
-	return reviewpolicy.RepositorySnapshotPolicy()
+	return reviewpolicy.RepositorySnapshotPolicy(request.Snapshot)
 }

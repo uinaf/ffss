@@ -13,6 +13,6 @@ func ClaudeReviewProtocol() string {
 
 // ClaudeRepositoryReviewProtocol lifts the no-tools rule for the read-only
 // snapshot tools and appends the snapshot policy.
-func ClaudeRepositoryReviewProtocol() string {
-	return strings.Replace(claudeReviewProtocol, noToolsRule, "", 1) + RepositorySnapshotPolicy()
+func ClaudeRepositoryReviewProtocol(directory string) string {
+	return strings.Replace(claudeReviewProtocol, noToolsRule, "", 1) + RepositorySnapshotPolicy(directory)
 }

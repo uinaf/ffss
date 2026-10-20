@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 )
@@ -22,6 +23,9 @@ const MaximumSnapshotBytes = int64(512 << 20)
 // symlinks and special files are skipped. Local targets copy the working tree,
 // whose later drift VerifyUnchanged reports.
 func (bundle *Bundle) ExportSnapshot(ctx context.Context, directory string) error {
+	if err := outsideRepository(directory, bundle.repository); err != nil {
+		return err
+	}
 	writer := &snapshotWriter{directory: directory, remaining: MaximumSnapshotBytes}
 	collector := bundle.collector
 	local := bundle.request.Mode == protocol.TargetLocal
@@ -133,16 +137,16 @@ func (writer *snapshotWriter) write(relative string, source io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("read snapshot file %q: %w", relative, err)
 	}
-	if int64(len(content)) > writer.remaining {
-		return fmt.Errorf("repository snapshot exceeds %d bytes", MaximumSnapshotBytes)
-	}
-	writer.remaining -= int64(len(content))
 	if environmentFilePath(relative) {
 		if bytes.IndexByte(content, 0) >= 0 {
 			return nil
 		}
 		content = redactEnvironment(content)
 	}
+	if int64(len(content)) > writer.remaining {
+		return fmt.Errorf("repository snapshot exceeds %d bytes", MaximumSnapshotBytes)
+	}
+	writer.remaining -= int64(len(content))
 	destination := filepath.Join(writer.directory, filepath.FromSlash(relative))
 	if err := os.MkdirAll(filepath.Dir(destination), 0o700); err != nil {
 		return fmt.Errorf("create snapshot directory for %q: %w", relative, err)
@@ -159,4 +163,22 @@ func (writer *snapshotWriter) write(relative string, source io.Reader) error {
 		return fmt.Errorf("write snapshot file %q: %w", relative, writeErr)
 	}
 	return nil
+}
+
+// outsideRepository rejects a snapshot inside the reviewed checkout, where its
+// files would read as untracked changes and fail unchanged verification.
+func outsideRepository(directory, repository string) error {
+	resolvedDirectory, err := filepath.EvalSymlinks(directory)
+	if err != nil {
+		return fmt.Errorf("resolve snapshot directory: %w", err)
+	}
+	resolvedRepository, err := filepath.EvalSymlinks(repository)
+	if err != nil {
+		return fmt.Errorf("resolve repository: %w", err)
+	}
+	relative, err := filepath.Rel(resolvedRepository, resolvedDirectory)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return nil
+	}
+	return fmt.Errorf("snapshot directory %q is inside the reviewed repository; point TMPDIR outside it", directory)
 }

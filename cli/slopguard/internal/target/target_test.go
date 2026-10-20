@@ -1982,6 +1982,22 @@ func TestExportSnapshotOmitsSensitiveFilesAndHistory(t *testing.T) {
 		})
 	})
 
+	t.Run("directory inside repository", func(t *testing.T) {
+		repository := seed(t)
+		writeFile(t, repository, "src/app.go", "package app // edited\n")
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		directory := filepath.Join(repository, "tmp-snapshot")
+		if err := os.Mkdir(directory, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := bundle.ExportSnapshot(context.Background(), directory); err == nil || !strings.Contains(err.Error(), "inside the reviewed repository") {
+			t.Fatalf("ExportSnapshot() error = %v", err)
+		}
+	})
+
 	t.Run("local", func(t *testing.T) {
 		repository := seed(t)
 		writeFile(t, repository, "src/app.go", "package app // edited\n")

@@ -23,8 +23,8 @@ type Request struct {
 	TrustedSuffix string
 	Config        config.Effective
 	Target        protocol.Target
-	// Snapshot is the repository snapshot directory the provider runs in when
-	// repository access is on; empty keeps the empty workspace.
+	// Snapshot is the repository snapshot directory the provider may read when
+	// repository access is on; empty keeps the provider in an empty workspace.
 	Snapshot string
 }
 
