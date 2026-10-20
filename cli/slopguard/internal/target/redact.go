@@ -61,9 +61,9 @@ func redactEnvironmentLines(lines [][]byte) [][]byte {
 	return redacted
 }
 
-// selfContainedEnvironmentLine treats a quote preceded by a backslash as
-// escaped and a trailing backslash as a continuation, whatever the dialect, so
-// a disagreement with the file's parser over-redacts.
+// selfContainedEnvironmentLine rejects any backslash outside quotes and never
+// lets a quote preceded by a backslash close, whatever the dialect, so a
+// disagreement with the file's parser over-redacts.
 func selfContainedEnvironmentLine(line []byte) bool {
 	text := bytes.TrimRight(line, " \t\r")
 	trimmed := bytes.TrimLeft(text, " \t")
@@ -71,7 +71,7 @@ func selfContainedEnvironmentLine(line []byte) bool {
 		return true
 	}
 	end := environmentAssignment.FindIndex(text)
-	if end == nil || bytes.HasSuffix(text, []byte{'\\'}) {
+	if end == nil {
 		return false
 	}
 	value := text[end[1]:]
@@ -83,6 +83,8 @@ func selfContainedEnvironmentLine(line []byte) bool {
 			if character == quote && value[index-1] != '\\' {
 				quote = 0
 			}
+		case character == '\\':
+			return false
 		case character == '"' || character == '\'' || character == '`':
 			quote = character
 		case character == '#' && index > 0 && (value[index-1] == ' ' || value[index-1] == '\t'):

@@ -794,7 +794,8 @@ func TestRedactEnvironmentKeepsKeysAndLineStructure(t *testing.T) {
 		{"this isn't metadata\nPRIVATE_KEY=\"header\nowner's payload\nMIIBsecretAAA==\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
 		{"TOKEN=prefix\\\nsensitiveSuffix=\n", "[REDACTED]\n[REDACTED]\n"},
 		{"KEY=$(cat <<EOF\nsecret=1\nEOF\n)\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
-		{"A=1 # it's fine\nB=${HOME}/x\n", "A=[REDACTED]\nB=[REDACTED]\n"},
+		{"A=1 # it's fine\nB=${HOME}/x\nC=\"-----BEGIN-----\\nMIIB\\n\"\n", "A=[REDACTED]\nB=[REDACTED]\nC=[REDACTED]\n"},
+		{"A=\\\"\"\nSECRET_SUFFIX=\nB=\\\"\"\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
 	} {
 		if got := string(redactEnvironment([]byte(test.input))); got != test.want {
 			t.Errorf("redactEnvironment(%q) = %q, want %q", test.input, got, test.want)

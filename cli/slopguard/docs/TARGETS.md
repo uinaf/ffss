@@ -63,7 +63,7 @@ boundary without first distilling and authorizing it.
 - Redacted environment files keep their line structure. Keys stay visible
   only when every non-comment line is a `KEY=value` or `export KEY=value`
   assignment that closes every quote, parenthesis, and brace it opens, with no
-  heredoc and no trailing backslash. Then no value can span lines, so each
+  heredoc and no backslash outside quotes. Then no value can span lines, so each
   assignment becomes `KEY=[REDACTED]`. Otherwise every line of that file
   becomes `[REDACTED]`. Comments always become `[REDACTED]`; blank lines stay.
   A quote preceded by a backslash never closes, so a dialect disagreement
