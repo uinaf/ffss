@@ -835,8 +835,9 @@ func writeContextHash(ctx context.Context, output io.Writer, content []byte) err
 }
 
 // The local state hash covers raw index, diff, and untracked environment bytes
-// while the payload carries their redaction. The hash reaches the provider; the
-// per-process key stops it from confirming guessed values.
+// while the payload carries their redaction. The hash reaches the provider; a
+// secret key stops it from confirming guessed values. This per-process key
+// stands in when no persistent Options.StateKey is supplied.
 var environmentStateKey = func() []byte {
 	key := make([]byte, 32)
 	_, _ = rand.Read(key)
@@ -856,7 +857,11 @@ func (collector *Collector) localSourceStateHash(ctx context.Context, root strin
 	}
 	hash := sha256.New()
 	if err := hashSourceSection(hash, "key", func(output io.Writer) error {
-		_, err := output.Write(environmentStateKey)
+		key := collector.stateKey
+		if len(key) == 0 {
+			key = environmentStateKey
+		}
+		_, err := output.Write(key)
 		return err
 	}); err != nil {
 		return "", fmt.Errorf("fingerprint key: %w", err)

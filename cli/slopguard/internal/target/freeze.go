@@ -32,6 +32,7 @@ type Collector struct {
 	git        *gitClient
 	gitPath    string
 	repository *repositorypkg.Context
+	stateKey   []byte
 }
 
 type collected struct {
@@ -56,7 +57,7 @@ func New(options Options) (*Collector, error) {
 }
 
 func NewContext(ctx context.Context, options Options) (*Collector, error) {
-	collector := &Collector{gitPath: options.GitPath}
+	collector := &Collector{gitPath: options.GitPath, stateKey: append([]byte(nil), options.StateKey...)}
 	if options.Context != nil {
 		if options.Repository != "" {
 			if err := options.Context.ValidateRequested(options.Repository); err != nil {
@@ -144,7 +145,7 @@ func (collector *Collector) forContext(ctx context.Context, repositoryContext *r
 	if err := repositoryContext.ValidateGit(ctx); err != nil {
 		return nil, err
 	}
-	return &Collector{git: git, repository: repositoryContext}, nil
+	return &Collector{git: git, repository: repositoryContext, stateKey: collector.stateKey}, nil
 }
 
 func validateRequest(request *Request) error {

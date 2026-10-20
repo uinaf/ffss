@@ -20,6 +20,7 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
 	reportwriter "github.com/uinaf/ffss/cli/slopguard/internal/report"
 	repositorypkg "github.com/uinaf/ffss/cli/slopguard/internal/repository"
+	"github.com/uinaf/ffss/cli/slopguard/internal/reviewcache"
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
 	telemetrypkg "github.com/uinaf/ffss/cli/slopguard/internal/telemetry"
 )
@@ -103,6 +104,7 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	flags.Var(&contextFiles, "context-file", "repository-relative context file (repeatable)")
 	output := flags.String("output", "terminal", "output format: terminal or json")
 	configFlags := bindConfigFlags(flags)
+	useCache := flags.Bool("cache", true, "reuse a completed review of the same snapshot and settings; --cache=false reviews again")
 	flagStderr := stderr
 	if jsonRequested {
 		flagStderr = io.Discard
@@ -182,10 +184,15 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	}
 	configSpan.End()
 
+	var cache *reviewcache.Store
+	var stateKey []byte
+	if *useCache && dependencies.cacheDirectory != nil {
+		cache, stateKey = openReviewCache(dependencies.cacheDirectory, stderr)
+	}
 	newCollector := dependencies.newCollector
 	if newCollector == nil {
 		newCollector = func() (*target.Collector, error) {
-			return target.NewContext(ctx, target.Options{Context: repositoryContext})
+			return target.NewContext(ctx, target.Options{Context: repositoryContext, StateKey: stateKey})
 		}
 	}
 	probeSpan := recorder.Start(phase.DependencyProbes)
@@ -217,7 +224,9 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 			ContextFiles: append([]string(nil), contextFiles...),
 			MaxBytes:     effective.MaxBytes.Value,
 		},
-		Config: effective,
+		Config:           effective,
+		Cache:            cache,
+		SlopguardVersion: buildinfo.Version(),
 		Progress: func(message string) {
 			report(stderr, "%s\n", message)
 		},
@@ -271,7 +280,7 @@ func reviewTelemetryRequested(arguments []string) bool {
 		}
 		if inline {
 			switch name {
-			case "--web-access", "-web-access", "--repository-access", "-repository-access":
+			case "--web-access", "-web-access", "--repository-access", "-repository-access", "--cache", "-cache":
 				if _, err := strconv.ParseBool(raw); err != nil {
 					return seen && selected
 				}
@@ -295,7 +304,7 @@ func reviewTelemetryRequested(arguments []string) bool {
 		switch argument {
 		case "--help", "-h":
 			return seen && selected
-		case "--web-access", "-web-access", "--repository-access", "-repository-access":
+		case "--web-access", "-web-access", "--repository-access", "-repository-access", "--cache", "-cache":
 			continue
 		default:
 			return seen && selected
@@ -485,4 +494,21 @@ func failureWithElapsed(class protocol.FailureClass, err error, started time.Tim
 	result := orchestrator.Failure(class, err)
 	result.Metadata.DurationMS = phase.ElapsedMilliseconds(started, recorder.Now())
 	return result
+}
+
+// openReviewCache treats every cache failure as a miss: the review runs and is
+// not stored.
+func openReviewCache(directory func() (string, error), stderr io.Writer) (*reviewcache.Store, []byte) {
+	path, err := directory()
+	if err == nil {
+		var cache *reviewcache.Store
+		if cache, err = reviewcache.Open(path); err == nil {
+			var key []byte
+			if key, err = cache.StateKey(); err == nil {
+				return cache, key
+			}
+		}
+	}
+	report(stderr, "review cache unavailable: %v\n", err)
+	return nil, nil
 }

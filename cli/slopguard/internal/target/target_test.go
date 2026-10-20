@@ -2104,3 +2104,29 @@ func TestExportSnapshotSkipsGitMetadataEntries(t *testing.T) {
 		t.Fatalf("snapshot omitted app.go: %v", err)
 	}
 }
+
+func TestLocalSnapshotHashFollowsStateKey(t *testing.T) {
+	t.Parallel()
+
+	repository := committedRepository(t)
+	writeFile(t, repository, "file.txt", "changed\n")
+	snapshot := func(key string) string {
+		t.Helper()
+		collector, err := New(Options{Repository: repository, StateKey: []byte(key)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		bundle, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		return bundle.Target().SnapshotHash
+	}
+	first := snapshot("key-one-key-one-key-one-key-one!")
+	if again := snapshot("key-one-key-one-key-one-key-one!"); again != first {
+		t.Fatalf("same key gave %s then %s", first, again)
+	}
+	if other := snapshot("key-two-key-two-key-two-key-two!"); other == first {
+		t.Fatal("a different state key reproduced the snapshot hash")
+	}
+}

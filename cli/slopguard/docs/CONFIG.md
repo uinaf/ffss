@@ -94,6 +94,22 @@ workspace, so the reviewer can read callers and tests.
   `TMPDIR` elsewhere if it is not. Keep `TMPDIR` outside Codex-trusted
   projects too, so Codex cannot apply a reviewed project configuration.
 
+## Result cache
+
+`review` reuses a completed clean or findings result when the snapshot hash,
+engine, model, reasoning effort, web access, repository access, and slopguard
+version all match, and prints `reusing the cached review of this snapshot` to
+stderr. The snapshot hash already covers the diff, prompt, and context files.
+Pass `--cache=false` to review again.
+
+- Entries live under `$XDG_CACHE_HOME/slopguard`, or `~/.cache/slopguard`,
+  as files only the current user can read; a shared or symlinked entry is
+  ignored, and any cache error falls back to a fresh, unstored review.
+- Failures are never cached. A cached result keeps its original attempts and
+  duration.
+- Local snapshot hashes use a per-user `state-key` kept in the same directory,
+  so an unchanged local target reproduces its hash across runs.
+
 ## Effective configuration
 
 Inspect resolved values and their source without printing credentials or the

@@ -14,6 +14,7 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
+	"github.com/uinaf/ffss/cli/slopguard/internal/reviewcache"
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
 )
 
@@ -31,6 +32,10 @@ type Options struct {
 	Now                func() time.Time
 	Started            time.Time
 	ObserveBundleBytes func(int64)
+	// Cache, when set, returns an earlier completed review of the same
+	// snapshot and settings, and stores new ones.
+	Cache            *reviewcache.Store
+	SlopguardVersion string
 }
 
 func protocolRetryInstruction(reason protocol.ProtocolReason) string {
@@ -101,6 +106,21 @@ func Run(ctx context.Context, options Options) protocol.Report {
 		options.ObserveBundleBytes(int64(len(bundle.Payload())))
 	}
 	reviewedTarget := bundle.Target()
+	cacheKey := reviewcache.KeyParts{
+		SlopguardVersion: options.SlopguardVersion,
+		SnapshotHash:     reviewedTarget.SnapshotHash,
+		Engine:           string(options.Config.Engine.Value),
+		Model:            options.Config.Model.Value,
+		ReasoningEffort:  string(options.Config.ReasoningEffort.Value),
+		WebAccess:        options.Config.WebAccess.Value,
+		RepositoryAccess: options.Config.RepositoryAccess.Value,
+	}.Key()
+	if options.Cache != nil {
+		if cached, ok := options.Cache.Load(cacheKey, reviewedTarget.SnapshotHash); ok {
+			progress("reusing the cached review of this snapshot")
+			return cached
+		}
+	}
 	reviewer := options.NewReviewer(options.Config.Engine.Value, bundle.Repository())
 	if reviewer == nil {
 		return failure(protocol.FailureInternal, fmt.Errorf("provider %q is unavailable", options.Config.Engine.Value), &reviewedTarget, []protocol.Attempt{})
@@ -186,6 +206,11 @@ func Run(ctx context.Context, options Options) protocol.Report {
 				continue
 			}
 			return failure(protocol.FailureProtocol, fmt.Errorf("provider result failed report validation (%s): %w", retryReason, validateErr), &reviewedTarget, attempts)
+		}
+		if options.Cache != nil {
+			if err := options.Cache.Save(cacheKey, report); err != nil {
+				progress("review cache not updated: " + safeMessage(err))
+			}
 		}
 		return report
 	}

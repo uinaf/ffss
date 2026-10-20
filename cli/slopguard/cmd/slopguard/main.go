@@ -17,6 +17,7 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
+	"github.com/uinaf/ffss/cli/slopguard/internal/reviewcache"
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
 	"github.com/uinaf/ffss/cli/slopguard/internal/telemetry"
 )
@@ -32,6 +33,8 @@ type dependencies struct {
 	telemetryPath  func() (string, error)
 	startTelemetry func(telemetry.Event) error
 	doctor         func(context.Context, provider.DoctorOptions) provider.Diagnostic
+	// cacheDirectory is nil in tests, which keeps them from caching reviews.
+	cacheDirectory func() (string, error)
 }
 
 func main() {
@@ -40,6 +43,9 @@ func main() {
 	os.Exit(run(ctx, os.Args[1:], os.Stdout, os.Stderr, dependencies{
 		stdin:     os.Stdin,
 		lookupEnv: os.LookupEnv,
+		cacheDirectory: func() (string, error) {
+			return reviewcache.DefaultDirectory(os.LookupEnv, nil)
+		},
 	}))
 }
 
