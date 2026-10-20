@@ -17,7 +17,6 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/config"
 	"github.com/uinaf/ffss/cli/slopguard/internal/phase"
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
-	"github.com/uinaf/ffss/cli/slopguard/internal/reviewpolicy"
 	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 )
 
@@ -169,6 +168,11 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 	}
 	workspace := request.workspace(runtime.Workspace)
 	arguments := codexArguments(request.Config, workspace, schemaPath, outputPath, model)
+	input := request.promptReader("")
+	if request.Snapshot != "" {
+		arguments = codexReviewArguments(request.Config, outputPath, model)
+		input = strings.NewReader(codexReviewPrompt(request.TaskPrompt))
+	}
 	preparationSpan.End()
 	processSpan := phase.Start(reviewContext, phase.ProviderProcess)
 	process, processErr := runProcess(reviewContext, processSpec{
@@ -176,7 +180,7 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		Arguments:   arguments,
 		Directory:   workspace,
 		Environment: runtime.Environment(),
-		Input:       request.promptReader(codexPolicy(request)),
+		Input:       input,
 		Timeout:     time.Duration(request.Config.Timeout.Value),
 		StdoutLimit: providerStdoutLimit,
 		StderrLimit: providerStderrLimit,
@@ -228,6 +232,15 @@ func (codex *Codex) Review(ctx context.Context, request Request) (result Result,
 		failure := newFailure(class, "Codex envelope and last-message output disagree", runtime.Environment(), &attempt)
 		failure.Reason = protocol.ProtocolReasonInvalidEnvelope
 		return Result{}, failure.withExecution(resolvedExecution)
+	}
+	if request.Snapshot != "" {
+		output, err = decodeCodexReviewText(string(output), request.Snapshot)
+		if err != nil {
+			class := protocol.FailureProtocol
+			attempt.Outcome = protocol.AttemptMalformed
+			attempt.ErrorClass = &class
+			return Result{}, invalidProviderOutput("Codex", "review text: "+err.Error(), protocol.ProtocolReasonSchemaMismatch, runtime.Environment(), &attempt).withExecution(resolvedExecution)
+		}
 	}
 	review, err := protocol.DecodeReview(output)
 	if err != nil {
@@ -297,6 +310,15 @@ func (codex *Codex) preflight(ctx context.Context, executable string, runtime *c
 	if !optionSupports(execHelpOutput, "--color", "never") {
 		return "", newFailure(protocol.FailureCapability, "Codex exec is missing required option value: --color=never", runtime.Environment(), nil)
 	}
+	if effective.RepositoryAccess.Value {
+		reviewHelp, err := run("exec", "review", "--help")
+		if err != nil {
+			return "", probeFailure("Codex exec review --help", err, reviewHelp, runtime.Environment(), protocol.FailureCapability)
+		}
+		if missing := missingCapabilities(string(reviewHelp.Stdout)+string(reviewHelp.Stderr), []string{"--ephemeral", "--output-last-message", "--json"}); len(missing) != 0 {
+			return "", newFailure(protocol.FailureCapability, "Codex exec review is missing required flags: "+strings.Join(missing, ", "), runtime.Environment(), nil)
+		}
+	}
 	return string(match[1]), nil
 }
 
@@ -310,11 +332,6 @@ func codexArguments(effective config.Effective, workspace, schemaPath, outputPat
 		arguments = append(arguments, "--search")
 	} else {
 		arguments = append(arguments, "--config", `web_search="disabled"`)
-	}
-	if effective.RepositoryAccess.Value {
-		// The snapshot is the working directory, so project AGENTS.md files
-		// under review would otherwise load as instructions.
-		arguments = append(arguments, "--config", `sandbox_mode="read-only"`, "--config", "project_doc_max_bytes=0")
 	}
 	arguments = append(arguments, "exec", "--json", "--color", "never", "--ephemeral", "--skip-git-repo-check", "--cd", workspace)
 	arguments = append(arguments, "--output-schema", schemaPath, "--output-last-message", outputPath, "-")
@@ -573,11 +590,4 @@ func invalidProviderOutput(name, phase string, reason protocol.ProtocolReason, e
 	failure := newFailure(protocol.FailureProtocol, fmt.Sprintf("%s returned an invalid %s (%s); retry or inspect the provider CLI directly for private diagnostics", name, phase, reason), environment, attempt)
 	failure.Reason = reason
 	return failure
-}
-
-func codexPolicy(request Request) string {
-	if request.Snapshot == "" {
-		return ""
-	}
-	return reviewpolicy.RepositorySnapshotPolicy(request.Snapshot)
 }

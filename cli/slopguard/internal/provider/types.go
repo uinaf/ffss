@@ -25,7 +25,11 @@ type Request struct {
 	Target        protocol.Target
 	// Snapshot is the repository snapshot directory the provider may read when
 	// repository access is on; empty keeps the provider in an empty workspace.
+	// For codex it is a two-commit review repository.
 	Snapshot string
+	// TaskPrompt is the trusted task prompt alone, for providers that review
+	// the snapshot natively instead of reading the bundle.
+	TaskPrompt string
 }
 
 func (request Request) workspace(runtime string) string {

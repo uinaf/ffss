@@ -31,22 +31,107 @@ func (bundle *Bundle) ExportSnapshot(ctx context.Context, directory string) erro
 	if err := outsideRepository(directory, bundle.repository); err != nil {
 		return err
 	}
-	writer := &snapshotWriter{directory: directory, remaining: MaximumSnapshotBytes}
-	collector := bundle.collector
-	local := bundle.request.Mode == protocol.TargetLocal
-	sandbox, err := collector.newGitSandbox(ctx, bundle.repository, local)
+	sandbox, err := bundle.collector.newGitSandbox(ctx, bundle.repository, bundle.request.Mode == protocol.TargetLocal)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = sandbox.Close() }()
-	if local {
-		return collector.exportWorktree(ctx, bundle.repository, sandbox, writer)
+	return bundle.exportTarget(ctx, sandbox, directory)
+}
+
+// ExportReviewRepository writes a fresh Git repository with two commits, the
+// redacted base and the redacted target, so a native reviewer can review HEAD
+// without the original history, which still holds what the snapshot omits.
+func (bundle *Bundle) ExportReviewRepository(ctx context.Context, directory string) error {
+	if err := outsideRepository(directory, bundle.repository); err != nil {
+		return err
+	}
+	collector := bundle.collector
+	sandbox, err := collector.newGitSandbox(ctx, bundle.repository, bundle.request.Mode == protocol.TargetLocal)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = sandbox.Close() }()
+	base, err := bundle.baseRevision(ctx, sandbox)
+	if err != nil {
+		return err
+	}
+	if _, err := collector.git.run(ctx, directory, nil, metadataLimit, "init", "--quiet", "--initial-branch=slopguard"); err != nil {
+		return fmt.Errorf("initialize review repository: %w", err)
+	}
+	if err := collector.exportRevision(ctx, bundle.repository, sandbox, base, &snapshotWriter{directory: directory, remaining: MaximumSnapshotBytes}); err != nil {
+		return err
+	}
+	if err := collector.commitReviewRepository(ctx, directory, "slopguard review base"); err != nil {
+		return err
+	}
+	if err := clearReviewRepository(directory); err != nil {
+		return err
+	}
+	if err := bundle.exportTarget(ctx, sandbox, directory); err != nil {
+		return err
+	}
+	return collector.commitReviewRepository(ctx, directory, "slopguard review target")
+}
+
+func (bundle *Bundle) exportTarget(ctx context.Context, sandbox *gitSandbox, directory string) error {
+	writer := &snapshotWriter{directory: directory, remaining: MaximumSnapshotBytes}
+	if bundle.request.Mode == protocol.TargetLocal {
+		return bundle.collector.exportWorktree(ctx, bundle.repository, sandbox, writer)
 	}
 	revision := bundle.target.CommitRevision
 	if revision == "" {
 		revision = bundle.target.HeadRevision
 	}
-	return collector.exportRevision(ctx, bundle.repository, sandbox, revision, writer)
+	return bundle.collector.exportRevision(ctx, bundle.repository, sandbox, revision, writer)
+}
+
+// baseRevision is the tree the target is compared against: the commit's
+// parent, the merge base, or HEAD for local changes. A root commit or unborn
+// branch compares against the empty tree.
+func (bundle *Bundle) baseRevision(ctx context.Context, sandbox *gitSandbox) (string, error) {
+	switch bundle.request.Mode {
+	case protocol.TargetBranch:
+		return bundle.target.BaseRevision, nil
+	case protocol.TargetLocal:
+		return bundle.target.HeadRevision, nil
+	}
+	output, err := bundle.collector.git.runSandbox(ctx, bundle.repository, sandbox, nil, 128<<10, "rev-list", "--parents", "-n", "1", bundle.target.CommitRevision)
+	if err != nil {
+		return "", fmt.Errorf("resolve review base: %w", err)
+	}
+	if parents := strings.Fields(string(output)); len(parents) == 2 {
+		return parents[1], nil
+	}
+	return sandbox.attributeSource, nil
+}
+
+func (collector *Collector) commitReviewRepository(ctx context.Context, directory, message string) error {
+	if _, err := collector.git.run(ctx, directory, nil, metadataLimit, "add", "--all", "--force"); err != nil {
+		return fmt.Errorf("stage review repository: %w", err)
+	}
+	if _, err := collector.git.run(ctx, directory, nil, metadataLimit,
+		"-c", "user.name=slopguard", "-c", "user.email=slopguard@invalid", "-c", "commit.gpgsign=false",
+		"commit", "--quiet", "--allow-empty", "--no-verify", "--message", message); err != nil {
+		return fmt.Errorf("commit review repository: %w", err)
+	}
+	return nil
+}
+
+func clearReviewRepository(directory string) error {
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return fmt.Errorf("read review repository: %w", err)
+	}
+	for _, entry := range entries {
+		if entry.Name() == ".git" {
+			continue
+		}
+		if err := os.RemoveAll(filepath.Join(directory, entry.Name())); err != nil {
+			return fmt.Errorf("clear review repository: %w", err)
+		}
+	}
+	return nil
 }
 
 // exportRevision reads tree entries and blobs directly rather than through

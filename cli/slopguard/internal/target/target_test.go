@@ -2104,3 +2104,47 @@ func TestExportSnapshotSkipsGitMetadataEntries(t *testing.T) {
 		t.Fatalf("snapshot omitted app.go: %v", err)
 	}
 }
+
+func TestExportReviewRepositoryHoldsOnlyRedactedBaseAndTarget(t *testing.T) {
+	t.Parallel()
+
+	repository := newRepository(t)
+	writeFile(t, repository, "app.go", "package app\n")
+	writeFile(t, repository, ".env", "TOKEN=first-secret\n")
+	gitCommand(t, repository, "add", ".")
+	gitCommand(t, repository, "commit", "-m", "history with first-secret")
+	writeFile(t, repository, ".env", "TOKEN=second-secret\nNEW=third-secret\n")
+	writeFile(t, repository, "app.go", "package app // changed\n")
+	gitCommand(t, repository, "commit", "-am", "change")
+	writeFile(t, repository, "app.go", "package app // changed\n")
+	gitCommand(t, repository, "commit", "--allow-empty", "-m", "unrelated head")
+
+	for name, request := range map[string]Request{
+		"commit": {Mode: protocol.TargetCommit, Commit: "HEAD~1"},
+		"branch": {Mode: protocol.TargetBranch, Base: "HEAD~2"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			bundle, err := newCollector(t).Freeze(context.Background(), repository, request)
+			if err != nil {
+				t.Fatalf("Freeze() error = %v", err)
+			}
+			directory := t.TempDir()
+			if err := bundle.ExportReviewRepository(context.Background(), directory); err != nil {
+				t.Fatalf("ExportReviewRepository() error = %v", err)
+			}
+			if log := gitCommand(t, directory, "log", "--format=%s"); log != "slopguard review target\nslopguard review base" {
+				t.Fatalf("log = %q", log)
+			}
+			diff := gitCommand(t, directory, "diff", "HEAD~1", "HEAD")
+			for _, want := range []string{"-package app\n", "+package app // changed", "+NEW=[REDACTED]"} {
+				if !strings.Contains(diff, want) {
+					t.Errorf("diff omitted %q:\n%s", want, diff)
+				}
+			}
+			everything := gitCommand(t, directory, "log", "-p", "--all")
+			if strings.Contains(everything, "secret") {
+				t.Fatalf("review repository leaked a value:\n%s", everything)
+			}
+		})
+	}
+}

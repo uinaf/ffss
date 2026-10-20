@@ -114,7 +114,11 @@ func Run(ctx context.Context, options Options) protocol.Report {
 			return failure(protocol.FailureInternal, fmt.Errorf("create repository snapshot: %w", err), &reviewedTarget, []protocol.Attempt{})
 		}
 		defer func() { _ = os.RemoveAll(directory) }()
-		if err := bundle.ExportSnapshot(ctx, directory); err != nil {
+		export := bundle.ExportSnapshot
+		if options.Config.Engine.Value == protocol.ProviderCodex {
+			export = bundle.ExportReviewRepository
+		}
+		if err := export(ctx, directory); err != nil {
 			return failure(classify(err), fmt.Errorf("export repository snapshot: %w", err), &reviewedTarget, []protocol.Attempt{})
 		}
 		snapshot = directory
@@ -132,7 +136,7 @@ func Run(ctx context.Context, options Options) protocol.Report {
 		}
 
 		attemptStarted := now()
-		result, reviewErr := reviewer.Review(ctx, provider.Request{Prompt: prompt, TrustedSuffix: trustedSuffix, Config: options.Config, Target: reviewedTarget, Snapshot: snapshot})
+		result, reviewErr := reviewer.Review(ctx, provider.Request{Prompt: prompt, TrustedSuffix: trustedSuffix, Config: options.Config, Target: reviewedTarget, Snapshot: snapshot, TaskPrompt: options.Target.Prompt})
 		attemptDuration := elapsedMilliseconds(attemptStarted, now())
 
 		if reviewErr != nil {
