@@ -27,69 +27,141 @@ func reviewablePath(value string) bool {
 	return !sensitivePath(value) || environmentTemplatePath(value) || environmentFilePath(value)
 }
 
-// environmentRedactor keeps key names and line structure and replaces
-// everything else. A quoted value left open continues on later lines, so
-// redaction must see the file from its first line.
-type environmentRedactor struct {
-	quote byte
+func redactEnvironment(content []byte) []byte {
+	return bytes.Join(redactEnvironmentLines(bytes.Split(content, []byte{'\n'})), []byte{'\n'})
 }
 
-func (redactor *environmentRedactor) line(raw []byte) []byte {
-	text, carriage := bytes.CutSuffix(raw, []byte{'\r'})
-	var redacted []byte
-	switch {
-	case redactor.quote != 0:
-		if closingQuote(text, redactor.quote) >= 0 {
-			redactor.quote = 0
-		}
-		redacted = []byte(redactedValue)
-	case len(bytes.TrimSpace(text)) == 0:
-		redacted = append([]byte(nil), text...)
-	default:
-		end := environmentAssignment.FindIndex(text)
-		if end == nil {
-			redacted = []byte(redactedValue)
+// redactEnvironmentLines keeps key names only when every non-comment line is
+// a KEY=value assignment that closes everything it opens. Then no value can
+// continue onto another line under a dotenv parser or a shell, so every KEY=
+// prefix is a real key. Otherwise every line is redacted whole.
+func redactEnvironmentLines(lines [][]byte) [][]byte {
+	keys := true
+	for _, line := range lines {
+		if !selfContainedEnvironmentLine(line) {
+			keys = false
 			break
 		}
-		redacted = append(append([]byte(nil), text[:end[1]]...), redactedValue...)
-		value := bytes.TrimLeft(text[end[1]:], " \t")
-		if len(value) > 0 && (value[0] == '"' || value[0] == '\'' || value[0] == '`') && closingQuote(value[1:], value[0]) < 0 {
-			redactor.quote = value[0]
-		}
 	}
-	if carriage {
-		redacted = append(redacted, '\r')
-	}
-	return redacted
-}
-
-// closingQuote treats any quote preceded by a backslash as escaped, whatever
-// the dialect, so a disagreement with the file's parser over-redacts.
-func closingQuote(text []byte, quote byte) int {
-	for index, character := range text {
-		if character == quote && (index == 0 || text[index-1] != '\\') {
-			return index
-		}
-	}
-	return -1
-}
-
-func redactEnvironment(content []byte) []byte {
-	var redactor environmentRedactor
-	lines := bytes.Split(content, []byte{'\n'})
-	for index, line := range lines {
-		lines[index] = redactor.line(line)
-	}
-	return bytes.Join(lines, []byte{'\n'})
-}
-
-func redactEnvironmentLines(lines [][]byte) [][]byte {
-	var redactor environmentRedactor
 	redacted := make([][]byte, len(lines))
 	for index, line := range lines {
-		redacted[index] = redactor.line(line)
+		text, carriage := bytes.CutSuffix(line, []byte{'\r'})
+		switch end := environmentAssignment.FindIndex(text); {
+		case len(bytes.TrimSpace(text)) == 0:
+			redacted[index] = append([]byte(nil), text...)
+		case keys && end != nil:
+			redacted[index] = append(append([]byte(nil), text[:end[1]]...), redactedValue...)
+		default:
+			redacted[index] = []byte(redactedValue)
+		}
+		if carriage {
+			redacted[index] = append(redacted[index], '\r')
+		}
 	}
 	return redacted
+}
+
+// selfContainedEnvironmentLine accepts only a value that is one literal word,
+// optionally followed by a comment: safe bare characters, single quotes
+// without backslashes, double quotes holding literals, letter escapes, and
+// plain variable references, or a bare variable reference. Anything a dotenv
+// parser or a shell could read past the line end fails closed.
+func selfContainedEnvironmentLine(line []byte) bool {
+	text := bytes.TrimRight(line, " \t\r")
+	trimmed := bytes.TrimLeft(text, " \t")
+	if len(trimmed) == 0 || trimmed[0] == '#' {
+		return true
+	}
+	end := environmentAssignment.FindIndex(text)
+	if end == nil {
+		return false
+	}
+	value := bytes.TrimLeft(text[end[1]:], " \t")
+	for index := 0; index < len(value); {
+		character := value[index]
+		switch {
+		case character == ' ' || character == '\t':
+			return bytes.HasPrefix(bytes.TrimLeft(value[index:], " \t"), []byte{'#'})
+		case character == '\'':
+			closing := bytes.IndexByte(value[index+1:], '\'')
+			if closing < 0 || bytes.IndexByte(value[index+1:index+1+closing], '\\') >= 0 {
+				return false
+			}
+			index += closing + 2
+		case character == '"':
+			next, ok := doubleQuotedEnd(value, index+1)
+			if !ok {
+				return false
+			}
+			index = next
+		case character == '$':
+			next, ok := variableReferenceEnd(value, index+1)
+			if !ok {
+				return false
+			}
+			index = next
+		case safeEnvironmentByte(character):
+			index++
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+func doubleQuotedEnd(value []byte, index int) (int, bool) {
+	for index < len(value) {
+		switch character := value[index]; {
+		case character == '"':
+			return index + 1, true
+		case character == '\\':
+			if index+1 >= len(value) || !isAlphanumeric(value[index+1]) {
+				return 0, false
+			}
+			index += 2
+		case character == '$':
+			next, ok := variableReferenceEnd(value, index+1)
+			if !ok {
+				return 0, false
+			}
+			index = next
+		case character == '`':
+			return 0, false
+		default:
+			index++
+		}
+	}
+	return 0, false
+}
+
+// variableReferenceEnd accepts NAME or {NAME} after a dollar sign.
+func variableReferenceEnd(value []byte, index int) (int, bool) {
+	braced := index < len(value) && value[index] == '{'
+	if braced {
+		index++
+	}
+	start := index
+	for index < len(value) && (value[index] == '_' || isAlphanumeric(value[index])) {
+		index++
+	}
+	if index == start || value[start] >= '0' && value[start] <= '9' {
+		return 0, false
+	}
+	if braced {
+		if index >= len(value) || value[index] != '}' {
+			return 0, false
+		}
+		index++
+	}
+	return index, true
+}
+
+func isAlphanumeric(character byte) bool {
+	return character >= 'a' && character <= 'z' || character >= 'A' && character <= 'Z' || character >= '0' && character <= '9'
+}
+
+func safeEnvironmentByte(character byte) bool {
+	return isAlphanumeric(character) || strings.IndexByte("_.,:/@%+=~^#-", character) >= 0
 }
 
 // redactEnvironmentDiff rewrites the dotenv sections of a --unified=0 diff.
@@ -128,10 +200,12 @@ func (collector *Collector) redactEnvironmentDiff(ctx context.Context, root stri
 			file = nil
 			if changed := sectionPaths[section]; environmentFilePath(changed) {
 				var err error
-				file, err = collector.environmentDiffFile(ctx, root, plan, contextCommands[sectionCommands[section]], changed, limit)
+				var read int64
+				file, read, err = collector.environmentDiffFile(ctx, root, plan, contextCommands[sectionCommands[section]], changed, limit)
 				if err != nil {
 					return nil, fmt.Errorf("redact environment file %q: %w", changed, err)
 				}
+				limit -= read
 			}
 		} else if file != nil {
 			redacted, err := file.redact(line)
@@ -154,14 +228,16 @@ type environmentDiffFile struct {
 	oldLine, newLine         int
 }
 
-func (collector *Collector) environmentDiffFile(ctx context.Context, root string, plan *targetPlan, command []string, changed string, limit int64) (*environmentDiffFile, error) {
+// environmentDiffFile reads at most limit bytes; the caller shares one bundle
+// limit across every environment file.
+func (collector *Collector) environmentDiffFile(ctx context.Context, root string, plan *targetPlan, command []string, changed string, limit int64) (*environmentDiffFile, int64, error) {
 	arguments := append(append([]string(nil), command...), ":(literal)"+changed)
 	output := newLimitBuffer(limit)
 	if err := collector.git.runSandboxWithAttributesTo(ctx, root, plan.sandbox, nil, output, arguments...); err != nil {
-		return nil, fmt.Errorf("collect full-context diff: %w", err)
+		return nil, 0, fmt.Errorf("collect full-context diff: %w", err)
 	}
 	if output.exceeded {
-		return nil, fmt.Errorf("full-context diff exceeds %d bytes", limit)
+		return nil, 0, fmt.Errorf("full-context diffs of environment files exceed the bundle limit")
 	}
 	file := &environmentDiffFile{}
 	inHunk := false
@@ -170,7 +246,7 @@ func (collector *Collector) environmentDiffFile(ctx context.Context, root string
 		if bytes.HasPrefix(line, []byte("@@ ")) {
 			oldStart, newStart, err := parseHunkHeader(line)
 			if err != nil {
-				return nil, err
+				return nil, 0, err
 			}
 			inHunk, oldLine, newLine = true, oldStart, newStart
 			continue
@@ -180,25 +256,25 @@ func (collector *Collector) environmentDiffFile(ctx context.Context, root string
 		}
 		if line[0] == ' ' || line[0] == '-' {
 			if oldLine != len(file.oldRaw)+1 {
-				return nil, fmt.Errorf("full-context diff skips old lines")
+				return nil, 0, fmt.Errorf("full-context diff skips old lines")
 			}
 			file.oldRaw = append(file.oldRaw, line[1:])
 			oldLine++
 		}
 		if line[0] == ' ' || line[0] == '+' {
 			if newLine != len(file.newRaw)+1 {
-				return nil, fmt.Errorf("full-context diff skips new lines")
+				return nil, 0, fmt.Errorf("full-context diff skips new lines")
 			}
 			file.newRaw = append(file.newRaw, line[1:])
 			newLine++
 		}
 		if line[0] != ' ' && line[0] != '-' && line[0] != '+' {
-			return nil, fmt.Errorf("full-context diff has an unexpected line")
+			return nil, 0, fmt.Errorf("full-context diff has an unexpected line")
 		}
 	}
 	file.oldRedacted = redactEnvironmentLines(file.oldRaw)
 	file.newRedacted = redactEnvironmentLines(file.newRaw)
-	return file, nil
+	return file, int64(len(output.Bytes())), nil
 }
 
 func (file *environmentDiffFile) redact(line []byte) ([]byte, error) {

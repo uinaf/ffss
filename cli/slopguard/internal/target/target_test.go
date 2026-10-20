@@ -709,8 +709,8 @@ func TestFreezeRedactsEnvironmentFiles(t *testing.T) {
 			t.Fatalf("Freeze() error = %v", err)
 		}
 		assertRedacted(t, bundle.Payload(),
-			[]string{"\n-[REDACTED]\n", "\n+[REDACTED]\n", "\n+PORT=[REDACTED]\n", "\n@@ -2,2 +2,2 @@\n"},
-			[]string{"MIIB", "lastline", "other", "BEGIN KEY"})
+			[]string{"\n-[REDACTED]\n", "\n+[REDACTED]\n", "\n@@ -2,2 +2,2 @@\n"},
+			[]string{"MIIB", "lastline", "other", "BEGIN KEY", "PORT="})
 	})
 
 	t.Run("local staged unstaged deleted and untracked", func(t *testing.T) {
@@ -743,6 +743,23 @@ func TestFreezeRedactsEnvironmentFiles(t *testing.T) {
 		}
 	})
 
+	t.Run("full-file reads share the bundle limit", func(t *testing.T) {
+		repository := newRepository(t)
+		filler := strings.Repeat("FILLER=1\n", 140)
+		for _, name := range []string{".env", ".env.local"} {
+			writeFile(t, repository, name, filler+"KEY=old\n")
+		}
+		gitCommand(t, repository, "add", ".")
+		gitCommand(t, repository, "commit", "-m", "base")
+		for _, name := range []string{".env", ".env.local"} {
+			writeFile(t, repository, name, filler+"KEY=new\n")
+		}
+		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, MaxBytes: 2000})
+		if err == nil || !strings.Contains(err.Error(), "exceed the bundle limit") {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+	})
+
 	t.Run("binary untracked", func(t *testing.T) {
 		repository := committedRepository(t)
 		writeBytes(t, repository, ".env", []byte("TOKEN=\x00secret\n"))
@@ -768,9 +785,21 @@ func TestRedactEnvironmentKeepsKeysAndLineStructure(t *testing.T) {
 	for _, test := range []struct{ input, want string }{
 		{"A=1\nexport B = two\n", "A=[REDACTED]\nexport B =[REDACTED]\n"},
 		{"# old: KEY=hunter2\n\n  \nEMPTY=\n", "[REDACTED]\n\n  \nEMPTY=[REDACTED]\n"},
-		{"A='x'\nB=\"y\\\"\nC=z\"\nD=4", "A=[REDACTED]\nB=[REDACTED]\n[REDACTED]\nD=[REDACTED]"},
-		{"A=`multi\nB=leak`\nC=3\r\n", "A=[REDACTED]\n[REDACTED]\nC=[REDACTED]\r\n"},
+		{"# don't commit\nA=\"it's\"\nB='x'\r\n", "[REDACTED]\nA=[REDACTED]\nB=[REDACTED]\r\n"},
+		{"A=1\nB=`date`\n", "[REDACTED]\n[REDACTED]\n"},
+		{"A=\"$(echo \"\nSECRET_SUFFIX=value\nB=\")\"\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
+		{"A='x\\'\nB=1\n", "[REDACTED]\n[REDACTED]\n"},
+		{"A=1 2\nB=\"${HOME}/$USER\"\n", "[REDACTED]\n[REDACTED]\n"},
 		{"A: yaml-style\nnot a key\n", "[REDACTED]\n[REDACTED]\n"},
+		{"A=1\nB=\"y\\\"\nC=z\"\nD=4", "[REDACTED]\n[REDACTED]\n[REDACTED]\n[REDACTED]"},
+		{"A=`multi\nB=leak`\nC=3\r\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\r\n"},
+		{"PRIVATE_KEY: \"header\nMIIBsecretAAA==\nfooter\"\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
+		{"PRIVATE_KEY: !!str \"header\n  MIIBsecretAAA==\nfooter\"\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
+		{"this isn't metadata\nPRIVATE_KEY=\"header\nowner's payload\nMIIBsecretAAA==\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
+		{"TOKEN=prefix\\\nsensitiveSuffix=\n", "[REDACTED]\n[REDACTED]\n"},
+		{"KEY=$(cat <<EOF\nsecret=1\nEOF\n)\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
+		{"A=1 # it's fine\nB=${HOME}/x\nC=\"-----BEGIN-----\\nMIIB\\n\"\n", "A=[REDACTED]\nB=[REDACTED]\nC=[REDACTED]\n"},
+		{"A=\\\"\"\nSECRET_SUFFIX=\nB=\\\"\"\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
 	} {
 		if got := string(redactEnvironment([]byte(test.input))); got != test.want {
 			t.Errorf("redactEnvironment(%q) = %q, want %q", test.input, got, test.want)

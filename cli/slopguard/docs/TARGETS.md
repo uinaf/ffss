@@ -60,14 +60,19 @@ boundary without first distilling and authorizing it.
   classification. Other changed `.env` and `.env.*` files enter redacted (see
   below). Explicit context files remain subject to the ordinary sensitive-path
   rejection, including these template and environment names.
-- Redacted environment files keep their line structure and key names. Each
-  `KEY=value` or `export KEY=value` line becomes `KEY=[REDACTED]`, blank lines
-  stay, and every other line, comments and the continuation lines of quoted
-  multi-line values included, becomes `[REDACTED]`. This applies to added,
-  deleted, and untracked content alike. Their diff sections also drop blob IDs
-  (`index [REDACTED]`) and hunk-header function context. Redaction reads each
-  tracked environment file whole, so that read counts against the bundle
-  limit. Untracked binary environment files fail closed.
+- Redacted environment files keep their line structure. Keys stay visible
+  only when every non-comment line is a `KEY=value` or `export KEY=value`
+  assignment whose value is one literal word, optionally followed by a
+  comment: safe bare characters, `'single'` quotes without backslashes,
+  `"double"` quotes holding literals, letter escapes such as `\n`, and
+  `$NAME` or `${NAME}`, or a bare `$NAME` or `${NAME}`. Then no value can span
+  lines under a dotenv parser or a shell, so each assignment becomes
+  `KEY=[REDACTED]`. Otherwise every line of that file becomes `[REDACTED]`.
+  Comments always become `[REDACTED]`; blank lines stay. Each side of a change is judged as a whole file, and the rule
+  covers added, deleted, and untracked content alike. Their diff sections also
+  drop blob IDs (`index [REDACTED]`) and hunk-header function context.
+  Redaction reads each tracked environment file whole; those reads share one
+  bundle-limit allowance. Untracked binary environment files fail closed.
 - Tracked symlink changes are included as Git's text representation of the
   link target; collectors never follow those links when reading worktree,
   untracked, or context bytes.
