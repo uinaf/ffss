@@ -1,0 +1,10 @@
+{
+  "summary": "forEach drops the promises, so notify resolves before emails are sent",
+  "language": "typescript",
+  "needs_context": false,
+  "bug": {
+    "file": "notify.ts",
+    "line": 7,
+    "end_line": 11
+  }
+}

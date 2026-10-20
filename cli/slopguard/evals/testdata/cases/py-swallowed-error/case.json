@@ -1,0 +1,9 @@
+{
+  "summary": "import errors are swallowed and reported as success",
+  "language": "python",
+  "needs_context": false,
+  "bug": {
+    "file": "importer.py",
+    "line": 11
+  }
+}

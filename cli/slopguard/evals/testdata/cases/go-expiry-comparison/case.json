@@ -1,0 +1,9 @@
+{
+  "summary": "token expiry check is inverted",
+  "language": "go",
+  "needs_context": false,
+  "bug": {
+    "file": "token.go",
+    "line": 12
+  }
+}

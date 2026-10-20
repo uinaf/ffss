@@ -1,0 +1,9 @@
+{
+  "summary": "inner err shadows the returned error, so save failures are dropped",
+  "language": "go",
+  "needs_context": false,
+  "bug": {
+    "file": "save.go",
+    "line": 17
+  }
+}

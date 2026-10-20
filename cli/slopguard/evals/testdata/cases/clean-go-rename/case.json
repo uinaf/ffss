@@ -1,0 +1,5 @@
+{
+  "summary": "rename a helper and its single call site",
+  "language": "go",
+  "needs_context": false
+}

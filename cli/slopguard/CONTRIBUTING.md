@@ -69,6 +69,28 @@ provider list, repeat bounds, per-review timeout, and review cap.
 - These checks consume provider quota and require every selected harness on
   `PATH`.
 
+The planted-bug eval compares review configurations on recall and false
+positives. [Cases](evals/testdata/cases) are small Go, TypeScript, and Python
+changes, each a base tree plus a change; most plant one bug, some need code
+outside the diff to spot it, and a few are clean controls. The
+[runner](evals/main.go) reviews each change as one commit with the cache off,
+web access off, and an isolated config directory, so engine defaults apply:
+
+```bash
+mise run eval
+mise run eval -- -configs codex-diff,codex-snapshot -runs 1
+mise run eval -- -summary
+```
+
+- A finding catches a bug when it cites the planted file within three lines
+  of the planted line or range; other findings count as unrelated, and a
+  failed review of a bug case counts as a miss.
+- Rows land in `eval-results.jsonl` with a fingerprint of the binary, effort,
+  timeout, parallelism, and cases. A rerun with the same fingerprint skips
+  finished rows, so an interrupted run resumes; any other fingerprint is
+  refused, so pass a new `-out` or delete the file.
+- It consumes provider quota: every case runs once per configuration per run.
+
 ## Pull Requests
 
 - Start from a GitHub issue and use Conventional Commits.

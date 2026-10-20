@@ -1,0 +1,9 @@
+{
+  "summary": "defaults override the caller's options",
+  "language": "typescript",
+  "needs_context": false,
+  "bug": {
+    "file": "config.ts",
+    "line": 9
+  }
+}
