@@ -787,3 +787,15 @@ func writeConfig(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+func TestRepositoryAccessHasNoFileForm(t *testing.T) {
+	repository := configRepository(t)
+	if err := os.WriteFile(filepath.Join(repository, ".slopguard.yaml"), []byte("repository_access: true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	engine := protocol.ProviderCodex
+	_, err := Load(context.Background(), Options{Repository: repository, Overrides: Overrides{Engine: &engine}, LookupEnv: envLookup(map[string]string{}), HomeDir: func() (string, error) { return t.TempDir(), nil }})
+	if err == nil || !strings.Contains(err.Error(), "unknown config key") {
+		t.Fatalf("repository config Load() error = %v", err)
+	}
+}

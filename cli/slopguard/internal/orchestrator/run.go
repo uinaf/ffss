@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 	"unicode"
@@ -105,6 +106,20 @@ func Run(ctx context.Context, options Options) protocol.Report {
 		return failure(protocol.FailureInternal, fmt.Errorf("provider %q is unavailable", options.Config.Engine.Value), &reviewedTarget, []protocol.Attempt{})
 	}
 
+	snapshot := ""
+	if options.Config.RepositoryAccess.Value {
+		progress("exporting repository snapshot")
+		directory, err := os.MkdirTemp("", "slopguard-snapshot-")
+		if err != nil {
+			return failure(protocol.FailureInternal, fmt.Errorf("create repository snapshot: %w", err), &reviewedTarget, []protocol.Attempt{})
+		}
+		defer func() { _ = os.RemoveAll(directory) }()
+		if err := bundle.ExportSnapshot(ctx, directory); err != nil {
+			return failure(classify(err), fmt.Errorf("export repository snapshot: %w", err), &reviewedTarget, []protocol.Attempt{})
+		}
+		snapshot = directory
+	}
+
 	attempts := make([]protocol.Attempt, 0, options.Config.Retries.Value+1)
 	prompt := bundle.Payload()
 	for attemptNumber := 1; attemptNumber <= options.Config.Retries.Value+1; attemptNumber++ {
@@ -117,7 +132,7 @@ func Run(ctx context.Context, options Options) protocol.Report {
 		}
 
 		attemptStarted := now()
-		result, reviewErr := reviewer.Review(ctx, provider.Request{Prompt: prompt, TrustedSuffix: trustedSuffix, Config: options.Config, Target: reviewedTarget})
+		result, reviewErr := reviewer.Review(ctx, provider.Request{Prompt: prompt, TrustedSuffix: trustedSuffix, Config: options.Config, Target: reviewedTarget, Snapshot: snapshot})
 		attemptDuration := elapsedMilliseconds(attemptStarted, now())
 
 		if reviewErr != nil {

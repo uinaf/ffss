@@ -115,6 +115,10 @@ chunking or review fan-out above that limit.
 
 - Slopguard sends the complete frozen payload to the selected provider,
   including deleted bytes and appended context.
+- With `--repository-access`, any file in the
+  [repository snapshot](CONFIG.md#security-controls) the reviewer reads also
+  reaches the provider, unchanged files and unchanged environment key names
+  included.
 - Slopguard rejects known sensitive paths except changed environment templates
   and environment files with the names above. Environment file values never
   leave the machine. Local snapshots bind their raw bytes through a

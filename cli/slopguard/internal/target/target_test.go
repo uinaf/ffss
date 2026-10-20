@@ -1919,3 +1919,188 @@ func TestFreezeExplainsMissingObjectFromPartialClone(t *testing.T) {
 		t.Fatalf("error does not explain the partial clone: %v", err)
 	}
 }
+
+func TestExportSnapshotOmitsSensitiveFilesAndHistory(t *testing.T) {
+	t.Parallel()
+
+	assertSnapshot := func(t *testing.T, directory string, want map[string]string) {
+		t.Helper()
+		got := map[string]string{}
+		err := filepath.WalkDir(directory, func(path string, entry os.DirEntry, err error) error {
+			if err != nil || entry.IsDir() {
+				return err
+			}
+			content, err := os.ReadFile(path)
+			relative, _ := filepath.Rel(directory, path)
+			got[filepath.ToSlash(relative)] = string(content)
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got) != len(want) {
+			t.Errorf("snapshot files = %v, want %v", sortedKeys(got), sortedKeys(want))
+		}
+		for path, content := range want {
+			if got[path] != content {
+				t.Errorf("snapshot %s = %q, want %q", path, got[path], content)
+			}
+		}
+	}
+	seed := func(t *testing.T) string {
+		repository := newRepository(t)
+		writeFile(t, repository, "src/app.go", "package app\n")
+		writeFile(t, repository, ".env", "TOKEN=secret-value\n")
+		writeFile(t, repository, ".env.example", "TOKEN=\n")
+		writeFile(t, repository, "deploy/id_rsa", "private-key\n")
+		writeFile(t, repository, ".gitignore", "ignored.log\n")
+		if err := os.Symlink("src/app.go", filepath.Join(repository, "link.go")); err != nil {
+			t.Fatal(err)
+		}
+		gitCommand(t, repository, "add", ".")
+		gitCommand(t, repository, "commit", "-m", "base")
+		return repository
+	}
+	t.Run("commit", func(t *testing.T) {
+		repository := seed(t)
+		writeFile(t, repository, "src/app.go", "package app // committed\n")
+		gitCommand(t, repository, "commit", "-am", "change")
+		writeFile(t, repository, "src/app.go", "package app // uncommitted\n")
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD"})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		directory := t.TempDir()
+		if err := bundle.ExportSnapshot(context.Background(), directory); err != nil {
+			t.Fatalf("ExportSnapshot() error = %v", err)
+		}
+		assertSnapshot(t, directory, map[string]string{
+			"src/app.go":   "package app // committed\n",
+			".env":         "TOKEN=[REDACTED]\n",
+			".env.example": "TOKEN=\n",
+			".gitignore":   "ignored.log\n",
+		})
+	})
+
+	t.Run("directory inside repository", func(t *testing.T) {
+		repository := seed(t)
+		writeFile(t, repository, "src/app.go", "package app // edited\n")
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		directory := filepath.Join(repository, "tmp-snapshot")
+		if err := os.Mkdir(directory, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := bundle.ExportSnapshot(context.Background(), directory); err == nil || !strings.Contains(err.Error(), "inside the reviewed repository") {
+			t.Fatalf("ExportSnapshot() error = %v", err)
+		}
+	})
+
+	t.Run("local", func(t *testing.T) {
+		repository := seed(t)
+		writeFile(t, repository, "src/app.go", "package app // edited\n")
+		writeFile(t, repository, "src/new.go", "package app\n")
+		writeFile(t, repository, "ignored.log", "noise\n")
+		if err := os.Remove(filepath.Join(repository, ".env.example")); err != nil {
+			t.Fatal(err)
+		}
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		directory := t.TempDir()
+		if err := bundle.ExportSnapshot(context.Background(), directory); err != nil {
+			t.Fatalf("ExportSnapshot() error = %v", err)
+		}
+		assertSnapshot(t, directory, map[string]string{
+			"src/app.go": "package app // edited\n",
+			"src/new.go": "package app\n",
+			".env":       "TOKEN=[REDACTED]\n",
+			".gitignore": "ignored.log\n",
+		})
+	})
+}
+
+func TestExportSnapshotIgnoresArchiveAttributes(t *testing.T) {
+	t.Parallel()
+
+	repository := newRepository(t)
+	writeFile(t, repository, ".gitattributes", "hidden.go export-ignore\nsubst.go export-subst\n")
+	writeFile(t, repository, "hidden.go", "package hidden\n")
+	writeFile(t, repository, "subst.go", "// $Format:%H$\n")
+	writeFile(t, repository, "empty.go", "")
+	gitCommand(t, repository, "add", ".")
+	gitCommand(t, repository, "commit", "-m", "base")
+	writeFile(t, repository, "app.go", "package app\n")
+	gitCommand(t, repository, "add", ".")
+	gitCommand(t, repository, "commit", "-m", "change")
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD"})
+	if err != nil {
+		t.Fatalf("Freeze() error = %v", err)
+	}
+	directory := t.TempDir()
+	if err := bundle.ExportSnapshot(context.Background(), directory); err != nil {
+		t.Fatalf("ExportSnapshot() error = %v", err)
+	}
+	for path, want := range map[string]string{"hidden.go": "package hidden\n", "subst.go": "// $Format:%H$\n", "empty.go": "", "app.go": "package app\n"} {
+		if got, err := os.ReadFile(filepath.Join(directory, path)); err != nil || string(got) != want {
+			t.Errorf("snapshot %s = %q, %v; want %q", path, got, err, want)
+		}
+	}
+}
+
+func TestSnapshotWriterChargesEveryFileAndRejectsEscapes(t *testing.T) {
+	t.Parallel()
+
+	writer := &snapshotWriter{directory: t.TempDir(), remaining: 2*snapshotEntryBytes - 1}
+	if err := writer.write("empty-1", nil); err != nil {
+		t.Fatalf("first empty file: %v", err)
+	}
+	if err := writer.write("empty-2", nil); err == nil || !strings.Contains(err.Error(), "repository snapshot exceeds") {
+		t.Fatalf("second empty file error = %v, want the cap", err)
+	}
+	if err := (&snapshotWriter{directory: t.TempDir(), remaining: MaximumSnapshotBytes}).write("../escape", []byte("x")); err == nil {
+		t.Fatal("write accepted a path outside the snapshot")
+	}
+}
+
+func TestExportSnapshotSkipsGitMetadataEntries(t *testing.T) {
+	t.Parallel()
+
+	repository := committedRepository(t)
+	plumbing := func(input string, arguments ...string) string {
+		t.Helper()
+		command := exec.CommandContext(t.Context(), "git", arguments...)
+		command.Dir = repository
+		command.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+		command.Stdin = strings.NewReader(input)
+		output, err := command.Output()
+		if err != nil {
+			t.Fatalf("git %v: %v", arguments, err)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	config := plumbing("[core]\n\tfsmonitor = touch pwned\n", "hash-object", "-w", "--stdin")
+	app := plumbing("package app\n", "hash-object", "-w", "--stdin")
+	metadata := plumbing("100644 blob "+config+"\tconfig\n", "mktree")
+	root := plumbing("100644 blob "+app+"\tapp.go\n040000 tree "+metadata+"\t.GIT\n", "mktree")
+	commit := plumbing("", "commit-tree", root, "-p", "HEAD", "-m", "plant metadata")
+	gitCommand(t, repository, "update-ref", "HEAD", commit)
+
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD"})
+	if err != nil {
+		t.Fatalf("Freeze() error = %v", err)
+	}
+	directory := t.TempDir()
+	if err := bundle.ExportSnapshot(context.Background(), directory); err != nil {
+		t.Fatalf("ExportSnapshot() error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(directory, ".GIT")); !os.IsNotExist(err) {
+		t.Fatalf("snapshot rebuilt Git metadata: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(directory, "app.go")); err != nil {
+		t.Fatalf("snapshot omitted app.go: %v", err)
+	}
+}

@@ -483,3 +483,35 @@ func argumentAfter(arguments []string, flag string) string {
 	}
 	return arguments[index+1]
 }
+
+func TestClaudeSnapshotToolsStayOutOfAllowedTools(t *testing.T) {
+	t.Parallel()
+
+	for _, web := range []bool{false, true} {
+		effective := claudeConfig(web, time.Second)
+		effective.RepositoryAccess = config.Value[bool]{Value: true, Source: config.SourceFlag}
+		arguments := claudeArguments(effective, "{}", "test-model", "/snapshot")
+		if tools := argumentAfter(arguments, "--tools"); !strings.Contains(tools, claudeSnapshotTools) {
+			t.Errorf("web=%t --tools = %q, want snapshot tools", web, tools)
+		}
+		if allowed := argumentAfter(arguments, "--allowedTools"); strings.Contains(allowed, "Read") {
+			t.Errorf("web=%t --allowedTools = %q pre-approves reads outside the snapshot", web, allowed)
+		}
+		if directory := argumentAfter(arguments, "--add-dir"); directory != "/snapshot" {
+			t.Errorf("web=%t --add-dir = %q, want the snapshot attached rather than used as the working directory", web, directory)
+		}
+	}
+}
+
+func TestClaudeSnapshotEnvironmentDisablesAddedDirectoryMemory(t *testing.T) {
+	t.Parallel()
+
+	inherited := []string{"PATH=/bin", claudeAdditionalDirectoryMemory + "=1"}
+	got := claudeReviewEnvironment(inherited, "/snapshot")
+	if strings.Join(got, " ") != "PATH=/bin "+claudeAdditionalDirectoryMemory+"=0" {
+		t.Fatalf("environment = %v", got)
+	}
+	if unchanged := claudeReviewEnvironment(inherited, ""); len(unchanged) != 2 || unchanged[1] != claudeAdditionalDirectoryMemory+"=1" {
+		t.Fatalf("environment without snapshot = %v", unchanged)
+	}
+}

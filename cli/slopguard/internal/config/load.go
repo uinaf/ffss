@@ -311,6 +311,9 @@ func applyOverrides(effective *Effective, overrides Overrides) error {
 	if overrides.Telemetry != nil {
 		raw.Telemetry = yamlBool{value: *overrides.Telemetry, set: true}
 	}
+	if overrides.RepositoryAccess != nil {
+		effective.RepositoryAccess = Value[bool]{Value: *overrides.RepositoryAccess, Source: SourceFlag}
+	}
 	return applyRaw(effective, raw, SourceFlag, true)
 }
 

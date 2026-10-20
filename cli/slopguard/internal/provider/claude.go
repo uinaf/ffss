@@ -71,7 +71,11 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 		return Result{}, newFailure(protocol.FailureConfig, "provider prompt must be non-empty valid UTF-8", nil, nil)
 	}
 	maximumPrompt := request.Config.MaxBytes.Value + providerPromptAllowance
-	protocolBytes := int64(len(reviewpolicy.ClaudeReviewProtocol()))
+	policy := reviewpolicy.ClaudeReviewProtocol()
+	if request.Snapshot != "" {
+		policy = reviewpolicy.ClaudeRepositoryReviewProtocol(request.Snapshot)
+	}
+	protocolBytes := int64(len(policy))
 	promptBytes, validLength := request.promptBytes()
 	if !validLength || maximumPrompt < request.Config.MaxBytes.Value || protocolBytes > maximumPrompt || promptBytes > maximumPrompt-protocolBytes {
 		return Result{}, newFailure(protocol.FailureConfig, fmt.Sprintf("Claude combined review input exceeds %d bytes (bundle plus trusted policy)", maximumPrompt), nil, nil)
@@ -133,10 +137,10 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 	processSpan := phase.Start(reviewContext, phase.ProviderProcess)
 	process, processErr := runProcess(reviewContext, processSpec{
 		Path:        executable,
-		Arguments:   claudeArguments(request.Config, string(providerSchema), model),
+		Arguments:   claudeArguments(request.Config, string(providerSchema), model, request.Snapshot),
 		Directory:   runtime.Workspace,
-		Environment: environment,
-		Input:       request.promptReader(reviewpolicy.ClaudeReviewProtocol()),
+		Environment: claudeReviewEnvironment(environment, request.Snapshot),
+		Input:       request.promptReader(policy),
 		Timeout:     time.Duration(request.Config.Timeout.Value),
 		StdoutLimit: providerStdoutLimit,
 		StderrLimit: providerStderrLimit,
@@ -219,6 +223,9 @@ func (claude *Claude) preflight(ctx context.Context, executable, workspace strin
 		return "", probeFailure("Claude --help", err, helpResult, environment, protocol.FailureCapability)
 	}
 	required := []string{"--print", "--no-session-persistence", "--output-format", "--json-schema", "--model", "--effort", "--tools", "--permission-mode", "--no-chrome"}
+	if effective.RepositoryAccess.Value {
+		required = append(required, "--add-dir")
+	}
 	if effective.WebAccess.Value {
 		required = append(required, "--allowedTools")
 	}
@@ -238,9 +245,15 @@ func (claude *Claude) preflight(ctx context.Context, executable, workspace strin
 	return string(match[1]), nil
 }
 
-const claudeWebTools = "WebSearch,WebFetch"
+const (
+	claudeWebTools      = "WebSearch,WebFetch"
+	claudeSnapshotTools = "Read,Grep,Glob"
+)
 
-func claudeArguments(effective config.Effective, schema, model string) []string {
+// claudeArguments attaches a snapshot with --add-dir instead of running in it,
+// because Claude Code loads CLAUDE.md from the working directory as
+// instructions but not from added directories.
+func claudeArguments(effective config.Effective, schema, model, snapshot string) []string {
 	arguments := make([]string, 0, 32)
 	arguments = append(arguments,
 		"--print",
@@ -250,10 +263,20 @@ func claudeArguments(effective config.Effective, schema, model string) []string 
 		"--permission-mode", "dontAsk",
 		"--no-chrome",
 	)
-	if effective.WebAccess.Value {
+	// Snapshot tools stay out of --allowedTools: Claude Code then permits reads
+	// only inside the working directory, and dontAsk denies the rest.
+	switch {
+	case effective.RepositoryAccess.Value && effective.WebAccess.Value:
+		arguments = append(arguments, "--tools", claudeSnapshotTools+","+claudeWebTools, "--allowedTools", claudeWebTools)
+	case effective.RepositoryAccess.Value:
+		arguments = append(arguments, "--tools", claudeSnapshotTools)
+	case effective.WebAccess.Value:
 		arguments = append(arguments, "--tools", claudeWebTools, "--allowedTools", claudeWebTools)
-	} else {
+	default:
 		arguments = append(arguments, "--tools", "")
+	}
+	if snapshot != "" {
+		arguments = append(arguments, "--add-dir", snapshot)
 	}
 	arguments = append(arguments,
 		"--model", model,
@@ -336,4 +359,22 @@ func validClaudeFailureSubtype(subtype string) bool {
 	default:
 		return false
 	}
+}
+
+// claudeAdditionalDirectoryMemory makes Claude Code load CLAUDE.md and rules
+// from --add-dir directories, which would turn snapshot files into
+// instructions.
+const claudeAdditionalDirectoryMemory = "CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD"
+
+func claudeReviewEnvironment(environment []string, snapshot string) []string {
+	if snapshot == "" {
+		return environment
+	}
+	filtered := make([]string, 0, len(environment)+1)
+	for _, entry := range environment {
+		if name, _, _ := strings.Cut(entry, "="); name != claudeAdditionalDirectoryMemory {
+			filtered = append(filtered, entry)
+		}
+	}
+	return append(filtered, claudeAdditionalDirectoryMemory+"=0")
 }

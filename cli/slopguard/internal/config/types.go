@@ -71,6 +71,9 @@ type Effective struct {
 	MaxBytes        Value[int64]                 `json:"max_bytes"`
 	WebAccess       Value[bool]                  `json:"web_access"`
 	Telemetry       Value[bool]                  `json:"telemetry"`
+	// RepositoryAccess is a flag-only capability: the provider reads a redacted
+	// snapshot of the repository instead of an empty workspace.
+	RepositoryAccess Value[bool] `json:"repository_access"`
 }
 
 type Overrides struct {
@@ -82,18 +85,22 @@ type Overrides struct {
 	MaxBytes        *int64
 	WebAccess       *bool
 	Telemetry       *bool
+	// RepositoryAccess has no file or environment form, so repository
+	// configuration cannot grant it.
+	RepositoryAccess *bool
 }
 
 func defaults() Effective {
 	return Effective{
-		Engine:          Value[protocol.ProviderName]{Source: SourceDefault},
-		Model:           Value[string]{Source: SourceDefault},
-		ReasoningEffort: Value[ReasoningEffort]{Value: ReasoningHigh, Source: SourceDefault},
-		Timeout:         Value[Duration]{Value: Duration(15 * time.Minute), Source: SourceDefault},
-		Retries:         Value[int]{Value: 1, Source: SourceDefault},
-		MaxBytes:        Value[int64]{Value: target.DefaultMaxBytes, Source: SourceDefault},
-		WebAccess:       Value[bool]{Value: true, Source: SourceDefault},
-		Telemetry:       Value[bool]{Value: false, Source: SourceDefault},
+		Engine:           Value[protocol.ProviderName]{Source: SourceDefault},
+		Model:            Value[string]{Source: SourceDefault},
+		ReasoningEffort:  Value[ReasoningEffort]{Value: ReasoningHigh, Source: SourceDefault},
+		Timeout:          Value[Duration]{Value: Duration(15 * time.Minute), Source: SourceDefault},
+		Retries:          Value[int]{Value: 1, Source: SourceDefault},
+		MaxBytes:         Value[int64]{Value: target.DefaultMaxBytes, Source: SourceDefault},
+		WebAccess:        Value[bool]{Value: true, Source: SourceDefault},
+		Telemetry:        Value[bool]{Value: false, Source: SourceDefault},
+		RepositoryAccess: Value[bool]{Value: false, Source: SourceDefault},
 	}
 }
 
