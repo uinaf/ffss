@@ -509,7 +509,7 @@ func TestFreezeRejectsUnsafeInputs(t *testing.T) {
 
 	t.Run("sensitive path", func(t *testing.T) {
 		repository := committedRepository(t)
-		writeFile(t, repository, ".env", "TOKEN=secret\n")
+		writeFile(t, repository, ".npmrc", "//registry.npmjs.org/:_authToken=secret\n")
 		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
 		if err == nil || !strings.Contains(err.Error(), "sensitive path") {
 			t.Fatalf("Freeze() error = %v", err)
@@ -654,6 +654,128 @@ func TestFreezeAllowsEnvironmentTemplates(t *testing.T) {
 			t.Fatal("payload omitted deleted environment template material")
 		}
 	})
+}
+
+func TestFreezeRedactsEnvironmentFiles(t *testing.T) {
+	t.Parallel()
+
+	assertRedacted := func(t *testing.T, payload string, present, absent []string) {
+		t.Helper()
+		for _, content := range present {
+			if !strings.Contains(payload, content) {
+				t.Errorf("payload omitted %q", content)
+			}
+		}
+		for _, content := range absent {
+			if strings.Contains(payload, content) {
+				t.Errorf("payload leaked %q", content)
+			}
+		}
+	}
+
+	t.Run("commit removing a key", func(t *testing.T) {
+		repository := newRepository(t)
+		writeFile(t, repository, ".env", "EXAMPLE_KEY=placeholder\nOTHER=1\n")
+		writeFile(t, repository, "app.ts", "export const value = 1\n")
+		gitCommand(t, repository, "add", ".")
+		gitCommand(t, repository, "commit", "-m", "base")
+		writeFile(t, repository, ".env", "OTHER=1\n")
+		writeFile(t, repository, "app.ts", "export const value = 2\n")
+		gitCommand(t, repository, "commit", "-am", "drop key")
+		blob := gitCommand(t, repository, "rev-parse", "HEAD~1:.env")
+
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD"})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		assertRedacted(t, bundle.Payload(),
+			[]string{"\n-EXAMPLE_KEY=[REDACTED]\n", "\nindex [REDACTED]\n", "+export const value = 2"},
+			[]string{"placeholder", blob})
+		if paths := targetPaths(bundle.Target()); !equalStrings(paths, []string{".env", "app.ts"}) {
+			t.Fatalf("target paths = %v", paths)
+		}
+	})
+
+	t.Run("multi-line value", func(t *testing.T) {
+		repository := newRepository(t)
+		writeFile(t, repository, ".env.production", "PRIVATE_KEY=\"-----BEGIN KEY-----\nMIIBsecretAAA\nlastline==\n-----END KEY-----\"\nPORT=1\n")
+		gitCommand(t, repository, "add", ".")
+		gitCommand(t, repository, "commit", "-m", "base")
+		writeFile(t, repository, ".env.production", "PRIVATE_KEY=\"-----BEGIN KEY-----\nMIIBsecretBBB\nother==\n-----END KEY-----\"\nPORT=2\n")
+		gitCommand(t, repository, "commit", "-am", "rotate")
+
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD"})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		assertRedacted(t, bundle.Payload(),
+			[]string{"\n-[REDACTED]\n", "\n+[REDACTED]\n", "\n+PORT=[REDACTED]\n", "\n@@ -2,2 +2,2 @@\n"},
+			[]string{"MIIB", "lastline", "other", "BEGIN KEY"})
+	})
+
+	t.Run("local staged unstaged deleted and untracked", func(t *testing.T) {
+		repository := newRepository(t)
+		writeFile(t, repository, ".env", "# rotate quarterly\nexport API_TOKEN='tok-base'\r\n\n")
+		writeFile(t, repository, ".env.local", "LOCAL_SECRET=local-value\n")
+		gitCommand(t, repository, "add", ".")
+		gitCommand(t, repository, "commit", "-m", "base")
+		writeFile(t, repository, ".env", "# rotate quarterly\nexport API_TOKEN='tok-staged'\r\n\n")
+		gitCommand(t, repository, "add", ".env")
+		writeFile(t, repository, ".env", "# rotate monthly\nexport API_TOKEN='tok-worktree'\r\n\nNEW_KEY=new-value\n")
+		if err := os.Remove(filepath.Join(repository, ".env.local")); err != nil {
+			t.Fatal(err)
+		}
+		writeFile(t, repository, "config/.env.test", "DATABASE_URL=postgres://user:pass@host/db\n")
+
+		bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+		if err != nil {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+		assertRedacted(t, bundle.Payload(),
+			[]string{"+export API_TOKEN=[REDACTED]\r\n", "+NEW_KEY=[REDACTED]", "-LOCAL_SECRET=[REDACTED]", "\nLOCAL_SECRET=[REDACTED]\n", "\nDATABASE_URL=[REDACTED]\n", "\n+[REDACTED]\n"},
+			[]string{"tok-", "local-value", "new-value", "pass@host", "quarterly", "monthly"})
+		if err := bundle.VerifyUnchanged(context.Background()); err != nil {
+			t.Fatalf("VerifyUnchanged() error = %v", err)
+		}
+		writeFile(t, repository, "config/.env.test", "DATABASE_URL=postgres://user:other@host/db\n")
+		if err := bundle.VerifyUnchanged(context.Background()); !errors.Is(err, ErrSourceChanged) {
+			t.Fatalf("VerifyUnchanged() after value-only edit = %v, want ErrSourceChanged", err)
+		}
+	})
+
+	t.Run("binary untracked", func(t *testing.T) {
+		repository := committedRepository(t)
+		writeBytes(t, repository, ".env", []byte("TOKEN=\x00secret\n"))
+		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+		if err == nil || !strings.Contains(err.Error(), "binary environment file") {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+	})
+
+	t.Run("explicit context", func(t *testing.T) {
+		repository := committedRepository(t)
+		writeFile(t, repository, ".env", "TOKEN=secret\n")
+		_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal, ContextFiles: []string{".env"}})
+		if err == nil || !strings.Contains(err.Error(), "sensitive context path") {
+			t.Fatalf("Freeze() error = %v", err)
+		}
+	})
+}
+
+func TestRedactEnvironmentKeepsKeysAndLineStructure(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct{ input, want string }{
+		{"A=1\nexport B = two\n", "A=[REDACTED]\nexport B =[REDACTED]\n"},
+		{"# old: KEY=hunter2\n\n  \nEMPTY=\n", "[REDACTED]\n\n  \nEMPTY=[REDACTED]\n"},
+		{"A='x'\nB=\"y\\\"\nC=z\"\nD=4", "A=[REDACTED]\nB=[REDACTED]\n[REDACTED]\nD=[REDACTED]"},
+		{"A=`multi\nB=leak`\nC=3\r\n", "A=[REDACTED]\n[REDACTED]\nC=[REDACTED]\r\n"},
+		{"A: yaml-style\nnot a key\n", "[REDACTED]\n[REDACTED]\n"},
+	} {
+		if got := string(redactEnvironment([]byte(test.input))); got != test.want {
+			t.Errorf("redactEnvironment(%q) = %q, want %q", test.input, got, test.want)
+		}
+	}
 }
 
 func TestFreezeRejectsEnvironmentTemplateContext(t *testing.T) {
@@ -1361,6 +1483,21 @@ func TestEnvironmentTemplatePathIsNarrow(t *testing.T) {
 	for _, value := range []string{".env", ".env.production", "env.example", ".env.example.local", ".npmrc.example"} {
 		if environmentTemplatePath(value) {
 			t.Errorf("environmentTemplatePath(%q) = true", value)
+		}
+	}
+}
+
+func TestEnvironmentFilePathExcludesTemplatesAndOtherCredentials(t *testing.T) {
+	t.Parallel()
+
+	for _, value := range []string{".env", "app/.env.local", ".ENV.production", ".env.example.local"} {
+		if !environmentFilePath(value) || !reviewablePath(value) {
+			t.Errorf("environmentFilePath(%q) = false", value)
+		}
+	}
+	for _, value := range []string{".env.example", ".envrc", "env", ".npmrc", "prod.tfstate"} {
+		if environmentFilePath(value) {
+			t.Errorf("environmentFilePath(%q) = true", value)
 		}
 	}
 }

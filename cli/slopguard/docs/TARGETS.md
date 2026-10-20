@@ -57,8 +57,17 @@ boundary without first distilling and authorizing it.
   `.sample`, or `.template` are the narrow sensitive-path exception for changed
   source templates: their content, including comments, literal defaults,
   placeholders, and deleted preimages, enters the bundle without value
-  classification. Explicit context files remain subject to the ordinary
-  sensitive-path rejection, including these template names.
+  classification. Other changed `.env` and `.env.*` files enter redacted (see
+  below). Explicit context files remain subject to the ordinary sensitive-path
+  rejection, including these template and environment names.
+- Redacted environment files keep their line structure and key names. Each
+  `KEY=value` or `export KEY=value` line becomes `KEY=[REDACTED]`, blank lines
+  stay, and every other line, comments and the continuation lines of quoted
+  multi-line values included, becomes `[REDACTED]`. This applies to added,
+  deleted, and untracked content alike. Their diff sections also drop blob IDs
+  (`index [REDACTED]`) and hunk-header function context. Redaction reads each
+  tracked environment file whole, so that read counts against the bundle
+  limit. Untracked binary environment files fail closed.
 - Tracked symlink changes are included as Git's text representation of the
   link target; collectors never follow those links when reading worktree,
   untracked, or context bytes.
@@ -102,9 +111,12 @@ chunking or review fan-out above that limit.
 - Slopguard sends the complete frozen payload to the selected provider,
   including deleted bytes and appended context.
 - Slopguard rejects known sensitive paths except changed environment templates
-  with the names above. It does not scan the payload for credentials or judge
-  whether template defaults are safe to disclose. A template name is not proof
-  that its content is free of secrets.
+  and environment files with the names above. Environment file values never
+  leave the machine. Local snapshots bind their raw bytes through a
+  per-process key, so the reported hash cannot confirm a guessed value.
+  Slopguard does not scan the payload for credentials or judge whether
+  template defaults or environment key names are safe to disclose. A template
+  name is not proof that its content is free of secrets.
 - Operators authorize the frozen content for disclosure to the selected
   provider. Repository-wide secret scanning belongs in the repository's normal
   local or continuous-integration gates.

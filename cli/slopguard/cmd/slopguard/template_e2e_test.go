@@ -44,20 +44,11 @@ func TestBinaryEnvironmentTemplateBoundary(t *testing.T) {
 			if validateErr := report.Validate(); validateErr != nil {
 				t.Fatal(validateErr)
 			}
-			if name == ".env.example" {
-				if err != nil || report.Status != protocol.StatusClean {
-					t.Fatalf("template review: err=%v report=%s stderr=%s", err, stdout.String(), stderr.String())
-				}
-				if count, readErr := os.ReadFile(calls); readErr != nil || strings.TrimSpace(string(count)) != "1" {
-					t.Fatalf("provider calls=%q err=%v", count, readErr)
-				}
-			} else {
-				if exitCode(err) != 2 || report.Failure == nil || report.Failure.Class != protocol.FailureTarget {
-					t.Fatalf("sensitive path review: err=%v report=%s", err, stdout.String())
-				}
-				if _, statErr := os.Stat(calls); !os.IsNotExist(statErr) {
-					t.Fatalf("sensitive path reached provider: %v", statErr)
-				}
+			if err != nil || report.Status != protocol.StatusClean {
+				t.Fatalf("%s review: err=%v report=%s stderr=%s", name, err, stdout.String(), stderr.String())
+			}
+			if count, readErr := os.ReadFile(calls); readErr != nil || strings.TrimSpace(string(count)) != "1" {
+				t.Fatalf("provider calls=%q err=%v", count, readErr)
 			}
 		})
 	}

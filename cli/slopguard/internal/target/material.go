@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -436,11 +437,13 @@ type deletedBlob struct {
 	oid  string
 }
 
-func (collector *Collector) changedPaths(ctx context.Context, root string, plan *targetPlan, maxBytes int64) ([]string, []deletedBlob, error) {
-	var paths []string
+// changedPaths returns the changed paths of each diff command in section order.
+func (collector *Collector) changedPaths(ctx context.Context, root string, plan *targetPlan, maxBytes int64) ([][]string, []deletedBlob, error) {
+	var commandPaths [][]string
 	binaries := map[string]struct{}{}
 	var inventoryBytes int64
 	for _, arguments := range diffCommands(plan, "--numstat", "-z") {
+		var paths []string
 		parser := &nulRecordWriter{handle: func(record []byte) error {
 			fields := bytes.SplitN(record, []byte{'\t'}, 3)
 			if len(fields) != 3 {
@@ -467,6 +470,7 @@ func (collector *Collector) changedPaths(ctx context.Context, root string, plan 
 		if err := parser.Err(); err != nil {
 			return nil, nil, err
 		}
+		commandPaths = append(commandPaths, paths)
 	}
 	deleted, err := collector.inspectRawModes(ctx, root, plan)
 	if err != nil {
@@ -478,7 +482,7 @@ func (collector *Collector) changedPaths(ctx context.Context, root string, plan 
 			textDeleted = append(textDeleted, blob)
 		}
 	}
-	return paths, textDeleted, nil
+	return commandPaths, textDeleted, nil
 }
 
 var missingObjectPattern = regexp.MustCompile(`unable to read [0-9a-f]{40,64}`)
@@ -564,7 +568,7 @@ func (collector *Collector) untrackedFiles(ctx context.Context, root string, pla
 		if err := protocolPath(path); err != nil {
 			return fmt.Errorf("untracked path %q: %w", path, err)
 		}
-		if sensitivePath(path) && !environmentTemplatePath(path) {
+		if !reviewablePath(path) {
 			return fmt.Errorf("sensitive path %q is not reviewable", path)
 		}
 		if !budget.Exceeded() {
@@ -573,6 +577,9 @@ func (collector *Collector) untrackedFiles(ctx context.Context, root string, pla
 				return fmt.Errorf("read untracked file %q: %w", path, err)
 			}
 			if binary {
+				if environmentFilePath(path) {
+					return fmt.Errorf("binary environment file %q is not reviewable", path)
+				}
 				budget.Add("binary:"+path, int64(len(summary)))
 				budget.AddFraming(sectionFramingBytes("UNTRUSTED-BINARY-FILE", path, int64(len(summary))))
 				if !budget.Exceeded() {
@@ -608,7 +615,7 @@ func (collector *Collector) deletedFiles(ctx context.Context, root string, plan 
 		if err := protocolPath(blob.path); err != nil {
 			return nil, fmt.Errorf("deleted path %q: %w", blob.path, err)
 		}
-		if sensitivePath(blob.path) && !environmentTemplatePath(blob.path) {
+		if !reviewablePath(blob.path) {
 			return nil, fmt.Errorf("sensitive path %q is not reviewable", blob.path)
 		}
 		if !validObjectID(blob.oid) {
@@ -757,11 +764,11 @@ func (writer *deletedBatchWriter) Err() error {
 	return nil
 }
 
-func (collector *Collector) sourceStateHash(ctx context.Context, root string, plan *targetPlan, contexts map[string][]byte) (string, error) {
+func (collector *Collector) sourceStateHash(ctx context.Context, root string, plan *targetPlan, contexts, untrackedEnvironment map[string][]byte) (string, error) {
 	if !plan.local {
 		return immutableStateHash(ctx, plan, contexts)
 	}
-	return collector.localSourceStateHash(ctx, root, plan)
+	return collector.localSourceStateHash(ctx, root, plan, untrackedEnvironment)
 }
 
 func immutableStateHash(ctx context.Context, plan *targetPlan, contexts map[string][]byte) (string, error) {
@@ -827,7 +834,16 @@ func writeContextHash(ctx context.Context, output io.Writer, content []byte) err
 	return ctx.Err()
 }
 
-func (collector *Collector) localSourceStateHash(ctx context.Context, root string, plan *targetPlan) (string, error) {
+// The local state hash covers raw index, diff, and untracked environment bytes
+// while the payload carries their redaction. The hash reaches the provider; the
+// per-process key stops it from confirming guessed values.
+var environmentStateKey = func() []byte {
+	key := make([]byte, 32)
+	_, _ = rand.Read(key)
+	return key
+}()
+
+func (collector *Collector) localSourceStateHash(ctx context.Context, root string, plan *targetPlan, untrackedEnvironment map[string][]byte) (string, error) {
 	headRevision, unborn, err := collector.resolveHEAD(ctx, root)
 	if err != nil {
 		return "", err
@@ -839,6 +855,12 @@ func (collector *Collector) localSourceStateHash(ctx context.Context, root strin
 		worktreeBase = plan.attributes
 	}
 	hash := sha256.New()
+	if err := hashSourceSection(hash, "key", func(output io.Writer) error {
+		_, err := output.Write(environmentStateKey)
+		return err
+	}); err != nil {
+		return "", fmt.Errorf("fingerprint key: %w", err)
+	}
 	if err := hashSourceSection(hash, "head", func(output io.Writer) error {
 		_, err := output.Write(head)
 		return err
@@ -875,6 +897,18 @@ func (collector *Collector) localSourceStateHash(ctx context.Context, root strin
 			return collector.git.runSandboxWithAttributesTo(ctx, root, plan.sandbox, nil, output, arguments...)
 		}); err != nil {
 			return "", fmt.Errorf("fingerprint tracked worktree: %w", err)
+		}
+	}
+	if len(untrackedEnvironment) > 0 {
+		if err := hashSourceSection(hash, "untracked-environment", func(output io.Writer) error {
+			for _, path := range sortedKeys(untrackedEnvironment) {
+				content := untrackedEnvironment[path]
+				_, _ = fmt.Fprintf(output, "%d:%s%d:", len(path), path, len(content))
+				_, _ = output.Write(content)
+			}
+			return nil
+		}); err != nil {
+			return "", fmt.Errorf("fingerprint untracked environment files: %w", err)
 		}
 	}
 	if err := hashSourceSection(hash, "config", func(output io.Writer) error {

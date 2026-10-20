@@ -4,7 +4,9 @@
 
 The whole frozen bundle, deleted lines and context included, goes to the
 provider unscanned for credentials. Binaries are never sent (tracked ones
-appear as Git's summary line, untracked as size and SHA-256). Make sure the
+appear as Git's summary line, untracked as size and SHA-256). Changed `.env`
+files go with key names only; their values are redacted. Environment
+templates (`.env.example`, `.sample`, `.template`) go whole. Make sure the
 target may go to that provider; if the harness asks for approval, say what
 leaves the machine and to whom.
 
