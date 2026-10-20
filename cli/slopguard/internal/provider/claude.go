@@ -139,7 +139,7 @@ func (claude *Claude) Review(ctx context.Context, request Request) (result Resul
 		Path:        executable,
 		Arguments:   claudeArguments(request.Config, string(providerSchema), model, request.Snapshot),
 		Directory:   runtime.Workspace,
-		Environment: environment,
+		Environment: claudeReviewEnvironment(environment, request.Snapshot),
 		Input:       request.promptReader(policy),
 		Timeout:     time.Duration(request.Config.Timeout.Value),
 		StdoutLimit: providerStdoutLimit,
@@ -356,4 +356,22 @@ func validClaudeFailureSubtype(subtype string) bool {
 	default:
 		return false
 	}
+}
+
+// claudeAdditionalDirectoryMemory makes Claude Code load CLAUDE.md and rules
+// from --add-dir directories, which would turn snapshot files into
+// instructions.
+const claudeAdditionalDirectoryMemory = "CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD"
+
+func claudeReviewEnvironment(environment []string, snapshot string) []string {
+	if snapshot == "" {
+		return environment
+	}
+	filtered := make([]string, 0, len(environment)+1)
+	for _, entry := range environment {
+		if name, _, _ := strings.Cut(entry, "="); name != claudeAdditionalDirectoryMemory {
+			filtered = append(filtered, entry)
+		}
+	}
+	return append(filtered, claudeAdditionalDirectoryMemory+"=0")
 }

@@ -2022,3 +2022,31 @@ func TestExportSnapshotOmitsSensitiveFilesAndHistory(t *testing.T) {
 		})
 	})
 }
+
+func TestExportSnapshotIgnoresArchiveAttributes(t *testing.T) {
+	t.Parallel()
+
+	repository := newRepository(t)
+	writeFile(t, repository, ".gitattributes", "hidden.go export-ignore\nsubst.go export-subst\n")
+	writeFile(t, repository, "hidden.go", "package hidden\n")
+	writeFile(t, repository, "subst.go", "// $Format:%H$\n")
+	writeFile(t, repository, "empty.go", "")
+	gitCommand(t, repository, "add", ".")
+	gitCommand(t, repository, "commit", "-m", "base")
+	writeFile(t, repository, "app.go", "package app\n")
+	gitCommand(t, repository, "add", ".")
+	gitCommand(t, repository, "commit", "-m", "change")
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD"})
+	if err != nil {
+		t.Fatalf("Freeze() error = %v", err)
+	}
+	directory := t.TempDir()
+	if err := bundle.ExportSnapshot(context.Background(), directory); err != nil {
+		t.Fatalf("ExportSnapshot() error = %v", err)
+	}
+	for path, want := range map[string]string{"hidden.go": "package hidden\n", "subst.go": "// $Format:%H$\n", "empty.go": "", "app.go": "package app\n"} {
+		if got, err := os.ReadFile(filepath.Join(directory, path)); err != nil || string(got) != want {
+			t.Errorf("snapshot %s = %q, %v; want %q", path, got, err, want)
+		}
+	}
+}

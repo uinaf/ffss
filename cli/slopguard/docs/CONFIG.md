@@ -76,14 +76,16 @@ Repository access defaults off and has only a flag form: `--repository-access`
 runs codex or claude inside a snapshot of the repository instead of the empty
 workspace, so the reviewer can read callers and tests.
 
-- The snapshot holds the reviewed revision's files, or the frozen working tree
-  for `local`, without Git metadata. Sensitive paths are left out, environment
+- The snapshot holds the reviewed revision's files, read straight from its
+  tree so `export-ignore` and `export-subst` cannot hide or rewrite them, or the
+  frozen working tree for `local`, without Git metadata. Sensitive paths are left out, environment
   files are [redacted](TARGETS.md), and symlinks and special files are skipped.
   It is capped at 512 MiB.
 - Neither engine loads the snapshot's own instruction files. Claude keeps the
-  empty workspace and gets the snapshot through `--add-dir`, so its
-  `CLAUDE.md` stays data; codex runs in the snapshot with project `AGENTS.md`
-  loading turned off.
+  empty workspace and gets the snapshot through `--add-dir`, with
+  `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0`, so its `CLAUDE.md` stays
+  data; codex runs in the snapshot with project `AGENTS.md` loading turned
+  off.
 - Claude gets `Read`, `Grep`, and `Glob` without pre-approval, so it can read
   only inside the snapshot. Codex runs in its read-only sandbox, which still
   reads the whole disk: repository content under review can steer it to any

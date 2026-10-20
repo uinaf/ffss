@@ -502,3 +502,16 @@ func TestClaudeSnapshotToolsStayOutOfAllowedTools(t *testing.T) {
 		}
 	}
 }
+
+func TestClaudeSnapshotEnvironmentDisablesAddedDirectoryMemory(t *testing.T) {
+	t.Parallel()
+
+	inherited := []string{"PATH=/bin", claudeAdditionalDirectoryMemory + "=1"}
+	got := claudeReviewEnvironment(inherited, "/snapshot")
+	if strings.Join(got, " ") != "PATH=/bin "+claudeAdditionalDirectoryMemory+"=0" {
+		t.Fatalf("environment = %v", got)
+	}
+	if unchanged := claudeReviewEnvironment(inherited, ""); len(unchanged) != 2 || unchanged[1] != claudeAdditionalDirectoryMemory+"=1" {
+		t.Fatalf("environment without snapshot = %v", unchanged)
+	}
+}

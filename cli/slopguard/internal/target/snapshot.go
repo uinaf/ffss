@@ -1,7 +1,6 @@
 package target
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
@@ -9,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
@@ -41,27 +41,132 @@ func (bundle *Bundle) ExportSnapshot(ctx context.Context, directory string) erro
 	if revision == "" {
 		revision = bundle.target.HeadRevision
 	}
+	return collector.exportRevision(ctx, bundle.repository, sandbox, revision, writer)
+}
+
+// exportRevision reads tree entries and blobs directly rather than through
+// git archive, whose export-ignore and export-subst attributes would let the
+// reviewed revision hide or rewrite files in its own snapshot.
+func (collector *Collector) exportRevision(ctx context.Context, root string, sandbox *gitSandbox, revision string, writer *snapshotWriter) error {
 	if !validObjectID(revision) {
 		return fmt.Errorf("snapshot revision is not a resolved object ID")
 	}
-	reader, pipe := io.Pipe()
-	extracted := make(chan error, 1)
-	go func() {
-		err := writer.extract(tar.NewReader(reader))
-		if err == nil {
-			// Git pads the archive past the end-of-archive marker.
-			_, err = io.Copy(io.Discard, reader)
+	var entries []snapshotEntry
+	parser := &nulRecordWriter{handle: func(raw []byte) error {
+		metadata, path, ok := bytes.Cut(raw, []byte{'\t'})
+		fields := strings.Fields(string(metadata))
+		if !ok || len(fields) != 3 {
+			return fmt.Errorf("git returned a malformed tree entry")
 		}
-		_ = reader.CloseWithError(err)
-		extracted <- err
-	}()
-	archiveErr := collector.git.runSandboxWithAttributesTo(ctx, bundle.repository, sandbox, nil, pipe, "archive", "--format=tar", revision)
-	_ = pipe.CloseWithError(archiveErr)
-	if err := <-extracted; err != nil {
+		relative := string(path)
+		if (fields[0] != "100644" && fields[0] != "100755") || fields[1] != "blob" || protocolPath(relative) != nil || !writer.wanted(relative) {
+			return nil
+		}
+		if !validObjectID(fields[2]) {
+			return fmt.Errorf("git returned an invalid blob ID for %q", relative)
+		}
+		entries = append(entries, snapshotEntry{path: relative, oid: fields[2]})
+		return nil
+	}}
+	if err := collector.git.runSandboxTo(ctx, root, sandbox, nil, parser, "ls-tree", "-r", "-z", "--full-tree", revision); err != nil {
+		return fmt.Errorf("list snapshot tree: %w", err)
+	}
+	if err := parser.Err(); err != nil {
 		return err
 	}
-	if archiveErr != nil {
-		return fmt.Errorf("archive snapshot: %w", archiveErr)
+	if len(entries) == 0 {
+		return nil
+	}
+	var input bytes.Buffer
+	for _, entry := range entries {
+		_, _ = input.WriteString(entry.oid + "\n")
+	}
+	batch := &snapshotBatchWriter{writer: writer, entries: entries, remaining: -1}
+	if err := collector.git.runSandboxTo(ctx, root, sandbox, input.Bytes(), batch, "cat-file", "--batch"); err != nil {
+		return fmt.Errorf("read snapshot blobs: %w", err)
+	}
+	return batch.Err()
+}
+
+type snapshotEntry struct {
+	path string
+	oid  string
+}
+
+// snapshotBatchWriter parses git cat-file --batch output and writes each blob
+// as it completes.
+type snapshotBatchWriter struct {
+	writer    *snapshotWriter
+	entries   []snapshotEntry
+	index     int
+	header    []byte
+	content   []byte
+	remaining int64
+	err       error
+}
+
+func (batch *snapshotBatchWriter) Write(data []byte) (int, error) {
+	input := data
+	for len(input) > 0 && batch.err == nil {
+		if batch.index >= len(batch.entries) {
+			batch.err = fmt.Errorf("git returned excess snapshot blobs")
+			break
+		}
+		entry := batch.entries[batch.index]
+		if batch.remaining < 0 {
+			newline := bytes.IndexByte(input, '\n')
+			if newline < 0 {
+				if len(batch.header)+len(input) > 512 {
+					batch.err = fmt.Errorf("git snapshot blob header exceeds safe maximum")
+				}
+				batch.header = append(batch.header, input...)
+				break
+			}
+			batch.header = append(batch.header, input[:newline]...)
+			input = input[newline+1:]
+			fields := strings.Fields(string(batch.header))
+			batch.header = batch.header[:0]
+			if len(fields) != 3 || fields[0] != entry.oid || fields[1] != "blob" {
+				batch.err = fmt.Errorf("git returned an invalid snapshot blob header for %q", entry.path)
+				break
+			}
+			size, err := strconv.ParseInt(fields[2], 10, 64)
+			if err != nil || size < 0 {
+				batch.err = fmt.Errorf("git returned an invalid snapshot blob size for %q", entry.path)
+				break
+			}
+			if size > batch.writer.remaining {
+				batch.err = fmt.Errorf("repository snapshot exceeds %d bytes", MaximumSnapshotBytes)
+				break
+			}
+			batch.content = make([]byte, 0, size)
+			batch.remaining = size
+		}
+		consume := min(int64(len(input)), batch.remaining)
+		batch.content = append(batch.content, input[:consume]...)
+		input = input[consume:]
+		batch.remaining -= consume
+		if batch.remaining == 0 && len(input) > 0 {
+			if input[0] != '\n' {
+				batch.err = fmt.Errorf("git returned an incomplete snapshot blob for %q", entry.path)
+				break
+			}
+			input = input[1:]
+			batch.err = batch.writer.write(entry.path, bytes.NewReader(batch.content))
+			batch.content = nil
+			batch.remaining = -1
+			batch.index++
+		}
+	}
+	return len(data), nil
+}
+
+func (batch *snapshotBatchWriter) Err() error {
+	if batch.err != nil {
+		return batch.err
+	}
+	if batch.index != len(batch.entries) || batch.remaining != -1 || len(batch.header) != 0 {
+		return fmt.Errorf("git returned incomplete snapshot blobs")
 	}
 	return nil
 }
@@ -110,24 +215,6 @@ type snapshotWriter struct {
 	remaining int64
 }
 
-func (writer *snapshotWriter) extract(archive *tar.Reader) error {
-	for {
-		header, err := archive.Next()
-		if errors.Is(err, io.EOF) {
-			return nil
-		}
-		if err != nil {
-			return fmt.Errorf("read snapshot archive: %w", err)
-		}
-		if header.Typeflag != tar.TypeReg || protocolPath(header.Name) != nil || !writer.wanted(header.Name) {
-			continue
-		}
-		if err := writer.write(header.Name, archive); err != nil {
-			return err
-		}
-	}
-}
-
 func (writer *snapshotWriter) wanted(relative string) bool {
 	return reviewablePath(relative)
 }
@@ -136,6 +223,9 @@ func (writer *snapshotWriter) write(relative string, source io.Reader) error {
 	content, err := io.ReadAll(io.LimitReader(source, writer.remaining+1))
 	if err != nil {
 		return fmt.Errorf("read snapshot file %q: %w", relative, err)
+	}
+	if int64(len(content)) > writer.remaining {
+		return fmt.Errorf("repository snapshot exceeds %d bytes", MaximumSnapshotBytes)
 	}
 	if environmentFilePath(relative) {
 		if bytes.IndexByte(content, 0) >= 0 {
