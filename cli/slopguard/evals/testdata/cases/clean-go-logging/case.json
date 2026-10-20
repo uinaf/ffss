@@ -1,0 +1,5 @@
+{
+  "summary": "log a skipped item without changing behavior",
+  "language": "go",
+  "needs_context": false
+}

@@ -1,0 +1,9 @@
+{
+  "summary": "true division yields a float index",
+  "language": "python",
+  "needs_context": false,
+  "bug": {
+    "file": "middle.py",
+    "line": 3
+  }
+}

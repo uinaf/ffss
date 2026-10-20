@@ -2,3 +2,4 @@
 /dist/
 /coverage.out
 /.slopguard.local.yaml
+/eval-results.jsonl

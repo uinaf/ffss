@@ -1,0 +1,9 @@
+{
+  "summary": "MaxRetries now counts total attempts, but the unchanged caller loop still adds one",
+  "language": "go",
+  "needs_context": true,
+  "bug": {
+    "file": "limits.go",
+    "line": 4
+  }
+}

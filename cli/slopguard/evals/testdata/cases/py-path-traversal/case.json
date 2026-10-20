@@ -1,0 +1,9 @@
+{
+  "summary": "download path joins user input without containment",
+  "language": "python",
+  "needs_context": false,
+  "bug": {
+    "file": "download.py",
+    "line": 8
+  }
+}

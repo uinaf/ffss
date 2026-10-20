@@ -1,0 +1,9 @@
+{
+  "summary": "new background refresh writes the cache map without the mutex the rest of the type uses",
+  "language": "go",
+  "needs_context": true,
+  "bug": {
+    "file": "refresh.go",
+    "line": 24
+  }
+}

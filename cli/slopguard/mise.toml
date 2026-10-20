@@ -40,6 +40,16 @@ run = "go build ./cmd/slopguard"
 description = "Run deterministic repository verification"
 depends = ["fmt:check", "test", "test:race", "vet", "build", "installer:check"]
 
+[tasks.eval]
+description = "Opt in to the planted-bug review eval; consumes provider quota"
+run = '''
+set -e
+binary="$(mktemp -d)/slopguard"
+trap 'rm -rf "$(dirname "$binary")"' EXIT
+go build -o "$binary" ./cmd/slopguard
+go run ./evals -slopguard "$binary" "$@"
+'''
+
 [tasks."verify:live"]
 description = "Opt in to the authenticated CLI-level provider and auth-route matrix"
 run = '''

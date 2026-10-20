@@ -1,0 +1,9 @@
+{
+  "summary": "is compares identity, not the status string",
+  "language": "python",
+  "needs_context": false,
+  "bug": {
+    "file": "status.py",
+    "line": 3
+  }
+}

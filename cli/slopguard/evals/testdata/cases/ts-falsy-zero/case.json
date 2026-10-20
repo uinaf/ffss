@@ -1,0 +1,9 @@
+{
+  "summary": "a stock count of zero is treated as unknown",
+  "language": "typescript",
+  "needs_context": false,
+  "bug": {
+    "file": "inventory.ts",
+    "line": 7
+  }
+}

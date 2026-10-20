@@ -1,0 +1,9 @@
+{
+  "summary": "producer renames a key the unchanged consumer still reads",
+  "language": "python",
+  "needs_context": true,
+  "bug": {
+    "file": "events.py",
+    "line": 2
+  }
+}

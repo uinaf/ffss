@@ -1,0 +1,9 @@
+{
+  "summary": "validation regex is unanchored, so any string containing a valid slug passes",
+  "language": "typescript",
+  "needs_context": false,
+  "bug": {
+    "file": "slug.ts",
+    "line": 1
+  }
+}
