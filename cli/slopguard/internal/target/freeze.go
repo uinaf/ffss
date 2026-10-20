@@ -236,9 +236,17 @@ func (collector *Collector) collect(ctx context.Context, root string, request Re
 			return nil, err
 		}
 	}
-	changed, deletedBlobs, err := collector.changedPaths(ctx, root, plan, request.MaxBytes)
+	commandPaths, deletedBlobs, err := collector.changedPaths(ctx, root, plan, request.MaxBytes)
 	if err != nil {
 		return nil, err
+	}
+	var changed []string
+	redactDiff := false
+	for _, paths := range commandPaths {
+		changed = append(changed, paths...)
+		for _, path := range paths {
+			redactDiff = redactDiff || environmentFilePath(path)
+		}
 	}
 	diffOutput := newDiffWriter(request.MaxBytes+1, changed)
 	for _, arguments := range diffCommands(plan, "--full-index", "--unified=0", "--no-color") {
@@ -249,6 +257,14 @@ func (collector *Collector) collect(ctx context.Context, root string, request Re
 	diff := diffOutput.TakeBytes()
 	if !diffOutput.Exceeded() && (!utf8.Valid(diff) || bytes.IndexByte(diff, 0) >= 0) {
 		return nil, fmt.Errorf("diff contains binary or invalid UTF-8 input")
+	}
+	if redactDiff && !diffOutput.Exceeded() {
+		if diff, err = collector.redactEnvironmentDiff(ctx, root, plan, diff, commandPaths, request.MaxBytes+1); err != nil {
+			return nil, err
+		}
+		diffOutput = newDiffWriter(request.MaxBytes+1, changed)
+		_, _ = diffOutput.Write(diff)
+		diff = diffOutput.TakeBytes()
 	}
 
 	paths := append([]string(nil), changed...)
@@ -287,13 +303,25 @@ func (collector *Collector) collect(ctx context.Context, root string, request Re
 		if err := protocolPath(path); err != nil {
 			return nil, fmt.Errorf("reviewed path %q: %w", path, err)
 		}
-		if sensitivePath(path) && !environmentTemplatePath(path) {
+		if !reviewablePath(path) {
 			return nil, fmt.Errorf("sensitive path %q is not reviewable", path)
 		}
 	}
 	deleted, err := collector.deletedFiles(ctx, root, plan, deletedBlobs, budget)
 	if err != nil {
 		return nil, err
+	}
+	rawEnvironment := map[string][]byte{}
+	for path, content := range untracked {
+		if environmentFilePath(path) {
+			rawEnvironment[path] = content
+			untracked[path] = redactEnvironment(content)
+		}
+	}
+	for path, content := range deleted {
+		if environmentFilePath(path) {
+			deleted[path] = redactEnvironment(content)
+		}
 	}
 	contexts := make(map[string][]byte, len(request.ContextFiles))
 	for _, path := range request.ContextFiles {
@@ -312,7 +340,7 @@ func (collector *Collector) collect(ctx context.Context, root string, request Re
 	if err := budget.SizeError(); err != nil {
 		return nil, err
 	}
-	stateHash, err := collector.sourceStateHash(ctx, root, plan, contexts)
+	stateHash, err := collector.sourceStateHash(ctx, root, plan, contexts, rawEnvironment)
 	if err != nil {
 		return nil, err
 	}
