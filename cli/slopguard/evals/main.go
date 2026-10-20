@@ -29,6 +29,10 @@ import (
 
 const lineTolerance = 3
 
+// policyVersion joins the experiment fingerprint; bump it whenever grading,
+// configuration definitions, or result classification change.
+const policyVersion = 1
+
 type caseSpec struct {
 	ID           string `json:"-"`
 	Summary      string `json:"summary"`
@@ -99,6 +103,11 @@ func run(slopguard, casesDir, configNames, only string, runs, parallel int, effo
 		if timeout <= 0 {
 			return errors.New("-timeout must be positive")
 		}
+		switch effort {
+		case "minimal", "low", "medium", "high", "xhigh", "max", "ultra":
+		default:
+			return fmt.Errorf("unknown -effort %q", effort)
+		}
 		cases, err := loadCases(casesDir, only)
 		if err != nil {
 			return err
@@ -162,8 +171,13 @@ func loadCases(directory, only string) ([]caseSpec, error) {
 			return nil, err
 		}
 		var spec caseSpec
-		if err := json.Unmarshal(data, &spec); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader(data))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&spec); err != nil {
 			return nil, fmt.Errorf("case %s: %w", entry.Name(), err)
+		}
+		if spec.Bug != nil && (spec.Bug.File == "" || spec.Bug.Line < 1 || (spec.Bug.EndLine != 0 && spec.Bug.EndLine < spec.Bug.Line)) {
+			return nil, fmt.Errorf("case %s: bug needs a file, a line, and an end_line at or after it", entry.Name())
 		}
 		spec.ID, spec.directory = entry.Name(), filepath.Join(directory, entry.Name())
 		cases = append(cases, spec)
@@ -196,8 +210,8 @@ func evaluate(slopguard string, cases []caseSpec, configs []configuration, runs,
 	}
 	finished := map[string]bool{}
 	for _, row := range done {
-		if row.Experiment != experiment {
-			return fmt.Errorf("%s holds rows from another binary, effort, or case set; pass a new -out", out)
+		if row.Experiment != experiment || row.Run > runs {
+			return fmt.Errorf("%s holds rows from another experiment or run count; pass a new -out", out)
 		}
 		finished[fmt.Sprintf("%s/%s/%d", row.Case, row.Config, row.Run)] = true
 	}
@@ -412,6 +426,7 @@ func printSummary(output io.Writer, rows []result, configs []configuration) erro
 			if row.Config != config.Name {
 				continue
 			}
+			seconds = append(seconds, row.Seconds)
 			if row.Status == "failure" {
 				failed++
 				// A failed bug review still counts as a missed bug.
@@ -423,7 +438,6 @@ func printSummary(output io.Writer, rows []result, configs []configuration) erro
 				}
 				continue
 			}
-			seconds = append(seconds, row.Seconds)
 			if row.Clean {
 				cleanRuns++
 				if row.Findings > 0 {
@@ -502,7 +516,7 @@ func fingerprint(slopguard, effort string, timeout time.Duration, parallel int, 
 	if err != nil {
 		return "", err
 	}
-	fmt.Fprintf(hash, "\x00effort=%s\x00timeout=%s\x00parallel=%d\x00", effort, timeout, parallel)
+	fmt.Fprintf(hash, "\x00policy=%d\x00effort=%s\x00timeout=%s\x00parallel=%d\x00", policyVersion, effort, timeout, parallel)
 	for _, spec := range cases {
 		err := filepath.WalkDir(spec.directory, func(path string, entry fs.DirEntry, err error) error {
 			if err != nil || entry.IsDir() {
