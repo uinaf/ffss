@@ -14,7 +14,7 @@ import (
 
 const redactedValue = "[REDACTED]"
 
-var environmentAssignment = regexp.MustCompile(`^[ \t]*(?:export[ \t]+)?[A-Za-z_][A-Za-z0-9_.-]*[ \t]*[=:]`)
+var environmentAssignment = regexp.MustCompile(`^[ \t]*(?:export[ \t]+)?[A-Za-z_][A-Za-z0-9_.-]*[ \t]*=`)
 
 // environmentFilePath reports a changed dotenv file that enters the bundle with
 // its values redacted instead of failing the target.
@@ -27,87 +27,52 @@ func reviewablePath(value string) bool {
 	return !sensitivePath(value) || environmentTemplatePath(value) || environmentFilePath(value)
 }
 
-// environmentRedactor keeps key names and line structure and replaces
-// everything else. A quoted value left open continues on later lines, so
-// redaction must see the file from its first line.
-type environmentRedactor struct {
-	quote byte
+func redactEnvironment(content []byte) []byte {
+	return bytes.Join(redactEnvironmentLines(bytes.Split(content, []byte{'\n'})), []byte{'\n'})
 }
 
-func (redactor *environmentRedactor) line(raw []byte) []byte {
-	text, carriage := bytes.CutSuffix(raw, []byte{'\r'})
-	var redacted []byte
-	switch {
-	case redactor.quote != 0:
-		if closingQuote(text, redactor.quote) >= 0 {
-			redactor.quote = 0
-		}
-		redacted = []byte(redactedValue)
-	case len(bytes.TrimSpace(text)) == 0:
-		redacted = append([]byte(nil), text...)
-	case bytes.HasPrefix(bytes.TrimLeft(text, " \t"), []byte{'#'}):
-		redacted = []byte(redactedValue)
-	default:
-		end := environmentAssignment.FindIndex(text)
-		if end == nil {
-			// Unknown syntax may still open a value that later lines continue.
-			redacted = []byte(redactedValue)
-			redactor.quote = unclosedQuote(text)
+// redactEnvironmentLines keeps key names only when no line leaves a quote
+// open. Then no value can continue onto another line in any dotenv dialect, so
+// every KEY= prefix is a real key. Otherwise every line is redacted whole.
+func redactEnvironmentLines(lines [][]byte) [][]byte {
+	keys := true
+	for _, line := range lines {
+		if !bytes.HasPrefix(bytes.TrimLeft(line, " \t"), []byte{'#'}) && leavesQuoteOpen(line) {
+			keys = false
 			break
 		}
-		redacted = append(append([]byte(nil), text[:end[1]]...), redactedValue...)
-		value := bytes.TrimLeft(text[end[1]:], " \t")
-		if len(value) > 0 && (value[0] == '"' || value[0] == '\'' || value[0] == '`') && closingQuote(value[1:], value[0]) < 0 {
-			redactor.quote = value[0]
-		}
 	}
-	if carriage {
-		redacted = append(redacted, '\r')
-	}
-	return redacted
-}
-
-func unclosedQuote(text []byte) byte {
-	for {
-		index := bytes.IndexAny(text, "\"'`")
-		if index < 0 {
-			return 0
-		}
-		end := closingQuote(text[index+1:], text[index])
-		if end < 0 {
-			return text[index]
-		}
-		text = text[index+1+end+1:]
-	}
-}
-
-// closingQuote treats any quote preceded by a backslash as escaped, whatever
-// the dialect, so a disagreement with the file's parser over-redacts.
-func closingQuote(text []byte, quote byte) int {
-	for index, character := range text {
-		if character == quote && (index == 0 || text[index-1] != '\\') {
-			return index
-		}
-	}
-	return -1
-}
-
-func redactEnvironment(content []byte) []byte {
-	var redactor environmentRedactor
-	lines := bytes.Split(content, []byte{'\n'})
-	for index, line := range lines {
-		lines[index] = redactor.line(line)
-	}
-	return bytes.Join(lines, []byte{'\n'})
-}
-
-func redactEnvironmentLines(lines [][]byte) [][]byte {
-	var redactor environmentRedactor
 	redacted := make([][]byte, len(lines))
 	for index, line := range lines {
-		redacted[index] = redactor.line(line)
+		text, carriage := bytes.CutSuffix(line, []byte{'\r'})
+		switch end := environmentAssignment.FindIndex(text); {
+		case len(bytes.TrimSpace(text)) == 0:
+			redacted[index] = append([]byte(nil), text...)
+		case keys && end != nil:
+			redacted[index] = append(append([]byte(nil), text[:end[1]]...), redactedValue...)
+		default:
+			redacted[index] = []byte(redactedValue)
+		}
+		if carriage {
+			redacted[index] = append(redacted[index], '\r')
+		}
 	}
 	return redacted
+}
+
+// leavesQuoteOpen treats a quote preceded by a backslash as escaped, whatever
+// the dialect, so a disagreement with the file's parser over-redacts.
+func leavesQuoteOpen(line []byte) bool {
+	var quote byte
+	for index, character := range line {
+		switch {
+		case quote == 0 && (character == '"' || character == '\'' || character == '`'):
+			quote = character
+		case quote != 0 && character == quote && line[index-1] != '\\':
+			quote = 0
+		}
+	}
+	return quote != 0
 }
 
 // redactEnvironmentDiff rewrites the dotenv sections of a --unified=0 diff.

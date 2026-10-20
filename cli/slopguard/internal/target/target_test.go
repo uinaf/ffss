@@ -709,8 +709,8 @@ func TestFreezeRedactsEnvironmentFiles(t *testing.T) {
 			t.Fatalf("Freeze() error = %v", err)
 		}
 		assertRedacted(t, bundle.Payload(),
-			[]string{"\n-[REDACTED]\n", "\n+[REDACTED]\n", "\n+PORT=[REDACTED]\n", "\n@@ -2,2 +2,2 @@\n"},
-			[]string{"MIIB", "lastline", "other", "BEGIN KEY"})
+			[]string{"\n-[REDACTED]\n", "\n+[REDACTED]\n", "\n@@ -2,2 +2,2 @@\n"},
+			[]string{"MIIB", "lastline", "other", "BEGIN KEY", "PORT="})
 	})
 
 	t.Run("local staged unstaged deleted and untracked", func(t *testing.T) {
@@ -768,12 +768,13 @@ func TestRedactEnvironmentKeepsKeysAndLineStructure(t *testing.T) {
 	for _, test := range []struct{ input, want string }{
 		{"A=1\nexport B = two\n", "A=[REDACTED]\nexport B =[REDACTED]\n"},
 		{"# old: KEY=hunter2\n\n  \nEMPTY=\n", "[REDACTED]\n\n  \nEMPTY=[REDACTED]\n"},
-		{"A='x'\nB=\"y\\\"\nC=z\"\nD=4", "A=[REDACTED]\nB=[REDACTED]\n[REDACTED]\nD=[REDACTED]"},
-		{"A=`multi\nB=leak`\nC=3\r\n", "A=[REDACTED]\n[REDACTED]\nC=[REDACTED]\r\n"},
-		{"A: yaml-style\nnot a key\n", "A:[REDACTED]\n[REDACTED]\n"},
-		{"PRIVATE_KEY: \"header\nMIIBsecretAAA==\nfooter\"\nB=2\n", "PRIVATE_KEY:[REDACTED]\n[REDACTED]\n[REDACTED]\nB=[REDACTED]\n"},
-		{"- \"KEY\" \"opened\nMIIBsecret==\nend\"\nB=2\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\nB=[REDACTED]\n"},
-		{"# don't commit\nA=it's\nB=2\n", "[REDACTED]\nA=[REDACTED]\nB=[REDACTED]\n"},
+		{"# don't commit\nA=\"it's\"\nB=`x`\r\n", "[REDACTED]\nA=[REDACTED]\nB=[REDACTED]\r\n"},
+		{"A: yaml-style\nnot a key\n", "[REDACTED]\n[REDACTED]\n"},
+		{"A=1\nB=\"y\\\"\nC=z\"\nD=4", "[REDACTED]\n[REDACTED]\n[REDACTED]\n[REDACTED]"},
+		{"A=`multi\nB=leak`\nC=3\r\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\r\n"},
+		{"PRIVATE_KEY: \"header\nMIIBsecretAAA==\nfooter\"\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
+		{"PRIVATE_KEY: !!str \"header\n  MIIBsecretAAA==\nfooter\"\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
+		{"this isn't metadata\nPRIVATE_KEY=\"header\nowner's payload\nMIIBsecretAAA==\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\n[REDACTED]\n"},
 	} {
 		if got := string(redactEnvironment([]byte(test.input))); got != test.want {
 			t.Errorf("redactEnvironment(%q) = %q, want %q", test.input, got, test.want)

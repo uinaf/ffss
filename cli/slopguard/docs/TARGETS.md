@@ -60,13 +60,14 @@ boundary without first distilling and authorizing it.
   classification. Other changed `.env` and `.env.*` files enter redacted (see
   below). Explicit context files remain subject to the ordinary sensitive-path
   rejection, including these template and environment names.
-- Redacted environment files keep their line structure and key names. Each
-  `KEY=value`, `KEY: value`, or `export KEY=value` line becomes
-  `KEY=[REDACTED]` (or `KEY:[REDACTED]`), blank lines stay, and every other
-  line, comments and the continuation lines of quoted multi-line values
-  included, becomes `[REDACTED]`. An unclosed quote on any non-comment line
-  redacts the lines after it until the quote closes. This applies to added,
-  deleted, and untracked content alike. Their diff sections also drop blob IDs
+- Redacted environment files keep their line structure. When every
+  non-comment line closes the quotes it opens, no value can span lines, so
+  each `KEY=value` or `export KEY=value` line keeps its key as
+  `KEY=[REDACTED]`. Otherwise, and for every other line, comments included,
+  the whole line becomes `[REDACTED]`; blank lines stay. A quote preceded by a
+  backslash never closes, so a dialect disagreement over-redacts. Each side of
+  a change is judged as a whole file, and the rule covers added, deleted, and
+  untracked content alike. Their diff sections also drop blob IDs
   (`index [REDACTED]`) and hunk-header function context. Redaction reads each
   tracked environment file whole, so that read counts against the bundle
   limit. Untracked binary environment files fail closed.
