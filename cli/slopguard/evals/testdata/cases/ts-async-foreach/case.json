@@ -4,6 +4,7 @@
   "needs_context": false,
   "bug": {
     "file": "notify.ts",
-    "line": 7
+    "line": 7,
+    "end_line": 11
   }
 }

@@ -37,6 +37,9 @@ type caseSpec struct {
 	Bug          *struct {
 		File string `json:"file"`
 		Line int    `json:"line"`
+		// EndLine widens the accepted range when the defect spans lines,
+		// such as a call and the early return it causes.
+		EndLine int `json:"end_line,omitempty"`
 	} `json:"bug"`
 	directory string
 }
@@ -93,6 +96,9 @@ func run(slopguard, casesDir, configNames, only string, runs, parallel int, effo
 		if runs < 1 {
 			return errors.New("-runs must be at least 1")
 		}
+		if timeout <= 0 {
+			return errors.New("-timeout must be positive")
+		}
 		cases, err := loadCases(casesDir, only)
 		if err != nil {
 			return err
@@ -100,6 +106,9 @@ func run(slopguard, casesDir, configNames, only string, runs, parallel int, effo
 		if err := evaluate(slopguard, cases, configs, runs, parallel, effort, timeout, out); err != nil {
 			return err
 		}
+	}
+	if _, err := os.Stat(out); err != nil {
+		return fmt.Errorf("results: %w", err)
 	}
 	rows, err := readResults(out)
 	if err != nil {
@@ -177,7 +186,7 @@ type job struct {
 }
 
 func evaluate(slopguard string, cases []caseSpec, configs []configuration, runs, parallel int, effort string, timeout time.Duration, out string) error {
-	experiment, err := fingerprint(slopguard, effort, timeout, cases)
+	experiment, err := fingerprint(slopguard, effort, timeout, parallel, cases)
 	if err != nil {
 		return err
 	}
@@ -235,6 +244,9 @@ func evaluate(slopguard string, cases []caseSpec, configs []configuration, runs,
 		go func() {
 			defer workers.Done()
 			for next := range queue {
+				if failed() {
+					continue
+				}
 				row := review(slopguard, configHome, effort, timeout, next)
 				row.Experiment = experiment
 				encoded, err := json.Marshal(row)
@@ -354,7 +366,7 @@ func review(slopguard, configHome, effort string, timeout time.Duration, next jo
 	row.Findings = len(report.Review.Findings)
 	for _, finding := range report.Review.Findings {
 		if next.spec.Bug != nil && finding.Location.FilePath == next.spec.Bug.File &&
-			finding.Location.StartLine <= next.spec.Bug.Line+lineTolerance &&
+			finding.Location.StartLine <= max(next.spec.Bug.Line, next.spec.Bug.EndLine)+lineTolerance &&
 			finding.Location.EndLine >= next.spec.Bug.Line-lineTolerance {
 			row.Caught = true
 			continue
@@ -476,9 +488,10 @@ func withoutSlopguardEnvironment(environment []string) []string {
 	return kept
 }
 
-// fingerprint identifies an experiment by the binary, effort, timeout, and case files,
+// fingerprint identifies an experiment by the binary, effort, timeout,
+// parallelism, and case files,
 // so resuming never mixes rows produced under different settings.
-func fingerprint(slopguard, effort string, timeout time.Duration, cases []caseSpec) (string, error) {
+func fingerprint(slopguard, effort string, timeout time.Duration, parallel int, cases []caseSpec) (string, error) {
 	hash := sha256.New()
 	binary, err := os.Open(slopguard)
 	if err != nil {
@@ -489,7 +502,7 @@ func fingerprint(slopguard, effort string, timeout time.Duration, cases []caseSp
 	if err != nil {
 		return "", err
 	}
-	fmt.Fprintf(hash, "\x00effort=%s\x00timeout=%s\x00", effort, timeout)
+	fmt.Fprintf(hash, "\x00effort=%s\x00timeout=%s\x00parallel=%d\x00", effort, timeout, parallel)
 	for _, spec := range cases {
 		err := filepath.WalkDir(spec.directory, func(path string, entry fs.DirEntry, err error) error {
 			if err != nil || entry.IsDir() {

@@ -83,9 +83,12 @@ mise run eval -- -summary
 ```
 
 - A finding catches a bug when it cites the planted file within three lines
-  of the planted line; other findings count as unrelated.
-- Rows land in `eval-results.jsonl`; a rerun skips finished rows, so an
-  interrupted run resumes. Delete the file to start over.
+  of the planted line or range; other findings count as unrelated, and a
+  failed review of a bug case counts as a miss.
+- Rows land in `eval-results.jsonl` with a fingerprint of the binary, effort,
+  timeout, parallelism, and cases. A rerun with the same fingerprint skips
+  finished rows, so an interrupted run resumes; any other fingerprint is
+  refused, so pass a new `-out` or delete the file.
 - It consumes provider quota: every case runs once per configuration per run.
 
 ## Pull Requests
