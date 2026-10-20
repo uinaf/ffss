@@ -87,8 +87,12 @@ func (collector *Collector) exportRevision(ctx context.Context, root string, san
 		_, _ = input.WriteString(entry.oid + "\n")
 	}
 	batch := &snapshotBatchWriter{writer: writer, entries: entries, remaining: -1}
-	if err := collector.git.runSandboxTo(ctx, root, sandbox, input.Bytes(), batch, "cat-file", "--batch"); err != nil {
-		return fmt.Errorf("read snapshot blobs: %w", err)
+	runErr := collector.git.runSandboxTo(ctx, root, sandbox, input.Bytes(), batch, "cat-file", "--batch")
+	if batch.err != nil {
+		return collector.explainMissingObject(ctx, root, batch.err)
+	}
+	if runErr != nil {
+		return fmt.Errorf("read snapshot blobs: %w", runErr)
 	}
 	return batch.Err()
 }
@@ -131,6 +135,10 @@ func (batch *snapshotBatchWriter) Write(data []byte) (int, error) {
 			input = input[newline+1:]
 			fields := strings.Fields(string(batch.header))
 			batch.header = batch.header[:0]
+			if len(fields) == 2 && fields[0] == entry.oid && fields[1] == "missing" {
+				batch.err = fmt.Errorf("unable to read %s for snapshot file %q", entry.oid, entry.path)
+				break
+			}
 			if len(fields) != 3 || fields[0] != entry.oid || fields[1] != "blob" {
 				batch.err = fmt.Errorf("git returned an invalid snapshot blob header for %q", entry.path)
 				break
@@ -162,6 +170,10 @@ func (batch *snapshotBatchWriter) Write(data []byte) (int, error) {
 			batch.remaining = -1
 			batch.index++
 		}
+	}
+	if batch.err != nil {
+		// Failing the write closes the pipe, so git stops emitting blobs.
+		return 0, batch.err
 	}
 	return len(data), nil
 }
@@ -223,7 +235,15 @@ type snapshotWriter struct {
 	remaining int64
 }
 
+// wanted also drops any .git component: a raw tree may carry .git entries
+// that would rebuild repository metadata, with command-valued settings, inside
+// the snapshot.
 func (writer *snapshotWriter) wanted(relative string) bool {
+	for _, component := range strings.Split(relative, "/") {
+		if strings.EqualFold(component, ".git") {
+			return false
+		}
+	}
 	return reviewablePath(relative)
 }
 
@@ -240,6 +260,11 @@ func (writer *snapshotWriter) write(relative string, content []byte) error {
 	if environmentFilePath(relative) {
 		if bytes.IndexByte(content, 0) >= 0 {
 			return nil
+		}
+		// Redaction adds at most the placeholder to each line; reject growth
+		// past the cap before allocating it.
+		if int64(len(content))+int64(bytes.Count(content, []byte{'\n'})+1)*int64(len(redactedValue)) > writer.remaining {
+			return fmt.Errorf("repository snapshot exceeds %d bytes", MaximumSnapshotBytes)
 		}
 		content = redactEnvironment(content)
 	}

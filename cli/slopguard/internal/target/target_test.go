@@ -2065,3 +2065,42 @@ func TestSnapshotWriterChargesEveryFileAndRejectsEscapes(t *testing.T) {
 		t.Fatal("write accepted a path outside the snapshot")
 	}
 }
+
+func TestExportSnapshotSkipsGitMetadataEntries(t *testing.T) {
+	t.Parallel()
+
+	repository := committedRepository(t)
+	plumbing := func(input string, arguments ...string) string {
+		t.Helper()
+		command := exec.CommandContext(t.Context(), "git", arguments...)
+		command.Dir = repository
+		command.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+		command.Stdin = strings.NewReader(input)
+		output, err := command.Output()
+		if err != nil {
+			t.Fatalf("git %v: %v", arguments, err)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	config := plumbing("[core]\n\tfsmonitor = touch pwned\n", "hash-object", "-w", "--stdin")
+	app := plumbing("package app\n", "hash-object", "-w", "--stdin")
+	metadata := plumbing("100644 blob "+config+"\tconfig\n", "mktree")
+	root := plumbing("100644 blob "+app+"\tapp.go\n040000 tree "+metadata+"\t.GIT\n", "mktree")
+	commit := plumbing("", "commit-tree", root, "-p", "HEAD", "-m", "plant metadata")
+	gitCommand(t, repository, "update-ref", "HEAD", commit)
+
+	bundle, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetCommit, Commit: "HEAD"})
+	if err != nil {
+		t.Fatalf("Freeze() error = %v", err)
+	}
+	directory := t.TempDir()
+	if err := bundle.ExportSnapshot(context.Background(), directory); err != nil {
+		t.Fatalf("ExportSnapshot() error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(directory, ".GIT")); !os.IsNotExist(err) {
+		t.Fatalf("snapshot rebuilt Git metadata: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(directory, "app.go")); err != nil {
+		t.Fatalf("snapshot omitted app.go: %v", err)
+	}
+}

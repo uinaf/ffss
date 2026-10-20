@@ -223,6 +223,9 @@ func (claude *Claude) preflight(ctx context.Context, executable, workspace strin
 		return "", probeFailure("Claude --help", err, helpResult, environment, protocol.FailureCapability)
 	}
 	required := []string{"--print", "--no-session-persistence", "--output-format", "--json-schema", "--model", "--effort", "--tools", "--permission-mode", "--no-chrome"}
+	if effective.RepositoryAccess.Value {
+		required = append(required, "--add-dir")
+	}
 	if effective.WebAccess.Value {
 		required = append(required, "--allowedTools")
 	}
