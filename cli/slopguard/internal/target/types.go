@@ -28,6 +28,10 @@ type Options struct {
 	Repository string
 	Context    *repository.Context
 	GitPath    string
+	// StateKey keys the local source-state hash. A key kept across runs lets
+	// an unchanged local target reproduce its snapshot hash; without one, each
+	// process draws its own.
+	StateKey []byte
 }
 
 type Contributor struct {

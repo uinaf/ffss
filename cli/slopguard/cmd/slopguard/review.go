@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -20,6 +21,7 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
 	reportwriter "github.com/uinaf/ffss/cli/slopguard/internal/report"
 	repositorypkg "github.com/uinaf/ffss/cli/slopguard/internal/repository"
+	"github.com/uinaf/ffss/cli/slopguard/internal/reviewcache"
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
 	telemetrypkg "github.com/uinaf/ffss/cli/slopguard/internal/telemetry"
 )
@@ -76,8 +78,11 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	started := recorder.Now()
 	configSpan := recorder.Start(phase.Config)
 	defer configSpan.End()
+	// A cache hit runs no provider; recording its replayed attempts would
+	// inflate attempt and recovery telemetry.
+	var cacheHit atomic.Bool
 	recordTelemetry := func(result protocol.Report) {
-		if telemetryEnabled.Load() {
+		if telemetryEnabled.Load() && !cacheHit.Load() {
 			recordReviewTelemetry(dependencies, metrics, result)
 		}
 	}
@@ -103,6 +108,7 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	flags.Var(&contextFiles, "context-file", "repository-relative context file (repeatable)")
 	output := flags.String("output", "terminal", "output format: terminal or json")
 	configFlags := bindConfigFlags(flags)
+	useCache := flags.Bool("cache", true, "reuse a completed review of the same snapshot and settings; --cache=false reviews again")
 	flagStderr := stderr
 	if jsonRequested {
 		flagStderr = io.Discard
@@ -182,10 +188,19 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	}
 	configSpan.End()
 
+	var cache *reviewcache.Store
+	var stateKey []byte
+	if dependencies.cacheDirectory != nil {
+		cache, stateKey = openReviewCache(dependencies.cacheDirectory, repositoryContext.Root(), stderr)
+	}
+	if !*useCache {
+		// The state key still keeps local snapshot hashes stable.
+		cache = nil
+	}
 	newCollector := dependencies.newCollector
 	if newCollector == nil {
 		newCollector = func() (*target.Collector, error) {
-			return target.NewContext(ctx, target.Options{Context: repositoryContext})
+			return target.NewContext(ctx, target.Options{Context: repositoryContext, StateKey: stateKey})
 		}
 	}
 	probeSpan := recorder.Start(phase.DependencyProbes)
@@ -217,7 +232,10 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 			ContextFiles: append([]string(nil), contextFiles...),
 			MaxBytes:     effective.MaxBytes.Value,
 		},
-		Config: effective,
+		Config:           effective,
+		Cache:            cache,
+		SlopguardVersion: buildinfo.Version(),
+		CacheHit:         func() { cacheHit.Store(true) },
 		Progress: func(message string) {
 			report(stderr, "%s\n", message)
 		},
@@ -271,7 +289,7 @@ func reviewTelemetryRequested(arguments []string) bool {
 		}
 		if inline {
 			switch name {
-			case "--web-access", "-web-access", "--repository-access", "-repository-access":
+			case "--web-access", "-web-access", "--repository-access", "-repository-access", "--cache", "-cache":
 				if _, err := strconv.ParseBool(raw); err != nil {
 					return seen && selected
 				}
@@ -295,7 +313,7 @@ func reviewTelemetryRequested(arguments []string) bool {
 		switch argument {
 		case "--help", "-h":
 			return seen && selected
-		case "--web-access", "-web-access", "--repository-access", "-repository-access":
+		case "--web-access", "-web-access", "--repository-access", "-repository-access", "--cache", "-cache":
 			continue
 		default:
 			return seen && selected
@@ -485,4 +503,47 @@ func failureWithElapsed(class protocol.FailureClass, err error, started time.Tim
 	result := orchestrator.Failure(class, err)
 	result.Metadata.DurationMS = phase.ElapsedMilliseconds(started, recorder.Now())
 	return result
+}
+
+// openReviewCache treats every cache failure as a miss: the review runs and is
+// not stored.
+func openReviewCache(directory func() (string, error), repository string, stderr io.Writer) (*reviewcache.Store, []byte) {
+	path, err := directory()
+	if err == nil && insideDirectory(path, repository) {
+		err = fmt.Errorf("cache directory %q is inside the reviewed repository", path)
+	}
+	if err == nil {
+		var cache *reviewcache.Store
+		if cache, err = reviewcache.Open(path); err == nil {
+			var key []byte
+			if key, err = cache.StateKey(); err == nil {
+				return cache, key
+			}
+		}
+	}
+	report(stderr, "review cache unavailable: %v\n", err)
+	return nil, nil
+}
+
+// insideDirectory reports whether path is root or below it, resolving
+// symlinks on whatever part of path already exists.
+func insideDirectory(path, root string) bool {
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		resolvedRoot = root
+	}
+	resolved := filepath.Clean(path)
+	for existing := resolved; ; existing = filepath.Dir(existing) {
+		if target, err := filepath.EvalSymlinks(existing); err == nil {
+			if rest, err := filepath.Rel(existing, resolved); err == nil {
+				resolved = filepath.Join(target, rest)
+			}
+			break
+		}
+		if filepath.Dir(existing) == existing {
+			break
+		}
+	}
+	relative, err := filepath.Rel(resolvedRoot, resolved)
+	return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }

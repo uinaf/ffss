@@ -451,3 +451,25 @@ func exportStoreEvents(t *testing.T, path string) []telemetrypkg.Event {
 	}
 	return exported.Events
 }
+
+func TestReviewTelemetrySkipsCacheHits(t *testing.T) {
+	repository := reviewRepository(t)
+	reviewer := &scriptedReviewer{results: []reviewStep{{result: cleanResult()}}}
+	dependencies := reviewDependencies(t, reviewer)
+	cache := t.TempDir()
+	dependencies.cacheDirectory = func() (string, error) { return cache, nil }
+	starts := 0
+	dependencies.startTelemetry = func(telemetrypkg.Event) error {
+		starts++
+		return nil
+	}
+	for range 2 {
+		run(t.Context(), []string{
+			"review", "--repository", repository, "--mode", "local", "--engine", "codex",
+			"--prompt", "Review the target.", "--output", "json", "--telemetry",
+		}, io.Discard, io.Discard, dependencies)
+	}
+	if len(reviewer.prompts) != 1 || starts != 1 {
+		t.Fatalf("reviewer calls=%d telemetry events=%d, want one of each", len(reviewer.prompts), starts)
+	}
+}
