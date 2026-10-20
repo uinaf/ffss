@@ -770,7 +770,10 @@ func TestRedactEnvironmentKeepsKeysAndLineStructure(t *testing.T) {
 		{"# old: KEY=hunter2\n\n  \nEMPTY=\n", "[REDACTED]\n\n  \nEMPTY=[REDACTED]\n"},
 		{"A='x'\nB=\"y\\\"\nC=z\"\nD=4", "A=[REDACTED]\nB=[REDACTED]\n[REDACTED]\nD=[REDACTED]"},
 		{"A=`multi\nB=leak`\nC=3\r\n", "A=[REDACTED]\n[REDACTED]\nC=[REDACTED]\r\n"},
-		{"A: yaml-style\nnot a key\n", "[REDACTED]\n[REDACTED]\n"},
+		{"A: yaml-style\nnot a key\n", "A:[REDACTED]\n[REDACTED]\n"},
+		{"PRIVATE_KEY: \"header\nMIIBsecretAAA==\nfooter\"\nB=2\n", "PRIVATE_KEY:[REDACTED]\n[REDACTED]\n[REDACTED]\nB=[REDACTED]\n"},
+		{"- \"KEY\" \"opened\nMIIBsecret==\nend\"\nB=2\n", "[REDACTED]\n[REDACTED]\n[REDACTED]\nB=[REDACTED]\n"},
+		{"# don't commit\nA=it's\nB=2\n", "[REDACTED]\nA=[REDACTED]\nB=[REDACTED]\n"},
 	} {
 		if got := string(redactEnvironment([]byte(test.input))); got != test.want {
 			t.Errorf("redactEnvironment(%q) = %q, want %q", test.input, got, test.want)

@@ -14,7 +14,7 @@ import (
 
 const redactedValue = "[REDACTED]"
 
-var environmentAssignment = regexp.MustCompile(`^[ \t]*(?:export[ \t]+)?[A-Za-z_][A-Za-z0-9_.-]*[ \t]*=`)
+var environmentAssignment = regexp.MustCompile(`^[ \t]*(?:export[ \t]+)?[A-Za-z_][A-Za-z0-9_.-]*[ \t]*[=:]`)
 
 // environmentFilePath reports a changed dotenv file that enters the bundle with
 // its values redacted instead of failing the target.
@@ -45,10 +45,14 @@ func (redactor *environmentRedactor) line(raw []byte) []byte {
 		redacted = []byte(redactedValue)
 	case len(bytes.TrimSpace(text)) == 0:
 		redacted = append([]byte(nil), text...)
+	case bytes.HasPrefix(bytes.TrimLeft(text, " \t"), []byte{'#'}):
+		redacted = []byte(redactedValue)
 	default:
 		end := environmentAssignment.FindIndex(text)
 		if end == nil {
+			// Unknown syntax may still open a value that later lines continue.
 			redacted = []byte(redactedValue)
+			redactor.quote = unclosedQuote(text)
 			break
 		}
 		redacted = append(append([]byte(nil), text[:end[1]]...), redactedValue...)
@@ -61,6 +65,20 @@ func (redactor *environmentRedactor) line(raw []byte) []byte {
 		redacted = append(redacted, '\r')
 	}
 	return redacted
+}
+
+func unclosedQuote(text []byte) byte {
+	for {
+		index := bytes.IndexAny(text, "\"'`")
+		if index < 0 {
+			return 0
+		}
+		end := closingQuote(text[index+1:], text[index])
+		if end < 0 {
+			return text[index]
+		}
+		text = text[index+1+end+1:]
+	}
 }
 
 // closingQuote treats any quote preceded by a backslash as escaped, whatever
