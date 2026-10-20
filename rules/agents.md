@@ -75,17 +75,25 @@ the user's.
 ### Verification
 
 The repository guide owns proof. Without one, check the result the user will
-actually use with the cheapest check that would fail if the change were wrong.
+actually use: run the app, CLI, or endpoint the change touches, using the
+cheapest run that would fail if the change were wrong. Lasting checks go at the
+highest layer the gate can afford: the real surface, then an owned boundary,
+then properties, then units for pure logic only. Prove costly invariants that
+tests rarely reach, such as races, retries, and state machines, with a model
+checker or bounded proof.
 
 - Keep gates and hooks enabled. Fix change-caused failures without asking.
-  Live or paid checks need scope.
+  Local runs and read-only live checks need no scope; paid calls, shared or
+  production writes, and shared devices do.
 - A check proves a claim only if it fails on a negative control, such as the
   fix reverted. An artifact showing the expected state is an observation.
-- Test observable behavior. Skip tests that restate the implementation or
-  assert what a mock was told to return; add a test only for a regression
-  existing coverage would miss. When a change breaks a test, fix the code
-  unless the contract intentionally changed or the test pins implementation;
-  then update it and say so.
+- Take expected values from a spec, fixture, captured real I/O, or property,
+  never from running the code under test. Mock only process, network, clock,
+  or randomness boundaries, never the behavior asserted.
+- Add a test only for a regression existing coverage would miss, once, at its
+  strongest boundary. When a change breaks a test, fix the code unless the
+  contract intentionally changed or the test pins implementation; then update
+  it and say so.
 - Validate review findings before acting on them.
 - Clean up only the processes you started.
 - Report to the user what ran, failed, was skipped, or was unavailable, with
