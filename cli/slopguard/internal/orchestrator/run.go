@@ -36,6 +36,7 @@ type Options struct {
 	// snapshot and settings, and stores new ones.
 	Cache            *reviewcache.Store
 	SlopguardVersion string
+	CacheHit         func()
 }
 
 func protocolRetryInstruction(reason protocol.ProtocolReason) string {
@@ -122,6 +123,9 @@ func Run(ctx context.Context, options Options) protocol.Report {
 				return failure(classify(err), err, &reviewedTarget, []protocol.Attempt{})
 			}
 			progress("reusing the cached review of this snapshot")
+			if options.CacheHit != nil {
+				options.CacheHit()
+			}
 			return cached
 		}
 	}

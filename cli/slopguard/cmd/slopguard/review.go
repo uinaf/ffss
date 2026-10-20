@@ -78,8 +78,11 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 	started := recorder.Now()
 	configSpan := recorder.Start(phase.Config)
 	defer configSpan.End()
+	// A cache hit runs no provider; recording its replayed attempts would
+	// inflate attempt and recovery telemetry.
+	var cacheHit atomic.Bool
 	recordTelemetry := func(result protocol.Report) {
-		if telemetryEnabled.Load() {
+		if telemetryEnabled.Load() && !cacheHit.Load() {
 			recordReviewTelemetry(dependencies, metrics, result)
 		}
 	}
@@ -232,6 +235,7 @@ func runReview(ctx context.Context, arguments []string, stdout, stderr io.Writer
 		Config:           effective,
 		Cache:            cache,
 		SlopguardVersion: buildinfo.Version(),
+		CacheHit:         func() { cacheHit.Store(true) },
 		Progress: func(message string) {
 			report(stderr, "%s\n", message)
 		},

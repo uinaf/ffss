@@ -108,6 +108,7 @@ Pass `--cache=false` to review again.
 - Failures are never cached. A cached result keeps its original attempts and
   duration. The newest 512 results are kept.
 - A cache directory inside the reviewed repository disables the cache.
+- A cache hit records no [telemetry](TELEMETRY.md) event, since no provider ran.
 - Local snapshot hashes use a per-user `state-key` kept in the same directory,
   so an unchanged local target reproduces its hash across runs.
 
