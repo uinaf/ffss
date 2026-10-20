@@ -8,7 +8,6 @@ trusted configuration source.
 | --- | --- | --- |
 | `codex` | Codex CLI | [Codex CLI](codex.md) |
 | `claude` | Claude Code | [Claude Code](claude-code.md) |
-| `grok` | Grok Build | [Grok Build](grok-build.md) |
 
 Every adapter passes one explicit model and effort with no fallback. An empty
 model resolves to the engine's `Default*Model` constant in

@@ -30,13 +30,6 @@ func TestProviderPhaseCoverage(t *testing.T) {
 				return NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}}), claudeConfig(false, 5*time.Second)
 			},
 		},
-		{
-			name: "grok",
-			setup: func(t *testing.T) (Reviewer, config.Effective) {
-				fake := newFakeGrok(t, fakeGrokOptions{})
-				return NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}}), grokConfig(false, 5*time.Second)
-			},
-		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -16,7 +16,6 @@ import (
 const (
 	DefaultCodexModel  = "gpt-6.1-sol"
 	DefaultClaudeModel = "claude-opus-5-5[1m]"
-	DefaultGrokModel   = "grok-4.7"
 )
 
 type Request struct {
@@ -201,8 +200,6 @@ func providerCredentialNames(name protocol.ProviderName) (string, []string) {
 		return "Codex", []string{"CODEX_API_KEY", "OPENAI_API_KEY"}
 	case protocol.ProviderClaude:
 		return "Claude", []string{"ANTHROPIC_API_KEY"}
-	case protocol.ProviderGrok:
-		return "Grok", []string{"XAI_API_KEY"}
 	default:
 		return string(name), nil
 	}

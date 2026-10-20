@@ -104,14 +104,6 @@ func Doctor(ctx context.Context, options DoctorOptions) (diagnostic Diagnostic) 
 		preflight = func(candidate string) (string, error) {
 			return adapter.preflight(probeContext, candidate, runtime.Workspace, providerEnvironment, options.Config)
 		}
-	case protocol.ProviderGrok:
-		adapter := NewGrok(GrokOptions{Repository: repository, Executable: executable, Environment: environment})
-		executable = adapter.executable
-		providerEnvironment := setEnvironmentValue(runtime.Environment(), "GROK_MEMORY", "0")
-		providerEnvironment = setEnvironmentValue(providerEnvironment, "GROK_SUBAGENTS", "0")
-		preflight = func(candidate string) (string, error) {
-			return adapter.preflight(probeContext, candidate, runtime.Workspace, providerEnvironment, options.Config)
-		}
 	default:
 		return diagnostic.withFailure(protocol.FailureConfig)
 	}
@@ -138,7 +130,7 @@ func (diagnostic Diagnostic) Validate() error {
 	}
 	if diagnostic.Provider != "" {
 		switch diagnostic.Provider {
-		case protocol.ProviderCodex, protocol.ProviderClaude, protocol.ProviderGrok:
+		case protocol.ProviderCodex, protocol.ProviderClaude:
 		default:
 			return fmt.Errorf("invalid doctor provider")
 		}
@@ -253,8 +245,6 @@ func validDoctorVersion(name protocol.ProviderName, version string) bool {
 		matched = codexVersionPattern.FindString(version)
 	case protocol.ProviderClaude:
 		matched = claudeVersionPattern.FindString(version)
-	case protocol.ProviderGrok:
-		matched = grokVersionPattern.FindString(version)
 	}
 	return matched == version
 }

@@ -35,13 +35,6 @@ func TestDoctorUsesProviderPreflightWithoutModelCalls(t *testing.T) {
 				return fake.path, fake.arguments, fake.probes, claudeConfig(false, 5*time.Second), []string{"PATH=/usr/bin:/bin", "ANTHROPIC_API_KEY=secret"}, []string{"PATH=/usr/bin:/bin", "HOME=/native/home", "CLAUDE_CONFIG_DIR=/native/claude", "ANTHROPIC_AUTH_TOKEN=test-helper", "ANTHROPIC_BASE_URL=https://gateway.invalid"}
 			},
 		},
-		{
-			name: "grok", provider: protocol.ProviderGrok, probes: 2,
-			fixture: func(t *testing.T) (string, string, string, config.Effective, []string, []string) {
-				fake := newFakeGrok(t, fakeGrokOptions{})
-				return fake.path, fake.arguments, fake.probes, grokConfig(false, 5*time.Second), []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}, []string{"PATH=/usr/bin:/bin", "HOME=/native/home", "GROK_HOME=/native/grok", "XAI_BASE_URL=https://gateway.invalid"}
-			},
-		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -94,11 +87,6 @@ func TestDoctorReportsCurrentProviderVersionsCompatible(t *testing.T) {
 				version: "2.1.260", help: providerHelpFixture(t, "claude-2.1.260-help.txt"),
 			}).path, claudeConfig(false, 5*time.Second)
 		}},
-		{name: "grok", version: "1.0.13", fixture: func(t *testing.T) (string, config.Effective) {
-			return newFakeGrok(t, fakeGrokOptions{
-				version: "1.0.13", help: providerHelpFixture(t, "grok-1.0.13-help.txt"),
-			}).path, grokConfig(false, 5*time.Second)
-		}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -135,9 +123,6 @@ func TestDoctorReportsTimeoutAndCancellationForEveryProvider(t *testing.T) {
 		{name: "claude", fixture: func(t *testing.T, timeout time.Duration) (string, config.Effective) {
 			return newFakeClaude(t, fakeClaudeOptions{}).path, claudeConfig(false, timeout)
 		}},
-		{name: "grok", fixture: func(t *testing.T, timeout time.Duration) (string, config.Effective) {
-			return newFakeGrok(t, fakeGrokOptions{}).path, grokConfig(false, timeout)
-		}},
 	}
 	for _, test := range providers {
 		t.Run(test.name, func(t *testing.T) {
@@ -170,7 +155,6 @@ func TestDoctorClassifiesMissingIncompatibleTimeoutAndCancellation(t *testing.T)
 	}{
 		{name: "codex", effective: base},
 		{name: "claude", effective: claudeConfig(false, 5*time.Second)},
-		{name: "grok", effective: grokConfig(false, 5*time.Second)},
 	}
 	for _, test := range providers {
 		t.Run(test.name, func(t *testing.T) {

@@ -337,15 +337,3 @@ func validClaudeFailureSubtype(subtype string) bool {
 		return false
 	}
 }
-
-func setEnvironmentValue(environment []string, name, value string) []string {
-	updated := make([]string, 0, len(environment)+1)
-	for _, entry := range environment {
-		key, _, found := strings.Cut(entry, "=")
-		if found && strings.EqualFold(key, name) {
-			continue
-		}
-		updated = append(updated, entry)
-	}
-	return append(updated, name+"="+value)
-}

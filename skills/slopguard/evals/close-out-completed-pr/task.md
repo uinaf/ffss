@@ -2,8 +2,8 @@
 
 My Go PR (branch `fix/sigint-children`, targets `main`) is done and `go test ./...`
 is green. I want an independent review before I merge it. I haven't picked a
-reviewer and the repo has no review config. Codex CLI, Claude Code, and Grok
-Build are all installed and logged in on this machine.
+reviewer and the repo has no review config. Codex CLI and Claude Code are both
+installed and logged in on this machine.
 
 Acceptance criteria: JSON output stays byte-stable, and provider child processes
 terminate on SIGINT.

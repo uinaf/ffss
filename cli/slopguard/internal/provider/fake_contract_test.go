@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -49,32 +48,6 @@ func TestFakeProviderCLIsRejectInvalidReviewArguments(t *testing.T) {
 		})
 	})
 
-	t.Run("grok", func(t *testing.T) {
-		t.Parallel()
-		workspace := t.TempDir()
-		promptPath := filepath.Join(workspace, "review.prompt")
-		if err := os.WriteFile(promptPath, []byte("review input"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		schema, err := contractschema.GrokReviewV1(0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		valid := grokArguments(grokConfig(false, 5*time.Second), workspace, promptPath, string(schema), "test-model", "1.0.4")
-		executable := newFakeGrok(t, fakeGrokOptions{}).path
-		mutations := [][]string{
-			appendCopy(valid, "--unknown"),
-			appendCopy(valid, "--model", "duplicate"),
-			replaceArgumentAfter(t, valid, "--prompt-file", filepath.Join(workspace, "missing.prompt")),
-			swapFirstTwo(valid),
-			replaceArgumentAfter(t, valid, "--model", "--other-flag"),
-		}
-		for index, arguments := range mutations {
-			t.Run(fmt.Sprintf("mutation-%d", index+1), func(t *testing.T) {
-				expectContractFailure(t, executable, arguments, "")
-			})
-		}
-	})
 }
 
 func TestFakeProviderCLIsRejectInvalidProbeArguments(t *testing.T) {

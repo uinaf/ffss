@@ -312,12 +312,12 @@ func TestReviewCommandPreservesExecutionMetadataAfterProtocolRetryExhausts(t *te
 	t.Parallel()
 
 	execution := &provider.Execution{
-		Provider:  protocol.Provider{Name: protocol.ProviderGrok, Model: "grok-4.7", Version: "1.0.13"},
+		Provider:  protocol.Provider{Name: protocol.ProviderClaude, Model: "claude-opus-5-5", Version: "2.1.260"},
 		WebAccess: true,
 	}
 	reviewer := &scriptedReviewer{results: []reviewStep{{err: protocolError(execution, protocol.ProtocolReasonMultipleDocuments)}, {err: protocolError(execution, protocol.ProtocolReasonMultipleDocuments)}}}
 	var stdout bytes.Buffer
-	exit := run(t.Context(), []string{"review", "--repository", reviewRepository(t), "--mode", "local", "--engine", "grok", "--web-access", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
+	exit := run(t.Context(), []string{"review", "--repository", reviewRepository(t), "--mode", "local", "--engine", "claude", "--web-access", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
 	if exit != 2 || len(reviewer.prompts) != 2 {
 		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
 	}
@@ -837,7 +837,6 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 	}{
 		{name: "Codex medium", arguments: []string{"config", "--repository", repository, "--engine", "codex", "--json"}, effort: config.ReasoningMedium, webSource: config.SourceDefault},
 		{name: "Claude medium", arguments: []string{"config", "--repository", repository, "--engine", "claude", "--json"}, effort: config.ReasoningMedium, webSource: config.SourceDefault},
-		{name: "Grok high", arguments: []string{"config", "--repository", repository, "--engine", "grok", "--json"}, effort: config.ReasoningHigh, webSource: config.SourceDefault},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var stdout bytes.Buffer
@@ -864,7 +863,7 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 
 	t.Run("repository engine keeps default web", func(t *testing.T) {
 		repository := cliRepository(t)
-		if err := os.WriteFile(filepath.Join(repository, ".slopguard.yaml"), []byte("engine: grok\n"), 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(repository, ".slopguard.yaml"), []byte("engine: claude\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		var stdout bytes.Buffer
@@ -880,7 +879,7 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 		if err := json.Unmarshal(stdout.Bytes(), &effective); err != nil {
 			t.Fatal(err)
 		}
-		if effective.Engine.Value != protocol.ProviderGrok || effective.Engine.Source != config.SourceRepository {
+		if effective.Engine.Value != protocol.ProviderClaude || effective.Engine.Source != config.SourceRepository {
 			t.Fatalf("engine = %+v", effective.Engine)
 		}
 		if !effective.WebAccess.Value || effective.WebAccess.Source != config.SourceDefault {

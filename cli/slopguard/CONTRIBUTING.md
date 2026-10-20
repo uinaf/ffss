@@ -52,8 +52,8 @@ selected provider at its default model with high effort and web access off:
 
 ```bash
 mise run verify:live
-SLOPGUARD_LIVE_PROVIDERS=codex,grok mise run verify:live
-SLOPGUARD_LIVE_PROVIDERS=grok SLOPGUARD_LIVE_REPEAT=3 mise run verify:live
+SLOPGUARD_LIVE_PROVIDERS=claude mise run verify:live
+SLOPGUARD_LIVE_PROVIDERS=codex SLOPGUARD_LIVE_REPEAT=3 mise run verify:live
 ```
 
 [`TestBinaryLiveProviderMatrix`](cmd/slopguard/live_e2e_test.go) owns the
@@ -63,8 +63,6 @@ provider list, repeat bounds, per-review timeout, and review cap.
   preserves normal provider state, XDG configuration, and helper configuration.
   Use an isolated session or gateway/helper profile when those routes need
   separate proof.
-- The per-review timeout covers Grok at high effort, whose clean review
-  exceeds 3m.
 - The review cap keeps a worst case where every review uses its retry inside
   the `verify:live` test timeout in [mise.toml](mise.toml); raising either
   side needs the other.

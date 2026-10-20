@@ -65,7 +65,7 @@ func TestFixturesValidateAgainstSchemas(t *testing.T) {
 	}
 }
 
-func TestResultSchemaAcceptsGrokProvider(t *testing.T) {
+func TestResultSchemaAcceptsLegacyGrokProvider(t *testing.T) {
 	t.Parallel()
 
 	schema := compileSchema(t, "result-v1.schema.json")
@@ -75,7 +75,7 @@ func TestResultSchemaAcceptsGrokProvider(t *testing.T) {
 	provider["model"] = "grok-4.6"
 	provider["version"] = "1.0.4"
 	if err := schema.Validate(report); err != nil {
-		t.Fatalf("result schema rejected Grok provider: %v", err)
+		t.Fatalf("result schema rejected legacy Grok provider: %v", err)
 	}
 }
 
@@ -195,77 +195,6 @@ func TestClaudeReviewSchemaProjectsUnsupportedPathKeyword(t *testing.T) {
 	}
 	if relativePath["type"] != "string" || relativePath["pattern"] != `\S` {
 		t.Fatalf("Claude relative_path constraints = %+v", relativePath)
-	}
-}
-
-func TestGrokReviewSchemaProjectsUnsupportedKeywords(t *testing.T) {
-	t.Parallel()
-
-	data, err := contractschema.GrokReviewV1(2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var document map[string]any
-	if err := json.Unmarshal(data, &document); err != nil {
-		t.Fatal(err)
-	}
-	definitions := requireObject(t, document["$defs"], "$defs")
-	relativePath := requireObject(t, definitions["relative_path"], "$defs.relative_path")
-	properties := requireObject(t, document["properties"], "properties")
-	review := requireObject(t, properties["review"], "properties.review")
-	reviewProperties := requireObject(t, review["properties"], "properties.review.properties")
-	overallExplanation := requireObject(t, reviewProperties["overall_explanation"], "properties.review.properties.overall_explanation")
-	overallConfidence := requireObject(t, reviewProperties["overall_confidence"], "properties.review.properties.overall_confidence")
-	completion := requireObject(t, properties["completion"], "properties.completion")
-	completionProperties := requireObject(t, completion["properties"], "properties.completion.properties")
-	files := requireObject(t, completionProperties["files"], "properties.completion.properties.files")
-	file := requireObject(t, files["items"], "properties.completion.properties.files.items")
-	fileProperties := requireObject(t, file["properties"], "properties.completion.properties.files.items.properties")
-	startIndex := requireObject(t, fileProperties["start_index"], "properties.completion.properties.files.items.properties.start_index")
-	endIndex := requireObject(t, fileProperties["end_index"], "properties.completion.properties.files.items.properties.end_index")
-	finding := requireObject(t, definitions["finding"], "$defs.finding")
-	findingProperties := requireObject(t, finding["properties"], "$defs.finding.properties")
-	if _, ok := document["$schema"]; ok {
-		t.Fatal("Grok schema retained unsupported $schema URI")
-	}
-	if _, ok := relativePath["not"]; ok {
-		t.Fatal("Grok schema retained unsupported not keyword")
-	}
-	if overallExplanation["minLength"] != float64(contractschema.GrokMinimumOverallExplanationCharacters) {
-		t.Fatalf("Grok overall_explanation minLength = %v", overallExplanation["minLength"])
-	}
-	if overallConfidence["minimum"] != contractschema.GrokMinimumOverallConfidence {
-		t.Fatalf("Grok overall_confidence minimum = %v", overallConfidence["minimum"])
-	}
-	if files["minItems"] != float64(1) || files["maxItems"] != float64(1) {
-		t.Fatalf("Grok completion file count constraints = %+v", files)
-	}
-	if startIndex["minimum"] != float64(0) || startIndex["maximum"] != float64(0) {
-		t.Fatalf("Grok completion start index constraints = %+v", startIndex)
-	}
-	if endIndex["minimum"] != float64(1) || endIndex["maximum"] != float64(1) {
-		t.Fatalf("Grok completion end index constraints = %+v", endIndex)
-	}
-	for path, constraint := range map[string]map[string]any{
-		"properties.review.properties.overall_explanation": overallExplanation,
-		"$defs.relative_path":                              relativePath,
-		"$defs.finding.properties.title":                   requireObject(t, findingProperties["title"], "$defs.finding.properties.title"),
-		"$defs.finding.properties.body":                    requireObject(t, findingProperties["body"], "$defs.finding.properties.body"),
-	} {
-		if _, ok := constraint["pattern"]; ok {
-			t.Fatalf("Grok schema retained unsupported non-whitespace pattern at %s", path)
-		}
-		if constraint["type"] != "string" || constraint["minLength"] == nil || constraint["maxLength"] == nil {
-			t.Fatalf("Grok string constraints at %s = %+v", path, constraint)
-		}
-	}
-}
-
-func TestGrokReviewSchemaRejectsNegativeFileCount(t *testing.T) {
-	t.Parallel()
-
-	if _, err := contractschema.GrokReviewV1(-1); err == nil {
-		t.Fatal("expected negative file count to fail")
 	}
 }
 

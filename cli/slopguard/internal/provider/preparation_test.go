@@ -39,14 +39,6 @@ func TestProviderPreparationIsCachedAcrossReviewAttempts(t *testing.T) {
 			},
 			probes: 2,
 		},
-		{
-			name: "Grok",
-			newFixture: func(t *testing.T) (Reviewer, string, string, config.Effective) {
-				fake := newFakeGrok(t, fakeGrokOptions{})
-				return NewGrok(GrokOptions{Repository: t.TempDir(), Executable: fake.path, Environment: []string{"PATH=/usr/bin:/bin", "XAI_API_KEY=secret"}}), fake.probes, fake.directory, grokConfig(false, 5*time.Second)
-			},
-			probes: 2,
-		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			reviewer, probePath, directoryPath, effective := test.newFixture(t)
@@ -305,7 +297,7 @@ func TestCodexAndClaudeSkipImplicitIncompatibleCandidate(t *testing.T) {
 func TestExplicitProviderExecutableDoesNotFallback(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"codex", "claude", "grok"} {
+	for _, name := range []string{"codex", "claude"} {
 		t.Run(name, func(t *testing.T) {
 			manager := filepath.Join(t.TempDir(), "mise")
 			writeTestExecutableAt(t, manager, "#!/bin/sh\nif [ \"${1:-}\" = '--version' ]; then printf '%s\\n' 'mise 2026.8.6'; exit 0; fi\nif [ \"${1:-}\" = '--help' ]; then printf '%s\\n' 'mise command help'; exit 0; fi\nexit 1\n")
@@ -323,11 +315,6 @@ func TestExplicitProviderExecutableDoesNotFallback(t *testing.T) {
 				arguments = fake.arguments
 				reviewer := NewClaude(ClaudeOptions{Repository: t.TempDir(), Executable: manager, Environment: []string{"PATH=" + strings.Join([]string{filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)), "ANTHROPIC_API_KEY=secret"}})
 				_, err = reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: claudeConfig(false, 5*time.Second)})
-			case "grok":
-				fake := newFakeGrok(t, fakeGrokOptions{})
-				arguments = fake.arguments
-				reviewer := NewGrok(GrokOptions{Repository: t.TempDir(), Executable: manager, Environment: []string{"PATH=" + strings.Join([]string{filepath.Dir(fake.path), "/usr/bin", "/bin"}, string(os.PathListSeparator)), "XAI_API_KEY=secret"}})
-				_, err = reviewer.Review(context.Background(), Request{Prompt: "bundle", Config: grokConfig(false, 5*time.Second)})
 			}
 			_ = assertProviderError(t, err, protocol.FailureCapability)
 			if _, statErr := os.Stat(arguments); !errors.Is(statErr, os.ErrNotExist) {
