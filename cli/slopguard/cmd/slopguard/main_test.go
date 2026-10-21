@@ -499,8 +499,8 @@ func TestTopLevelAndCommandHelp(t *testing.T) {
 		{arguments: []string{"review", "--help"}, names: []string{"Usage of slopguard review"}, absent: []string{"secret-scan"}},
 		{arguments: []string{"config", "--help"}, names: []string{"Usage of slopguard config"}},
 		{arguments: []string{"doctor", "--help"}, names: []string{"Usage of slopguard doctor"}},
-		{arguments: []string{"schema", "--help"}, names: []string{"review", "result"}},
-		{arguments: []string{"telemetry", "--help"}, names: []string{"export"}},
+		{arguments: []string{"schema", "--help"}, names: []string{"schema <review|result>"}},
+		{arguments: []string{"telemetry", "--help"}, names: []string{"telemetry export"}},
 	} {
 		var stdout bytes.Buffer
 		exit := run(t.Context(), test.arguments, &stdout, io.Discard, dependencies{})
