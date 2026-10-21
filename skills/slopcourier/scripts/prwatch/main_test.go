@@ -497,6 +497,40 @@ func TestPicksForge(t *testing.T) {
 	}
 }
 
+func TestPicksForgeFromConfig(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	path := filepath.Join(dir, "ffss", "prwatch.yaml")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct{ config, remote, want, stderr string }{
+		{"forges:\n  Git.Example.com: gitlab # self-hosted\n", "git@git.example.com:group/app.git", "gitlab", ""},
+		{"forges:\n  git.example.com: gitlab\n", "git@git.other.com:group/app.git", "", "pass -forge or map it under forges: in " + path},
+		{"forges:\n  git.example.com: gitea\n", "git@git.example.com:group/app.git", "", "must map to github or gitlab"},
+	}
+	for _, c := range cases {
+		if err := os.WriteFile(path, []byte(c.config), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		var got string
+		d := deps{
+			forge: func(kind, _ string) forge {
+				got = kind
+				return &fakeForge{clock: &fakeClock{now: t0}, prs: map[int]func() (pr, error){0: open()}}
+			},
+			origin: func(context.Context) (string, error) { return c.remote, nil },
+			forges: loadForges,
+			clock:  &fakeClock{now: t0},
+		}
+		var stderr strings.Builder
+		code := run(context.Background(), []string{"-settle", "0s", "7"}, d, io.Discard, &stderr)
+		if got != c.want || (c.want == "" && code != exitError) || !strings.Contains(stderr.String(), c.stderr) {
+			t.Errorf("%q with %q: picked %q (exit %d, stderr %q), want %q", c.remote, c.config, got, code, stderr.String(), c.want)
+		}
+	}
+}
+
 func TestThreadActivityEvenAfterViewerRepliesOrResolves(t *testing.T) {
 	f := newFake()
 	f.prs[0] = open(running("ci"))

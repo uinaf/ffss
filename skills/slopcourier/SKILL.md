@@ -60,6 +60,10 @@ go run <this skill's dir>/scripts/prwatch/main.go [-R owner/repo] [-since <since
 - Act, then rerun with `-since <its since: line>` so nothing between runs is
   missed.
 - One background run per PR. For several PRs, start one each.
+- **Forge.** prwatch reads it from the URL or origin host. For a self-hosted
+  host named without `github` or `gitlab`, pass `-forge gitlab` or map it once
+  in `$XDG_CONFIG_HOME/ffss/prwatch.yaml` (else `~/.config/ffss/prwatch.yaml`):
+  `forges:` then `  git.example.com: gitlab`.
 - **No Go:** poll `gh pr view` / `gh pr checks` (or `glab mr view`) for the
   same evidence, and say prwatch didn't run.
 
