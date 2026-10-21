@@ -62,8 +62,9 @@ applicable protocol recovery. Failures before that boundary leave the nullable
 provider field unset.
 
 Target modes are `local`, `branch`, and `commit`. The target carries a snapshot
-hash plus the exact reviewed files and inclusive line ranges. A provider cannot
-expand that boundary by returning another path or line.
+hash plus the exact reviewed files and inclusive line ranges. A finding may cite
+any line of a reviewed file, but a provider cannot expand the boundary by
+returning another path.
 
 - Local targets require a head revision and no base or commit revision.
 - Branch targets require base and head revisions and no commit revision.

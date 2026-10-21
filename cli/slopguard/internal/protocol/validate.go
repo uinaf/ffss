@@ -276,19 +276,11 @@ func validateFindingBoundaries(findings []Finding, files []ReviewedFile) error {
 		byPath[file.FilePath] = file.LineRanges
 	}
 	for index, finding := range findings {
-		ranges, ok := byPath[finding.Location.FilePath]
-		if !ok {
+		// Any line of a reviewed file is accepted: a defect introduced by the
+		// change can live next to the changed lines, and rejecting it would
+		// discard the whole review.
+		if _, ok := byPath[finding.Location.FilePath]; !ok {
 			return &findingLocationError{message: fmt.Sprintf("finding %d references unreviewed file %q", index, finding.Location.FilePath)}
-		}
-		inside := false
-		for _, lineRange := range ranges {
-			if finding.Location.StartLine >= lineRange.StartLine && finding.Location.EndLine <= lineRange.EndLine {
-				inside = true
-				break
-			}
-		}
-		if !inside {
-			return &findingLocationError{message: fmt.Sprintf("finding %d references unreviewed lines %s:%d-%d", index, finding.Location.FilePath, finding.Location.StartLine, finding.Location.EndLine)}
 		}
 	}
 	return nil

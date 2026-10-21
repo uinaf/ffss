@@ -17,9 +17,7 @@ environment and user configuration. A separate auth-status surface cannot
 block a configured session, gateway, helper, or key.
 
 The frozen prompt is delivered on standard input followed by a trusted review
-policy. Each finding location must fit within one reviewed line range;
-cross-hunk concerns must be narrowed to one establishing range or split into
-separately valid findings.
+policy. Each finding must cite a reviewed file, at any line of it.
 
 ## Web access
 

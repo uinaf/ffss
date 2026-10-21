@@ -37,7 +37,7 @@ func TestClaudeReviewUsesFrozenStdinAndCanonicalArguments(t *testing.T) {
 	}
 	prompt := readTestFile(t, fake.prompt)
 	policy := reviewpolicy.ClaudeReviewProtocol()
-	if prompt != "frozen review bundle"+policy || !strings.Contains(policy, "must cite a reviewed file") || !strings.Contains(policy, "one individual line_ranges entry") || !strings.Contains(policy, "split it into findings") {
+	if prompt != "frozen review bundle"+policy || !strings.Contains(policy, "must cite a reviewed file") {
 		t.Fatalf("provider stdin omitted trusted review policy: %q", prompt)
 	}
 	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
