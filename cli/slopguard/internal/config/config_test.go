@@ -767,3 +767,25 @@ func TestRepositoryAccessHasNoFileForm(t *testing.T) {
 		t.Fatalf("repository config Load() error = %v", err)
 	}
 }
+
+func TestRepositoryAccessDefaultsOnOnlyForCodex(t *testing.T) {
+	repository := configRepository(t)
+	load := func(engine protocol.ProviderName, access *bool) Value[bool] {
+		t.Helper()
+		effective, err := Load(context.Background(), Options{Repository: repository, Overrides: Overrides{Engine: &engine, RepositoryAccess: access}, LookupEnv: envLookup(map[string]string{}), HomeDir: func() (string, error) { return t.TempDir(), nil }})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return effective.RepositoryAccess
+	}
+	if got := load(protocol.ProviderCodex, nil); !got.Value || got.Source != SourceDefault {
+		t.Errorf("codex default = %+v, want on", got)
+	}
+	if got := load(protocol.ProviderClaude, nil); got.Value || got.Source != SourceDefault {
+		t.Errorf("claude default = %+v, want off", got)
+	}
+	off := false
+	if got := load(protocol.ProviderCodex, &off); got.Value || got.Source != SourceFlag {
+		t.Errorf("codex --repository-access=false = %+v, want off from the flag", got)
+	}
+}

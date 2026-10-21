@@ -71,8 +71,9 @@ type Effective struct {
 	MaxBytes        Value[int64]                 `json:"max_bytes"`
 	WebAccess       Value[bool]                  `json:"web_access"`
 	Telemetry       Value[bool]                  `json:"telemetry"`
-	// RepositoryAccess is a flag-only capability: the provider reads a redacted
-	// snapshot of the repository instead of an empty workspace.
+	// RepositoryAccess is a flag-only capability, on by default for codex: the
+	// provider reads a redacted snapshot of the repository instead of an empty
+	// workspace.
 	RepositoryAccess Value[bool] `json:"repository_access"`
 }
 

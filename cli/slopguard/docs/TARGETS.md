@@ -115,7 +115,7 @@ chunking or review fan-out above that limit.
 
 - Slopguard sends the complete frozen payload to the selected provider,
   including deleted bytes and appended context.
-- With `--repository-access`, any file in the
+- With repository access, on by default for codex, any file in the
   [repository snapshot](CONFIG.md#security-controls) the reviewer reads also
   reaches the provider, unchanged files and unchanged environment key names
   included.

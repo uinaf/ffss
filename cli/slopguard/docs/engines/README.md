@@ -36,7 +36,7 @@ processes, prompt/output files, timeout, and cleanup state are fresh for every
 attempt.
 
 Every engine runs in an empty temporary workspace, or a repository snapshot
-with `--repository-access`, and its own process group
+with repository access (the codex default), and its own process group
 with a fixed timeout and bounded output. Machine-readable stdout has a hard
 size limit. Stderr keeps bounded head and tail segments for private failure
 classification; large non-fatal hook and progress diagnostics do not terminate
