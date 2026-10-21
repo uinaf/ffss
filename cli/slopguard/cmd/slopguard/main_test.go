@@ -255,36 +255,25 @@ func TestReviewCommandRejectsInvalidFindingBoundaries(t *testing.T) {
 	}
 }
 
-func TestReviewCommandRecoversDiscontiguousFindingLocation(t *testing.T) {
+func TestReviewCommandKeepsFindingOutsideChangedLines(t *testing.T) {
 	t.Parallel()
 
 	repository := reviewRepositoryWithDiscontiguousRanges(t)
-	invalid := cleanResult()
-	invalid.Review.Findings = []protocol.Finding{finding("cross-hunk location", 0.9)}
-	invalid.Review.Findings[0].Location.StartLine = 10
-	invalid.Review.Findings[0].Location.EndLine = 50
-	valid := cleanResult()
-	valid.Review.Findings = []protocol.Finding{finding("narrowed location", 0.9)}
-	valid.Review.Findings[0].Location.StartLine = 30
-	valid.Review.Findings[0].Location.EndLine = 30
-	reviewer := &scriptedReviewer{results: []reviewStep{{result: invalid}, {result: valid}}}
+	spanning := cleanResult()
+	spanning.Review.Findings = []protocol.Finding{finding("cross-hunk location", 0.9)}
+	spanning.Review.Findings[0].Location.StartLine = 10
+	spanning.Review.Findings[0].Location.EndLine = 50
+	reviewer := &scriptedReviewer{results: []reviewStep{{result: spanning}}}
 	var stdout bytes.Buffer
 	exit := run(t.Context(), []string{"review", "--repository", repository, "--mode", "local", "--engine", "codex", "--prompt", "Review the target.", "--retries", "1", "--output", "json"}, &stdout, io.Discard, reviewDependencies(t, reviewer))
-	if exit != 1 || len(reviewer.prompts) != 2 {
+	if exit != 1 || len(reviewer.prompts) != 1 {
 		t.Fatalf("run() exit = %d, prompts = %d, output = %s", exit, len(reviewer.prompts), stdout.String())
-	}
-	if !strings.HasPrefix(reviewer.prompts[1], reviewer.prompts[0]) {
-		t.Fatalf("retry did not preserve frozen prompt")
-	}
-	retry := strings.TrimPrefix(reviewer.prompts[1], reviewer.prompts[0])
-	if !strings.Contains(retry, "Correction category: finding_location") || !strings.Contains(retry, "one individual line_ranges entry") || !strings.Contains(retry, "split it into findings") {
-		t.Fatalf("retry guidance = %q", retry)
 	}
 	var result protocol.Report
 	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result.Status != protocol.StatusFindings || len(result.Metadata.Attempts) != 2 || result.Metadata.Attempts[0].Outcome != protocol.AttemptMalformed || result.Metadata.Attempts[1].Outcome != protocol.AttemptValid {
+	if result.Status != protocol.StatusFindings || len(result.Review.Findings) != 1 || result.Review.Findings[0].Location.EndLine != 50 {
 		t.Fatalf("result = %+v", result)
 	}
 }

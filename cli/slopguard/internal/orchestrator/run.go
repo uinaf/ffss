@@ -47,7 +47,7 @@ func protocolRetryInstruction(reason protocol.ProtocolReason) string {
 	}
 	switch reason {
 	case protocol.ProtocolReasonFindingLocation:
-		correction = "Every finding must cite a reviewed file from TRUSTED-TARGET-IDENTITY, and its start_line and end_line must fit entirely within one individual line_ranges entry for that file. Narrow a cross-hunk concern to the smallest single reviewed range that establishes it, or split it into findings whose locations each fit one range."
+		correction = "Every finding must cite a reviewed file from TRUSTED-TARGET-IDENTITY. Move a finding about another file to the reviewed line that introduces the defect, or drop it."
 	case protocol.ProtocolReasonInvalidJSON:
 		correction = "Return one syntactically valid JSON object matching the supplied schema."
 	case protocol.ProtocolReasonInvalidDocumentShape:

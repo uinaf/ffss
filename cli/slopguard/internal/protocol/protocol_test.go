@@ -126,14 +126,6 @@ func TestDecodeReportRejectsInvalidContracts(t *testing.T) {
 			wantErr: `references unreviewed file "other.go"`,
 		},
 		{
-			name: "unreviewed lines",
-			mutate: func(report map[string]any) {
-				asFindings(report)[0]["location"].(map[string]any)["start_line"] = float64(30)
-				asFindings(report)[0]["location"].(map[string]any)["end_line"] = float64(31)
-			},
-			wantErr: "references unreviewed lines",
-		},
-		{
 			name: "line number above protocol maximum",
 			mutate: func(report map[string]any) {
 				asFindings(report)[0]["location"].(map[string]any)["end_line"] = float64(MaxLineNumber + 1)
