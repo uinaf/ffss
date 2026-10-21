@@ -33,7 +33,8 @@ when a contract breaks and survives refactors
    coverage from the repo's command, per-file results. Failing tests are
    defect candidates, not deletions.
 3. **Read by owner.** Split along production owners; read each test with its
-   owner.
+   owner. Across a whole suite, give each file two independent readers and
+   cut only where both agree.
 4. **Mark each test:** R (retain: the contract and the bug it catches), F (fix
    a vacuous assertion), C (consolidate: name the absorbing keeper), D (delete:
    name the remaining proof, or why no contract exists). Missing evidence, keep
@@ -44,11 +45,14 @@ when a contract breaks and survives refactors
    instead.
 6. **Prove keepers:** break the owner once per moved contract, confirm the
    keeper fails, restore. Then have a different model review deleted coverage
-   against keepers (slopguard).
+   against keepers (slopguard). A human reviews every cut that touches auth,
+   permissions, or credentials before merge.
 
 Keep tests that guard a public API, protocol, config, migration, storage,
 security, platform, or release contract, even if they look like source
-checks. Static or slow is not a reason.
+checks. Static or slow is not a reason. An injected clock doesn't make a
+test a timing test: the only proof of an auth expiry, rotation, or lease
+timeout stays.
 
 Report baseline and final counts, lines (production and test apart), and
 coverage; what was removed; look-alikes kept and why; seams removed;
