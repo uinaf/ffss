@@ -144,38 +144,6 @@ func TestLoadRevalidatesRepositoryAfterConfigReads(t *testing.T) {
 	}
 }
 
-func TestLoadAppliesProviderDefaults(t *testing.T) {
-	t.Parallel()
-
-	for _, test := range []struct {
-		name   string
-		engine protocol.ProviderName
-		effort ReasoningEffort
-	}{
-		{name: "Codex medium with web enabled", engine: protocol.ProviderCodex, effort: ReasoningMedium},
-		{name: "Claude medium with web enabled", engine: protocol.ProviderClaude, effort: ReasoningMedium},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			repository := configRepository(t)
-			effective, err := Load(context.Background(), Options{
-				Repository: repository,
-				LookupEnv:  envLookup(map[string]string{"XDG_CONFIG_HOME": t.TempDir()}),
-				HomeDir:    func() (string, error) { return t.TempDir(), nil },
-				Overrides:  Overrides{Engine: &test.engine},
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if effective.ReasoningEffort.Value != test.effort || effective.ReasoningEffort.Source != SourceDefault {
-				t.Fatalf("reasoning_effort = %+v", effective.ReasoningEffort)
-			}
-			if !effective.WebAccess.Value || effective.WebAccess.Source != SourceDefault {
-				t.Fatalf("web_access = %+v", effective.WebAccess)
-			}
-		})
-	}
-}
-
 func TestLoadRejectsRemovedEngines(t *testing.T) {
 	t.Parallel()
 

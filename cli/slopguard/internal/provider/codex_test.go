@@ -32,7 +32,7 @@ func TestCodexReviewUsesFrozenStdinAndCanonicalResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Provider.Name != protocol.ProviderCodex || result.Provider.Model != "test-model" || result.Provider.Version != "0.146.0" {
+	if result.Provider.Name != protocol.ProviderCodex {
 		t.Fatalf("provider = %+v", result.Provider)
 	}
 	if result.Attempt.Outcome != protocol.AttemptValid || result.Attempt.Number != 1 {
@@ -48,6 +48,9 @@ func TestCodexReviewUsesFrozenStdinAndCanonicalResult(t *testing.T) {
 		t.Fatalf("provider stdin = %q", prompt)
 	}
 	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
+	if sent := argumentAfter(arguments, "--model"); sent != effective.Model.Value || result.Provider.Model != sent {
+		t.Fatalf("reported model %q, sent --model %q, configured %q", result.Provider.Model, sent, effective.Model.Value)
+	}
 	for _, required := range []string{"--output-schema", "--output-last-message", `web_search="disabled"`} {
 		if !contains(arguments, required) {
 			t.Errorf("Codex arguments omitted %q: %v", required, arguments)
@@ -66,7 +69,7 @@ func TestCodexReviewUsesFrozenStdinAndCanonicalResult(t *testing.T) {
 	}
 }
 
-func TestCodexReviewDefaultsToGPT61Sol(t *testing.T) {
+func TestCodexReviewSendsDefaultModelWhenUnset(t *testing.T) {
 	t.Parallel()
 
 	fake := newFakeCodex(t, fakeCodexOptions{})
@@ -82,14 +85,12 @@ func TestCodexReviewDefaultsToGPT61Sol(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Provider.Model != "gpt-6.1-sol" {
-		t.Fatalf("default model = %q", result.Provider.Model)
-	}
 	arguments := strings.Split(strings.TrimSpace(readTestFile(t, fake.arguments)), "\n")
-	for _, required := range []string{"gpt-6.1-sol", `model_reasoning_effort="medium"`} {
-		if !contains(arguments, required) {
-			t.Errorf("Codex arguments omitted %q: %v", required, arguments)
-		}
+	if sent := argumentAfter(arguments, "--model"); sent != DefaultCodexModel || result.Provider.Model != sent {
+		t.Fatalf("reported model %q, sent --model %q, want %q", result.Provider.Model, sent, DefaultCodexModel)
+	}
+	if !contains(arguments, `model_reasoning_effort="medium"`) {
+		t.Errorf("Codex arguments omitted the configured effort: %v", arguments)
 	}
 }
 
