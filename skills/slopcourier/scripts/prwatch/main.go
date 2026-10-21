@@ -12,6 +12,12 @@
 //
 //	go run <skill dir>/scripts/prwatch/main.go [flags] -commit <full sha>
 //
+// A self-hosted forge whose host name contains neither github nor gitlab is
+// mapped in $XDG_CONFIG_HOME/ffss/prwatch.yaml (else ~/.config/ffss/prwatch.yaml):
+//
+//	forges:
+//	  git.example.com: gitlab
+//
 // Exit codes: 0 ready, merged, or runs passed; 1 needs attention; 2 usage or
 // forge CLI failure; 3 deadline reached.
 package main
@@ -28,6 +34,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -55,12 +62,14 @@ type options struct {
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	os.Exit(run(ctx, os.Args[1:], deps{forge: newForge, origin: originURL, clock: realClock{}}, os.Stdout, os.Stderr))
+	os.Exit(run(ctx, os.Args[1:], deps{forge: newForge, origin: originURL, forges: loadForges, clock: realClock{}}, os.Stdout, os.Stderr))
 }
 
 type deps struct {
 	forge  func(kind, host string) forge
 	origin func(ctx context.Context) (string, error)
+	// forges reads the host-to-forge config and its path; nil reads none.
+	forges func() (map[string]string, string, error)
 	clock  clock
 }
 
@@ -125,6 +134,21 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 			return exitError
 		}
 	}
+	var forges map[string]string
+	var forgesPath string
+	if d.forges != nil {
+		var err error
+		if forges, forgesPath, err = d.forges(); err != nil {
+			fmt.Fprintln(stderr, "prwatch:", err)
+			return exitError
+		}
+	}
+	kindOf := func(host string) string {
+		if kind, ok := forges[strings.ToLower(host)]; ok {
+			return kind
+		}
+		return forgeOf(host)
+	}
 	opts.since = clock.Now().Truncate(time.Second)
 	if since != "" {
 		t, err := time.Parse(time.RFC3339, since)
@@ -142,7 +166,7 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 			if opts.repo == "" {
 				opts.repo = repo
 			}
-			if opts.host == "" && !(opts.kind == "github" && forgeOf(host) == "gitlab") {
+			if opts.host == "" && !(opts.kind == "github" && kindOf(host) == "gitlab") {
 				opts.host = host
 			}
 		case opts.repo == "":
@@ -151,9 +175,13 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 		}
 	}
 	if opts.kind == "" {
-		opts.kind = forgeOf(opts.host)
+		opts.kind = kindOf(opts.host)
 		if opts.kind == "" {
-			fmt.Fprintf(stderr, "prwatch: can't tell which forge %s is; pass -forge\n", opts.host)
+			fmt.Fprintf(stderr, "prwatch: can't tell which forge %s is; pass -forge", opts.host)
+			if forgesPath != "" {
+				fmt.Fprintf(stderr, " or map it under forges: in %s", forgesPath)
+			}
+			fmt.Fprintln(stderr)
 			return exitError
 		}
 	}
@@ -205,6 +233,74 @@ func forgeOf(host string) string {
 		return "gitlab"
 	}
 	return ""
+}
+
+func loadForges() (map[string]string, string, error) {
+	dir := os.Getenv("XDG_CONFIG_HOME")
+	if dir == "" || !filepath.IsAbs(dir) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, "", nil
+		}
+		dir = filepath.Join(home, ".config")
+	}
+	path := filepath.Join(dir, "ffss", "prwatch.yaml")
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, path, nil
+	}
+	if err != nil {
+		return nil, path, err
+	}
+	forges, err := parseForges(string(data))
+	if err != nil {
+		return nil, path, fmt.Errorf("%s: %w", path, err)
+	}
+	return forges, path, nil
+}
+
+// parseForges reads the one YAML shape prwatch.yaml takes, a forges: mapping
+// of host to github or gitlab, so the script stays free of dependencies.
+func parseForges(text string) (map[string]string, error) {
+	forges := map[string]string{}
+	inForges := false
+	for i, line := range strings.Split(text, "\n") {
+		if j := strings.Index(line, " #"); j >= 0 {
+			line = line[:j]
+		}
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continue
+		}
+		line = strings.TrimRight(line, " \t\r")
+		if line == "" {
+			continue
+		}
+		indented := line[0] == ' ' || line[0] == '\t'
+		key, value, ok := strings.Cut(strings.TrimSpace(line), ":")
+		key, value = unquote(strings.TrimSpace(key)), unquote(strings.TrimSpace(value))
+		switch {
+		case !ok:
+			return nil, fmt.Errorf("line %d: want key: value", i+1)
+		case !indented && key == "forges" && value == "":
+			inForges = true
+		case !indented:
+			return nil, fmt.Errorf("line %d: unknown key %q; only forges: is read", i+1, key)
+		case !inForges:
+			return nil, fmt.Errorf("line %d: indented entry outside forges:", i+1)
+		case value != "github" && value != "gitlab":
+			return nil, fmt.Errorf("line %d: %s must map to github or gitlab, got %q", i+1, key, value)
+		default:
+			forges[strings.ToLower(key)] = value
+		}
+	}
+	return forges, nil
+}
+
+func unquote(s string) string {
+	if len(s) >= 2 && (s[0] == '"' || s[0] == '\'') && s[len(s)-1] == s[0] {
+		return s[1 : len(s)-1]
+	}
+	return s
 }
 
 // Forge data, as prwatch needs it.
