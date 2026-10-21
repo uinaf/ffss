@@ -493,11 +493,12 @@ func TestTopLevelAndCommandHelp(t *testing.T) {
 	for _, test := range []struct {
 		arguments []string
 		names     []string
+		absent    []string
 	}{
 		{arguments: []string{"--help"}, names: []string{"review", "config", "doctor", "schema", "selfupdate", "telemetry", "version"}},
-		{arguments: []string{"review", "--help"}},
-		{arguments: []string{"config", "--help"}},
-		{arguments: []string{"doctor", "--help"}},
+		{arguments: []string{"review", "--help"}, names: []string{"Usage of slopguard review"}, absent: []string{"secret-scan"}},
+		{arguments: []string{"config", "--help"}, names: []string{"Usage of slopguard config"}},
+		{arguments: []string{"doctor", "--help"}, names: []string{"Usage of slopguard doctor"}},
 		{arguments: []string{"schema", "--help"}, names: []string{"review", "result"}},
 		{arguments: []string{"telemetry", "--help"}, names: []string{"export"}},
 	} {
@@ -509,6 +510,11 @@ func TestTopLevelAndCommandHelp(t *testing.T) {
 		for _, name := range test.names {
 			if !strings.Contains(stdout.String(), name) {
 				t.Errorf("%q help omits %q: %q", test.arguments, name, stdout.String())
+			}
+		}
+		for _, name := range test.absent {
+			if strings.Contains(stdout.String(), name) {
+				t.Errorf("%q help mentions removed %q: %q", test.arguments, name, stdout.String())
 			}
 		}
 	}
