@@ -50,9 +50,9 @@ when a contract breaks and survives refactors
 
 Keep tests that guard a public API, protocol, config, migration, storage,
 security, platform, or release contract, even if they look like source
-checks. Static or slow is not a reason. A test on an injected clock is a
-contract test, not a timing test: auth expiry, rotation, and lease timeouts
-stay.
+checks. Static or slow is not a reason. An injected clock doesn't make a
+test a timing test: the only proof of an auth expiry, rotation, or lease
+timeout stays.
 
 Report baseline and final counts, lines (production and test apart), and
 coverage; what was removed; look-alikes kept and why; seams removed;
