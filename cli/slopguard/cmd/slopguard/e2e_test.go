@@ -178,6 +178,10 @@ func TestBinarySchemaCommandsAreStandalone(t *testing.T) {
 	binary := buildSlopguardBinary(t)
 	for _, name := range []string{"review", "result"} {
 		t.Run(name, func(t *testing.T) {
+			want, err := os.ReadFile(filepath.Join("..", "..", "schema", name+"-v1.schema.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
 			command := exec.Command(binary, "schema", name)
 			command.Dir = t.TempDir()
 			command.Env = []string{"PATH=/usr/bin:/bin"}
@@ -185,12 +189,8 @@ func TestBinarySchemaCommandsAreStandalone(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var document map[string]any
-			if err := json.Unmarshal(output, &document); err != nil {
-				t.Fatalf("output is not JSON: %v", err)
-			}
-			if document["$schema"] != "https://json-schema.org/draft/2020-12/schema" {
-				t.Fatalf("unexpected JSON Schema draft: %v", document["$schema"])
+			if !bytes.Equal(output, want) {
+				t.Fatalf("schema %s output differs from schema/%s-v1.schema.json", name, name)
 			}
 		})
 	}

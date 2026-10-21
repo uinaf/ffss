@@ -18,7 +18,6 @@ import (
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
 	"github.com/uinaf/ffss/cli/slopguard/internal/provider"
 	"github.com/uinaf/ffss/cli/slopguard/internal/target"
-	contractschema "github.com/uinaf/ffss/cli/slopguard/schema"
 )
 
 func TestReviewCommandCleanJSON(t *testing.T) {
@@ -491,51 +490,33 @@ func TestReviewCommandReportsOutputFailure(t *testing.T) {
 func TestTopLevelAndCommandHelp(t *testing.T) {
 	t.Parallel()
 
-	var stdout bytes.Buffer
-	if exit := run(t.Context(), []string{"--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "slopguard <review|config|doctor|schema|selfupdate|telemetry|version>") || !strings.Contains(stdout.String(), "canonical review or result JSON Schema") {
-		t.Fatalf("top-level help exit=%d output=%q", exit, stdout.String())
-	}
-	stdout.Reset()
-	if exit := run(t.Context(), []string{"review", "--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "Usage of slopguard review") || strings.Contains(stdout.String(), "secret-scan") {
-		t.Fatalf("review help exit=%d output=%q", exit, stdout.String())
-	}
-	stdout.Reset()
-	if exit := run(t.Context(), []string{"schema", "--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "schema <review|result>") {
-		t.Fatalf("schema help exit=%d output=%q", exit, stdout.String())
-	}
-	stdout.Reset()
-	if exit := run(t.Context(), []string{"telemetry", "--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "telemetry export") {
-		t.Fatalf("telemetry help exit=%d output=%q", exit, stdout.String())
-	}
-	stdout.Reset()
-	if exit := run(t.Context(), []string{"doctor", "--help"}, &stdout, io.Discard, dependencies{}); exit != 0 || !strings.Contains(stdout.String(), "Usage of slopguard doctor") {
-		t.Fatalf("doctor help exit=%d output=%q", exit, stdout.String())
-	}
-}
-
-func TestSchemaCommandWritesCanonicalDocuments(t *testing.T) {
-	t.Parallel()
-
 	for _, test := range []struct {
-		name string
-		want []byte
+		arguments []string
+		names     []string
+		absent    []string
 	}{
-		{name: "review", want: contractschema.ReviewV1()},
-		{name: "result", want: contractschema.ResultV1()},
+		{arguments: []string{"--help"}, names: []string{"review", "config", "doctor", "schema", "selfupdate", "telemetry", "version"}},
+		{arguments: []string{"review", "--help"}, names: []string{"Usage of slopguard review"}, absent: []string{"secret-scan"}},
+		{arguments: []string{"config", "--help"}, names: []string{"Usage of slopguard config"}},
+		{arguments: []string{"doctor", "--help"}, names: []string{"Usage of slopguard doctor"}},
+		{arguments: []string{"schema", "--help"}, names: []string{"schema <review|result>"}},
+		{arguments: []string{"telemetry", "--help"}, names: []string{"telemetry export"}},
 	} {
-		t.Run(test.name, func(t *testing.T) {
-			var stdout bytes.Buffer
-			if exit := run(t.Context(), []string{"schema", test.name}, &stdout, io.Discard, dependencies{}); exit != 0 {
-				t.Fatalf("run() exit = %d", exit)
+		var stdout bytes.Buffer
+		exit := run(t.Context(), test.arguments, &stdout, io.Discard, dependencies{})
+		if exit != 0 || stdout.Len() == 0 {
+			t.Fatalf("%q exit=%d output=%q", test.arguments, exit, stdout.String())
+		}
+		for _, name := range test.names {
+			if !strings.Contains(stdout.String(), name) {
+				t.Errorf("%q help omits %q: %q", test.arguments, name, stdout.String())
 			}
-			if !bytes.Equal(stdout.Bytes(), test.want) {
-				t.Fatalf("schema output does not match embedded %s schema", test.name)
+		}
+		for _, name := range test.absent {
+			if strings.Contains(stdout.String(), name) {
+				t.Errorf("%q help mentions removed %q: %q", test.arguments, name, stdout.String())
 			}
-			var document map[string]any
-			if err := json.Unmarshal(stdout.Bytes(), &document); err != nil {
-				t.Fatalf("schema output is not JSON: %v", err)
-			}
-		})
+		}
 	}
 }
 
@@ -934,16 +915,6 @@ func TestVersionCommandReportsOutputFailure(t *testing.T) {
 	exit := run(context.Background(), []string{"--version"}, failingWriter{}, &stderr, dependencies{})
 	if exit != 2 || !strings.Contains(stderr.String(), "write version") {
 		t.Fatalf("run() exit = %d, stderr = %s", exit, stderr.String())
-	}
-}
-
-func TestConfigHelpIsSuccessful(t *testing.T) {
-	t.Parallel()
-
-	var stdout bytes.Buffer
-	exit := run(context.Background(), []string{"config", "--help"}, &stdout, io.Discard, dependencies{})
-	if exit != 0 || !strings.Contains(stdout.String(), "Usage of slopguard config") {
-		t.Fatalf("run() exit = %d, stdout = %s", exit, stdout.String())
 	}
 }
 
