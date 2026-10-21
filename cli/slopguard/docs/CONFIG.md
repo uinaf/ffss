@@ -29,8 +29,8 @@ telemetry: false
 ```
 
 Omitted keys keep their built-in defaults: [`defaults()`](../internal/config/types.go)
-for operational values, [`applyProviderDefaults`](../internal/config/load.go)
-for per-engine reasoning effort, and the `Default*Model` constants in
+for operational values and reasoning effort, [`applyProviderDefaults`](../internal/config/load.go)
+for per-engine repository access, and the `Default*Model` constants in
 [provider/types.go](../internal/provider/types.go), which the adapter applies
 when the model is unset. `slopguard config` prints each value and its source.
 

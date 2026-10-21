@@ -816,8 +816,8 @@ func TestConfigCommandReportsProviderDefaults(t *testing.T) {
 		effort    config.ReasoningEffort
 		webSource config.Source
 	}{
-		{name: "Codex medium", arguments: []string{"config", "--repository", repository, "--engine", "codex", "--json"}, effort: config.ReasoningMedium, webSource: config.SourceDefault},
-		{name: "Claude medium", arguments: []string{"config", "--repository", repository, "--engine", "claude", "--json"}, effort: config.ReasoningMedium, webSource: config.SourceDefault},
+		{name: "Codex high", arguments: []string{"config", "--repository", repository, "--engine", "codex", "--json"}, effort: config.ReasoningHigh, webSource: config.SourceDefault},
+		{name: "Claude high", arguments: []string{"config", "--repository", repository, "--engine", "claude", "--json"}, effort: config.ReasoningHigh, webSource: config.SourceDefault},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var stdout bytes.Buffer

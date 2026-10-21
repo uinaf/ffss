@@ -1,7 +1,7 @@
 # Codex CLI engine
 
 Select with `--engine codex`. Defaults and shared runtime rules:
-[Review engines](README.md). The built-in model is GPT-6.1 Sol with medium
+[Review engines](README.md). The built-in model is GPT-6.1 Sol with high
 reasoning; explicit model and effort settings override these defaults.
 
 ## Runtime contract

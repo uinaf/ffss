@@ -11,8 +11,8 @@ trusted configuration source.
 
 Every adapter passes one explicit model and effort with no fallback. An empty
 model resolves to the engine's `Default*Model` constant in
-[provider/types.go](../../internal/provider/types.go); default effort comes from
-[`applyProviderDefaults`](../../internal/config/load.go).
+[provider/types.go](../../internal/provider/types.go); effort defaults to
+`high` for every engine, from [`defaults()`](../../internal/config/types.go).
 `slopguard config --engine <engine>` prints the effective effort; it shows an
 unset model as `""`, and the review report's metadata names the model used.
 
