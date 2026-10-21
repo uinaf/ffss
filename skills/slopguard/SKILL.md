@@ -29,7 +29,7 @@ ones. What leaves the machine: [security.md](references/security.md).
    Ask the reviewer to compare changed verification (thresholds, checks,
    assertions, skips, suppressions) against the base.
 3. **Pick one provider.** User's choice, then trusted config, else Codex at
-   medium reasoning. Details: [providers.md](references/providers.md).
+   high reasoning. Details: [providers.md](references/providers.md).
    Config and `slopguard doctor`: [configuration.md](references/configuration.md).
 4. **Run.** Mode `local`, `branch` (against the PR's real base), or `commit`:
    [run-modes.md](references/run-modes.md).

@@ -362,12 +362,6 @@ func applyRaw(effective *Effective, raw rawConfig, source Source, allowCapabilit
 }
 
 func applyProviderDefaults(effective *Effective) {
-	if effective.ReasoningEffort.Source == SourceDefault {
-		switch effective.Engine.Value {
-		case protocol.ProviderCodex, protocol.ProviderClaude:
-			effective.ReasoningEffort.Value = ReasoningMedium
-		}
-	}
 	// Codex reviewing only the diff missed most bugs that need surrounding
 	// code; the snapshot fixed that for a few seconds. Claude caught them
 	// without it.

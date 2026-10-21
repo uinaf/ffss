@@ -2,7 +2,8 @@
 
 Select with `--engine claude`. Effort must be `low`, `medium`, `high`,
 `xhigh`, or `max`. Defaults and shared runtime rules:
-[Review engines](README.md).
+[Review engines](README.md). The built-in model is Claude Opus 5.5 with high
+effort; explicit model and effort settings override these defaults.
 
 ## Runtime contract
 
