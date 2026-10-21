@@ -368,6 +368,12 @@ func applyProviderDefaults(effective *Effective) {
 			effective.ReasoningEffort.Value = ReasoningMedium
 		}
 	}
+	// Codex reviewing only the diff missed most bugs that need surrounding
+	// code; the snapshot fixed that for a few seconds. Claude caught them
+	// without it.
+	if effective.RepositoryAccess.Source == SourceDefault {
+		effective.RepositoryAccess.Value = effective.Engine.Value == protocol.ProviderCodex
+	}
 }
 
 func validateRaw(raw rawConfig, source Source) error {

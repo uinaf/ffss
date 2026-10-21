@@ -72,9 +72,14 @@ Providers run from a new empty temporary workspace, receive only the frozen
 review bundle, and inherit the normal provider environment, user configuration,
 and configured provider or session authentication.
 
-Repository access defaults off and has only a flag form: `--repository-access`
-runs codex or claude inside a snapshot of the repository instead of the empty
-workspace, so the reviewer can read callers and tests.
+Repository access has only a flag form and is on by default for codex, off for
+claude: the reviewer runs inside a snapshot of the repository instead of the
+empty workspace, so it can read callers and tests. Pass
+`--repository-access=false` to keep codex to the bundle, or
+`--repository-access` to give claude the snapshot. In the
+[planted-bug eval](../CONTRIBUTING.md), codex reviewing only the diff missed
+most bugs that need surrounding code; the snapshot caught them for about two
+seconds more, while claude caught them without it.
 
 - The snapshot holds the reviewed revision's files, read straight from its
   tree so `export-ignore` and `export-subst` cannot hide or rewrite them, or the

@@ -6,9 +6,11 @@ The whole frozen bundle, deleted lines and context included, goes to the
 provider unscanned for credentials. Binaries are never sent (tracked ones
 appear as Git's summary line, untracked as size and SHA-256). Changed `.env`
 files go with key names only; their values are redacted. Environment
-templates (`.env.example`, `.sample`, `.template`) go whole. Make sure the
-target may go to that provider; if the harness asks for approval, say what
-leaves the machine and to whom.
+templates (`.env.example`, `.sample`, `.template`) go whole. Codex also reads a
+redacted snapshot of the repository by default, so any file it opens leaves
+too; `--repository-access=false` keeps it to the bundle. Make sure the target
+may go to that provider; if the harness asks for approval, say what leaves the
+machine and to whom.
 
 slopguard's refusals (sensitive path, size, binary, invalid UTF-8, symlink,
 revision, capability, source change) are the boundary. Report a refusal as a
