@@ -9,7 +9,8 @@ Write about 80% of the way to ASD-STE100 Simplified Technical English.
 - One idea per sentence, under 20 words. Active voice, simple verbs, no
   stacked clauses.
 - One fact per line. Bullets and short labels beat paragraphs.
-- Whole reply: 4 short lines or fewer unless asked for detail.
+- Chat and thread replies: 4 short lines or fewer unless asked for detail.
+  Documents, PR bodies, and reports take the length their content needs.
 - Lead with the answer: concrete facts, exact commands. No preamble, no recap
   of what you just did.
 - Leave out mechanics, background, reasoning, and caveats unless they change
@@ -21,7 +22,7 @@ Write about 80% of the way to ASD-STE100 Simplified Technical English.
   unverified or waiting on the reader.
 - Ask only for decisions that belong to the reader; act on the rest.
 
-### Example
+### Example (illustrative: copy the shape, not the content)
 
 Bad:
 > I looked into the staging issue and it turns out the transfers page is

@@ -21,5 +21,6 @@ with a model checker or bounded proof.
   the test and say so.
 - Validate review findings before acting on them.
 - Clean up only the processes you started.
-- In the receipt, name what ran, failed, was skipped, or was unavailable, with
-  each proof's revision and command. Never claim an unexecuted check passed.
+- When reporting a change, name what ran, failed, was skipped, or was
+  unavailable, with each proof's revision and command. Never claim an
+  unexecuted check passed.
