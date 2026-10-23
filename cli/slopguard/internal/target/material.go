@@ -19,6 +19,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -186,12 +187,16 @@ func (collector *Collector) newGitSandbox(ctx context.Context, root string, incl
 		config = "[core]\n\trepositoryFormatVersion = 1\n\tbare = false\n"
 	}
 	if includeWorktree {
-		copied, err := collector.copyGlobalExcludes(ctx, filepath.Join(directory, "info", "global-exclude"))
+		excludes, err := collector.userGlobalExcludes(ctx)
 		if err != nil {
 			return nil, err
 		}
-		if copied {
-			config += "\texcludesFile = " + gitConfigQuote(filepath.Join(directory, "info", "global-exclude")) + "\n"
+		if len(excludes) > 0 {
+			excludesPath := filepath.Join(directory, "info", "global-exclude")
+			if err := os.WriteFile(excludesPath, excludes, 0o600); err != nil {
+				return nil, fmt.Errorf("write global Git excludes: %w", err)
+			}
+			config += "\texcludesFile = " + gitConfigQuote(excludesPath) + "\n"
 		}
 	}
 	if objectFormat == "sha256" {
@@ -278,10 +283,27 @@ func gitConfigQuote(value string) string {
 	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(value) + `"`
 }
 
-// copyGlobalExcludes copies the user's global excludes file so untracked
-// classification matches the user's own Git. The setting comes from the
-// user's global config only; the reviewed repository cannot choose it.
-func (collector *Collector) copyGlobalExcludes(ctx context.Context, destination string) (bool, error) {
+// globalExcludes holds the user's global excludes file, read once per
+// collector so each isolated Git directory gets the same rules.
+type globalExcludes struct {
+	once    sync.Once
+	content []byte
+	err     error
+}
+
+func (collector *Collector) userGlobalExcludes(ctx context.Context) ([]byte, error) {
+	cache := collector.globalExcludes
+	if cache == nil {
+		cache = &globalExcludes{}
+	}
+	cache.once.Do(func() { cache.content, cache.err = collector.readGlobalExcludes(ctx) })
+	return cache.content, cache.err
+}
+
+// readGlobalExcludes reads the excludes file the user's own Git applies. The
+// setting comes from the user's global config only; the reviewed repository
+// cannot choose it.
+func (collector *Collector) readGlobalExcludes(ctx context.Context) ([]byte, error) {
 	lookup := collector.lookupEnv
 	if lookup == nil {
 		lookup = os.LookupEnv
@@ -296,7 +318,7 @@ func (collector *Collector) copyGlobalExcludes(ctx context.Context, destination 
 	}
 	if !user {
 		// No home and no global config: Git has no global excludes either.
-		return false, nil
+		return nil, nil
 	}
 	command := exec.CommandContext(ctx, collector.git.path, "config", "--global", "--get", "--path", "core.excludesFile")
 	command.Dir = os.TempDir()
@@ -308,7 +330,7 @@ func (collector *Collector) copyGlobalExcludes(ctx context.Context, destination 
 	case errors.As(err, &exitErr) && exitErr.ExitCode() == 1:
 		output = nil
 	default:
-		return false, fmt.Errorf("read global Git excludes setting: %w", err)
+		return nil, fmt.Errorf("read global Git excludes setting: %w", err)
 	}
 	excludes := strings.TrimSpace(string(output))
 	if excludes == "" {
@@ -320,19 +342,31 @@ func (collector *Collector) copyGlobalExcludes(ctx context.Context, destination 
 	}
 	// A relative path would resolve inside the reviewed worktree.
 	if !filepath.IsAbs(excludes) {
-		return false, nil
+		return nil, nil
 	}
 	resolved, err := filepath.EvalSymlinks(excludes)
 	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
+		return nil, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("resolve global Git excludes file: %w", err)
+		return nil, fmt.Errorf("resolve global Git excludes file: %w", err)
 	}
-	if err := copyStableFile(filepath.Dir(resolved), filepath.Base(resolved), destination, metadataLimit); err != nil {
-		return false, fmt.Errorf("copy global Git excludes file: %w", err)
+	file, info, err := openRegularFile(filepath.Dir(resolved), filepath.Base(resolved))
+	if err != nil {
+		return nil, fmt.Errorf("open global Git excludes file: %w", err)
 	}
-	return true, nil
+	defer func() { _ = file.Close() }()
+	if info.Size() > metadataLimit {
+		return nil, fmt.Errorf("global Git excludes file exceeds %d bytes", metadataLimit)
+	}
+	content, err := io.ReadAll(io.LimitReader(file, metadataLimit+1))
+	if err != nil {
+		return nil, fmt.Errorf("read global Git excludes file: %w", err)
+	}
+	if int64(len(content)) > metadataLimit {
+		return nil, fmt.Errorf("global Git excludes file exceeds %d bytes", metadataLimit)
+	}
+	return content, nil
 }
 
 func rejectSplitIndex(path, objectFormat string) error {
