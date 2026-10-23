@@ -231,8 +231,8 @@ func TestResolveSkipsGitBelowMinimumVersion(t *testing.T) {
 	repository := testRepository(t)
 	oldBin := t.TempDir()
 	newBin := t.TempDir()
-	writeExecutableContent(t, filepath.Join(oldBin, "git"), "#!/bin/sh\nprintf 'git version 2.40.9\\n'\n")
-	newGit := writeExecutableContent(t, filepath.Join(newBin, "git"), "#!/bin/sh\nprintf 'git version 2.41.0\\n'\n")
+	writeExecutableContent(t, filepath.Join(oldBin, "git"), "#!/bin/sh\nprintf 'git version 2.44.9\\n'\n")
+	newGit := writeExecutableContent(t, filepath.Join(newBin, "git"), "#!/bin/sh\nprintf 'git version 2.45.0\\n'\n")
 	environment := []string{"PATH=" + strings.Join([]string{oldBin, newBin}, string(os.PathListSeparator))}
 
 	resolved, err := Resolve(t.Context(), "git", "", repository, environment, GitProbe(t.TempDir()))
@@ -247,10 +247,10 @@ func TestResolveReportsGitVersionRequirement(t *testing.T) {
 
 	repository := testRepository(t)
 	bin := t.TempDir()
-	writeExecutableContent(t, filepath.Join(bin, "git"), "#!/bin/sh\nprintf 'git version 2.40.9\\n'\n")
+	writeExecutableContent(t, filepath.Join(bin, "git"), "#!/bin/sh\nprintf 'git version 2.44.9\\n'\n")
 
 	_, err := Resolve(t.Context(), "git", "", repository, []string{"PATH=" + bin}, GitProbe(t.TempDir()))
-	if err == nil || !strings.Contains(err.Error(), "git 2.41 or newer is required; found 2.40") {
+	if err == nil || !strings.Contains(err.Error(), "git 2.45 or newer is required; found 2.44") {
 		t.Fatalf("Resolve() error = %v", err)
 	}
 }
@@ -311,10 +311,10 @@ func TestRequireGitVersion(t *testing.T) {
 		output string
 		valid  bool
 	}{
-		{output: "git version 2.41.0", valid: true},
+		{output: "git version 2.45.0", valid: true},
 		{output: "git version 2.55.0 (Apple Git-154)", valid: true},
 		{output: "git version 3.0.0", valid: true},
-		{output: "git version 2.40.9", valid: false},
+		{output: "git version 2.44.9", valid: false},
 		{output: "not git", valid: false},
 	} {
 		err := requireGitVersion(test.output)
@@ -350,7 +350,7 @@ func TestGitEnvironmentIsMinimal(t *testing.T) {
 			t.Fatalf("GitEnvironment() retained %s: %v", name, environment)
 		}
 	}
-	for _, required := range []string{"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null", "GIT_TERMINAL_PROMPT=0", "LANG=C", "LC_ALL=C"} {
+	for _, required := range []string{"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null", "GIT_TERMINAL_PROMPT=0", "GIT_NO_LAZY_FETCH=1", "LANG=C", "LC_ALL=C"} {
 		if !slices.Contains(environment, required) {
 			t.Fatalf("GitEnvironment() missing %q: %v", required, environment)
 		}

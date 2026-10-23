@@ -260,7 +260,7 @@ func writeFakeReviewTools(t testing.TB, scenario string) (string, string, string
 		"last=''\nfor argument in \"$@\"; do last=\"$argument\"; done\n" +
 		"if [ \"$last\" = '--version' ]; then printf '%s\\n' probe >> " + shellLiteral(contextLog) + "; fi\n" +
 		"case \" $* \" in *' rev-parse --show-toplevel '*) printf '%s\\n' root >> " + shellLiteral(contextLog) + ";; esac\n" +
-		"if [ \"$#\" -eq 3 ] && [ \"$1\" = \"-C\" ] && [ \"$3\" = \"--version\" ]; then printf '%s\\n' 'git version 2.41.0'; exit 0; fi\n" +
+		"if [ \"$#\" -eq 3 ] && [ \"$1\" = \"-C\" ] && [ \"$3\" = \"--version\" ]; then printf '%s\\n' 'git version 2.45.0'; exit 0; fi\n" +
 		"exec " + shellLiteral(realGit) + " \"$@\"\n"
 	if err := os.WriteFile(filepath.Join(directory, "git"), []byte(gitScript), 0o700); err != nil {
 		t.Fatal(err)

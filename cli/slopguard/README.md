@@ -46,7 +46,7 @@ slopguard --version
 Go-built binaries track `main`, report `dev (unknown)`, and are refused by
 `selfupdate`. Signed, versioned builds come from the tap or the installer.
 
-Runtime dependencies: Git 2.41 or newer and the selected review harness on
+Runtime dependencies: Git 2.45 or newer and the selected review harness on
 `PATH`. Several harnesses may be installed; `--engine` selects exactly one.
 
 ## Quick use

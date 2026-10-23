@@ -131,8 +131,8 @@ func requireGitVersion(output string) error {
 	if majorErr != nil || minorErr != nil {
 		return errors.New("git returned an unrecognized version string")
 	}
-	if major < 2 || major == 2 && minor < 41 {
-		return fmt.Errorf("git 2.41 or newer is required; found %d.%d", major, minor)
+	if major < 2 || major == 2 && minor < 45 {
+		return fmt.Errorf("git 2.45 or newer is required; found %d.%d", major, minor)
 	}
 	return nil
 }

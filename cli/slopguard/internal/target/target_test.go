@@ -1920,6 +1920,39 @@ func TestFreezeExplainsMissingObjectFromPartialClone(t *testing.T) {
 	}
 }
 
+// A promisor remote in the reviewed repository's own config must not make
+// revision resolution spawn the remote's upload-pack command.
+func TestFreezeDoesNotLazyFetchFromRepositoryPromisor(t *testing.T) {
+	t.Parallel()
+
+	for _, request := range []Request{
+		{Mode: protocol.TargetLocal},
+		{Mode: protocol.TargetBranch, Base: "HEAD"},
+		{Mode: protocol.TargetCommit, Commit: "HEAD"},
+	} {
+		t.Run(string(request.Mode), func(t *testing.T) {
+			t.Parallel()
+
+			repository := committedRepository(t)
+			marker := filepath.Join(t.TempDir(), "marker")
+			head := gitCommand(t, repository, "rev-parse", "HEAD")
+			if err := os.Remove(filepath.Join(repository, ".git/objects", head[:2], head[2:])); err != nil {
+				t.Fatal(err)
+			}
+			gitCommand(t, repository, "config", "remote.origin.url", t.TempDir())
+			gitCommand(t, repository, "config", "remote.origin.uploadpack", "touch "+marker+" #")
+			gitCommand(t, repository, "config", "remote.origin.promisor", "true")
+
+			if _, err := newCollector(t).Freeze(context.Background(), repository, request); err == nil {
+				t.Fatal("a missing HEAD commit must fail the freeze")
+			}
+			if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("repository upload-pack ran during freeze: %v", err)
+			}
+		})
+	}
+}
+
 func TestExportSnapshotOmitsSensitiveFilesAndHistory(t *testing.T) {
 	t.Parallel()
 

@@ -12,7 +12,8 @@ Slopguard resolves exactly one explicit target before invoking a provider:
   as a command option.
 - Git runs through fixed argument arrays with hooks, filters, credentials,
   global configuration, external diffs, text conversion, and filesystem
-  monitors disabled where applicable.
+  monitors disabled where applicable. Lazy fetch is off, so a missing object
+  in a partial clone fails the target instead of contacting a promisor remote.
 - Content-producing commands use an isolated temporary Git directory, a copied
   index that preserves the original index mtime (so Git's racy-git checks stay
   valid), empty attribute source, and read-only access to the repository
@@ -79,7 +80,7 @@ boundary without first distilling and authorizing it.
 - Git split indexes are rejected rather than copied into the isolated metadata
   directory.
 
-Target collection requires Git 2.41 or newer.
+Target collection requires Git 2.45 or newer.
 
 - Git is selected outside the reviewed worktree, capability-probed once, and
   revalidated by filesystem identity and content before each use boundary.
