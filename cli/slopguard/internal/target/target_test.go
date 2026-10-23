@@ -1714,9 +1714,355 @@ func TestFreezeRejectsTrackedFIFO(t *testing.T) {
 	}
 }
 
+// One NUL byte must not turn a script into a binary whose content the
+// reviewer never sees.
+func TestFreezeRejectsTextHiddenAsBinary(t *testing.T) {
+	t.Parallel()
+
+	script := []byte("#!/bin/sh\n# \x00\necho hidden-marker\n")
+	for _, test := range []struct {
+		name    string
+		prepare func(t *testing.T, repository string)
+		request Request
+	}{
+		{name: "branch", request: Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "run.sh", script)
+			gitCommand(t, repository, "add", "run.sh")
+			gitCommand(t, repository, "commit", "-m", "hide")
+		}},
+		{name: "staged", request: Request{Mode: protocol.TargetLocal}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "run.sh", script)
+			gitCommand(t, repository, "add", "run.sh")
+		}},
+		{name: "unstaged", request: Request{Mode: protocol.TargetLocal}, prepare: func(t *testing.T, repository string) {
+			writeFile(t, repository, "file.txt", "base\n# \x00\necho hidden-marker\n")
+		}},
+		{name: "untracked", request: Request{Mode: protocol.TargetLocal}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "run.sh", script)
+		}},
+		// Invalid UTF-8 defeats the content check; the name still marks code.
+		{name: "source extension with junk", request: Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "run.sh", []byte("echo hidden-marker\n# \x00\xff\n"))
+			gitCommand(t, repository, "add", "run.sh")
+			gitCommand(t, repository, "commit", "-m", "hide")
+		}},
+		{name: "shebang with junk", request: Request{Mode: protocol.TargetLocal}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "bin/deploy", []byte("#!/bin/sh\n# \x00\xff\necho hidden-marker\n"))
+		}},
+		{name: "among several binaries", request: Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "logo.png", []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"))
+			writeBytes(t, repository, "run.sh", script)
+			writeBytes(t, repository, "zz.png", []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"))
+			gitCommand(t, repository, "add", ".")
+			gitCommand(t, repository, "commit", "-m", "hide")
+		}},
+		{name: "binary replaced by text", request: Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "Makefile", []byte("\x89PNG\x00\xff"))
+			gitCommand(t, repository, "add", "Makefile")
+			gitCommand(t, repository, "commit", "-m", "binary")
+			writeFile(t, repository, "Makefile", "all:\n\techo hidden-marker\n")
+			gitCommand(t, repository, "commit", "-am", "hide")
+		}},
+		{name: "executable", request: Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "tool", []byte("\x00\xff\xfe junk\necho hidden-marker\n"))
+			if err := os.Chmod(filepath.Join(repository, "tool"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			gitCommand(t, repository, "add", "tool")
+			gitCommand(t, repository, "commit", "-m", "hide")
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			repository := committedRepository(t)
+			test.prepare(t, repository)
+			_, err := newCollector(t).Freeze(context.Background(), repository, test.request)
+			if err == nil || !strings.Contains(err.Error(), "withheld from review") {
+				t.Fatalf("Freeze() error = %v", err)
+			}
+		})
+	}
+}
+
+// Redaction would turn code in a dotenv-named source file into [REDACTED]
+// lines, so such a file fails closed instead.
+func TestFreezeRejectsSourceFileWithEnvironmentName(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{"src/.env.js", ".env.sh", ".env.PY", "native/.env.c", ".github/workflows/.env.yml"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			repository := committedRepository(t)
+			writeFile(t, repository, name, "require('child_process').exec('hidden-marker')\n")
+			gitCommand(t, repository, "add", ".")
+			gitCommand(t, repository, "commit", "-m", "hide")
+			_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "HEAD~1"})
+			if err == nil || !strings.Contains(err.Error(), "not reviewable") {
+				t.Fatalf("Freeze() error = %v", err)
+			}
+		})
+	}
+}
+
+// Local mode sends only untracked files the user's own Git does not ignore,
+// including files ignored only by the user's global excludes.
+func TestFreezeHonorsUserGlobalExcludes(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name  string
+		setup func(t *testing.T, home string) map[string]string
+	}{
+		{name: "default ignore file", setup: func(t *testing.T, home string) map[string]string {
+			writeFile(t, home, ".config/git/ignore", "local-notes.txt\n")
+			return map[string]string{"HOME": home}
+		}},
+		{name: "XDG ignore file", setup: func(t *testing.T, home string) map[string]string {
+			writeFile(t, home, "xdg/git/ignore", "local-notes.txt\n")
+			return map[string]string{"HOME": home, "XDG_CONFIG_HOME": filepath.Join(home, "xdg")}
+		}},
+		{name: "included config", setup: func(t *testing.T, home string) map[string]string {
+			writeFile(t, home, "ignore-rules", "local-notes.txt\n")
+			writeFile(t, home, ".gitconfig-shared", "[core]\n\texcludesFile = ~/ignore-rules\n")
+			writeFile(t, home, ".gitconfig", "[include]\n\tpath = ~/.gitconfig-shared\n")
+			return map[string]string{"HOME": home}
+		}},
+		{name: "relative path outside the repository", setup: func(t *testing.T, home string) map[string]string {
+			writeFile(t, home, "ignore-rules", "local-notes.txt\n")
+			return map[string]string{"HOME": home, "RELATIVE_EXCLUDES": filepath.Join(home, "ignore-rules")}
+		}},
+		{name: "path ending in a space", setup: func(t *testing.T, home string) map[string]string {
+			writeFile(t, home, "ignore ", "local-notes.txt\n")
+			writeFile(t, home, ".gitconfig", "[core]\n\texcludesFile = \"~/ignore \"\n")
+			return map[string]string{"HOME": home}
+		}},
+		{name: "symlinked core.excludesFile", setup: func(t *testing.T, home string) map[string]string {
+			writeFile(t, home, "dotfiles/ignore", "local-notes.txt\n")
+			if err := os.Symlink(filepath.Join(home, "dotfiles/ignore"), filepath.Join(home, "global-ignore")); err != nil {
+				t.Fatal(err)
+			}
+			writeFile(t, home, ".gitconfig", "[core]\n\texcludesFile = ~/global-ignore\n")
+			return map[string]string{"HOME": home}
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			repository := committedRepository(t)
+			writeFile(t, repository, "file.txt", "changed\n")
+			writeFile(t, repository, "local-notes.txt", "globally-ignored-marker\n")
+			environment := test.setup(t, t.TempDir())
+			if target, ok := environment["RELATIVE_EXCLUDES"]; ok {
+				resolvedRepository, err := filepath.EvalSymlinks(repository)
+				if err != nil {
+					t.Fatal(err)
+				}
+				resolvedTarget, err := filepath.EvalSymlinks(target)
+				if err != nil {
+					t.Fatal(err)
+				}
+				relative, err := filepath.Rel(resolvedRepository, resolvedTarget)
+				if err != nil {
+					t.Fatal(err)
+				}
+				writeFile(t, environment["HOME"], ".gitconfig", "[core]\n\texcludesFile = "+relative+"\n")
+			}
+			collector, err := New(Options{LookupEnv: func(name string) (string, bool) {
+				value, ok := environment[name]
+				return value, ok
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			bundle, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := targetPaths(bundle.Target()); !equalStrings(got, []string{"file.txt"}) {
+				t.Fatalf("target paths = %v", got)
+			}
+			if strings.Contains(bundle.Payload(), "globally-ignored-marker") {
+				t.Fatal("payload contains a globally ignored file")
+			}
+			snapshot := t.TempDir()
+			if err := bundle.ExportSnapshot(context.Background(), snapshot); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(filepath.Join(snapshot, "local-notes.txt")); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("snapshot contains a globally ignored file: %v", err)
+			}
+		})
+	}
+}
+
+// An unbound collector prepares each repository separately, so includeIf
+// rules keyed to one repository do not leak into the next.
+func TestFreezeResolvesGlobalExcludesPerRepository(t *testing.T) {
+	t.Parallel()
+
+	first := committedRepository(t)
+	second := committedRepository(t)
+	for _, repository := range []string{first, second} {
+		writeFile(t, repository, "file.txt", "changed\n")
+		writeFile(t, repository, "local-notes.txt", "notes\n")
+	}
+	home := t.TempDir()
+	writeFile(t, home, "second-ignore", "local-notes.txt\n")
+	writeFile(t, home, "second.gitconfig", "[core]\n\texcludesFile = "+filepath.Join(home, "second-ignore")+"\n")
+	secondGitDir, err := filepath.EvalSymlinks(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, home, ".gitconfig", "[includeIf \"gitdir:"+secondGitDir+"/\"]\n\tpath = "+filepath.Join(home, "second.gitconfig")+"\n")
+	collector, err := New(Options{LookupEnv: func(name string) (string, bool) {
+		if name == "HOME" {
+			return home, true
+		}
+		return "", false
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		repository string
+		want       []string
+	}{
+		{repository: first, want: []string{"file.txt", "local-notes.txt"}},
+		{repository: second, want: []string{"file.txt"}},
+	} {
+		bundle, err := collector.Freeze(context.Background(), test.repository, Request{Mode: protocol.TargetLocal})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := targetPaths(bundle.Target()); !equalStrings(got, test.want) {
+			t.Fatalf("%s: target paths = %v, want %v", test.repository, got, test.want)
+		}
+	}
+}
+
+// An empty GIT_CONFIG_GLOBAL disables the user's config file, as it does for
+// the user's own Git.
+func TestFreezeHonorsEmptyGlobalConfigOverride(t *testing.T) {
+	t.Parallel()
+
+	repository := committedRepository(t)
+	writeFile(t, repository, "file.txt", "changed\n")
+	writeFile(t, repository, "local-notes.txt", "notes\n")
+	home := t.TempDir()
+	writeFile(t, home, "ignore-rules", "local-notes.txt\n")
+	writeFile(t, home, ".gitconfig", "[core]\n\texcludesFile = ~/ignore-rules\n")
+	environment := map[string]string{"HOME": home, "GIT_CONFIG_GLOBAL": ""}
+	collector, err := New(Options{LookupEnv: func(name string) (string, bool) {
+		value, ok := environment[name]
+		return value, ok
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := targetPaths(bundle.Target()); !equalStrings(got, []string{"file.txt", "local-notes.txt"}) {
+		t.Fatalf("target paths = %v", got)
+	}
+}
+
+// A reviewed dotfiles checkout must not choose which of its own files the
+// global excludes hide.
+func TestFreezeIgnoresGlobalExcludesInsideReviewedRepository(t *testing.T) {
+	t.Parallel()
+
+	home := committedRepository(t)
+	writeFile(t, home, "file.txt", "changed\n")
+	writeFile(t, home, "payload.sh", "echo hidden-marker\n")
+	writeFile(t, home, ".config/git/ignore", "payload.sh\n.config/\n")
+	collector, err := New(Options{LookupEnv: func(name string) (string, bool) {
+		if name == "HOME" {
+			return home, true
+		}
+		return "", false
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle, err := collector.Freeze(context.Background(), home, Request{Mode: protocol.TargetLocal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(bundle.Payload(), "hidden-marker") {
+		t.Fatalf("target paths = %v; repository-controlled excludes hid payload.sh", targetPaths(bundle.Target()))
+	}
+}
+
+func TestBatchHeadWriterSplitsObjectsAcrossWrites(t *testing.T) {
+	t.Parallel()
+
+	output := "aaaa blob 5\nhello\nbbbb blob 0\n\ncccc blob 3\nxyz\n"
+	var heads []string
+	writer := &batchHeadWriter{limit: 4, maximum: 1 << 20, check: func(index int, head []byte) error {
+		heads = append(heads, fmt.Sprintf("%d:%s", index, head))
+		return nil
+	}}
+	for index := 0; index < len(output); index += 3 {
+		if _, err := writer.Write([]byte(output[index:min(index+3, len(output))])); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if writer.remaining != 0 || writer.count != 3 {
+		t.Fatalf("writer state: remaining=%d count=%d", writer.remaining, writer.count)
+	}
+	if got := fmt.Sprint(heads); got != "[0:hell 1: 2:xyz]" {
+		t.Fatalf("heads = %s", got)
+	}
+}
+
+func TestBatchHeadWriterStopsAtOversizedBlob(t *testing.T) {
+	t.Parallel()
+
+	writer := &batchHeadWriter{limit: 4, maximum: 8, check: func(int, []byte) error { return nil }}
+	if _, err := writer.Write([]byte("aaaa blob 9\n")); err == nil || !strings.Contains(err.Error(), "inspection limit") {
+		t.Fatalf("Write() error = %v", err)
+	}
+}
+
+func TestGitConfigQuoteEscapesSyntax(t *testing.T) {
+	t.Parallel()
+
+	got := gitConfigQuote("/tmp/a\"b\\c\nd")
+	if want := `"/tmp/a\"b\\c\nd"`; got != want {
+		t.Fatalf("gitConfigQuote() = %s, want %s", got, want)
+	}
+}
+
+func TestTextWithNULsKeepsRealBinariesBinary(t *testing.T) {
+	t.Parallel()
+
+	utf16 := []byte{}
+	for _, character := range "echo utf-16 text\n" {
+		utf16 = append(utf16, byte(character), 0)
+	}
+	for _, test := range []struct {
+		name string
+		head []byte
+		want bool
+	}{
+		{name: "script with NUL", head: []byte("#!/bin/sh\n# \x00\necho x\n"), want: true},
+		{name: "png", head: []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")},
+		{name: "utf-16", head: utf16},
+		{name: "no NUL", head: []byte("plain text\n")},
+	} {
+		if got := textWithNULs(test.head); got != test.want {
+			t.Errorf("%s: textWithNULs() = %v, want %v", test.name, got, test.want)
+		}
+	}
+}
+
 func newCollector(t *testing.T) *Collector {
 	t.Helper()
-	collector, err := New(Options{})
+	collector, err := New(Options{LookupEnv: noEnvironment})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1744,12 +2090,15 @@ func preparedCollectorWithGitWrapper(t *testing.T) (*Collector, string, string) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	collector, err := NewContext(context.Background(), Options{Context: repositoryContext})
+	collector, err := NewContext(context.Background(), Options{Context: repositoryContext, LookupEnv: noEnvironment})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return collector, repository, gitPath
 }
+
+// noEnvironment keeps the developer's global Git excludes out of tests.
+func noEnvironment(string) (string, bool) { return "", false }
 
 func mutateExecutablePreservingMetadata(t *testing.T, path string) {
 	t.Helper()
@@ -1917,6 +2266,39 @@ func TestFreezeExplainsMissingObjectFromPartialClone(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "partial clone") {
 		t.Fatalf("error does not explain the partial clone: %v", err)
+	}
+}
+
+// A promisor remote in the reviewed repository's own config must not make
+// revision resolution spawn the remote's upload-pack command.
+func TestFreezeDoesNotLazyFetchFromRepositoryPromisor(t *testing.T) {
+	t.Parallel()
+
+	for _, request := range []Request{
+		{Mode: protocol.TargetLocal},
+		{Mode: protocol.TargetBranch, Base: "HEAD"},
+		{Mode: protocol.TargetCommit, Commit: "HEAD"},
+	} {
+		t.Run(string(request.Mode), func(t *testing.T) {
+			t.Parallel()
+
+			repository := committedRepository(t)
+			marker := filepath.Join(t.TempDir(), "marker")
+			head := gitCommand(t, repository, "rev-parse", "HEAD")
+			if err := os.Remove(filepath.Join(repository, ".git/objects", head[:2], head[2:])); err != nil {
+				t.Fatal(err)
+			}
+			gitCommand(t, repository, "config", "remote.origin.url", t.TempDir())
+			gitCommand(t, repository, "config", "remote.origin.uploadpack", "touch "+marker+" #")
+			gitCommand(t, repository, "config", "remote.origin.promisor", "true")
+
+			if _, err := newCollector(t).Freeze(context.Background(), repository, request); err == nil {
+				t.Fatal("a missing HEAD commit must fail the freeze")
+			}
+			if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("repository upload-pack ran during freeze: %v", err)
+			}
+		})
 	}
 }
 

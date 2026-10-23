@@ -125,6 +125,7 @@ func Load(ctx context.Context, options Options) (Effective, error) {
 	if err := applyFile(&effective, xdgPath, SourceXDG, trustedCapabilities, trustedRoot, root); err != nil {
 		return Effective{}, err
 	}
+	userEngine := effective.Engine
 	if err := applyFile(&effective, filepath.Join(root, ".slopguard.yaml"), SourceRepository, false, "", root); err != nil {
 		return Effective{}, err
 	}
@@ -133,6 +134,11 @@ func Load(ctx context.Context, options Options) (Effective, error) {
 	}
 	if err := applyOverrides(&effective, options.Overrides); err != nil {
 		return Effective{}, err
+	}
+	// The engine decides the reviewer's tools, so the reviewed repository may
+	// pick one only when the user has not.
+	if effective.Engine.Source == SourceRepository && userEngine.Source != SourceDefault && userEngine.Value != effective.Engine.Value {
+		return Effective{}, fmt.Errorf("repository config cannot change the engine from %s to %s; pass --engine to choose", userEngine.Value, effective.Engine.Value)
 	}
 	applyProviderDefaults(&effective)
 	if err := effective.Validate(); err != nil {

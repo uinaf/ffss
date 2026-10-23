@@ -12,11 +12,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -181,7 +183,23 @@ func (collector *Collector) newGitSandbox(ctx context.Context, root string, incl
 	}
 	config := "[core]\n\trepositoryFormatVersion = 0\n\tbare = false\n"
 	if objectFormat == "sha256" {
-		config = "[core]\n\trepositoryFormatVersion = 1\n\tbare = false\n[extensions]\n\tobjectFormat = sha256\n"
+		config = "[core]\n\trepositoryFormatVersion = 1\n\tbare = false\n"
+	}
+	if includeWorktree {
+		excludes, err := collector.userGlobalExcludes(ctx, root)
+		if err != nil {
+			return nil, err
+		}
+		if len(excludes) > 0 {
+			excludesPath := filepath.Join(directory, "info", "global-exclude")
+			if err := os.WriteFile(excludesPath, excludes, 0o600); err != nil {
+				return nil, fmt.Errorf("write global Git excludes: %w", err)
+			}
+			config += "\texcludesFile = " + gitConfigQuote(excludesPath) + "\n"
+		}
+	}
+	if objectFormat == "sha256" {
+		config += "[extensions]\n\tobjectFormat = sha256\n"
 	}
 	if err := os.WriteFile(filepath.Join(directory, "config"), []byte(config), 0o600); err != nil {
 		return nil, fmt.Errorf("write isolated Git config: %w", err)
@@ -256,6 +274,129 @@ func (collector *Collector) newGitSandbox(ctx context.Context, root string, incl
 		}
 	}
 	return sandbox, nil
+}
+
+// gitConfigQuote quotes a value for a Git config file, escaping the
+// characters its syntax cannot hold literally.
+func gitConfigQuote(value string) string {
+	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`, "\t", `\t`, "\b", `\b`).Replace(value) + `"`
+}
+
+// globalExcludes holds the user's global excludes file, read once per
+// collector so each isolated Git directory gets the same rules.
+type globalExcludes struct {
+	once    sync.Once
+	content []byte
+	err     error
+}
+
+func (collector *Collector) userGlobalExcludes(ctx context.Context, root string) ([]byte, error) {
+	cache := collector.globalExcludes
+	if cache == nil {
+		cache = &globalExcludes{}
+	}
+	cache.once.Do(func() { cache.content, cache.err = collector.readGlobalExcludes(ctx, root) })
+	return cache.content, cache.err
+}
+
+// readGlobalExcludes reads the excludes file the user's own Git applies. The
+// setting comes from the user's global config only; the reviewed repository
+// cannot choose it.
+func (collector *Collector) readGlobalExcludes(ctx context.Context, root string) ([]byte, error) {
+	lookup := collector.lookupEnv
+	if lookup == nil {
+		lookup = os.LookupEnv
+	}
+	environment := []string{"GIT_CONFIG_SYSTEM=/dev/null", "GIT_CONFIG_NOSYSTEM=1", "GIT_NO_LAZY_FETCH=1", "LANG=C", "LC_ALL=C"}
+	user := false
+	for _, name := range []string{"HOME", "XDG_CONFIG_HOME", "GIT_CONFIG_GLOBAL"} {
+		// An empty GIT_CONFIG_GLOBAL deliberately disables the user's config.
+		if value, ok := lookup(name); ok && (value != "" || name == "GIT_CONFIG_GLOBAL") {
+			environment = append(environment, name+"="+value)
+			user = true
+		}
+	}
+	if !user {
+		// No home and no global config: Git has no global excludes either.
+		return nil, nil
+	}
+	// --global turns include processing off unless asked; running in the
+	// reviewed root lets includeIf "gitdir:" rules match as they do for the user.
+	command := exec.CommandContext(ctx, collector.git.path, "-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "config", "--global", "--includes", "--null", "--get", "--path", "core.excludesFile")
+	command.Dir = root
+	command.Env = environment
+	output, err := command.Output()
+	var exitErr *exec.ExitError
+	switch {
+	case err == nil:
+	case errors.As(err, &exitErr) && exitErr.ExitCode() == 1:
+		output = nil
+	default:
+		return nil, fmt.Errorf("read global Git excludes setting: %w", err)
+	}
+	excludes := strings.TrimSuffix(string(output), "\x00")
+	if excludes == "" {
+		if xdg, ok := lookup("XDG_CONFIG_HOME"); ok && xdg != "" {
+			excludes = filepath.Join(xdg, "git", "ignore")
+		} else if home, ok := lookup("HOME"); ok && home != "" {
+			excludes = filepath.Join(home, ".config", "git", "ignore")
+		}
+	}
+	if excludes == "" {
+		return nil, nil
+	}
+	// Git resolves a relative path from its working directory.
+	if !filepath.IsAbs(excludes) {
+		excludes = filepath.Join(root, excludes)
+	}
+	resolved, err := filepath.EvalSymlinks(excludes)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("resolve global Git excludes file: %w", err)
+	}
+	// A dotfiles checkout under review could otherwise hide its own files.
+	if inside, err := directoryContains(root, resolved); err != nil || inside {
+		return nil, err
+	}
+	file, info, err := openRegularFile(filepath.Dir(resolved), filepath.Base(resolved))
+	if err != nil {
+		return nil, fmt.Errorf("open global Git excludes file: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+	if info.Size() > metadataLimit {
+		return nil, fmt.Errorf("global Git excludes file exceeds %d bytes", metadataLimit)
+	}
+	content, err := io.ReadAll(io.LimitReader(file, metadataLimit+1))
+	if err != nil {
+		return nil, fmt.Errorf("read global Git excludes file: %w", err)
+	}
+	after, err := file.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("read global Git excludes file: %w", err)
+	}
+	if !os.SameFile(info, after) || info.Size() != after.Size() || !info.ModTime().Equal(after.ModTime()) || int64(len(content)) != info.Size() {
+		return nil, fmt.Errorf("global Git excludes file changed while reading")
+	}
+	return content, nil
+}
+
+// directoryContains compares file identity, so case and firmlink spellings of
+// root still count.
+func directoryContains(root, candidate string) (bool, error) {
+	rootInfo, err := os.Stat(root)
+	if err != nil {
+		return false, err
+	}
+	for current := candidate; ; current = filepath.Dir(current) {
+		if info, err := os.Stat(current); err == nil && os.SameFile(rootInfo, info) {
+			return true, nil
+		}
+		if parent := filepath.Dir(current); parent == current {
+			return false, nil
+		}
+	}
 }
 
 func rejectSplitIndex(path, objectFormat string) error {
@@ -433,16 +574,18 @@ func copyStableFile(root, relative, destination string, limit int64) error {
 }
 
 type deletedBlob struct {
-	path string
-	oid  string
+	path    string
+	oid     string
+	section int
 }
 
 // changedPaths returns the changed paths of each diff command in section order.
 func (collector *Collector) changedPaths(ctx context.Context, root string, plan *targetPlan, maxBytes int64) ([][]string, []deletedBlob, error) {
 	var commandPaths [][]string
 	binaries := map[string]struct{}{}
+	var binarySides []changedSide
 	var inventoryBytes int64
-	for _, arguments := range diffCommands(plan, "--numstat", "-z") {
+	for section, arguments := range diffCommands(plan, "--numstat", "-z") {
 		var paths []string
 		parser := &nulRecordWriter{handle: func(record []byte) error {
 			fields := bytes.SplitN(record, []byte{'\t'}, 3)
@@ -451,6 +594,7 @@ func (collector *Collector) changedPaths(ctx context.Context, root string, plan 
 			}
 			if string(fields[0]) == "-" && string(fields[1]) == "-" {
 				binaries[string(fields[2])] = struct{}{}
+				binarySides = append(binarySides, changedSide{path: string(fields[2]), section: section})
 			} else if _, err := strconv.ParseInt(string(fields[0]), 10, 64); err != nil {
 				return fmt.Errorf("git numstat returned invalid addition count")
 			} else if _, err := strconv.ParseInt(string(fields[1]), 10, 64); err != nil {
@@ -472,8 +616,11 @@ func (collector *Collector) changedPaths(ctx context.Context, root string, plan 
 		}
 		commandPaths = append(commandPaths, paths)
 	}
-	deleted, err := collector.inspectRawModes(ctx, root, plan)
+	deleted, modes, err := collector.inspectRawModes(ctx, root, plan)
 	if err != nil {
+		return nil, nil, err
+	}
+	if err := collector.rejectWithheldCode(ctx, root, plan, binarySides, deleted, modes); err != nil {
 		return nil, nil, err
 	}
 	textDeleted := deleted[:0]
@@ -503,9 +650,10 @@ func (collector *Collector) explainMissingObject(ctx context.Context, root strin
 		"so lazily fetched objects are unavailable (hydrate it with: git -C %s fetch --refetch origin)", err, root)
 }
 
-func (collector *Collector) inspectRawModes(ctx context.Context, root string, plan *targetPlan) ([]deletedBlob, error) {
+func (collector *Collector) inspectRawModes(ctx context.Context, root string, plan *targetPlan) ([]deletedBlob, map[changedSide]string, error) {
 	var deleted []deletedBlob
-	for _, arguments := range diffCommands(plan, "--raw", "--abbrev=64", "-z") {
+	modes := map[changedSide]string{}
+	for section, arguments := range diffCommands(plan, "--raw", "--abbrev=64", "-z") {
 		var rawHeader []byte
 		parser := &nulRecordWriter{handle: func(record []byte) error {
 			if rawHeader == nil {
@@ -524,21 +672,200 @@ func (collector *Collector) inspectRawModes(ctx context.Context, root string, pl
 				return fmt.Errorf("gitlink input %q is unsupported", path)
 			}
 			if newMode == "000000" {
-				deleted = append(deleted, deletedBlob{path: path, oid: header[2]})
+				deleted = append(deleted, deletedBlob{path: path, oid: header[2], section: section})
 			}
+			modes[changedSide{path: path, section: section}] = newMode
 			return nil
 		}}
 		if err := collector.git.runSandboxWithAttributesTo(ctx, root, plan.sandbox, nil, parser, arguments...); err != nil {
-			return nil, fmt.Errorf("inspect changed modes: %w", err)
+			return nil, nil, fmt.Errorf("inspect changed modes: %w", err)
 		}
 		if err := parser.Err(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if rawHeader != nil {
-			return nil, fmt.Errorf("git raw diff returned incomplete record")
+			return nil, nil, fmt.Errorf("git raw diff returned incomplete record")
 		}
 	}
-	return deleted, nil
+	return deleted, modes, nil
+}
+
+type changedSide struct {
+	path    string
+	section int
+}
+
+// rejectWithheldCode fails the target when Git classified a changed file as
+// binary but the file looks like code. Its content would be withheld from the
+// reviewer while the review could still report clean.
+func (collector *Collector) rejectWithheldCode(ctx context.Context, root string, plan *targetPlan, sides []changedSide, deleted []deletedBlob, modes map[changedSide]string) error {
+	removed := make(map[changedSide]struct{}, len(deleted))
+	for _, blob := range deleted {
+		removed[changedSide{path: blob.path, section: blob.section}] = struct{}{}
+	}
+	check := func(side changedSide, head []byte) error {
+		if reason := withheldCodeReason(side.path, modes[side] == "100755", head); reason != "" {
+			return fmt.Errorf("changed file %q %s, but Git treats it as binary, so its content would be withheld from review", side.path, reason)
+		}
+		return nil
+	}
+	var committed []changedSide
+	var objects bytes.Buffer
+	for _, side := range sides {
+		if _, gone := removed[side]; gone {
+			continue
+		}
+		if err := protocolPath(side.path); err != nil {
+			return fmt.Errorf("changed path %q: %w", side.path, err)
+		}
+		if plan.local && side.section == 1 {
+			file, _, err := openRegularFile(root, side.path)
+			if err != nil {
+				return fmt.Errorf("read changed file %q: %w", side.path, err)
+			}
+			head, err := io.ReadAll(io.LimitReader(file, binarySniffBytes))
+			_ = file.Close()
+			if err != nil {
+				return fmt.Errorf("read changed file %q: %w", side.path, err)
+			}
+			if err := check(side, head); err != nil {
+				return err
+			}
+			continue
+		}
+		object := ":" + side.path
+		if !plan.local {
+			object = plan.newRevision + ":" + side.path
+		}
+		committed = append(committed, side)
+		_, _ = objects.WriteString(object + "\n")
+	}
+	if len(committed) == 0 {
+		return nil
+	}
+	// One cat-file session reads every committed or staged side, judging each
+	// head as it completes instead of keeping them all.
+	blobs := &batchHeadWriter{limit: binarySniffBytes, maximum: MaximumMaxBytes, check: func(index int, head []byte) error {
+		if index >= len(committed) {
+			return fmt.Errorf("git returned excess binary blobs")
+		}
+		return check(committed[index], head)
+	}}
+	runErr := collector.git.runSandboxTo(ctx, root, plan.sandbox, objects.Bytes(), blobs, "cat-file", "--batch")
+	if blobs.err != nil {
+		return blobs.err
+	}
+	if runErr != nil {
+		return fmt.Errorf("read changed binary blobs: %w", runErr)
+	}
+	if blobs.remaining != 0 || len(blobs.header) != 0 || blobs.count != len(committed) {
+		return fmt.Errorf("git returned incomplete binary blob output")
+	}
+	return nil
+}
+
+// withheldCodeReason reports why a file Git treats as binary may be code.
+// Metadata checks hold even when junk bytes defeat the content check.
+func withheldCodeReason(name string, executable bool, head []byte) string {
+	switch _, source := sourceExtensions[strings.ToLower(path.Ext(name))]; {
+	case bytes.IndexByte(head, 0) < 0:
+		// Git calls the pair binary only because the old side was.
+		return "is text"
+	case textWithNULs(head):
+		return "is text with NUL bytes"
+	case bytes.HasPrefix(head, []byte("#!")):
+		return "starts with #!"
+	case source:
+		return "has a source extension"
+	case executable:
+		return "is executable"
+	}
+	return ""
+}
+
+// textWithNULs reports whether content is valid UTF-8 apart from a few NUL
+// bytes. UTF-16 text and real binaries stay binary.
+func textWithNULs(head []byte) bool {
+	nuls := bytes.Count(head, []byte{0})
+	if nuls == 0 || nuls*8 >= len(head) {
+		return false
+	}
+	text := bytes.ReplaceAll(head, []byte{0}, nil)
+	if len(head) == binarySniffBytes {
+		// The sniff window may end inside a multi-byte character.
+		for trim := 0; trim < utf8.UTFMax && len(text) > 0 && !utf8.Valid(text); trim++ {
+			text = text[:len(text)-1]
+		}
+	}
+	return utf8.Valid(text)
+}
+
+// batchHeadWriter parses cat-file --batch output and passes the first limit
+// bytes of each blob to check. A failed check or an oversized blob stops Git.
+type batchHeadWriter struct {
+	limit     int
+	maximum   int64
+	check     func(index int, head []byte) error
+	head      []byte
+	count     int
+	header    []byte
+	remaining int64
+	err       error
+}
+
+func (writer *batchHeadWriter) Write(data []byte) (int, error) {
+	consumed := len(data)
+	for len(data) > 0 {
+		if writer.err != nil {
+			return 0, writer.err
+		}
+		if writer.remaining > 0 {
+			take := min(int64(len(data)), writer.remaining)
+			// The last byte of each object is cat-file's record newline.
+			content := min(take, writer.remaining-1)
+			if room := writer.limit - len(writer.head); room > 0 && content > 0 {
+				writer.head = append(writer.head, data[:min(int64(room), content)]...)
+			}
+			writer.remaining -= take
+			data = data[take:]
+			if writer.remaining == 0 {
+				writer.err = writer.check(writer.count, writer.head)
+				writer.count++
+				writer.head = writer.head[:0]
+			}
+			continue
+		}
+		newline := bytes.IndexByte(data, '\n')
+		if newline < 0 {
+			writer.header = append(writer.header, data...)
+			if len(writer.header) > 4096 {
+				writer.err = fmt.Errorf("git returned an oversized blob header")
+			}
+			break
+		}
+		header := string(append(writer.header, data[:newline]...))
+		writer.header = writer.header[:0]
+		data = data[newline+1:]
+		fields := strings.Fields(header)
+		if len(fields) != 3 || fields[1] != "blob" {
+			writer.err = fmt.Errorf("git returned an unexpected object for a changed binary file")
+			continue
+		}
+		size, err := strconv.ParseInt(fields[2], 10, 64)
+		if err != nil || size < 0 {
+			writer.err = fmt.Errorf("git returned an invalid blob size")
+			continue
+		}
+		if size > writer.maximum {
+			writer.err = fmt.Errorf("binary blob of %d bytes exceeds inspection limit of %d bytes", size, writer.maximum)
+			continue
+		}
+		writer.remaining = size + 1
+	}
+	if writer.err != nil {
+		return 0, writer.err
+	}
+	return consumed, nil
 }
 
 func diffCommands(plan *targetPlan, format ...string) [][]string {
@@ -573,6 +900,9 @@ func (collector *Collector) untrackedFiles(ctx context.Context, root string, pla
 		}
 		if !budget.Exceeded() {
 			summary, binary, err := summarizeBinaryFile(ctx, root, path)
+			if errors.Is(err, errWithheldCode) && environmentFilePath(path) {
+				return fmt.Errorf("binary environment file %q is not reviewable", path)
+			}
 			if err != nil {
 				return fmt.Errorf("read untracked file %q: %w", path, err)
 			}
@@ -1010,6 +1340,8 @@ func readContainedFile(root, relative string, retainLimit int64) ([]byte, int64,
 	return content, before.Size(), nil
 }
 
+var errWithheldCode = errors.New("code in a binary file would be withheld from review")
+
 // binarySniffBytes matches Git's buffer_is_binary heuristic: a NUL byte in the
 // first 8000 bytes marks the content as binary.
 const binarySniffBytes = 8000
@@ -1030,6 +1362,9 @@ func summarizeBinaryFile(ctx context.Context, root, relative string) ([]byte, bo
 	}
 	if bytes.IndexByte(head[:read], 0) < 0 {
 		return nil, false, nil
+	}
+	if reason := withheldCodeReason(relative, before.Mode().Perm()&0o111 != 0, head[:read]); reason != "" {
+		return nil, false, fmt.Errorf("file %s: %w", reason, errWithheldCode)
 	}
 	if before.Size() > MaximumMaxBytes {
 		return nil, false, fmt.Errorf("binary file of %d bytes exceeds hashing limit of %d bytes", before.Size(), MaximumMaxBytes)

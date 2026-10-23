@@ -12,7 +12,12 @@ Slopguard resolves exactly one explicit target before invoking a provider:
   as a command option.
 - Git runs through fixed argument arrays with hooks, filters, credentials,
   global configuration, external diffs, text conversion, and filesystem
-  monitors disabled where applicable.
+  monitors disabled where applicable. Lazy fetch is off, so a missing object
+  in a partial clone fails the target instead of contacting a promisor remote.
+- Untracked files honor the user's global excludes (`core.excludesFile` from
+  the user's global config, else `$XDG_CONFIG_HOME/git/ignore` or
+  `~/.config/git/ignore`), copied into the isolated Git directory below. An
+  excludes file inside the reviewed repository is ignored.
 - Content-producing commands use an isolated temporary Git directory, a copied
   index that preserves the original index mtime (so Git's racy-git checks stay
   valid), empty attribute source, and read-only access to the repository
@@ -48,8 +53,12 @@ boundary without first distilling and authorizing it.
   tracked changes appear as Git's `Binary files ... differ` line with full blob
   IDs, and untracked files as an `UNTRUSTED-BINARY-FILE` section carrying only
   size and SHA-256. Both still bind the snapshot, so later edits invalidate
-  the result. Untracked binaries above 128 MiB fail closed rather than being
-  hashed.
+  the result. Binaries above 128 MiB fail closed rather than being hashed or
+  inspected. A binary-classified changed or untracked file fails closed instead
+  when it looks like code: valid UTF-8 apart from a few NUL bytes, a `#!`
+  first line, a source extension such as `.sh` or `.js`, or an executable
+  mode. Other binaries stay summarized, so reviewed code that loads one by
+  path is the reviewer's to question.
 - Invalid UTF-8 text, binary context files, sensitive paths, gitlinks (mode 160000 /
   submodules), symlink escapes, merge commits, unsafe revisions, FIFOs and
   other special files, context-path symlinks, and incomplete file reads fail
@@ -58,7 +67,9 @@ boundary without first distilling and authorizing it.
   source templates: their content, including comments, literal defaults,
   placeholders, and deleted preimages, enters the bundle without value
   classification. Other changed `.env` and `.env.*` files enter redacted (see
-  below). Explicit context files remain subject to the ordinary sensitive-path
+  below), except `.env.*` files with a source or structured-config extension
+  such as `.js`, `.py`, `.sh`, `.yml`, or `.json`: redaction would hide their
+  code, so they fail closed. Explicit context files remain subject to the ordinary sensitive-path
   rejection, including these template and environment names.
 - Redacted environment files keep their line structure. Keys stay visible
   only when every non-comment line is a `KEY=value` or `export KEY=value`
@@ -79,7 +90,7 @@ boundary without first distilling and authorizing it.
 - Git split indexes are rejected rather than copied into the isolated metadata
   directory.
 
-Target collection requires Git 2.41 or newer.
+Target collection requires Git 2.45 or newer.
 
 - Git is selected outside the reviewed worktree, capability-probed once, and
   revalidated by filesystem identity and content before each use boundary.

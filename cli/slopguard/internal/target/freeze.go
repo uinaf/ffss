@@ -33,6 +33,10 @@ type Collector struct {
 	gitPath    string
 	repository *repositorypkg.Context
 	stateKey   []byte
+	lookupEnv  func(string) (string, bool)
+	// globalExcludes is read once per prepared collector, which serves one
+	// repository.
+	globalExcludes *globalExcludes
 }
 
 type collected struct {
@@ -57,7 +61,11 @@ func New(options Options) (*Collector, error) {
 }
 
 func NewContext(ctx context.Context, options Options) (*Collector, error) {
-	collector := &Collector{gitPath: options.GitPath, stateKey: append([]byte(nil), options.StateKey...)}
+	lookupEnv := options.LookupEnv
+	if lookupEnv == nil {
+		lookupEnv = os.LookupEnv
+	}
+	collector := &Collector{gitPath: options.GitPath, stateKey: append([]byte(nil), options.StateKey...), lookupEnv: lookupEnv}
 	if options.Context != nil {
 		if options.Repository != "" {
 			if err := options.Context.ValidateRequested(options.Repository); err != nil {
@@ -145,7 +153,7 @@ func (collector *Collector) forContext(ctx context.Context, repositoryContext *r
 	if err := repositoryContext.ValidateGit(ctx); err != nil {
 		return nil, err
 	}
-	return &Collector{git: git, repository: repositoryContext, stateKey: collector.stateKey}, nil
+	return &Collector{git: git, repository: repositoryContext, stateKey: collector.stateKey, lookupEnv: collector.lookupEnv, globalExcludes: &globalExcludes{}}, nil
 }
 
 func validateRequest(request *Request) error {

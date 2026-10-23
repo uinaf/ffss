@@ -25,6 +25,64 @@ func TestDiscoverExecutableRejectsReviewedRepository(t *testing.T) {
 	}
 }
 
+// A PATH entry may spell the reviewed repository with a different case or
+// through the /System/Volumes/Data firmlink; containment must still hold.
+func TestDiscoverExecutableRejectsRepositoryAliasOnPATH(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	repository := filepath.Join(root, "Repo")
+	path := filepath.Join(repository, "node_modules", ".bin", "claude")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	aliases := []string{filepath.Join(root, "repo", "node_modules", ".bin")}
+	if resolved, err := filepath.EvalSymlinks(filepath.Dir(path)); err == nil {
+		aliases = append(aliases, filepath.Join("/System/Volumes/Data", resolved))
+	}
+	tested := 0
+	for _, alias := range aliases {
+		if _, err := os.Stat(filepath.Join(alias, "claude")); err != nil {
+			continue
+		}
+		tested++
+		if found, err := discoverExecutable("claude", repository, []string{"PATH=" + alias}); err == nil {
+			t.Errorf("discoverExecutable() accepted %q through PATH alias %q", found, alias)
+		}
+	}
+	if tested == 0 {
+		t.Skip("filesystem offers no case or firmlink alias")
+	}
+}
+
+// A dotfiles repository at the home directory must not reject providers
+// installed under it while a nested project is reviewed.
+func TestDiscoverExecutableAcceptsEnclosingHomeWorktree(t *testing.T) {
+	t.Parallel()
+
+	home := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(home, ".git"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	repository := filepath.Join(home, "projects", "app")
+	if err := os.MkdirAll(filepath.Join(repository, ".git"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(home, ".local", "bin", "claude")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := discoverExecutable("claude", repository, []string{"PATH=" + filepath.Dir(path)}); err != nil {
+		t.Fatalf("discoverExecutable() rejected a provider under an enclosing home worktree: %v", err)
+	}
+}
+
 func TestDiscoverExecutableResolvesExternalSymlink(t *testing.T) {
 	t.Parallel()
 

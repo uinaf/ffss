@@ -17,10 +17,35 @@ const redactedValue = "[REDACTED]"
 var environmentAssignment = regexp.MustCompile(`^[ \t]*(?:export[ \t]+)?[A-Za-z_][A-Za-z0-9_.-]*[ \t]*=`)
 
 // environmentFilePath reports a changed dotenv file that enters the bundle with
-// its values redacted instead of failing the target.
+// its values redacted instead of failing the target. A source extension marks
+// code, which redaction would hide from the reviewer, so it stays sensitive.
 func environmentFilePath(value string) bool {
 	base := strings.ToLower(path.Base(value))
+	if _, source := sourceExtensions[path.Ext(base)]; source {
+		return false
+	}
+	if _, structured := structuredExtensions[path.Ext(base)]; structured {
+		return false
+	}
 	return (base == ".env" || strings.HasPrefix(base, ".env.")) && !environmentTemplatePath(value)
+}
+
+// structuredExtensions name config formats that tools can execute, such as
+// CI workflows; dotenv redaction would hide their commands.
+var structuredExtensions = map[string]struct{}{
+	".ini": {}, ".json": {}, ".jsonc": {}, ".toml": {}, ".xml": {}, ".yaml": {}, ".yml": {},
+}
+
+// sourceExtensions name files an interpreter or compiler loads as code.
+var sourceExtensions = map[string]struct{}{
+	".bash": {}, ".bat": {}, ".c": {}, ".cc": {}, ".cjs": {}, ".clj": {}, ".cmd": {},
+	".cpp": {}, ".cs": {}, ".cts": {}, ".cxx": {}, ".dart": {}, ".erl": {}, ".ex": {},
+	".exs": {}, ".fish": {}, ".fs": {}, ".go": {}, ".gradle": {}, ".groovy": {}, ".h": {},
+	".hpp": {}, ".hs": {}, ".java": {}, ".jl": {}, ".js": {}, ".jsx": {}, ".kt": {},
+	".kts": {}, ".lua": {}, ".m": {}, ".mjs": {}, ".mm": {}, ".mts": {}, ".php": {},
+	".pl": {}, ".pm": {}, ".ps1": {}, ".py": {}, ".r": {}, ".rb": {}, ".rs": {},
+	".scala": {}, ".sh": {}, ".swift": {}, ".ts": {}, ".tsx": {}, ".vb": {}, ".zig": {},
+	".zsh": {},
 }
 
 func reviewablePath(value string) bool {

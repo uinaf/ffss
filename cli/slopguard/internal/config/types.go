@@ -86,8 +86,8 @@ type Overrides struct {
 	MaxBytes        *int64
 	WebAccess       *bool
 	Telemetry       *bool
-	// RepositoryAccess has no file or environment form, so repository
-	// configuration cannot grant it.
+	// RepositoryAccess has no file or environment form; without the flag it
+	// follows the engine, which repository configuration cannot override.
 	RepositoryAccess *bool
 }
 

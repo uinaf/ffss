@@ -151,6 +151,7 @@ func GitEnvironment() []string {
 		"GIT_ATTR_NOSYSTEM=1",
 		"GIT_OPTIONAL_LOCKS=0",
 		"GIT_TERMINAL_PROMPT=0",
+		"GIT_NO_LAZY_FETCH=1",
 		"LANG=C",
 		"LC_ALL=C",
 	}
@@ -197,6 +198,23 @@ func repositoryBoundariesForPaths(absolute, resolved string) ([]string, error) {
 		return nil, fmt.Errorf("reviewed path is not inside a Git worktree")
 	}
 	return boundaries, nil
+}
+
+// ValidateOutsideRepository returns the resolved executable when neither its
+// path nor its target lies inside the reviewed directory. Containment compares
+// file identity, so case-insensitive and firmlink spellings of the repository
+// cannot slip past it. Enclosing worktrees are not boundaries here: a dotfiles
+// repository at the home directory would reject every user-installed provider.
+func ValidateOutsideRepository(path, repository string) (string, error) {
+	absolute, err := filepath.Abs(repository)
+	if err != nil {
+		return "", fmt.Errorf("resolve reviewed repository: %w", err)
+	}
+	resolved, err := filepath.EvalSymlinks(absolute)
+	if err != nil {
+		return "", fmt.Errorf("resolve reviewed repository: %w", err)
+	}
+	return validate(path, []string{absolute, resolved})
 }
 
 func outermostWorktree(root string) (string, error) {
