@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -182,7 +183,19 @@ func (collector *Collector) newGitSandbox(ctx context.Context, root string, incl
 	}
 	config := "[core]\n\trepositoryFormatVersion = 0\n\tbare = false\n"
 	if objectFormat == "sha256" {
-		config = "[core]\n\trepositoryFormatVersion = 1\n\tbare = false\n[extensions]\n\tobjectFormat = sha256\n"
+		config = "[core]\n\trepositoryFormatVersion = 1\n\tbare = false\n"
+	}
+	if includeWorktree {
+		copied, err := collector.copyGlobalExcludes(ctx, filepath.Join(directory, "info", "global-exclude"))
+		if err != nil {
+			return nil, err
+		}
+		if copied {
+			config += "\texcludesFile = " + gitConfigQuote(filepath.Join(directory, "info", "global-exclude")) + "\n"
+		}
+	}
+	if objectFormat == "sha256" {
+		config += "[extensions]\n\tobjectFormat = sha256\n"
 	}
 	if err := os.WriteFile(filepath.Join(directory, "config"), []byte(config), 0o600); err != nil {
 		return nil, fmt.Errorf("write isolated Git config: %w", err)
@@ -257,6 +270,69 @@ func (collector *Collector) newGitSandbox(ctx context.Context, root string, incl
 		}
 	}
 	return sandbox, nil
+}
+
+// gitConfigQuote quotes a value for a Git config file, which understands only
+// backslash and double-quote escapes inside quotes.
+func gitConfigQuote(value string) string {
+	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(value) + `"`
+}
+
+// copyGlobalExcludes copies the user's global excludes file so untracked
+// classification matches the user's own Git. The setting comes from the
+// user's global config only; the reviewed repository cannot choose it.
+func (collector *Collector) copyGlobalExcludes(ctx context.Context, destination string) (bool, error) {
+	lookup := collector.lookupEnv
+	if lookup == nil {
+		lookup = os.LookupEnv
+	}
+	environment := []string{"GIT_CONFIG_SYSTEM=/dev/null", "GIT_CONFIG_NOSYSTEM=1", "GIT_NO_LAZY_FETCH=1", "LANG=C", "LC_ALL=C"}
+	user := false
+	for _, name := range []string{"HOME", "XDG_CONFIG_HOME", "GIT_CONFIG_GLOBAL"} {
+		if value, ok := lookup(name); ok && value != "" {
+			environment = append(environment, name+"="+value)
+			user = true
+		}
+	}
+	if !user {
+		// No home and no global config: Git has no global excludes either.
+		return false, nil
+	}
+	command := exec.CommandContext(ctx, collector.git.path, "config", "--global", "--get", "--path", "core.excludesFile")
+	command.Dir = os.TempDir()
+	command.Env = environment
+	output, err := command.Output()
+	var exitErr *exec.ExitError
+	switch {
+	case err == nil:
+	case errors.As(err, &exitErr) && exitErr.ExitCode() == 1:
+		output = nil
+	default:
+		return false, fmt.Errorf("read global Git excludes setting: %w", err)
+	}
+	excludes := strings.TrimSpace(string(output))
+	if excludes == "" {
+		if xdg, ok := lookup("XDG_CONFIG_HOME"); ok && xdg != "" {
+			excludes = filepath.Join(xdg, "git", "ignore")
+		} else if home, ok := lookup("HOME"); ok && home != "" {
+			excludes = filepath.Join(home, ".config", "git", "ignore")
+		}
+	}
+	// A relative path would resolve inside the reviewed worktree.
+	if !filepath.IsAbs(excludes) {
+		return false, nil
+	}
+	resolved, err := filepath.EvalSymlinks(excludes)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("resolve global Git excludes file: %w", err)
+	}
+	if err := copyStableFile(filepath.Dir(resolved), filepath.Base(resolved), destination, metadataLimit); err != nil {
+		return false, fmt.Errorf("copy global Git excludes file: %w", err)
+	}
+	return true, nil
 }
 
 func rejectSplitIndex(path, objectFormat string) error {

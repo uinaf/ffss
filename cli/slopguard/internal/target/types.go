@@ -32,6 +32,9 @@ type Options struct {
 	// an unchanged local target reproduce its snapshot hash; without one, each
 	// process draws its own.
 	StateKey []byte
+	// LookupEnv locates the user's global Git excludes file; nil uses the
+	// process environment.
+	LookupEnv func(string) (string, bool)
 }
 
 type Contributor struct {

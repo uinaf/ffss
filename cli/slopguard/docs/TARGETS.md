@@ -14,6 +14,9 @@ Slopguard resolves exactly one explicit target before invoking a provider:
   global configuration, external diffs, text conversion, and filesystem
   monitors disabled where applicable. Lazy fetch is off, so a missing object
   in a partial clone fails the target instead of contacting a promisor remote.
+- Untracked files honor the user's global excludes (`core.excludesFile` from
+  the user's global config, else `$XDG_CONFIG_HOME/git/ignore` or
+  `~/.config/git/ignore`), copied into the isolated Git directory below.
 - Content-producing commands use an isolated temporary Git directory, a copied
   index that preserves the original index mtime (so Git's racy-git checks stay
   valid), empty attribute source, and read-only access to the repository

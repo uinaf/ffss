@@ -1775,6 +1775,67 @@ func TestFreezeRejectsSourceFileWithEnvironmentName(t *testing.T) {
 	}
 }
 
+// Local mode sends only untracked files the user's own Git does not ignore,
+// including files ignored only by the user's global excludes.
+func TestFreezeHonorsUserGlobalExcludes(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name  string
+		setup func(t *testing.T, home string) map[string]string
+	}{
+		{name: "default ignore file", setup: func(t *testing.T, home string) map[string]string {
+			writeFile(t, home, ".config/git/ignore", "local-notes.txt\n")
+			return map[string]string{"HOME": home}
+		}},
+		{name: "XDG ignore file", setup: func(t *testing.T, home string) map[string]string {
+			writeFile(t, home, "xdg/git/ignore", "local-notes.txt\n")
+			return map[string]string{"HOME": home, "XDG_CONFIG_HOME": filepath.Join(home, "xdg")}
+		}},
+		{name: "symlinked core.excludesFile", setup: func(t *testing.T, home string) map[string]string {
+			writeFile(t, home, "dotfiles/ignore", "local-notes.txt\n")
+			if err := os.Symlink(filepath.Join(home, "dotfiles/ignore"), filepath.Join(home, "global-ignore")); err != nil {
+				t.Fatal(err)
+			}
+			writeFile(t, home, ".gitconfig", "[core]\n\texcludesFile = ~/global-ignore\n")
+			return map[string]string{"HOME": home}
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			repository := committedRepository(t)
+			writeFile(t, repository, "file.txt", "changed\n")
+			writeFile(t, repository, "local-notes.txt", "globally-ignored-marker\n")
+			environment := test.setup(t, t.TempDir())
+			collector, err := New(Options{LookupEnv: func(name string) (string, bool) {
+				value, ok := environment[name]
+				return value, ok
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			bundle, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := targetPaths(bundle.Target()); !equalStrings(got, []string{"file.txt"}) {
+				t.Fatalf("target paths = %v", got)
+			}
+			if strings.Contains(bundle.Payload(), "globally-ignored-marker") {
+				t.Fatal("payload contains a globally ignored file")
+			}
+			snapshot := t.TempDir()
+			if err := bundle.ExportSnapshot(context.Background(), snapshot); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(filepath.Join(snapshot, "local-notes.txt")); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("snapshot contains a globally ignored file: %v", err)
+			}
+		})
+	}
+}
+
 func TestTextWithNULsKeepsRealBinariesBinary(t *testing.T) {
 	t.Parallel()
 
@@ -1800,7 +1861,7 @@ func TestTextWithNULsKeepsRealBinariesBinary(t *testing.T) {
 
 func newCollector(t *testing.T) *Collector {
 	t.Helper()
-	collector, err := New(Options{})
+	collector, err := New(Options{LookupEnv: noEnvironment})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1828,12 +1889,15 @@ func preparedCollectorWithGitWrapper(t *testing.T) (*Collector, string, string) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	collector, err := NewContext(context.Background(), Options{Context: repositoryContext})
+	collector, err := NewContext(context.Background(), Options{Context: repositoryContext, LookupEnv: noEnvironment})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return collector, repository, gitPath
 }
+
+// noEnvironment keeps the developer's global Git excludes out of tests.
+func noEnvironment(string) (string, bool) { return "", false }
 
 func mutateExecutablePreservingMetadata(t *testing.T, path string) {
 	t.Helper()
