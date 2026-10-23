@@ -201,9 +201,10 @@ func repositoryBoundariesForPaths(absolute, resolved string) ([]string, error) {
 }
 
 // ValidateOutsideRepository returns the resolved executable when neither its
-// path nor its target lies inside the reviewed directory or an enclosing Git
-// worktree. Containment compares file identity, so case-insensitive and
-// firmlink spellings of the repository cannot slip past it.
+// path nor its target lies inside the reviewed directory. Containment compares
+// file identity, so case-insensitive and firmlink spellings of the repository
+// cannot slip past it. Enclosing worktrees are not boundaries here: a dotfiles
+// repository at the home directory would reject every user-installed provider.
 func ValidateOutsideRepository(path, repository string) (string, error) {
 	absolute, err := filepath.Abs(repository)
 	if err != nil {
@@ -213,17 +214,7 @@ func ValidateOutsideRepository(path, repository string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve reviewed repository: %w", err)
 	}
-	boundaries := []string{absolute, resolved}
-	for _, root := range []string{absolute, resolved} {
-		boundary, err := outermostWorktree(root)
-		if err != nil {
-			return "", err
-		}
-		if boundary != "" {
-			boundaries = append(boundaries, boundary)
-		}
-	}
-	return validate(path, boundaries)
+	return validate(path, []string{absolute, resolved})
 }
 
 func outermostWorktree(root string) (string, error) {

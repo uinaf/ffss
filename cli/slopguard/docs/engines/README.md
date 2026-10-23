@@ -23,9 +23,9 @@ report, retry, or mutate the reviewed repository. Orchestration owns target
 collection, the one configured protocol retry, and final report construction.
 
 The runtime resolves the selected executable to a regular executable outside
-the reviewed repository and any enclosing Git worktree, comparing directories
-by file identity so case and firmlink spellings of the repository match, and
-invokes it directly with an argument array.
+the reviewed repository, comparing directories by file identity so case and
+firmlink spellings of the repository match, and invokes it directly with an
+argument array.
 Repository material goes on standard input or through a private temporary
 prompt file, never in process arguments.
 

@@ -58,26 +58,28 @@ func TestDiscoverExecutableRejectsRepositoryAliasOnPATH(t *testing.T) {
 	}
 }
 
-func TestDiscoverExecutableRejectsEnclosingWorktree(t *testing.T) {
+// A dotfiles repository at the home directory must not reject providers
+// installed under it while a nested project is reviewed.
+func TestDiscoverExecutableAcceptsEnclosingHomeWorktree(t *testing.T) {
 	t.Parallel()
 
-	outer := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(outer, ".git"), 0o700); err != nil {
+	home := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(home, ".git"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	nested := filepath.Join(outer, "vendor", "lib")
-	if err := os.MkdirAll(filepath.Join(nested, ".git"), 0o700); err != nil {
+	repository := filepath.Join(home, "projects", "app")
+	if err := os.MkdirAll(filepath.Join(repository, ".git"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(outer, "bin", "codex")
+	path := filepath.Join(home, ".local", "bin", "claude")
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := discoverExecutable("codex", nested, []string{"PATH=" + filepath.Dir(path)}); err == nil {
-		t.Fatal("discoverExecutable() accepted an executable in the enclosing worktree")
+	if _, err := discoverExecutable("claude", repository, []string{"PATH=" + filepath.Dir(path)}); err != nil {
+		t.Fatalf("discoverExecutable() rejected a provider under an enclosing home worktree: %v", err)
 	}
 }
 
