@@ -15,6 +15,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -433,16 +434,18 @@ func copyStableFile(root, relative, destination string, limit int64) error {
 }
 
 type deletedBlob struct {
-	path string
-	oid  string
+	path    string
+	oid     string
+	section int
 }
 
 // changedPaths returns the changed paths of each diff command in section order.
 func (collector *Collector) changedPaths(ctx context.Context, root string, plan *targetPlan, maxBytes int64) ([][]string, []deletedBlob, error) {
 	var commandPaths [][]string
 	binaries := map[string]struct{}{}
+	var binarySides []changedSide
 	var inventoryBytes int64
-	for _, arguments := range diffCommands(plan, "--numstat", "-z") {
+	for section, arguments := range diffCommands(plan, "--numstat", "-z") {
 		var paths []string
 		parser := &nulRecordWriter{handle: func(record []byte) error {
 			fields := bytes.SplitN(record, []byte{'\t'}, 3)
@@ -451,6 +454,7 @@ func (collector *Collector) changedPaths(ctx context.Context, root string, plan 
 			}
 			if string(fields[0]) == "-" && string(fields[1]) == "-" {
 				binaries[string(fields[2])] = struct{}{}
+				binarySides = append(binarySides, changedSide{path: string(fields[2]), section: section})
 			} else if _, err := strconv.ParseInt(string(fields[0]), 10, 64); err != nil {
 				return fmt.Errorf("git numstat returned invalid addition count")
 			} else if _, err := strconv.ParseInt(string(fields[1]), 10, 64); err != nil {
@@ -474,6 +478,9 @@ func (collector *Collector) changedPaths(ctx context.Context, root string, plan 
 	}
 	deleted, err := collector.inspectRawModes(ctx, root, plan)
 	if err != nil {
+		return nil, nil, err
+	}
+	if err := collector.rejectTextWithNULs(ctx, root, plan, binarySides, deleted); err != nil {
 		return nil, nil, err
 	}
 	textDeleted := deleted[:0]
@@ -505,7 +512,7 @@ func (collector *Collector) explainMissingObject(ctx context.Context, root strin
 
 func (collector *Collector) inspectRawModes(ctx context.Context, root string, plan *targetPlan) ([]deletedBlob, error) {
 	var deleted []deletedBlob
-	for _, arguments := range diffCommands(plan, "--raw", "--abbrev=64", "-z") {
+	for section, arguments := range diffCommands(plan, "--raw", "--abbrev=64", "-z") {
 		var rawHeader []byte
 		parser := &nulRecordWriter{handle: func(record []byte) error {
 			if rawHeader == nil {
@@ -524,7 +531,7 @@ func (collector *Collector) inspectRawModes(ctx context.Context, root string, pl
 				return fmt.Errorf("gitlink input %q is unsupported", path)
 			}
 			if newMode == "000000" {
-				deleted = append(deleted, deletedBlob{path: path, oid: header[2]})
+				deleted = append(deleted, deletedBlob{path: path, oid: header[2], section: section})
 			}
 			return nil
 		}}
@@ -539,6 +546,80 @@ func (collector *Collector) inspectRawModes(ctx context.Context, root string, pl
 		}
 	}
 	return deleted, nil
+}
+
+type changedSide struct {
+	path    string
+	section int
+}
+
+// rejectTextWithNULs fails the target when Git classified a changed file as
+// binary only because of NUL bytes. Its content would be withheld from the
+// reviewer while the review could still report clean.
+func (collector *Collector) rejectTextWithNULs(ctx context.Context, root string, plan *targetPlan, sides []changedSide, deleted []deletedBlob) error {
+	for _, side := range sides {
+		if slices.ContainsFunc(deleted, func(blob deletedBlob) bool { return blob.path == side.path && blob.section == side.section }) {
+			continue
+		}
+		if err := protocolPath(side.path); err != nil {
+			return fmt.Errorf("changed path %q: %w", side.path, err)
+		}
+		var head []byte
+		if plan.local && side.section == 1 {
+			file, _, err := openRegularFile(root, side.path)
+			if err != nil {
+				return fmt.Errorf("read changed file %q: %w", side.path, err)
+			}
+			head, err = io.ReadAll(io.LimitReader(file, binarySniffBytes))
+			_ = file.Close()
+			if err != nil {
+				return fmt.Errorf("read changed file %q: %w", side.path, err)
+			}
+		} else {
+			object := ":" + side.path
+			if !plan.local {
+				object = plan.newRevision + ":" + side.path
+			}
+			output := &headWriter{limit: binarySniffBytes}
+			if err := collector.git.runSandboxTo(ctx, root, plan.sandbox, nil, output, "cat-file", "blob", object); err != nil {
+				return fmt.Errorf("read changed blob %q: %w", side.path, err)
+			}
+			head = output.head
+		}
+		if textWithNULs(head) {
+			return fmt.Errorf("changed file %q is text with NUL bytes, so its content would be withheld from review", side.path)
+		}
+	}
+	return nil
+}
+
+// textWithNULs reports whether content is valid UTF-8 apart from a few NUL
+// bytes. UTF-16 text and real binaries stay binary.
+func textWithNULs(head []byte) bool {
+	nuls := bytes.Count(head, []byte{0})
+	if nuls == 0 || nuls*8 >= len(head) {
+		return false
+	}
+	text := bytes.ReplaceAll(head, []byte{0}, nil)
+	if len(head) == binarySniffBytes {
+		// The sniff window may end inside a multi-byte character.
+		for trim := 0; trim < utf8.UTFMax && len(text) > 0 && !utf8.Valid(text); trim++ {
+			text = text[:len(text)-1]
+		}
+	}
+	return utf8.Valid(text)
+}
+
+type headWriter struct {
+	limit int
+	head  []byte
+}
+
+func (writer *headWriter) Write(data []byte) (int, error) {
+	if room := writer.limit - len(writer.head); room > 0 {
+		writer.head = append(writer.head, data[:min(room, len(data))]...)
+	}
+	return len(data), nil
 }
 
 func diffCommands(plan *targetPlan, format ...string) [][]string {
@@ -573,6 +654,9 @@ func (collector *Collector) untrackedFiles(ctx context.Context, root string, pla
 		}
 		if !budget.Exceeded() {
 			summary, binary, err := summarizeBinaryFile(ctx, root, path)
+			if errors.Is(err, errTextWithNULs) && environmentFilePath(path) {
+				return fmt.Errorf("binary environment file %q is not reviewable", path)
+			}
 			if err != nil {
 				return fmt.Errorf("read untracked file %q: %w", path, err)
 			}
@@ -1010,6 +1094,8 @@ func readContainedFile(root, relative string, retainLimit int64) ([]byte, int64,
 	return content, before.Size(), nil
 }
 
+var errTextWithNULs = errors.New("text with NUL bytes would be withheld from review")
+
 // binarySniffBytes matches Git's buffer_is_binary heuristic: a NUL byte in the
 // first 8000 bytes marks the content as binary.
 const binarySniffBytes = 8000
@@ -1030,6 +1116,9 @@ func summarizeBinaryFile(ctx context.Context, root, relative string) ([]byte, bo
 	}
 	if bytes.IndexByte(head[:read], 0) < 0 {
 		return nil, false, nil
+	}
+	if textWithNULs(head[:read]) {
+		return nil, false, errTextWithNULs
 	}
 	if before.Size() > MaximumMaxBytes {
 		return nil, false, fmt.Errorf("binary file of %d bytes exceeds hashing limit of %d bytes", before.Size(), MaximumMaxBytes)

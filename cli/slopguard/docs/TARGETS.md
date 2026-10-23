@@ -50,7 +50,8 @@ boundary without first distilling and authorizing it.
   IDs, and untracked files as an `UNTRUSTED-BINARY-FILE` section carrying only
   size and SHA-256. Both still bind the snapshot, so later edits invalidate
   the result. Untracked binaries above 128 MiB fail closed rather than being
-  hashed.
+  hashed. A changed file that is valid UTF-8 apart from a few NUL bytes fails
+  closed instead, so one NUL byte cannot hide a script from the reviewer.
 - Invalid UTF-8 text, binary context files, sensitive paths, gitlinks (mode 160000 /
   submodules), symlink escapes, merge commits, unsafe revisions, FIFOs and
   other special files, context-path symlinks, and incomplete file reads fail

@@ -1714,6 +1714,69 @@ func TestFreezeRejectsTrackedFIFO(t *testing.T) {
 	}
 }
 
+// One NUL byte must not turn a script into a binary whose content the
+// reviewer never sees.
+func TestFreezeRejectsTextHiddenAsBinary(t *testing.T) {
+	t.Parallel()
+
+	script := []byte("#!/bin/sh\n# \x00\necho hidden-marker\n")
+	for _, test := range []struct {
+		name    string
+		prepare func(t *testing.T, repository string)
+		request Request
+	}{
+		{name: "branch", request: Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "run.sh", script)
+			gitCommand(t, repository, "add", "run.sh")
+			gitCommand(t, repository, "commit", "-m", "hide")
+		}},
+		{name: "staged", request: Request{Mode: protocol.TargetLocal}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "run.sh", script)
+			gitCommand(t, repository, "add", "run.sh")
+		}},
+		{name: "unstaged", request: Request{Mode: protocol.TargetLocal}, prepare: func(t *testing.T, repository string) {
+			writeFile(t, repository, "file.txt", "base\n# \x00\necho hidden-marker\n")
+		}},
+		{name: "untracked", request: Request{Mode: protocol.TargetLocal}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "run.sh", script)
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			repository := committedRepository(t)
+			test.prepare(t, repository)
+			_, err := newCollector(t).Freeze(context.Background(), repository, test.request)
+			if err == nil || !strings.Contains(err.Error(), "NUL bytes") {
+				t.Fatalf("Freeze() error = %v", err)
+			}
+		})
+	}
+}
+
+func TestTextWithNULsKeepsRealBinariesBinary(t *testing.T) {
+	t.Parallel()
+
+	utf16 := []byte{}
+	for _, character := range "echo utf-16 text\n" {
+		utf16 = append(utf16, byte(character), 0)
+	}
+	for _, test := range []struct {
+		name string
+		head []byte
+		want bool
+	}{
+		{name: "script with NUL", head: []byte("#!/bin/sh\n# \x00\necho x\n"), want: true},
+		{name: "png", head: []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")},
+		{name: "utf-16", head: utf16},
+		{name: "no NUL", head: []byte("plain text\n")},
+	} {
+		if got := textWithNULs(test.head); got != test.want {
+			t.Errorf("%s: textWithNULs() = %v, want %v", test.name, got, test.want)
+		}
+	}
+}
+
 func newCollector(t *testing.T) *Collector {
 	t.Helper()
 	collector, err := New(Options{})
