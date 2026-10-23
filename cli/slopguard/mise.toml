@@ -125,11 +125,12 @@ set -e
 # Eval fixtures are code slopguard reviews, not code it runs.
 test -z "$(git ls-files -- '*.py' '*.pyc' '*.pyo' ':!:evals/testdata/')"
 command -v rg >/dev/null
-if rg -n --glob '*.go' '(python([0-9.]*)?|\.py([^A-Za-z0-9_]|$))' cmd internal schema; then
+# A line marked "go-only: data" names Python as data, such as a file extension.
+matches=$(rg -n --glob '*.go' '(python([0-9.]*)?|\.py([^A-Za-z0-9_]|$))' cmd internal schema || test $? -eq 1)
+violations=$(printf '%s\n' "$matches" | grep -v 'go-only: data' || true)
+if [ -n "$violations" ]; then
+  printf '%s\n' "$violations"
   exit 1
-else
-  rg_status=$?
-  test "$rg_status" -eq 1
 fi
 '''
 

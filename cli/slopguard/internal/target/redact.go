@@ -43,7 +43,8 @@ var sourceExtensions = map[string]struct{}{
 	".exs": {}, ".fish": {}, ".fs": {}, ".go": {}, ".gradle": {}, ".groovy": {}, ".h": {},
 	".hpp": {}, ".hs": {}, ".java": {}, ".jl": {}, ".js": {}, ".jsx": {}, ".kt": {},
 	".kts": {}, ".lua": {}, ".m": {}, ".mjs": {}, ".mm": {}, ".mts": {}, ".php": {},
-	".pl": {}, ".pm": {}, ".ps1": {}, ".py": {}, ".r": {}, ".rb": {}, ".rs": {},
+	".pl": {}, ".pm": {}, ".ps1": {}, ".r": {}, ".rb": {}, ".rs": {},
+	".py":    {}, // go-only: data, an extension name rather than a runtime
 	".scala": {}, ".sh": {}, ".swift": {}, ".ts": {}, ".tsx": {}, ".vb": {}, ".zig": {},
 	".zsh": {},
 }
