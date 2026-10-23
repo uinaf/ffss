@@ -21,17 +21,18 @@ var environmentAssignment = regexp.MustCompile(`^[ \t]*(?:export[ \t]+)?[A-Za-z_
 // code, which redaction would hide from the reviewer, so it stays sensitive.
 func environmentFilePath(value string) bool {
 	base := strings.ToLower(path.Base(value))
-	if _, source := environmentSourceExtensions[path.Ext(base)]; source {
+	if _, source := sourceExtensions[path.Ext(base)]; source {
 		return false
 	}
 	return (base == ".env" || strings.HasPrefix(base, ".env.")) && !environmentTemplatePath(value)
 }
 
-var environmentSourceExtensions = map[string]struct{}{
-	".bash": {}, ".cjs": {}, ".cs": {}, ".go": {}, ".java": {}, ".js": {}, ".jsx": {},
-	".kt": {}, ".lua": {}, ".mjs": {}, ".mts": {}, ".cts": {}, ".php": {}, ".pl": {},
-	".ps1": {}, ".py": {}, ".rb": {}, ".rs": {}, ".sh": {}, ".swift": {}, ".ts": {},
-	".tsx": {}, ".zsh": {},
+// sourceExtensions name files an interpreter or compiler loads as code.
+var sourceExtensions = map[string]struct{}{
+	".bash": {}, ".bat": {}, ".cjs": {}, ".cmd": {}, ".cs": {}, ".cts": {}, ".fish": {},
+	".go": {}, ".java": {}, ".js": {}, ".jsx": {}, ".kt": {}, ".lua": {}, ".mjs": {},
+	".mts": {}, ".php": {}, ".pl": {}, ".ps1": {}, ".py": {}, ".rb": {}, ".rs": {},
+	".sh": {}, ".swift": {}, ".ts": {}, ".tsx": {}, ".zsh": {},
 }
 
 func reviewablePath(value string) bool {

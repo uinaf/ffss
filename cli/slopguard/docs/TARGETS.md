@@ -53,8 +53,11 @@ boundary without first distilling and authorizing it.
   IDs, and untracked files as an `UNTRUSTED-BINARY-FILE` section carrying only
   size and SHA-256. Both still bind the snapshot, so later edits invalidate
   the result. Untracked binaries above 128 MiB fail closed rather than being
-  hashed. A changed file that is valid UTF-8 apart from a few NUL bytes fails
-  closed instead, so one NUL byte cannot hide a script from the reviewer.
+  hashed. A binary-classified changed or untracked file fails closed instead
+  when it looks like code: valid UTF-8 apart from a few NUL bytes, a `#!`
+  first line, a source extension such as `.sh` or `.js`, or an executable
+  mode. Other binaries stay summarized, so reviewed code that loads one by
+  path is the reviewer's to question.
 - Invalid UTF-8 text, binary context files, sensitive paths, gitlinks (mode 160000 /
   submodules), symlink escapes, merge commits, unsafe revisions, FIFOs and
   other special files, context-path symlinks, and incomplete file reads fail

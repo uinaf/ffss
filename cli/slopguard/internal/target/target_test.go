@@ -1740,6 +1740,23 @@ func TestFreezeRejectsTextHiddenAsBinary(t *testing.T) {
 		{name: "untracked", request: Request{Mode: protocol.TargetLocal}, prepare: func(t *testing.T, repository string) {
 			writeBytes(t, repository, "run.sh", script)
 		}},
+		// Invalid UTF-8 defeats the content check; the name still marks code.
+		{name: "source extension with junk", request: Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "run.sh", []byte("echo hidden-marker\n# \x00\xff\n"))
+			gitCommand(t, repository, "add", "run.sh")
+			gitCommand(t, repository, "commit", "-m", "hide")
+		}},
+		{name: "shebang with junk", request: Request{Mode: protocol.TargetLocal}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "bin/deploy", []byte("#!/bin/sh\n# \x00\xff\necho hidden-marker\n"))
+		}},
+		{name: "executable", request: Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "tool", []byte("\x00\xff\xfe junk\necho hidden-marker\n"))
+			if err := os.Chmod(filepath.Join(repository, "tool"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			gitCommand(t, repository, "add", "tool")
+			gitCommand(t, repository, "commit", "-m", "hide")
+		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -1747,7 +1764,7 @@ func TestFreezeRejectsTextHiddenAsBinary(t *testing.T) {
 			repository := committedRepository(t)
 			test.prepare(t, repository)
 			_, err := newCollector(t).Freeze(context.Background(), repository, test.request)
-			if err == nil || !strings.Contains(err.Error(), "NUL bytes") {
+			if err == nil || !strings.Contains(err.Error(), "withheld from review") {
 				t.Fatalf("Freeze() error = %v", err)
 			}
 		})

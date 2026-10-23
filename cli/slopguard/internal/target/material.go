@@ -586,11 +586,11 @@ func (collector *Collector) changedPaths(ctx context.Context, root string, plan 
 		}
 		commandPaths = append(commandPaths, paths)
 	}
-	deleted, err := collector.inspectRawModes(ctx, root, plan)
+	deleted, modes, err := collector.inspectRawModes(ctx, root, plan)
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := collector.rejectTextWithNULs(ctx, root, plan, binarySides, deleted); err != nil {
+	if err := collector.rejectWithheldCode(ctx, root, plan, binarySides, deleted, modes); err != nil {
 		return nil, nil, err
 	}
 	textDeleted := deleted[:0]
@@ -620,8 +620,9 @@ func (collector *Collector) explainMissingObject(ctx context.Context, root strin
 		"so lazily fetched objects are unavailable (hydrate it with: git -C %s fetch --refetch origin)", err, root)
 }
 
-func (collector *Collector) inspectRawModes(ctx context.Context, root string, plan *targetPlan) ([]deletedBlob, error) {
+func (collector *Collector) inspectRawModes(ctx context.Context, root string, plan *targetPlan) ([]deletedBlob, map[changedSide]string, error) {
 	var deleted []deletedBlob
+	modes := map[changedSide]string{}
 	for section, arguments := range diffCommands(plan, "--raw", "--abbrev=64", "-z") {
 		var rawHeader []byte
 		parser := &nulRecordWriter{handle: func(record []byte) error {
@@ -643,19 +644,20 @@ func (collector *Collector) inspectRawModes(ctx context.Context, root string, pl
 			if newMode == "000000" {
 				deleted = append(deleted, deletedBlob{path: path, oid: header[2], section: section})
 			}
+			modes[changedSide{path: path, section: section}] = newMode
 			return nil
 		}}
 		if err := collector.git.runSandboxWithAttributesTo(ctx, root, plan.sandbox, nil, parser, arguments...); err != nil {
-			return nil, fmt.Errorf("inspect changed modes: %w", err)
+			return nil, nil, fmt.Errorf("inspect changed modes: %w", err)
 		}
 		if err := parser.Err(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if rawHeader != nil {
-			return nil, fmt.Errorf("git raw diff returned incomplete record")
+			return nil, nil, fmt.Errorf("git raw diff returned incomplete record")
 		}
 	}
-	return deleted, nil
+	return deleted, modes, nil
 }
 
 type changedSide struct {
@@ -663,10 +665,10 @@ type changedSide struct {
 	section int
 }
 
-// rejectTextWithNULs fails the target when Git classified a changed file as
-// binary only because of NUL bytes. Its content would be withheld from the
+// rejectWithheldCode fails the target when Git classified a changed file as
+// binary but the file looks like code. Its content would be withheld from the
 // reviewer while the review could still report clean.
-func (collector *Collector) rejectTextWithNULs(ctx context.Context, root string, plan *targetPlan, sides []changedSide, deleted []deletedBlob) error {
+func (collector *Collector) rejectWithheldCode(ctx context.Context, root string, plan *targetPlan, sides []changedSide, deleted []deletedBlob, modes map[changedSide]string) error {
 	for _, side := range sides {
 		if slices.ContainsFunc(deleted, func(blob deletedBlob) bool { return blob.path == side.path && blob.section == side.section }) {
 			continue
@@ -696,11 +698,27 @@ func (collector *Collector) rejectTextWithNULs(ctx context.Context, root string,
 			}
 			head = output.head
 		}
-		if textWithNULs(head) {
-			return fmt.Errorf("changed file %q is text with NUL bytes, so its content would be withheld from review", side.path)
+		if reason := withheldCodeReason(side.path, modes[side] == "100755", head); reason != "" {
+			return fmt.Errorf("changed file %q %s, but Git treats it as binary, so its content would be withheld from review", side.path, reason)
 		}
 	}
 	return nil
+}
+
+// withheldCodeReason reports why a file Git treats as binary may be code.
+// Metadata checks hold even when junk bytes defeat the content check.
+func withheldCodeReason(name string, executable bool, head []byte) string {
+	switch _, source := sourceExtensions[strings.ToLower(path.Ext(name))]; {
+	case textWithNULs(head):
+		return "is text with NUL bytes"
+	case bytes.HasPrefix(head, []byte("#!")):
+		return "starts with #!"
+	case source:
+		return "has a source extension"
+	case executable:
+		return "is executable"
+	}
+	return ""
 }
 
 // textWithNULs reports whether content is valid UTF-8 apart from a few NUL
@@ -764,7 +782,7 @@ func (collector *Collector) untrackedFiles(ctx context.Context, root string, pla
 		}
 		if !budget.Exceeded() {
 			summary, binary, err := summarizeBinaryFile(ctx, root, path)
-			if errors.Is(err, errTextWithNULs) && environmentFilePath(path) {
+			if errors.Is(err, errWithheldCode) && environmentFilePath(path) {
 				return fmt.Errorf("binary environment file %q is not reviewable", path)
 			}
 			if err != nil {
@@ -1204,7 +1222,7 @@ func readContainedFile(root, relative string, retainLimit int64) ([]byte, int64,
 	return content, before.Size(), nil
 }
 
-var errTextWithNULs = errors.New("text with NUL bytes would be withheld from review")
+var errWithheldCode = errors.New("code in a binary file would be withheld from review")
 
 // binarySniffBytes matches Git's buffer_is_binary heuristic: a NUL byte in the
 // first 8000 bytes marks the content as binary.
@@ -1227,8 +1245,8 @@ func summarizeBinaryFile(ctx context.Context, root, relative string) ([]byte, bo
 	if bytes.IndexByte(head[:read], 0) < 0 {
 		return nil, false, nil
 	}
-	if textWithNULs(head[:read]) {
-		return nil, false, errTextWithNULs
+	if reason := withheldCodeReason(relative, before.Mode().Perm()&0o111 != 0, head[:read]); reason != "" {
+		return nil, false, fmt.Errorf("file %s: %w", reason, errWithheldCode)
 	}
 	if before.Size() > MaximumMaxBytes {
 		return nil, false, fmt.Errorf("binary file of %d bytes exceeds hashing limit of %d bytes", before.Size(), MaximumMaxBytes)
