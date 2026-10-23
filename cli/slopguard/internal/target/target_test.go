@@ -1749,6 +1749,13 @@ func TestFreezeRejectsTextHiddenAsBinary(t *testing.T) {
 		{name: "shebang with junk", request: Request{Mode: protocol.TargetLocal}, prepare: func(t *testing.T, repository string) {
 			writeBytes(t, repository, "bin/deploy", []byte("#!/bin/sh\n# \x00\xff\necho hidden-marker\n"))
 		}},
+		{name: "binary replaced by text", request: Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "Makefile", []byte("\x89PNG\x00\xff"))
+			gitCommand(t, repository, "add", "Makefile")
+			gitCommand(t, repository, "commit", "-m", "binary")
+			writeFile(t, repository, "Makefile", "all:\n\techo hidden-marker\n")
+			gitCommand(t, repository, "commit", "-am", "hide")
+		}},
 		{name: "executable", request: Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}, prepare: func(t *testing.T, repository string) {
 			writeBytes(t, repository, "tool", []byte("\x00\xff\xfe junk\necho hidden-marker\n"))
 			if err := os.Chmod(filepath.Join(repository, "tool"), 0o755); err != nil {
@@ -1906,6 +1913,43 @@ func TestFreezeResolvesGlobalExcludesPerRepository(t *testing.T) {
 		if got := targetPaths(bundle.Target()); !equalStrings(got, test.want) {
 			t.Fatalf("%s: target paths = %v, want %v", test.repository, got, test.want)
 		}
+	}
+}
+
+// An empty GIT_CONFIG_GLOBAL disables the user's config file, as it does for
+// the user's own Git.
+func TestFreezeHonorsEmptyGlobalConfigOverride(t *testing.T) {
+	t.Parallel()
+
+	repository := committedRepository(t)
+	writeFile(t, repository, "file.txt", "changed\n")
+	writeFile(t, repository, "local-notes.txt", "notes\n")
+	home := t.TempDir()
+	writeFile(t, home, "ignore-rules", "local-notes.txt\n")
+	writeFile(t, home, ".gitconfig", "[core]\n\texcludesFile = ~/ignore-rules\n")
+	environment := map[string]string{"HOME": home, "GIT_CONFIG_GLOBAL": ""}
+	collector, err := New(Options{LookupEnv: func(name string) (string, bool) {
+		value, ok := environment[name]
+		return value, ok
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle, err := collector.Freeze(context.Background(), repository, Request{Mode: protocol.TargetLocal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := targetPaths(bundle.Target()); !equalStrings(got, []string{"file.txt", "local-notes.txt"}) {
+		t.Fatalf("target paths = %v", got)
+	}
+}
+
+func TestGitConfigQuoteEscapesSyntax(t *testing.T) {
+	t.Parallel()
+
+	got := gitConfigQuote("/tmp/a\"b\\c\nd")
+	if want := `"/tmp/a\"b\\c\nd"`; got != want {
+		t.Fatalf("gitConfigQuote() = %s, want %s", got, want)
 	}
 }
 

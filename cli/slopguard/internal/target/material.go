@@ -276,10 +276,10 @@ func (collector *Collector) newGitSandbox(ctx context.Context, root string, incl
 	return sandbox, nil
 }
 
-// gitConfigQuote quotes a value for a Git config file, which understands only
-// backslash and double-quote escapes inside quotes.
+// gitConfigQuote quotes a value for a Git config file, escaping the
+// characters its syntax cannot hold literally.
 func gitConfigQuote(value string) string {
-	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(value) + `"`
+	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`, "\t", `\t`, "\b", `\b`).Replace(value) + `"`
 }
 
 // globalExcludes holds the user's global excludes file, read once per
@@ -310,7 +310,8 @@ func (collector *Collector) readGlobalExcludes(ctx context.Context, root string)
 	environment := []string{"GIT_CONFIG_SYSTEM=/dev/null", "GIT_CONFIG_NOSYSTEM=1", "GIT_NO_LAZY_FETCH=1", "LANG=C", "LC_ALL=C"}
 	user := false
 	for _, name := range []string{"HOME", "XDG_CONFIG_HOME", "GIT_CONFIG_GLOBAL"} {
-		if value, ok := lookup(name); ok && value != "" {
+		// An empty GIT_CONFIG_GLOBAL deliberately disables the user's config.
+		if value, ok := lookup(name); ok && (value != "" || name == "GIT_CONFIG_GLOBAL") {
 			environment = append(environment, name+"="+value)
 			user = true
 		}
@@ -718,6 +719,9 @@ func (collector *Collector) rejectWithheldCode(ctx context.Context, root string,
 // Metadata checks hold even when junk bytes defeat the content check.
 func withheldCodeReason(name string, executable bool, head []byte) string {
 	switch _, source := sourceExtensions[strings.ToLower(path.Ext(name))]; {
+	case bytes.IndexByte(head, 0) < 0:
+		// Git calls the pair binary only because the old side was.
+		return "is text"
 	case textWithNULs(head):
 		return "is text with NUL bytes"
 	case bytes.HasPrefix(head, []byte("#!")):
