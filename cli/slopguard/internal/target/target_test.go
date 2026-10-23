@@ -1815,6 +1815,11 @@ func TestFreezeHonorsUserGlobalExcludes(t *testing.T) {
 			writeFile(t, home, ".gitconfig", "[include]\n\tpath = ~/.gitconfig-shared\n")
 			return map[string]string{"HOME": home}
 		}},
+		{name: "path ending in a space", setup: func(t *testing.T, home string) map[string]string {
+			writeFile(t, home, "ignore ", "local-notes.txt\n")
+			writeFile(t, home, ".gitconfig", "[core]\n\texcludesFile = \"~/ignore \"\n")
+			return map[string]string{"HOME": home}
+		}},
 		{name: "symlinked core.excludesFile", setup: func(t *testing.T, home string) map[string]string {
 			writeFile(t, home, "dotfiles/ignore", "local-notes.txt\n")
 			if err := os.Symlink(filepath.Join(home, "dotfiles/ignore"), filepath.Join(home, "global-ignore")); err != nil {
@@ -1856,6 +1861,51 @@ func TestFreezeHonorsUserGlobalExcludes(t *testing.T) {
 				t.Fatalf("snapshot contains a globally ignored file: %v", err)
 			}
 		})
+	}
+}
+
+// An unbound collector prepares each repository separately, so includeIf
+// rules keyed to one repository do not leak into the next.
+func TestFreezeResolvesGlobalExcludesPerRepository(t *testing.T) {
+	t.Parallel()
+
+	first := committedRepository(t)
+	second := committedRepository(t)
+	for _, repository := range []string{first, second} {
+		writeFile(t, repository, "file.txt", "changed\n")
+		writeFile(t, repository, "local-notes.txt", "notes\n")
+	}
+	home := t.TempDir()
+	writeFile(t, home, "second-ignore", "local-notes.txt\n")
+	writeFile(t, home, "second.gitconfig", "[core]\n\texcludesFile = "+filepath.Join(home, "second-ignore")+"\n")
+	secondGitDir, err := filepath.EvalSymlinks(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, home, ".gitconfig", "[includeIf \"gitdir:"+secondGitDir+"/\"]\n\tpath = "+filepath.Join(home, "second.gitconfig")+"\n")
+	collector, err := New(Options{LookupEnv: func(name string) (string, bool) {
+		if name == "HOME" {
+			return home, true
+		}
+		return "", false
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		repository string
+		want       []string
+	}{
+		{repository: first, want: []string{"file.txt", "local-notes.txt"}},
+		{repository: second, want: []string{"file.txt"}},
+	} {
+		bundle, err := collector.Freeze(context.Background(), test.repository, Request{Mode: protocol.TargetLocal})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := targetPaths(bundle.Target()); !equalStrings(got, test.want) {
+			t.Fatalf("%s: target paths = %v, want %v", test.repository, got, test.want)
+		}
 	}
 }
 

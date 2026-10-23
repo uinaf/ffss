@@ -16,7 +16,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -322,7 +321,7 @@ func (collector *Collector) readGlobalExcludes(ctx context.Context, root string)
 	}
 	// --global turns include processing off unless asked; running in the
 	// reviewed root lets includeIf "gitdir:" rules match as they do for the user.
-	command := exec.CommandContext(ctx, collector.git.path, "-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "config", "--global", "--includes", "--get", "--path", "core.excludesFile")
+	command := exec.CommandContext(ctx, collector.git.path, "-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "config", "--global", "--includes", "--null", "--get", "--path", "core.excludesFile")
 	command.Dir = root
 	command.Env = environment
 	output, err := command.Output()
@@ -334,7 +333,7 @@ func (collector *Collector) readGlobalExcludes(ctx context.Context, root string)
 	default:
 		return nil, fmt.Errorf("read global Git excludes setting: %w", err)
 	}
-	excludes := strings.TrimSpace(string(output))
+	excludes := strings.TrimSuffix(string(output), "\x00")
 	if excludes == "" {
 		if xdg, ok := lookup("XDG_CONFIG_HOME"); ok && xdg != "" {
 			excludes = filepath.Join(xdg, "git", "ignore")
@@ -671,8 +670,12 @@ type changedSide struct {
 // binary but the file looks like code. Its content would be withheld from the
 // reviewer while the review could still report clean.
 func (collector *Collector) rejectWithheldCode(ctx context.Context, root string, plan *targetPlan, sides []changedSide, deleted []deletedBlob, modes map[changedSide]string) error {
+	removed := make(map[changedSide]struct{}, len(deleted))
+	for _, blob := range deleted {
+		removed[changedSide{path: blob.path, section: blob.section}] = struct{}{}
+	}
 	for _, side := range sides {
-		if slices.ContainsFunc(deleted, func(blob deletedBlob) bool { return blob.path == side.path && blob.section == side.section }) {
+		if _, gone := removed[side]; gone {
 			continue
 		}
 		if err := protocolPath(side.path); err != nil {
@@ -694,8 +697,12 @@ func (collector *Collector) rejectWithheldCode(ctx context.Context, root string,
 			if !plan.local {
 				object = plan.newRevision + ":" + side.path
 			}
-			output := &headWriter{limit: binarySniffBytes}
-			if err := collector.git.runSandboxTo(ctx, root, plan.sandbox, nil, output, "cat-file", "blob", object); err != nil {
+			// Stop Git once the sniff window is full instead of draining the blob.
+			readCtx, cancel := context.WithCancel(ctx)
+			output := &headWriter{limit: binarySniffBytes, full: cancel}
+			err := collector.git.runSandboxTo(readCtx, root, plan.sandbox, nil, output, "cat-file", "blob", object)
+			cancel()
+			if err != nil && !(output.filled && ctx.Err() == nil) {
 				return fmt.Errorf("read changed blob %q: %w", side.path, err)
 			}
 			head = output.head
@@ -741,13 +748,21 @@ func textWithNULs(head []byte) bool {
 }
 
 type headWriter struct {
-	limit int
-	head  []byte
+	limit  int
+	head   []byte
+	full   func()
+	filled bool
 }
 
 func (writer *headWriter) Write(data []byte) (int, error) {
 	if room := writer.limit - len(writer.head); room > 0 {
 		writer.head = append(writer.head, data[:min(room, len(data))]...)
+	}
+	if len(writer.head) == writer.limit && !writer.filled {
+		writer.filled = true
+		if writer.full != nil {
+			writer.full()
+		}
 	}
 	return len(data), nil
 }
