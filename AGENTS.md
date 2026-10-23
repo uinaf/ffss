@@ -11,7 +11,7 @@ install it.
 | [skills/](skills/) | Skill packages and their eval scenarios under `evals/` |
 | [cli/slopguard/](cli/slopguard/) | Go review CLI; its own [agent guide](cli/slopguard/AGENTS.md) and [contributing](cli/slopguard/CONTRIBUTING.md) |
 | [cli/lib/](cli/lib/) | Shared Go module for the CLIs, tagged `cli/lib/vX.Y.Z` ([README](cli/lib/README.md)) |
-| [rules/](rules/) | Global agent rules ([agents.md](rules/agents.md)) and a paste-ready reply style ([concise.md](rules/concise.md)) consumers fetch raw from `main`; skills must work without them |
+| [rules/](rules/) | Global agent rules, one standalone file per topic, that consumers fetch raw from `main` and combine in their own order; skills must work without them |
 | [plugin.json](plugin.json), [.claude-plugin/](.claude-plugin/), [.cursor-plugin/](.cursor-plugin/) | Portable, Claude, and Cursor plugin manifests (and Claude marketplace) |
 | [tools/skill-evals/](tools/skill-evals/) | npm surface for `skillcheck lint`; evals run outside this repo ([skill-evals](tools/skill-evals/README.md)) |
 

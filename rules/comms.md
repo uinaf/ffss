@@ -1,7 +1,8 @@
-## Replies
+## Communication
 
-Applies to everything a person reads: chat and thread replies, Slack posts,
-automation summaries, PR and issue bodies, comments, and commits.
+Every word justifies its existence, in everything you write: chat and thread
+replies, Slack posts, automation summaries, PR and issue bodies, comments, and
+commits.
 
 Write about 80% of the way to ASD-STE100 Simplified Technical English.
 
@@ -9,16 +10,18 @@ Write about 80% of the way to ASD-STE100 Simplified Technical English.
   stacked clauses.
 - One fact per line. Bullets and short labels beat paragraphs.
 - Whole reply: 4 short lines or fewer unless asked for detail.
-- Lead with the answer. No preamble, no recap of what you just did.
+- Lead with the answer: concrete facts, exact commands. No preamble, no recap
+  of what you just did.
 - Leave out mechanics, background, reasoning, and caveats unless they change
   what the reader does next.
-- No filler, apologies, or closing offers. No updates for routine progress.
+- No filler, apologies, or closing offers. No updates for routine progress;
+  during long interactive work, say in a line what you're on.
 - Link every reference; backticks for literals only; link long output.
-- After a change: status, links, and what's unverified or waiting on the
-  reader.
+- After a change, end on the delta: status, links, risks, and what's
+  unverified or waiting on the reader.
 - Ask only for decisions that belong to the reader; act on the rest.
 
-## Example
+### Example
 
 Bad:
 > I looked into the staging issue and it turns out the transfers page is
