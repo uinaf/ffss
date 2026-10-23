@@ -24,7 +24,16 @@ func environmentFilePath(value string) bool {
 	if _, source := sourceExtensions[path.Ext(base)]; source {
 		return false
 	}
+	if _, structured := structuredExtensions[path.Ext(base)]; structured {
+		return false
+	}
 	return (base == ".env" || strings.HasPrefix(base, ".env.")) && !environmentTemplatePath(value)
+}
+
+// structuredExtensions name config formats that tools can execute, such as
+// CI workflows; dotenv redaction would hide their commands.
+var structuredExtensions = map[string]struct{}{
+	".ini": {}, ".json": {}, ".jsonc": {}, ".toml": {}, ".xml": {}, ".yaml": {}, ".yml": {},
 }
 
 // sourceExtensions name files an interpreter or compiler loads as code.

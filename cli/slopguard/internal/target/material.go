@@ -353,6 +353,10 @@ func (collector *Collector) readGlobalExcludes(ctx context.Context, root string)
 	if err != nil {
 		return nil, fmt.Errorf("resolve global Git excludes file: %w", err)
 	}
+	// A dotfiles checkout under review could otherwise hide its own files.
+	if inside, err := directoryContains(root, resolved); err != nil || inside {
+		return nil, err
+	}
 	file, info, err := openRegularFile(filepath.Dir(resolved), filepath.Base(resolved))
 	if err != nil {
 		return nil, fmt.Errorf("open global Git excludes file: %w", err)
@@ -369,6 +373,23 @@ func (collector *Collector) readGlobalExcludes(ctx context.Context, root string)
 		return nil, fmt.Errorf("global Git excludes file exceeds %d bytes", metadataLimit)
 	}
 	return content, nil
+}
+
+// directoryContains compares file identity, so case and firmlink spellings of
+// root still count.
+func directoryContains(root, candidate string) (bool, error) {
+	rootInfo, err := os.Stat(root)
+	if err != nil {
+		return false, err
+	}
+	for current := candidate; ; current = filepath.Dir(current) {
+		if info, err := os.Stat(current); err == nil && os.SameFile(rootInfo, info) {
+			return true, nil
+		}
+		if parent := filepath.Dir(current); parent == current {
+			return false, nil
+		}
+	}
 }
 
 func rejectSplitIndex(path, objectFormat string) error {
@@ -675,6 +696,8 @@ func (collector *Collector) rejectWithheldCode(ctx context.Context, root string,
 	for _, blob := range deleted {
 		removed[changedSide{path: blob.path, section: blob.section}] = struct{}{}
 	}
+	var live []changedSide
+	var objects bytes.Buffer
 	for _, side := range sides {
 		if _, gone := removed[side]; gone {
 			continue
@@ -682,6 +705,30 @@ func (collector *Collector) rejectWithheldCode(ctx context.Context, root string,
 		if err := protocolPath(side.path); err != nil {
 			return fmt.Errorf("changed path %q: %w", side.path, err)
 		}
+		live = append(live, side)
+		if !plan.local || side.section != 1 {
+			object := ":" + side.path
+			if !plan.local {
+				object = plan.newRevision + ":" + side.path
+			}
+			_, _ = objects.WriteString(object + "\n")
+		}
+	}
+	// One cat-file session reads every committed or staged side.
+	blobs := &batchHeadWriter{limit: binarySniffBytes}
+	if objects.Len() > 0 {
+		if err := collector.git.runSandboxTo(ctx, root, plan.sandbox, objects.Bytes(), blobs, "cat-file", "--batch"); err != nil {
+			return fmt.Errorf("read changed binary blobs: %w", err)
+		}
+		if blobs.err != nil {
+			return blobs.err
+		}
+		if blobs.remaining != 0 || len(blobs.header) != 0 || len(blobs.heads) != bytes.Count(objects.Bytes(), []byte{'\n'}) {
+			return fmt.Errorf("git returned incomplete binary blob output")
+		}
+	}
+	next := 0
+	for _, side := range live {
 		var head []byte
 		if plan.local && side.section == 1 {
 			file, _, err := openRegularFile(root, side.path)
@@ -694,19 +741,11 @@ func (collector *Collector) rejectWithheldCode(ctx context.Context, root string,
 				return fmt.Errorf("read changed file %q: %w", side.path, err)
 			}
 		} else {
-			object := ":" + side.path
-			if !plan.local {
-				object = plan.newRevision + ":" + side.path
+			if next >= len(blobs.heads) {
+				return fmt.Errorf("git returned too few binary blobs")
 			}
-			// Stop Git once the sniff window is full instead of draining the blob.
-			readCtx, cancel := context.WithCancel(ctx)
-			output := &headWriter{limit: binarySniffBytes, full: cancel}
-			err := collector.git.runSandboxTo(readCtx, root, plan.sandbox, nil, output, "cat-file", "blob", object)
-			cancel()
-			if err != nil && !(output.filled && ctx.Err() == nil) {
-				return fmt.Errorf("read changed blob %q: %w", side.path, err)
-			}
-			head = output.head
+			head = blobs.heads[next]
+			next++
 		}
 		if reason := withheldCodeReason(side.path, modes[side] == "100755", head); reason != "" {
 			return fmt.Errorf("changed file %q %s, but Git treats it as binary, so its content would be withheld from review", side.path, reason)
@@ -751,24 +790,56 @@ func textWithNULs(head []byte) bool {
 	return utf8.Valid(text)
 }
 
-type headWriter struct {
-	limit  int
-	head   []byte
-	full   func()
-	filled bool
+// batchHeadWriter parses cat-file --batch output and keeps the first limit
+// bytes of each blob.
+type batchHeadWriter struct {
+	limit     int
+	heads     [][]byte
+	header    []byte
+	remaining int64
+	err       error
 }
 
-func (writer *headWriter) Write(data []byte) (int, error) {
-	if room := writer.limit - len(writer.head); room > 0 {
-		writer.head = append(writer.head, data[:min(room, len(data))]...)
-	}
-	if len(writer.head) == writer.limit && !writer.filled {
-		writer.filled = true
-		if writer.full != nil {
-			writer.full()
+func (writer *batchHeadWriter) Write(data []byte) (int, error) {
+	consumed := len(data)
+	for len(data) > 0 && writer.err == nil {
+		if writer.remaining > 0 {
+			take := min(int64(len(data)), writer.remaining)
+			// The last byte of each object is cat-file's record newline.
+			content := min(take, writer.remaining-1)
+			head := &writer.heads[len(writer.heads)-1]
+			if room := writer.limit - len(*head); room > 0 && content > 0 {
+				*head = append(*head, data[:min(int64(room), content)]...)
+			}
+			writer.remaining -= take
+			data = data[take:]
+			continue
 		}
+		newline := bytes.IndexByte(data, '\n')
+		if newline < 0 {
+			writer.header = append(writer.header, data...)
+			if len(writer.header) > 4096 {
+				writer.err = fmt.Errorf("git returned an oversized blob header")
+			}
+			break
+		}
+		header := string(append(writer.header, data[:newline]...))
+		writer.header = writer.header[:0]
+		data = data[newline+1:]
+		fields := strings.Fields(header)
+		if len(fields) != 3 || fields[1] != "blob" {
+			writer.err = fmt.Errorf("git returned an unexpected object for a changed binary file")
+			break
+		}
+		size, err := strconv.ParseInt(fields[2], 10, 64)
+		if err != nil || size < 0 {
+			writer.err = fmt.Errorf("git returned an invalid blob size")
+			break
+		}
+		writer.heads = append(writer.heads, nil)
+		writer.remaining = size + 1
 	}
-	return len(data), nil
+	return consumed, nil
 }
 
 func diffCommands(plan *targetPlan, format ...string) [][]string {

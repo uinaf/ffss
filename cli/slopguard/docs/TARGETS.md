@@ -16,7 +16,8 @@ Slopguard resolves exactly one explicit target before invoking a provider:
   in a partial clone fails the target instead of contacting a promisor remote.
 - Untracked files honor the user's global excludes (`core.excludesFile` from
   the user's global config, else `$XDG_CONFIG_HOME/git/ignore` or
-  `~/.config/git/ignore`), copied into the isolated Git directory below.
+  `~/.config/git/ignore`), copied into the isolated Git directory below. An
+  excludes file inside the reviewed repository is ignored.
 - Content-producing commands use an isolated temporary Git directory, a copied
   index that preserves the original index mtime (so Git's racy-git checks stay
   valid), empty attribute source, and read-only access to the repository
@@ -66,8 +67,9 @@ boundary without first distilling and authorizing it.
   source templates: their content, including comments, literal defaults,
   placeholders, and deleted preimages, enters the bundle without value
   classification. Other changed `.env` and `.env.*` files enter redacted (see
-  below), except `.env.*` files with a source extension such as `.js`, `.ts`,
-  `.py`, or `.sh`: redaction would hide their code, so they fail closed. Explicit context files remain subject to the ordinary sensitive-path
+  below), except `.env.*` files with a source or structured-config extension
+  such as `.js`, `.py`, `.sh`, `.yml`, or `.json`: redaction would hide their
+  code, so they fail closed. Explicit context files remain subject to the ordinary sensitive-path
   rejection, including these template and environment names.
 - Redacted environment files keep their line structure. Keys stay visible
   only when every non-comment line is a `KEY=value` or `export KEY=value`

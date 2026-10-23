@@ -1749,6 +1749,13 @@ func TestFreezeRejectsTextHiddenAsBinary(t *testing.T) {
 		{name: "shebang with junk", request: Request{Mode: protocol.TargetLocal}, prepare: func(t *testing.T, repository string) {
 			writeBytes(t, repository, "bin/deploy", []byte("#!/bin/sh\n# \x00\xff\necho hidden-marker\n"))
 		}},
+		{name: "among several binaries", request: Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}, prepare: func(t *testing.T, repository string) {
+			writeBytes(t, repository, "logo.png", []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"))
+			writeBytes(t, repository, "run.sh", script)
+			writeBytes(t, repository, "zz.png", []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"))
+			gitCommand(t, repository, "add", ".")
+			gitCommand(t, repository, "commit", "-m", "hide")
+		}},
 		{name: "binary replaced by text", request: Request{Mode: protocol.TargetBranch, Base: "HEAD~1"}, prepare: func(t *testing.T, repository string) {
 			writeBytes(t, repository, "Makefile", []byte("\x89PNG\x00\xff"))
 			gitCommand(t, repository, "add", "Makefile")
@@ -1783,7 +1790,7 @@ func TestFreezeRejectsTextHiddenAsBinary(t *testing.T) {
 func TestFreezeRejectsSourceFileWithEnvironmentName(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"src/.env.js", ".env.sh", ".env.PY", "native/.env.c"} {
+	for _, name := range []string{"src/.env.js", ".env.sh", ".env.PY", "native/.env.c", ".github/workflows/.env.yml"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1941,6 +1948,51 @@ func TestFreezeHonorsEmptyGlobalConfigOverride(t *testing.T) {
 	}
 	if got := targetPaths(bundle.Target()); !equalStrings(got, []string{"file.txt", "local-notes.txt"}) {
 		t.Fatalf("target paths = %v", got)
+	}
+}
+
+// A reviewed dotfiles checkout must not choose which of its own files the
+// global excludes hide.
+func TestFreezeIgnoresGlobalExcludesInsideReviewedRepository(t *testing.T) {
+	t.Parallel()
+
+	home := committedRepository(t)
+	writeFile(t, home, "file.txt", "changed\n")
+	writeFile(t, home, "payload.sh", "echo hidden-marker\n")
+	writeFile(t, home, ".config/git/ignore", "payload.sh\n.config/\n")
+	collector, err := New(Options{LookupEnv: func(name string) (string, bool) {
+		if name == "HOME" {
+			return home, true
+		}
+		return "", false
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle, err := collector.Freeze(context.Background(), home, Request{Mode: protocol.TargetLocal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(bundle.Payload(), "hidden-marker") {
+		t.Fatalf("target paths = %v; repository-controlled excludes hid payload.sh", targetPaths(bundle.Target()))
+	}
+}
+
+func TestBatchHeadWriterSplitsObjectsAcrossWrites(t *testing.T) {
+	t.Parallel()
+
+	output := "aaaa blob 5\nhello\nbbbb blob 0\n\ncccc blob 3\nxyz\n"
+	writer := &batchHeadWriter{limit: 4}
+	for index := 0; index < len(output); index += 3 {
+		if _, err := writer.Write([]byte(output[index:min(index+3, len(output))])); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if writer.err != nil || writer.remaining != 0 {
+		t.Fatalf("writer state: err=%v remaining=%d", writer.err, writer.remaining)
+	}
+	if got := fmt.Sprintf("%q", writer.heads); got != `["hell" "" "xyz"]` {
+		t.Fatalf("heads = %s", got)
 	}
 }
 
