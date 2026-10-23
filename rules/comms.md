@@ -32,6 +32,7 @@ Bad:
 
 Good:
 > Transfers page is broken on staging.
-> `/v2/transfers` returns 500 since [deploy #412](link).
-> Cause: the frontend sends a `cursor` param the API rejects.
-> Fix: merge [API #91](link) or revert [web #88](link).
+>
+> - `/v2/transfers` returns 500 since [deploy #412](link).
+> - Cause: the frontend sends a `cursor` param the API rejects.
+> - Fix: merge [API #91](link) or revert [web #88](link).
