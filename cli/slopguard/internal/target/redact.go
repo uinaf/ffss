@@ -29,10 +29,14 @@ func environmentFilePath(value string) bool {
 
 // sourceExtensions name files an interpreter or compiler loads as code.
 var sourceExtensions = map[string]struct{}{
-	".bash": {}, ".bat": {}, ".cjs": {}, ".cmd": {}, ".cs": {}, ".cts": {}, ".fish": {},
-	".go": {}, ".java": {}, ".js": {}, ".jsx": {}, ".kt": {}, ".lua": {}, ".mjs": {},
-	".mts": {}, ".php": {}, ".pl": {}, ".ps1": {}, ".py": {}, ".rb": {}, ".rs": {},
-	".sh": {}, ".swift": {}, ".ts": {}, ".tsx": {}, ".zsh": {},
+	".bash": {}, ".bat": {}, ".c": {}, ".cc": {}, ".cjs": {}, ".clj": {}, ".cmd": {},
+	".cpp": {}, ".cs": {}, ".cts": {}, ".cxx": {}, ".dart": {}, ".erl": {}, ".ex": {},
+	".exs": {}, ".fish": {}, ".fs": {}, ".go": {}, ".gradle": {}, ".groovy": {}, ".h": {},
+	".hpp": {}, ".hs": {}, ".java": {}, ".jl": {}, ".js": {}, ".jsx": {}, ".kt": {},
+	".kts": {}, ".lua": {}, ".m": {}, ".mjs": {}, ".mm": {}, ".mts": {}, ".php": {},
+	".pl": {}, ".pm": {}, ".ps1": {}, ".py": {}, ".r": {}, ".rb": {}, ".rs": {},
+	".scala": {}, ".sh": {}, ".swift": {}, ".ts": {}, ".tsx": {}, ".vb": {}, ".zig": {},
+	".zsh": {},
 }
 
 func reviewablePath(value string) bool {

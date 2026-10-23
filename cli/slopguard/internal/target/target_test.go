@@ -1776,7 +1776,7 @@ func TestFreezeRejectsTextHiddenAsBinary(t *testing.T) {
 func TestFreezeRejectsSourceFileWithEnvironmentName(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"src/.env.js", ".env.sh", ".env.PY"} {
+	for _, name := range []string{"src/.env.js", ".env.sh", ".env.PY", "native/.env.c"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1808,6 +1808,12 @@ func TestFreezeHonorsUserGlobalExcludes(t *testing.T) {
 		{name: "XDG ignore file", setup: func(t *testing.T, home string) map[string]string {
 			writeFile(t, home, "xdg/git/ignore", "local-notes.txt\n")
 			return map[string]string{"HOME": home, "XDG_CONFIG_HOME": filepath.Join(home, "xdg")}
+		}},
+		{name: "included config", setup: func(t *testing.T, home string) map[string]string {
+			writeFile(t, home, "ignore-rules", "local-notes.txt\n")
+			writeFile(t, home, ".gitconfig-shared", "[core]\n\texcludesFile = ~/ignore-rules\n")
+			writeFile(t, home, ".gitconfig", "[include]\n\tpath = ~/.gitconfig-shared\n")
+			return map[string]string{"HOME": home}
 		}},
 		{name: "symlinked core.excludesFile", setup: func(t *testing.T, home string) map[string]string {
 			writeFile(t, home, "dotfiles/ignore", "local-notes.txt\n")

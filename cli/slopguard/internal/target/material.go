@@ -187,7 +187,7 @@ func (collector *Collector) newGitSandbox(ctx context.Context, root string, incl
 		config = "[core]\n\trepositoryFormatVersion = 1\n\tbare = false\n"
 	}
 	if includeWorktree {
-		excludes, err := collector.userGlobalExcludes(ctx)
+		excludes, err := collector.userGlobalExcludes(ctx, root)
 		if err != nil {
 			return nil, err
 		}
@@ -291,19 +291,19 @@ type globalExcludes struct {
 	err     error
 }
 
-func (collector *Collector) userGlobalExcludes(ctx context.Context) ([]byte, error) {
+func (collector *Collector) userGlobalExcludes(ctx context.Context, root string) ([]byte, error) {
 	cache := collector.globalExcludes
 	if cache == nil {
 		cache = &globalExcludes{}
 	}
-	cache.once.Do(func() { cache.content, cache.err = collector.readGlobalExcludes(ctx) })
+	cache.once.Do(func() { cache.content, cache.err = collector.readGlobalExcludes(ctx, root) })
 	return cache.content, cache.err
 }
 
 // readGlobalExcludes reads the excludes file the user's own Git applies. The
 // setting comes from the user's global config only; the reviewed repository
 // cannot choose it.
-func (collector *Collector) readGlobalExcludes(ctx context.Context) ([]byte, error) {
+func (collector *Collector) readGlobalExcludes(ctx context.Context, root string) ([]byte, error) {
 	lookup := collector.lookupEnv
 	if lookup == nil {
 		lookup = os.LookupEnv
@@ -320,8 +320,10 @@ func (collector *Collector) readGlobalExcludes(ctx context.Context) ([]byte, err
 		// No home and no global config: Git has no global excludes either.
 		return nil, nil
 	}
-	command := exec.CommandContext(ctx, collector.git.path, "config", "--global", "--get", "--path", "core.excludesFile")
-	command.Dir = os.TempDir()
+	// --global turns include processing off unless asked; running in the
+	// reviewed root lets includeIf "gitdir:" rules match as they do for the user.
+	command := exec.CommandContext(ctx, collector.git.path, "-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false", "config", "--global", "--includes", "--get", "--path", "core.excludesFile")
+	command.Dir = root
 	command.Env = environment
 	output, err := command.Output()
 	var exitErr *exec.ExitError
