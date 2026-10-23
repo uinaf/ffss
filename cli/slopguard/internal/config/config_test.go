@@ -200,6 +200,49 @@ func TestUntrustedSourcesCannotEnableWeb(t *testing.T) {
 	}
 }
 
+func TestRepositoryCannotChangeUserEngine(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name        string
+		user        string
+		environment map[string]string
+		want        protocol.ProviderName
+		wantErr     bool
+	}{
+		{name: "differs from user", user: "engine: claude\n", wantErr: true},
+		{name: "matches user", user: "engine: codex\n", want: protocol.ProviderCodex},
+		{name: "no user engine", user: "timeout: 5m\n", want: protocol.ProviderCodex},
+		{name: "environment settles it", user: "engine: claude\n", environment: map[string]string{"SLOPGUARD_ENGINE": "claude"}, want: protocol.ProviderClaude},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			repository := configRepository(t)
+			writeConfig(t, filepath.Join(repository, ".slopguard.yaml"), "engine: codex\n")
+			home := t.TempDir()
+			writeConfig(t, filepath.Join(home, ".config", "slopguard", "config.yaml"), test.user)
+			effective, err := Load(context.Background(), Options{
+				Repository: repository,
+				LookupEnv:  envLookup(test.environment),
+				HomeDir:    func() (string, error) { return home, nil },
+			})
+			if test.wantErr {
+				if err == nil || !strings.Contains(err.Error(), "cannot change the engine from claude to codex") {
+					t.Fatalf("Load() = %+v, %v", effective.Engine, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if effective.Engine.Value != test.want {
+				t.Fatalf("engine = %+v, want %s", effective.Engine, test.want)
+			}
+		})
+	}
+}
+
 func TestUntrustedSourcesKeepDefaultWeb(t *testing.T) {
 	t.Parallel()
 

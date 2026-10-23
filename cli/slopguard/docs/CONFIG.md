@@ -64,6 +64,9 @@ Pass `--web-access=false` or set `web_access: false` to turn it off.
   environment variables may disable web access but cannot enable it. Their
   `web_access: true` is ignored while web access is already on and rejected
   when a lower-precedence source turned it off.
+- Repository configuration may set `engine` only when no user configuration
+  file sets one. A repository engine that differs from the user's is an error;
+  `--engine` or `SLOPGUARD_ENGINE` settles it.
 - With web access on, repository content under review can steer the reviewer
   toward attacker-chosen URLs. Turn it off for targets that must not reach the
   network.
