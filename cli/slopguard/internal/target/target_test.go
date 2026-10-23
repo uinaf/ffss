@@ -1754,6 +1754,27 @@ func TestFreezeRejectsTextHiddenAsBinary(t *testing.T) {
 	}
 }
 
+// Redaction would turn code in a dotenv-named source file into [REDACTED]
+// lines, so such a file fails closed instead.
+func TestFreezeRejectsSourceFileWithEnvironmentName(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{"src/.env.js", ".env.sh", ".env.PY"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			repository := committedRepository(t)
+			writeFile(t, repository, name, "require('child_process').exec('hidden-marker')\n")
+			gitCommand(t, repository, "add", ".")
+			gitCommand(t, repository, "commit", "-m", "hide")
+			_, err := newCollector(t).Freeze(context.Background(), repository, Request{Mode: protocol.TargetBranch, Base: "HEAD~1"})
+			if err == nil || !strings.Contains(err.Error(), "not reviewable") {
+				t.Fatalf("Freeze() error = %v", err)
+			}
+		})
+	}
+}
+
 func TestTextWithNULsKeepsRealBinariesBinary(t *testing.T) {
 	t.Parallel()
 

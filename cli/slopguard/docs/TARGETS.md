@@ -60,7 +60,8 @@ boundary without first distilling and authorizing it.
   source templates: their content, including comments, literal defaults,
   placeholders, and deleted preimages, enters the bundle without value
   classification. Other changed `.env` and `.env.*` files enter redacted (see
-  below). Explicit context files remain subject to the ordinary sensitive-path
+  below), except `.env.*` files with a source extension such as `.js`, `.ts`,
+  `.py`, or `.sh`: redaction would hide their code, so they fail closed. Explicit context files remain subject to the ordinary sensitive-path
   rejection, including these template and environment names.
 - Redacted environment files keep their line structure. Keys stay visible
   only when every non-comment line is a `KEY=value` or `export KEY=value`
