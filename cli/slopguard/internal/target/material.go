@@ -369,8 +369,12 @@ func (collector *Collector) readGlobalExcludes(ctx context.Context, root string)
 	if err != nil {
 		return nil, fmt.Errorf("read global Git excludes file: %w", err)
 	}
-	if int64(len(content)) > metadataLimit {
-		return nil, fmt.Errorf("global Git excludes file exceeds %d bytes", metadataLimit)
+	after, err := file.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("read global Git excludes file: %w", err)
+	}
+	if !os.SameFile(info, after) || info.Size() != after.Size() || !info.ModTime().Equal(after.ModTime()) || int64(len(content)) != info.Size() {
+		return nil, fmt.Errorf("global Git excludes file changed while reading")
 	}
 	return content, nil
 }
@@ -696,7 +700,13 @@ func (collector *Collector) rejectWithheldCode(ctx context.Context, root string,
 	for _, blob := range deleted {
 		removed[changedSide{path: blob.path, section: blob.section}] = struct{}{}
 	}
-	var live []changedSide
+	check := func(side changedSide, head []byte) error {
+		if reason := withheldCodeReason(side.path, modes[side] == "100755", head); reason != "" {
+			return fmt.Errorf("changed file %q %s, but Git treats it as binary, so its content would be withheld from review", side.path, reason)
+		}
+		return nil
+	}
+	var committed []changedSide
 	var objects bytes.Buffer
 	for _, side := range sides {
 		if _, gone := removed[side]; gone {
@@ -705,51 +715,48 @@ func (collector *Collector) rejectWithheldCode(ctx context.Context, root string,
 		if err := protocolPath(side.path); err != nil {
 			return fmt.Errorf("changed path %q: %w", side.path, err)
 		}
-		live = append(live, side)
-		if !plan.local || side.section != 1 {
-			object := ":" + side.path
-			if !plan.local {
-				object = plan.newRevision + ":" + side.path
-			}
-			_, _ = objects.WriteString(object + "\n")
-		}
-	}
-	// One cat-file session reads every committed or staged side.
-	blobs := &batchHeadWriter{limit: binarySniffBytes}
-	if objects.Len() > 0 {
-		if err := collector.git.runSandboxTo(ctx, root, plan.sandbox, objects.Bytes(), blobs, "cat-file", "--batch"); err != nil {
-			return fmt.Errorf("read changed binary blobs: %w", err)
-		}
-		if blobs.err != nil {
-			return blobs.err
-		}
-		if blobs.remaining != 0 || len(blobs.header) != 0 || len(blobs.heads) != bytes.Count(objects.Bytes(), []byte{'\n'}) {
-			return fmt.Errorf("git returned incomplete binary blob output")
-		}
-	}
-	next := 0
-	for _, side := range live {
-		var head []byte
 		if plan.local && side.section == 1 {
 			file, _, err := openRegularFile(root, side.path)
 			if err != nil {
 				return fmt.Errorf("read changed file %q: %w", side.path, err)
 			}
-			head, err = io.ReadAll(io.LimitReader(file, binarySniffBytes))
+			head, err := io.ReadAll(io.LimitReader(file, binarySniffBytes))
 			_ = file.Close()
 			if err != nil {
 				return fmt.Errorf("read changed file %q: %w", side.path, err)
 			}
-		} else {
-			if next >= len(blobs.heads) {
-				return fmt.Errorf("git returned too few binary blobs")
+			if err := check(side, head); err != nil {
+				return err
 			}
-			head = blobs.heads[next]
-			next++
+			continue
 		}
-		if reason := withheldCodeReason(side.path, modes[side] == "100755", head); reason != "" {
-			return fmt.Errorf("changed file %q %s, but Git treats it as binary, so its content would be withheld from review", side.path, reason)
+		object := ":" + side.path
+		if !plan.local {
+			object = plan.newRevision + ":" + side.path
 		}
+		committed = append(committed, side)
+		_, _ = objects.WriteString(object + "\n")
+	}
+	if len(committed) == 0 {
+		return nil
+	}
+	// One cat-file session reads every committed or staged side, judging each
+	// head as it completes instead of keeping them all.
+	blobs := &batchHeadWriter{limit: binarySniffBytes, maximum: MaximumMaxBytes, check: func(index int, head []byte) error {
+		if index >= len(committed) {
+			return fmt.Errorf("git returned excess binary blobs")
+		}
+		return check(committed[index], head)
+	}}
+	runErr := collector.git.runSandboxTo(ctx, root, plan.sandbox, objects.Bytes(), blobs, "cat-file", "--batch")
+	if blobs.err != nil {
+		return blobs.err
+	}
+	if runErr != nil {
+		return fmt.Errorf("read changed binary blobs: %w", runErr)
+	}
+	if blobs.remaining != 0 || len(blobs.header) != 0 || blobs.count != len(committed) {
+		return fmt.Errorf("git returned incomplete binary blob output")
 	}
 	return nil
 }
@@ -790,11 +797,14 @@ func textWithNULs(head []byte) bool {
 	return utf8.Valid(text)
 }
 
-// batchHeadWriter parses cat-file --batch output and keeps the first limit
-// bytes of each blob.
+// batchHeadWriter parses cat-file --batch output and passes the first limit
+// bytes of each blob to check. A failed check or an oversized blob stops Git.
 type batchHeadWriter struct {
 	limit     int
-	heads     [][]byte
+	maximum   int64
+	check     func(index int, head []byte) error
+	head      []byte
+	count     int
 	header    []byte
 	remaining int64
 	err       error
@@ -802,17 +812,24 @@ type batchHeadWriter struct {
 
 func (writer *batchHeadWriter) Write(data []byte) (int, error) {
 	consumed := len(data)
-	for len(data) > 0 && writer.err == nil {
+	for len(data) > 0 {
+		if writer.err != nil {
+			return 0, writer.err
+		}
 		if writer.remaining > 0 {
 			take := min(int64(len(data)), writer.remaining)
 			// The last byte of each object is cat-file's record newline.
 			content := min(take, writer.remaining-1)
-			head := &writer.heads[len(writer.heads)-1]
-			if room := writer.limit - len(*head); room > 0 && content > 0 {
-				*head = append(*head, data[:min(int64(room), content)]...)
+			if room := writer.limit - len(writer.head); room > 0 && content > 0 {
+				writer.head = append(writer.head, data[:min(int64(room), content)]...)
 			}
 			writer.remaining -= take
 			data = data[take:]
+			if writer.remaining == 0 {
+				writer.err = writer.check(writer.count, writer.head)
+				writer.count++
+				writer.head = writer.head[:0]
+			}
 			continue
 		}
 		newline := bytes.IndexByte(data, '\n')
@@ -829,15 +846,21 @@ func (writer *batchHeadWriter) Write(data []byte) (int, error) {
 		fields := strings.Fields(header)
 		if len(fields) != 3 || fields[1] != "blob" {
 			writer.err = fmt.Errorf("git returned an unexpected object for a changed binary file")
-			break
+			continue
 		}
 		size, err := strconv.ParseInt(fields[2], 10, 64)
 		if err != nil || size < 0 {
 			writer.err = fmt.Errorf("git returned an invalid blob size")
-			break
+			continue
 		}
-		writer.heads = append(writer.heads, nil)
+		if size > writer.maximum {
+			writer.err = fmt.Errorf("binary blob of %d bytes exceeds inspection limit of %d bytes", size, writer.maximum)
+			continue
+		}
 		writer.remaining = size + 1
+	}
+	if writer.err != nil {
+		return 0, writer.err
 	}
 	return consumed, nil
 }

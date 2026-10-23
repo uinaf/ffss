@@ -1982,17 +1982,30 @@ func TestBatchHeadWriterSplitsObjectsAcrossWrites(t *testing.T) {
 	t.Parallel()
 
 	output := "aaaa blob 5\nhello\nbbbb blob 0\n\ncccc blob 3\nxyz\n"
-	writer := &batchHeadWriter{limit: 4}
+	var heads []string
+	writer := &batchHeadWriter{limit: 4, maximum: 1 << 20, check: func(index int, head []byte) error {
+		heads = append(heads, fmt.Sprintf("%d:%s", index, head))
+		return nil
+	}}
 	for index := 0; index < len(output); index += 3 {
 		if _, err := writer.Write([]byte(output[index:min(index+3, len(output))])); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if writer.err != nil || writer.remaining != 0 {
-		t.Fatalf("writer state: err=%v remaining=%d", writer.err, writer.remaining)
+	if writer.remaining != 0 || writer.count != 3 {
+		t.Fatalf("writer state: remaining=%d count=%d", writer.remaining, writer.count)
 	}
-	if got := fmt.Sprintf("%q", writer.heads); got != `["hell" "" "xyz"]` {
+	if got := fmt.Sprint(heads); got != "[0:hell 1: 2:xyz]" {
 		t.Fatalf("heads = %s", got)
+	}
+}
+
+func TestBatchHeadWriterStopsAtOversizedBlob(t *testing.T) {
+	t.Parallel()
+
+	writer := &batchHeadWriter{limit: 4, maximum: 8, check: func(int, []byte) error { return nil }}
+	if _, err := writer.Write([]byte("aaaa blob 9\n")); err == nil || !strings.Contains(err.Error(), "inspection limit") {
+		t.Fatalf("Write() error = %v", err)
 	}
 }
 

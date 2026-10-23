@@ -53,8 +53,8 @@ boundary without first distilling and authorizing it.
   tracked changes appear as Git's `Binary files ... differ` line with full blob
   IDs, and untracked files as an `UNTRUSTED-BINARY-FILE` section carrying only
   size and SHA-256. Both still bind the snapshot, so later edits invalidate
-  the result. Untracked binaries above 128 MiB fail closed rather than being
-  hashed. A binary-classified changed or untracked file fails closed instead
+  the result. Binaries above 128 MiB fail closed rather than being hashed or
+  inspected. A binary-classified changed or untracked file fails closed instead
   when it looks like code: valid UTF-8 apart from a few NUL bytes, a `#!`
   first line, a source extension such as `.sh` or `.js`, or an executable
   mode. Other binaries stay summarized, so reviewed code that loads one by
