@@ -3,11 +3,11 @@ package provider
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/uinaf/ffss/cli/slopguard/internal/protocol"
+	"github.com/uinaf/ffss/cli/slopguard/internal/trustedexec"
 )
 
 func discoverExecutable(name, repository string, environment []string) (string, error) {
@@ -77,46 +77,11 @@ func selectCompatibleExecutable(candidates []string, preflight func(string) (str
 }
 
 func validateExecutable(path, repository string) (string, error) {
-	original, err := filepath.Abs(path)
+	resolved, err := trustedexec.ValidateOutsideRepository(path, repository)
 	if err != nil {
-		return "", err
-	}
-	resolved, err := filepath.EvalSymlinks(original)
-	if err != nil {
-		return "", err
-	}
-	resolved, err = filepath.Abs(resolved)
-	if err != nil {
-		return "", err
-	}
-	originalRoot, err := filepath.Abs(repository)
-	if err != nil {
-		return "", fmt.Errorf("resolve reviewed repository: %w", err)
-	}
-	root, err := filepath.EvalSymlinks(originalRoot)
-	if err != nil {
-		return "", fmt.Errorf("resolve reviewed repository: %w", err)
-	}
-	root, err = filepath.Abs(root)
-	if err != nil {
-		return "", fmt.Errorf("resolve reviewed repository: %w", err)
-	}
-	if pathInside(originalRoot, original) || pathInside(root, original) || pathInside(root, resolved) {
-		return "", fmt.Errorf("provider executable %q is inside the reviewed repository", resolved)
-	}
-	info, err := os.Stat(resolved)
-	if err != nil {
-		return "", err
-	}
-	if !info.Mode().IsRegular() || info.Mode().Perm()&0o111 == 0 {
-		return "", fmt.Errorf("provider executable %q is not an executable regular file", resolved)
+		return "", fmt.Errorf("provider %w", err)
 	}
 	return resolved, nil
-}
-
-func pathInside(root, candidate string) bool {
-	relative, err := filepath.Rel(root, candidate)
-	return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative)
 }
 
 func environmentValue(environment []string, name string) string {
