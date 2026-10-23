@@ -342,9 +342,12 @@ func (collector *Collector) readGlobalExcludes(ctx context.Context, root string)
 			excludes = filepath.Join(home, ".config", "git", "ignore")
 		}
 	}
-	// A relative path would resolve inside the reviewed worktree.
-	if !filepath.IsAbs(excludes) {
+	if excludes == "" {
 		return nil, nil
+	}
+	// Git resolves a relative path from its working directory.
+	if !filepath.IsAbs(excludes) {
+		excludes = filepath.Join(root, excludes)
 	}
 	resolved, err := filepath.EvalSymlinks(excludes)
 	if errors.Is(err, os.ErrNotExist) {

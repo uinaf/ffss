@@ -1829,6 +1829,10 @@ func TestFreezeHonorsUserGlobalExcludes(t *testing.T) {
 			writeFile(t, home, ".gitconfig", "[include]\n\tpath = ~/.gitconfig-shared\n")
 			return map[string]string{"HOME": home}
 		}},
+		{name: "relative path outside the repository", setup: func(t *testing.T, home string) map[string]string {
+			writeFile(t, home, "ignore-rules", "local-notes.txt\n")
+			return map[string]string{"HOME": home, "RELATIVE_EXCLUDES": filepath.Join(home, "ignore-rules")}
+		}},
 		{name: "path ending in a space", setup: func(t *testing.T, home string) map[string]string {
 			writeFile(t, home, "ignore ", "local-notes.txt\n")
 			writeFile(t, home, ".gitconfig", "[core]\n\texcludesFile = \"~/ignore \"\n")
@@ -1850,6 +1854,21 @@ func TestFreezeHonorsUserGlobalExcludes(t *testing.T) {
 			writeFile(t, repository, "file.txt", "changed\n")
 			writeFile(t, repository, "local-notes.txt", "globally-ignored-marker\n")
 			environment := test.setup(t, t.TempDir())
+			if target, ok := environment["RELATIVE_EXCLUDES"]; ok {
+				resolvedRepository, err := filepath.EvalSymlinks(repository)
+				if err != nil {
+					t.Fatal(err)
+				}
+				resolvedTarget, err := filepath.EvalSymlinks(target)
+				if err != nil {
+					t.Fatal(err)
+				}
+				relative, err := filepath.Rel(resolvedRepository, resolvedTarget)
+				if err != nil {
+					t.Fatal(err)
+				}
+				writeFile(t, environment["HOME"], ".gitconfig", "[core]\n\texcludesFile = "+relative+"\n")
+			}
 			collector, err := New(Options{LookupEnv: func(name string) (string, bool) {
 				value, ok := environment[name]
 				return value, ok
