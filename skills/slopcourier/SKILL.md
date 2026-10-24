@@ -93,6 +93,8 @@ feedback.
   Fix the real ones in one pass, run the gates, push, reply on each thread
   with the commit, and re-request review from anyone who requested changes or
   approved an older head. Out-of-scope findings become tracker items.
+  After the third fix round on one PR, stop patching, reconsider the
+  approach, and tell the user if it changes.
 - **Failed check:** read the log. Fix what this change broke. If the base has
   since fixed it, bring in the base. A flake or infra failure gets one rerun;
   the same failure twice is real.

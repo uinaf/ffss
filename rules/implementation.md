@@ -10,6 +10,8 @@
 - Preserve error causes and partial failures. Keep retries bounded,
   cancellable, and limited to idempotent transient work.
 - Keep secrets and sensitive payloads out of logs and artifacts.
+- Run noisy commands with quiet flags, or in a delegate that returns only the
+  conclusion.
 - Comment only invariants and external constraints the code can't express.
 - When behavior changes, update the owning doc to state current behavior,
   without citing issues or change requests.

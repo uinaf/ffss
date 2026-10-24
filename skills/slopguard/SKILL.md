@@ -34,11 +34,14 @@ ones. What leaves the machine: [security.md](references/security.md).
 4. **Run.** Mode `local`, `branch` (against the PR's real base), or `commit`:
    [run-modes.md](references/run-modes.md).
 5. **Validate.** Findings are hypotheses. Accept one only with evidence of a
-   defect or unmet requirement; reject the rest with a short reason. Fix
-   accepted findings together, in the next frozen target (worktree for
-   local, a commit for branch, an amended commit for commit mode).
+   defect or unmet requirement; reject the rest with a short reason. Name
+   each accepted finding's defect class and fix every instance in the
+   change, not only the flagged line. Fix them together, in the next frozen
+   target (worktree for local, a commit for branch, an amended commit for
+   commit mode).
 6. **Re-review** after accepted fixes change the target: the final target,
-   same provider and mode.
+   same provider and mode. After the third round, stop patching; reconsider
+   the approach and tell the user.
 
 ## Done
 

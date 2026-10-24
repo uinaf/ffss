@@ -11,6 +11,11 @@
   back, and names the skill that owns each artifact. That skill and the
   repository's template decide the artifact's text, so a brief never drafts
   or itemizes public text.
+- A review or verification brief gives the artifact and checkable pass
+  criteria. It leaves out your conclusion and the build history.
+- Run delegates in parallel only on separate files or separate worktrees.
+- Cap fix-and-review rounds at three. After the third, reconsider the
+  approach instead of patching again, and say so.
 - Proof detail, commands, and review findings come back to you, not into the
   artifact.
 - Every brief, follow-ups included, repeats the limits the user or task set:
