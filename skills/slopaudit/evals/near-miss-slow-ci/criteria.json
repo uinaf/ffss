@@ -1,0 +1,12 @@
+{
+  "context": "A slow-CI question about one workflow file: name the concrete causes and the edits that fix them, without auditing the user's agent setup.",
+  "type": "weighted_checklist",
+  "skill_use": "forbidden",
+  "install": "all",
+  "checklist": [
+    {"name": "Lint matrix", "description": "Points out that lint runs nine times across three OSes and three Node versions, including slow macOS and Windows runners, and suggests one lint job.", "max_score": 30},
+    {"name": "Serial chain", "description": "Points out that needs: makes lint, test, and build run one after another and suggests running them in parallel.", "max_score": 25},
+    {"name": "No dependency cache", "description": "Points out npm install runs uncached in every job and suggests setup-node caching with npm ci.", "max_score": 25},
+    {"name": "Concrete and unedited", "description": "Gives specific workflow changes, leaves ci.yml unchanged, and does not turn into a review of agent rules, skills, or session logs.", "max_score": 20}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "context": "A quick inline look at one function: spot that Math.floor drops the trailing partial page and suggest the fix, answered directly without running an external review.",
+  "type": "weighted_checklist",
+  "skill_use": "forbidden",
+  "install": "all",
+  "checklist": [
+    {"name": "Bug found", "description": "Says pageCount undercounts when total is not a multiple of pageSize, with an example such as 101 items at 50 per page giving 2 instead of 3.", "max_score": 45},
+    {"name": "Fix given", "description": "Suggests Math.ceil(total / pageSize) or an equivalent integer form.", "max_score": 30},
+    {"name": "Direct and unchanged", "description": "Answers in the reply, leaves src/paginate.ts unchanged, and does not plan or run a separate reviewer tool.", "max_score": 25}
+  ]
+}

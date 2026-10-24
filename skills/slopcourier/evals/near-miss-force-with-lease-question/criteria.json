@@ -1,0 +1,12 @@
+{
+  "context": "A conceptual git question: explain the lease check and its background-fetch gap, without touching any repository or change request.",
+  "type": "weighted_checklist",
+  "skill_use": "forbidden",
+  "install": "all",
+  "checklist": [
+    {"name": "Lease explained", "description": "Says the push is refused when the remote branch no longer matches the value the local remote-tracking ref (or an explicit expected value) records, unlike --force, which overwrites unconditionally.", "max_score": 40},
+    {"name": "Gap named", "description": "Explains that a fetch after the other person's push (for example a background fetch by an editor) updates the tracking ref, so the lease passes and their commits are overwritten.", "max_score": 35},
+    {"name": "Mitigation", "description": "Mentions --force-if-includes, or passing an explicit expected commit to --force-with-lease, as the guard for that case.", "max_score": 15},
+    {"name": "No live actions", "description": "Runs no push, opens or edits no pull request, and does not turn the answer into a change-request workflow.", "max_score": 10}
+  ]
+}

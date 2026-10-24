@@ -1,0 +1,12 @@
+{
+  "context": "An agent-guide drift fix: AGENTS.md stops describing TanStack Query and its skill pointer, and states the fetch-plus-cache approach the code uses, without adding or installing skills.",
+  "type": "weighted_checklist",
+  "skill_use": "forbidden",
+  "install": "all",
+  "checklist": [
+    {"name": "Stale content removed", "description": "AGENTS.md no longer says server state goes through TanStack Query, no longer mentions src/queries/keys.ts, and drops the tanstack-query skill pointer.", "max_score": 35},
+    {"name": "Current approach stated", "description": "The data-fetching section, if kept, describes cachedFetch and invalidate in src/api/cache.ts and invents nothing the code does not show.", "max_score": 30},
+    {"name": "Rest kept", "description": "The intro, the commands, and the react-doctor pointer are unchanged.", "max_score": 20},
+    {"name": "No skill changes", "description": "Adds no new skill pointers, install commands, or skill recommendations.", "max_score": 15}
+  ]
+}
