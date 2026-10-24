@@ -1,0 +1,31 @@
+{
+  "context": "Prose cleanup of a short doc that mixes chatbot tells with over-compressed notes: tells go, the notes become whole sentences, the one script gets one name, and every fact and the house-style heading and em dash survive.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Facts kept",
+      "max_score": 30,
+      "description": "The doc still states: scripts/budget.mjs reads budget.json; the number is the most files allowed to import from proto/; CI fails with exit code 1 when the count exceeds the budget; --write rewrites budget.json with the current count and is used only when the count is below the budget."
+    },
+    {
+      "name": "Tells cut",
+      "max_score": 20,
+      "description": "serves as, north star, 'not just ... but', fostering a culture, rides along, the trailing 'ensuring the codebase stays healthy' clause, and the closing chatbot lines are gone, not rephrased into new filler or metaphor."
+    },
+    {
+      "name": "Whole sentences",
+      "max_score": 20,
+      "description": "The arrow, '=', and 'w/' notes become sentences with their articles and verbs; no arrows or symbol shorthand remain."
+    },
+    {
+      "name": "One name",
+      "max_score": 15,
+      "description": "The script is called by one name throughout (its file name or one plain term), not 'checker', 'gate', and 'ratchet', and the noun stack 'proto import budget check script' is untangled or replaced by the real file name."
+    },
+    {
+      "name": "House style kept",
+      "max_score": 15,
+      "description": "The heading keeps its Title Case, and the em dash in the budget.json sentence is not replaced just because it is an em dash; no new claims, opinions, or steps appear."
+    }
+  ]
+}
