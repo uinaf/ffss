@@ -20,6 +20,10 @@ decisions.
   internal URLs, and one-off observations stay out unless the owner adopts
   them. Describe what you left out by category, without the values, and note
   that promoting it needs the maintainer.
+- **One mode per doc:** tutorial, how-to, reference, or explanation
+  ([Diátaxis](https://diataxis.fr/)). Move reference tables out of a
+  tutorial, background out of a how-to, and argument out of reference into
+  the doc that owns that mode, and link it.
 
 ## Where it goes
 
