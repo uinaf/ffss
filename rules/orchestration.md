@@ -1,8 +1,10 @@
 ## Orchestrating agents
 
-- Delegate large independent work, then validate its diff, checks, and public
-  text before merging or posting. Out-of-scope findings get a reply or a
-  tracker item, not rework.
+- Keep coupled work in this loop. Delegate only work that needs little from
+  this session and returns a compact result: independent research, a
+  component behind a clean interface, or black-box verification.
+- Validate a delegate's diff, checks, and public text before merging or
+  posting. Out-of-scope findings get a reply or a tracker item, not rework.
 - Wait for delegates to report; poll only external state that reports to
   nobody, with a deadline and a failure exit.
 - A brief gives the goal, scope, authority, constraints, and what to report
