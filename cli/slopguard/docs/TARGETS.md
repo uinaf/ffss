@@ -1,142 +1,53 @@
-# Frozen target boundary
+# Targets and disclosure
 
-Slopguard resolves exactly one explicit target before invoking a provider:
+Slopguard freezes exactly one explicit target before it calls a provider. It
+never auto-detects or fetches a revision.
 
-| Mode | Required identity | Material |
+| Mode | Identity | Reviewed material |
 | --- | --- | --- |
-| `local` | current `HEAD`, or the repository-format empty tree when unborn | separate staged and unstaged diffs, deletions, and non-ignored untracked files |
-| `branch` | merge base of the explicit base revision and `HEAD`, plus resolved `HEAD` | committed merge-base-to-head diff |
-| `commit` | one resolved non-merge commit | parent-to-commit diff, or empty-tree-to-commit for a root commit |
+| `local` | `HEAD`, or the empty tree when unborn | staged and unstaged diffs, deletions, non-ignored untracked files |
+| `branch` | merge base of `--base` and `HEAD`, plus `HEAD` | merge-base-to-`HEAD` diff |
+| `commit` | one non-merge commit | parent-to-commit diff (empty tree for a root commit) |
 
-- Revision input is never auto-detected, fetched from GitHub, or interpreted
-  as a command option.
-- Git runs through fixed argument arrays with hooks, filters, credentials,
-  global configuration, external diffs, text conversion, and filesystem
-  monitors disabled where applicable. Lazy fetch is off, so a missing object
-  in a partial clone fails the target instead of contacting a promisor remote.
-- Untracked files honor the user's global excludes (`core.excludesFile` from
-  the user's global config, else `$XDG_CONFIG_HOME/git/ignore` or
-  `~/.config/git/ignore`), copied into the isolated Git directory below. An
-  excludes file inside the reviewed repository is ignored.
-- Content-producing commands use an isolated temporary Git directory, a copied
-  index that preserves the original index mtime (so Git's racy-git checks stay
-  valid), empty attribute source, and read-only access to the repository
-  object database; repository config and `info/attributes` therefore cannot
-  select executable filters.
-- Merge bases and commit parents are resolved in that same raw object view,
-  without replacement, graft, or shallow-boundary metadata.
+Needs Git 2.45 or newer. Git runs with hooks, filters, credentials, global
+config, and lazy fetch off, so a missing object in a partial clone fails the
+target.
 
-## Frozen bundle
+## Bundle
 
-The boundary freezes the resolved target identity, exact diff, raw deleted
-blobs, untracked file contents, task prompt, and repeatable
-repository-relative context files into a length-delimited UTF-8 payload.
-Repository diff and context sections are labeled as untrusted data. Providers
-receive the same immutable payload as streamed input plus typed metadata, not
-a path to the live checkout.
+The bundle holds the target identity, the diff, deleted and untracked file
+contents, the task prompt, and any `--context-file` files. Providers get the
+bundle as input, never a path to the live checkout.
 
-Task prompts are trusted instructions. Pass them with `--prompt`, from an
-explicitly selected regular file with `--prompt-file <path>`, or through stdin
-with `--prompt-file -`. The two flags are mutually exclusive, no prompt file is
-discovered implicitly, and file or stdin content is bounded by the effective
-bundle limit before target collection. Explicit selection authorizes the
-content as trusted; do not promote repository-controlled text through this
-boundary without first distilling and authorizing it.
+- The prompt is trusted: pass it with `--prompt`, `--prompt-file <path>`, or
+  `--prompt-file -` for stdin. Distill and authorize repository text before
+  passing it as the prompt.
+- The bundle limit is 1 MiB by default and at most 128 MiB (`max_bytes`). An
+  oversized target fails before the provider runs, names its largest
+  contributors, and is never split.
+- Binary files go as Git's summary line (tracked) or size and SHA-256
+  (untracked). A binary that looks like code fails closed, as does any binary
+  above 128 MiB.
+- These fail closed: invalid UTF-8, binary context files, sensitive paths,
+  submodules, merge commits, unsafe revisions, symlink escapes, special
+  files, split indexes, and incomplete reads.
+- Changed environment templates (`.env.*.example`, `.sample`, `.template`) go
+  whole. Other changed `.env` and `.env.*` files go redacted: each line
+  becomes `KEY=[REDACTED]` when every line is a simple one-word assignment,
+  otherwise `[REDACTED]`. `.env.*` files with a code or config extension
+  (`.js`, `.py`, `.sh`, `.yml`, `.json`) fail closed. Context files get no
+  template or environment exception.
+- A source that changes during the review fails the result as
+  `source_changed`.
 
-- The aggregate bundle limit defaults to 1 MiB and is configurable up to
-  128 MiB.
-- An oversized target fails before provider execution, reports the largest
-  byte contributors from a bounded streaming count, and is never chunked.
-- Deleted, untracked, and context reads share the same aggregate budget.
-- Files Git classifies as binary (numstat `-`, or a NUL byte in the first
-  8000 bytes of an untracked file) stay in the target without their content:
-  tracked changes appear as Git's `Binary files ... differ` line with full blob
-  IDs, and untracked files as an `UNTRUSTED-BINARY-FILE` section carrying only
-  size and SHA-256. Both still bind the snapshot, so later edits invalidate
-  the result. Binaries above 128 MiB fail closed rather than being hashed or
-  inspected. A binary-classified changed or untracked file fails closed instead
-  when it looks like code: valid UTF-8 apart from a few NUL bytes, a `#!`
-  first line, a source extension such as `.sh` or `.js`, or an executable
-  mode. Other binaries stay summarized, so reviewed code that loads one by
-  path is the reviewer's to question.
-- Invalid UTF-8 text, binary context files, sensitive paths, gitlinks (mode 160000 /
-  submodules), symlink escapes, merge commits, unsafe revisions, FIFOs and
-  other special files, context-path symlinks, and incomplete file reads fail
-  closed. Files whose names start with `.env.` and end in `.example`,
-  `.sample`, or `.template` are the narrow sensitive-path exception for changed
-  source templates: their content, including comments, literal defaults,
-  placeholders, and deleted preimages, enters the bundle without value
-  classification. Other changed `.env` and `.env.*` files enter redacted (see
-  below), except `.env.*` files with a source or structured-config extension
-  such as `.js`, `.py`, `.sh`, `.yml`, or `.json`: redaction would hide their
-  code, so they fail closed. Explicit context files remain subject to the ordinary sensitive-path
-  rejection, including these template and environment names.
-- Redacted environment files keep their line structure. Keys stay visible
-  only when every non-comment line is a `KEY=value` or `export KEY=value`
-  assignment whose value is one literal word, optionally followed by a
-  comment: safe bare characters, `'single'` quotes without backslashes,
-  `"double"` quotes holding literals, letter escapes such as `\n`, and
-  `$NAME` or `${NAME}`, or a bare `$NAME` or `${NAME}`. Then no value can span
-  lines under a dotenv parser or a shell, so each assignment becomes
-  `KEY=[REDACTED]`. Otherwise every line of that file becomes `[REDACTED]`.
-  Comments always become `[REDACTED]`; blank lines stay. Each side of a change is judged as a whole file, and the rule
-  covers added, deleted, and untracked content alike. Their diff sections also
-  drop blob IDs (`index [REDACTED]`) and hunk-header function context.
-  Redaction reads each tracked environment file whole; those reads share one
-  bundle-limit allowance. Untracked binary environment files fail closed.
-- Tracked symlink changes are included as Git's text representation of the
-  link target; collectors never follow those links when reading worktree,
-  untracked, or context bytes.
-- Git split indexes are rejected rather than copied into the isolated metadata
-  directory.
+## What leaves the machine
 
-Target collection requires Git 2.45 or newer.
-
-- Git is selected outside the reviewed worktree, capability-probed once, and
-  revalidated by filesystem identity and content before each use boundary.
-- A coordinated same-user ABA mutation between the last validation and
-  pathname-based process launch is outside this boundary; Darwin does not
-  provide the `fexecve`-style launch needed to pin an open executable
-  descriptor.
-
-- The snapshot includes resolved Git identity plus the raw copied index,
-  tracked working-tree, status, untracked target, prompt, and context state.
-- Source material is recollected before bundle construction to catch
-  concurrent reads, but the verification pass computes only the snapshot
-  instead of materializing a second bundle.
-- Provider execution and the optional protocol retry use the same immutable
-  payload without full-payload copies.
-- The caller must run the supplied unchanged check after provider completion;
-  a mismatch invalidates the result as `source_changed`.
-
-Allocation benchmarks cover 1, 16, 64, and 128 MiB bundle construction plus a
-diff with one million short lines:
-
-```bash
-go test ./internal/target -run '^$' \
-  -bench 'Benchmark(ComposeBundle|ParseDiffRangesManyShortLines)$' \
-  -benchmem -benchtime=1x
-```
-
-The 128 MiB ceiling keeps the supported envelope bounded while collection
-holds source material alongside one frozen payload. There is no automatic
-chunking or review fan-out above that limit.
-
-## Disclosure boundary
-
-- Slopguard sends the complete frozen payload to the selected provider,
-  including deleted bytes and appended context.
-- With repository access, on by default for codex, any file in the
-  [repository snapshot](CONFIG.md#security-controls) the reviewer reads also
-  reaches the provider, unchanged files and unchanged environment key names
+- The whole bundle, deleted bytes and context included, goes to the selected
+  provider.
+- With [repository access](CONFIG.md#repository-access), any snapshot file the
+  reviewer reads also goes, unchanged files and environment key names
   included.
-- Slopguard rejects known sensitive paths except changed environment templates
-  and environment files with the names above. Environment file values never
-  leave the machine. Local snapshots bind their raw bytes through a
-  per-process key, so the reported hash cannot confirm a guessed value.
-  Slopguard does not scan the payload for credentials or judge whether
-  template defaults or environment key names are safe to disclose. A template
-  name is not proof that its content is free of secrets.
-- Operators authorize the frozen content for disclosure to the selected
-  provider. Repository-wide secret scanning belongs in the repository's normal
-  local or continuous-integration gates.
+- Environment values never leave. Slopguard does not scan for credentials or
+  judge whether template defaults or key names are safe to disclose.
+- The operator authorizes the frozen content for that provider. Secret
+  scanning belongs in the repository's own gates.

@@ -26,15 +26,11 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 ```
 
 - Pass `--version "$TAG"` or `--dest /chosen/bin` after `sh -s --` to pin a
-  release or override `${HOME}/.local/bin`.
-- The installer downloads the archive and `checksums.txt` from the same GitHub
-  Release, verifies the exact SHA-256, and atomically replaces the destination
-  binary.
-- Installer-managed binaries upgrade with `slopguard selfupdate` (`--check`
-  probes without touching the binary); brew installs upgrade through
-  `brew upgrade`.
-- The checksum shares GitHub's HTTPS boundary with the archive; for
-  independent provenance, [verify the release](#verify-a-release) first.
+  release or change the destination.
+- The installer checks the archive against the release's `checksums.txt`.
+  Both come over the same HTTPS connection; for independent provenance,
+  [verify the release](#verify-a-release).
+- Upgrade with `slopguard selfupdate`, or `brew upgrade` for a tap install.
 
 With Go 1.26 or newer:
 
@@ -43,11 +39,11 @@ go install github.com/uinaf/ffss/cli/slopguard/cmd/slopguard@latest
 slopguard --version
 ```
 
-Go-built binaries track `main`, report `dev (unknown)`, and are refused by
-`selfupdate`. Signed, versioned builds come from the tap or the installer.
+Go-built binaries track `main`, report `dev (unknown)`, and can't
+`selfupdate`.
 
-Runtime dependencies: Git 2.45 or newer and the selected review harness on
-`PATH`. Several harnesses may be installed; `--engine` selects exactly one.
+Needs Git 2.45 or newer and the selected harness (Codex CLI or Claude Code) on
+`PATH`.
 
 ### Verify a release
 
@@ -66,8 +62,7 @@ gh attestation verify --owner uinaf "$archive"
 
 ## Quick use
 
-Inspect the effective configuration and its sources, then review dirty local
-changes:
+Check the configuration and provider, then review local changes:
 
 ```bash
 prompt="Review this completed change against its acceptance criteria."
@@ -89,91 +84,36 @@ slopguard review --mode commit --commit HEAD --engine codex \
   --prompt "$prompt"
 ```
 
-Slopguard never edits source, runs tests, commits, pushes, chooses a provider,
-or falls back to another model. Builder verification happens before review.
+Slopguard never edits source, runs tests, commits, pushes, picks a provider,
+or falls back to another model. Run the builder's checks before review.
 
-Telemetry is off by default. Enable one run with `--telemetry`; export the
-bounded local spool with `slopguard telemetry export`. Reviews never upload
-telemetry. See [Telemetry](docs/CONFIG.md#telemetry).
+`--output json` writes the [result contract](docs/RESULT_SCHEMA.md) to stdout.
+Exit 0 is a clean review, 1 is findings, and 2 is no trustworthy result.
 
-## Provider doctor
+## Doctor
 
-`slopguard doctor` checks one provider without freezing a target or sending a
-model request:
-
-```bash
-slopguard doctor --engine codex
-slopguard doctor --engine claude --output json
-slopguard doctor --engine codex --json
-```
-
-It runs the same executable discovery, version, help-capability, and web-policy
-checks as review preparation, and creates and removes the provider's empty
-runtime workspace. It stays offline and spends no provider call. It never reads
-or emits provider configuration and never attempts login; native provider
-processes still receive their configured environment during startup.
-
-Authentication is advisory:
-
-- `ready`: a supported credential variable is present;
-- `delegated`: the provider, helper, or session decides at runtime.
+`slopguard doctor --engine <engine> [--json]` checks the harness, its version
+and capabilities, and the web policy offline, without a model call or login.
+Review never depends on it. Authentication is advisory: `ready` means a
+credential variable is set; `delegated` means the provider session decides at
+runtime.
 
 | Exit | Meaning |
 | --- | --- |
 | 0 | `ready` |
-| 1 | a valid `not_ready` diagnostic from a capability, timeout, cancellation, or internal failure |
-| 2 | configuration rejected, repository not resolvable, or the diagnostic could not be validated or written |
-
-Review never calls doctor or depends on its result. Output holds only the
-provider enum, compatible version, effective web policy, authentication
-readiness, and a bounded failure class and message; it excludes executable
-paths, credential values, environment dumps, provider configuration, custom
-model IDs, and raw provider output.
-
-## Machine output
-
-`--output json` emits the versioned result contract as the only stdout value;
-progress and diagnostics use stderr.
-
-```bash
-prompt="Review this completed change against its acceptance criteria."
-slopguard review --mode branch --base origin/main --engine codex \
-  --output json --prompt "$prompt" > result.json
-```
-
-Exit 0 is a valid clean review, 1 is valid findings, and 2 is no trustworthy
-result; [the result contract](docs/RESULT_SCHEMA.md) owns the details.
-
-The binary exposes its canonical contracts:
-
-```bash
-slopguard schema review > review-v1.schema.json
-slopguard schema result > result-v1.schema.json
-```
-
-`review` is the structured output expected from a provider; `result` is the
-CLI's final machine report. Neither describes CLI request parameters.
-
-## Agent skill
-
-The family [agent skill](../../skills/slopguard/SKILL.md) delegates one
-independent review to the installed CLI; it contains no second runtime.
+| 1 | a valid `not_ready` diagnostic |
+| 2 | configuration rejected, repository not resolvable, or no valid diagnostic |
 
 ## Documentation
 
-- [Configuration and telemetry](docs/CONFIG.md)
-- [Review engines](docs/engines/README.md)
-- [Local, branch, and commit targets](docs/TARGETS.md)
-- [Versioned result and exit contract](docs/RESULT_SCHEMA.md)
-
-## Contributing
-
-See [Contributing](CONTRIBUTING.md) for setup, release gates, and pull-request
-expectations.
+- [Configuration, web and repository access, cache, telemetry](docs/CONFIG.md)
+- [Targets and what leaves the machine](docs/TARGETS.md)
+- [JSON result and exit contract](docs/RESULT_SCHEMA.md)
+- [Agent skill](../../skills/slopguard/SKILL.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## License
 
-This project succeeds OpenClaw's
-[original slopguard agent skill](https://github.com/openclaw/agent-skills/tree/main/skills/slopguard),
-MIT licensed and credited to OpenClaw. This project's [MIT license](LICENSE)
-preserves the copyright notices for both OpenClaw and uinaf.
+[MIT](LICENSE), with copyright notices for uinaf and OpenClaw, whose
+[original slopguard skill](https://github.com/openclaw/agent-skills/tree/main/skills/slopguard)
+this succeeds.

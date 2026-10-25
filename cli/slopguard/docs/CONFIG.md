@@ -1,173 +1,79 @@
 # Configuration
 
-Slopguard loads one flat, typed configuration in descending precedence:
+Precedence, highest first:
 
-1. explicit CLI flags
-2. `SLOPGUARD_*` environment variables
-3. `.slopguard.yaml` at the resolved Git root
-4. `$XDG_CONFIG_HOME/slopguard/config.yaml`, or
-   `$HOME/.config/slopguard/config.yaml` when `XDG_CONFIG_HOME` is unset
-5. built-in operational defaults
+1. CLI flags
+2. `SLOPGUARD_*` environment variables (every file key except `telemetry`)
+3. `.slopguard.yaml` at the Git root
+4. `$XDG_CONFIG_HOME/slopguard/config.yaml`, else
+   `~/.config/slopguard/config.yaml`
+5. built-in defaults
 
-The engine has no default. Select exactly one of `codex` or `claude`
-through a flag or configuration source. Slopguard never chooses an engine by
-examining `PATH`.
+`slopguard config --engine <engine> [--json]` prints each effective value and
+its source. Keys, defaults, and validation live in
+[`internal/config`](../internal/config/); default models are the
+`Default*Model` constants in [provider/types.go](../internal/provider/types.go).
 
-## File schema
+- The engine has no default. Pick `codex` or `claude` with `--engine` or a
+  config source; slopguard never picks one from `PATH`.
+- A repository file may set `engine` only when the user file does not; a
+  conflicting value is an error that `--engine` or `SLOPGUARD_ENGINE` settles.
+- The account-home config file must be a regular file of at most 64 KiB,
+  owned by the current user, and not group- or world-writable.
 
-Both YAML files use the same strict schema:
+## Web access
 
-```yaml
-engine: claude
-model: claude-sonnet-5
-reasoning_effort: high
-timeout: 30m
-retries: 0
-max_bytes: 4194304
-web_access: true
-telemetry: false
-```
+On by default: reviewers can search and fetch references. Repository content
+under review can then steer the reviewer to attacker-chosen URLs, so turn it
+off (`--web-access=false` or `web_access: false`) for targets that must stay
+off the network. The repository file, environment variables, and an
+`XDG_CONFIG_HOME` file can turn it off but never back on.
 
-Omitted keys keep their built-in defaults: [`defaults()`](../internal/config/types.go)
-for operational values and reasoning effort, [`applyProviderDefaults`](../internal/config/load.go)
-for per-engine repository access, and the `Default*Model` constants in
-[provider/types.go](../internal/provider/types.go), which the adapter applies
-when the model is unset. `slopguard config` prints each value and its source.
+With web access on, Claude's only web tools are `WebSearch` and `WebFetch`,
+and Codex gets `--search`. With it off, neither engine gets a web tool.
 
-- Unknown keys, multiple YAML documents, and invalid types are errors.
-- `retries` must be `0` or `1`; `timeout` must be positive and at most `24h`.
-- Configuration cannot contain commands, provider argument strings, or named
-  profiles.
-- There is no `.slopguard.local.yaml`.
-- `max_bytes` is bounded by the [target limits](TARGETS.md).
-- Each configuration file must be a regular file no larger than 64 KiB;
-  symbolic links are rejected.
-- Boolean fields accept only `true` or `false`; `yes`, `no`, `on`, and `off`
-  are invalid.
-- A trusted account-home XDG file must be owned by the current user and must
-  not be group- or world-writable.
+## Repository access
 
-Each file key except `telemetry` has an upper-case `SLOPGUARD_` environment
-variable, such as `SLOPGUARD_REASONING_EFFORT`.
+Flag only. On by default for codex, off for claude. The reviewer then also
+sees a snapshot of the reviewed revision (or the frozen working tree for
+`local`), so it can read callers and tests. Toggle it with
+`--repository-access[=false]`.
 
-Telemetry has no environment-variable source; see [Telemetry](#telemetry).
-
-## Security controls
-
-Web access defaults to on so reviewers can search for and fetch references.
-Pass `--web-access=false` or set `web_access: false` to turn it off.
-
-- A path selected through `XDG_CONFIG_HOME`, repository configuration, and
-  environment variables may disable web access but cannot enable it. Their
-  `web_access: true` is ignored while web access is already on and rejected
-  when a lower-precedence source turned it off.
-- Repository configuration may set `engine` only when no user configuration
-  file sets one. A repository engine that differs from the user's is an error;
-  `--engine` or `SLOPGUARD_ENGINE` settles it.
-- With web access on, repository content under review can steer the reviewer
-  toward attacker-chosen URLs. Turn it off for targets that must not reach the
-  network.
-
-Providers run from a new empty temporary workspace, receive only the frozen
-review bundle, and inherit the normal provider environment, user configuration,
-and configured provider or session authentication.
-
-Repository access has only a flag form and is on by default for codex, off for
-claude: the reviewer runs inside a snapshot of the repository instead of the
-empty workspace, so it can read callers and tests. Pass
-`--repository-access=false` to keep codex to the bundle, or
-`--repository-access` to give claude the snapshot. In the
-[planted-bug eval](../CONTRIBUTING.md), codex reviewing only the diff missed
-most bugs that need surrounding code; the snapshot caught them for about two
-seconds more, while claude caught them without it.
-
-- The snapshot holds the reviewed revision's files, read straight from its
-  tree so `export-ignore` and `export-subst` cannot hide or rewrite them, or the
-  frozen working tree for `local`, without Git metadata. Sensitive paths are left out, environment
-  files are [redacted](TARGETS.md), and symlinks and special files are skipped.
-  It is capped at 512 MiB, counting 512 bytes plus the path for every file.
-- Neither engine loads the snapshot's own instruction files. Claude keeps the
-  empty workspace and gets the snapshot through `--add-dir`, with
-  `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=0`, so its `CLAUDE.md` stays
-  data; codex runs in the snapshot with project `AGENTS.md` loading turned
-  off.
-- Claude gets `Read`, `Grep`, and `Glob` without pre-approval, so it can read
-  only inside the snapshot. Codex runs in its read-only sandbox, which still
-  reads the whole disk: repository content under review can steer it to any
-  file the user can read.
-- The snapshot directory must be outside the reviewed repository; point
-  `TMPDIR` elsewhere if it is not. Keep `TMPDIR` outside Codex-trusted
-  projects too, so Codex cannot apply a reviewed project configuration.
+- The snapshot leaves out sensitive paths, redacts environment files
+  ([Targets](TARGETS.md)), skips symlinks and special files, and is capped at
+  512 MiB.
+- Neither engine loads the snapshot's `AGENTS.md` or `CLAUDE.md`.
+- Claude reads only inside the snapshot. Codex runs in its read-only sandbox,
+  which can read the whole disk: reviewed content can steer it to any file the
+  user can read.
+- Keep `TMPDIR` outside the reviewed repository and outside Codex-trusted
+  projects.
 
 ## Result cache
 
-`review` reuses a completed clean or findings result when the snapshot hash,
-engine, model, reasoning effort, retries, web access, repository access, and
-slopguard version all match, the source still passes the unchanged check, and
-prints `reusing the cached review of this snapshot` to stderr. The snapshot hash already covers the diff, prompt, and context files.
-Pass `--cache=false` to review again.
-
-- Entries live under `$XDG_CACHE_HOME/slopguard`, or `~/.cache/slopguard`,
-  as files only the current user can read; a shared or symlinked entry is
-  ignored, and any cache error falls back to a fresh, unstored review.
-- Failures are never cached. A cached result keeps its original attempts and
-  duration. The newest 512 results are kept.
-- A cache directory inside the reviewed repository disables the cache.
-- A cache hit records no [telemetry](#telemetry) event, since no provider ran.
-- Local snapshot hashes use a per-user `state-key` kept in the same directory,
-  so an unchanged local target reproduces its hash across runs.
+`review` reuses a clean or findings result when the snapshot, engine, model,
+effort, retries, web access, repository access, and slopguard version all
+match, and says so on stderr. `--cache=false` forces a fresh review. Failures
+are never cached. Entries live in `$XDG_CACHE_HOME/slopguard` or
+`~/.cache/slopguard`; a cache directory inside the reviewed repository
+disables the cache.
 
 ## Telemetry
 
-Telemetry is off by default and does no filesystem or network work until
-enabled. Enable one command with `--telemetry`, or set `telemetry: true` in the
-ownership-checked account-home XDG file. Repository configuration, environment
-variables, and an XDG path selected by `XDG_CONFIG_HOME` cannot enable it.
+Off by default. Enable one run with `--telemetry`, or set `telemetry: true`
+in the account-home config file; no other source can enable it. Events stay
+in `~/.local/state/slopguard/telemetry.jsonl` (newest 256 events, 1 MiB) and
+never change review output, status, exit code, or latency.
 
-After the review result is written, Slopguard starts a same-binary local
-recorder with one bounded, sanitized event; the review process itself does no
-telemetry work. The recorder takes a non-blocking store lock, and a failed
-handoff, contended store, or failed update drops that event. Review completion
-never waits for telemetry storage.
+Events hold only versions, provider, target mode, web access, outcome,
+failure class, attempt outcomes, and coarse size, count, and duration buckets.
+They hold no paths, revisions, hashes, prompts, findings, provider output,
+environment values, credentials, custom model ids, or user or repository
+identifiers.
 
-```text
-~/.local/state/slopguard/telemetry.jsonl
-```
-
-- `~` is the operating-system account home, not an ambient `HOME` override.
-- The store is locked across processes, capped at 256 events and 1 MiB, keeps
-  the newest events, and drops malformed records during recovery.
-- A store failure never changes review output, duration, status, exit code, or
-  return latency.
-
-Events contain only:
-
-- telemetry, CLI release, and result-schema versions;
-- provider enum, target mode, web access, outcome, and failure class;
-- attempt outcomes and protocol-recovery enum;
-- coarse bundle-size, finding-count, and phase-duration buckets.
-
-They contain no paths, revisions, hashes, prompts, findings, prose, raw
-provider output, environment values, credentials, custom model identifiers, or
-persistent user/repository identifiers.
-
-Export is an explicit local command. It emits one sanitized JSON object and
-neither uploads nor deletes the local events; transport and retention after
-export belong to the caller:
+Reviews never upload telemetry. Export is explicit and leaves the local events
+in place:
 
 ```bash
 slopguard telemetry export > telemetry.json
 ```
-
-## Effective configuration
-
-Inspect resolved values and their source without printing credentials or the
-full environment:
-
-```bash
-slopguard config --engine codex
-slopguard config --engine codex --json
-```
-
-It accepts the same typed overrides as `review`; `--repository` inspects
-another checkout.
