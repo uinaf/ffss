@@ -79,7 +79,41 @@ or falls back to another model. Builder verification happens before review.
 
 Telemetry is off by default. Enable one run with `--telemetry`; export the
 bounded local spool with `slopguard telemetry export`. Reviews never upload
-telemetry. See [Optional telemetry](docs/TELEMETRY.md).
+telemetry. See [Telemetry](docs/CONFIG.md#telemetry).
+
+## Provider doctor
+
+`slopguard doctor` checks one provider without freezing a target or sending a
+model request:
+
+```bash
+slopguard doctor --engine codex
+slopguard doctor --engine claude --output json
+slopguard doctor --engine codex --json
+```
+
+It runs the same executable discovery, version, help-capability, and web-policy
+checks as review preparation, and creates and removes the provider's empty
+runtime workspace. It stays offline and spends no provider call. It never reads
+or emits provider configuration and never attempts login; native provider
+processes still receive their configured environment during startup.
+
+Authentication is advisory:
+
+- `ready`: a supported credential variable is present;
+- `delegated`: the provider, helper, or session decides at runtime.
+
+| Exit | Meaning |
+| --- | --- |
+| 0 | `ready` |
+| 1 | a valid `not_ready` diagnostic from a capability, timeout, cancellation, or internal failure |
+| 2 | configuration rejected, repository not resolvable, or the diagnostic could not be validated or written |
+
+Review never calls doctor or depends on its result. Output holds only the
+provider enum, compatible version, effective web policy, authentication
+readiness, and a bounded failure class and message; it excludes executable
+paths, credential values, environment dumps, provider configuration, custom
+model IDs, and raw provider output.
 
 ## Machine output
 
@@ -112,11 +146,9 @@ independent review to the installed CLI; it contains no second runtime.
 
 ## Documentation
 
-- [Configuration](docs/CONFIG.md)
-- [Provider doctor](docs/DOCTOR.md)
+- [Configuration and telemetry](docs/CONFIG.md)
 - [Review engines](docs/engines/README.md)
-- [Performance measurement](docs/PERFORMANCE.md)
-- [Optional telemetry](docs/TELEMETRY.md)
+- [Performance measurement](CONTRIBUTING.md#performance-measurement)
 - [Local, branch, and commit targets](docs/TARGETS.md)
 - [Versioned result and exit contract](docs/RESULT_SCHEMA.md)
 - [Release artifacts and verification](docs/RELEASES.md)
