@@ -46,14 +46,11 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 ~/.local/bin/slopguard --version
 ```
 
-The installer verifies release checksums and defaults to `~/.local/bin`.
-Verification details: [slopguard](cli/slopguard/README.md#install).
+Options and release verification: [slopguard](cli/slopguard/README.md#install).
 
 ### Plugin
 
-Once ffss is listed on the [Cursor Marketplace](https://cursor.com/marketplace),
-install it through **Grok Bot Plugins** or **Cursor Customize → Marketplace**.
-From a CLI, add this repository's marketplace:
+Add this repository's marketplace:
 
 ```text
 # Claude Code

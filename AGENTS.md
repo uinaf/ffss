@@ -1,39 +1,38 @@
 # Agent Guide
 
 `uinaf/ffss` ships the `slopguard` CLI, the ffss agent skills, and the shared
-agent rules. [README](README.md) covers what each piece does and how users
-install it.
+agent rules. The [README](README.md) covers install.
 
 ## Layout
 
 | Path | Owns |
 |---|---|
-| [skills/](skills/) | Skill packages and their eval scenarios under `evals/` |
-| [cli/slopguard/](cli/slopguard/) | Go review CLI; its own [agent guide](cli/slopguard/AGENTS.md) and [contributing](cli/slopguard/CONTRIBUTING.md) |
-| [cli/lib/](cli/lib/) | Shared Go module for the CLIs, tagged `cli/lib/vX.Y.Z` ([README](cli/lib/README.md)) |
-| [rules/](rules/) | Global agent rules, one standalone file per topic, that consumers fetch raw from `main` and combine in their own order; skills must work without them |
-| [plugin.json](plugin.json), [.claude-plugin/](.claude-plugin/), [.cursor-plugin/](.cursor-plugin/) | Portable, Claude, and Cursor plugin manifests (and Claude marketplace) |
-| [tools/skill-evals/](tools/skill-evals/) | npm surface for `skillcheck lint`; evals run outside this repo ([skill-evals](tools/skill-evals/README.md)) |
+| [skills/](skills/) | Skill packages; eval scenarios in `<skill>/evals/<scenario>/` (`task.md`, `criteria.json`) |
+| [cli/slopguard/](cli/slopguard/) | Go review CLI, with its own [agent guide](cli/slopguard/AGENTS.md) and [contributing](cli/slopguard/CONTRIBUTING.md) |
+| [cli/lib/](cli/lib/) | Shared Go module for the CLIs; no binary |
+| [rules/](rules/) | Global agent rules, one standalone file per topic. Consumers fetch them raw from `main` and combine them in their own order; skills must work without them |
+| [plugin.json](plugin.json), [.claude-plugin/](.claude-plugin/), [.cursor-plugin/](.cursor-plugin/) | Plugin manifests and the Claude marketplace |
+| [tools/skill-evals/](tools/skill-evals/) | Pinned [skillcheck](https://github.com/uinaf/skillcheck) for the skills lint |
 
-## Commands
+## Gates
 
 | Change | Gate |
 |---|---|
-| `skills/` | `npm ci && npm run lint && npm run audit` in `tools/skill-evals` ([skill-evals](tools/skill-evals/README.md)) |
+| `skills/` | `npm ci && npm run lint && npm run audit` in `tools/skill-evals` |
 | `skills/slopcourier/scripts/bodycheck/`, `.../prwatch/` | `gofmt -l .`, `go vet ./...`, and `go test ./...` in each |
 | `cli/slopguard/` | `mise run verify` in `cli/slopguard` |
 | `cli/lib/` | `mise run verify` in `cli/lib` |
 | Root docs, `rules/` | none |
 
-[Verify](.github/workflows/verify.yml) runs only the lanes a change touches and
-requires them through its `verify` job, the required check for merging a pull
-request.
+Evals run outside this repo, in skillcheck's
+[isolated image](https://github.com/uinaf/skillcheck/blob/main/docs/usage.md#isolated-runs);
+eval engines, results, and scorecards stay out.
 
 ## Release
 
 - Skills and plugin: merging to `main` publishes; installs pin the commit SHA.
-- `slopguard`: every push to `main` that touches `cli/slopguard/` evaluates a
-  Conventional Commits release from the commits there
-  ([workflow](.github/workflows/release-slopguard.yml)).
-- `cli/lib`: tag a module version before a consumer depends on it.
-- `rules/`: consumers read `main` directly, so a merge is live on their next sync.
+- `slopguard`: see [Releases](cli/slopguard/CONTRIBUTING.md#releases).
+- `cli/lib`: tag `cli/lib/vX.Y.Z` before a consumer depends on it. Consumers
+  pin a published tag so `GOWORK=off` builds stay reproducible.
+- `rules/`: consumers read `main` directly, so a merge is live on their next
+  sync.

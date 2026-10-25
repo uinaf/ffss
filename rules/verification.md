@@ -2,10 +2,10 @@
 
 The repository guide owns proof. Without one, run what the user will use (the
 app, CLI, or endpoint the change touches), choosing the cheapest run that
-would fail if the change were wrong. Put lasting checks at the highest layer the gate affords: real
-surface, owned boundary, properties, then units for pure logic. Prove costly
-invariants tests rarely reach, such as races, retries, and state machines,
-with a model checker or bounded proof.
+would fail if the change were wrong. Put lasting checks at the highest layer
+the gate affords: real surface, owned boundary, properties, then units for
+pure logic. Prove costly invariants tests rarely reach, such as races,
+retries, and state machines, with a model checker or bounded proof.
 
 - Keep gates and hooks enabled; fix change-caused failures without asking.
 - Local runs and read-only live checks need no scope; paid calls, shared or

@@ -8,5 +8,5 @@
 - When the user approves a substitute for an unavailable engine, keep that
   engine's default model and step effort down one level.
 
-Engines and their constraints: `slopguard review --help`, `slopguard config`,
-and the [engine docs](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/engines/README.md).
+Engines and their constraints: `slopguard review --help` and
+`slopguard config`.

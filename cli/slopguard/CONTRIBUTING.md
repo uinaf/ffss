@@ -34,7 +34,7 @@ mise run test:current-checkout
 
 For command-surface changes, also exercise the built binary directly. For
 changes to the [agent skill](../../skills/slopguard/SKILL.md), run the
-[skillcheck lint](../../tools/skill-evals/README.md) that CI runs:
+skillcheck lint that CI runs:
 
 ```bash
 cd ../../tools/skill-evals && npm ci && npm run lint
@@ -45,21 +45,25 @@ each selected harness on `PATH`; they stay out of `verify` and CI:
 
 ```bash
 SLOPGUARD_LIVE_PROVIDERS=claude mise run verify:live
+SLOPGUARD_TEST_LIVE_CODEX=1 go test ./internal/provider -run '^TestCodexLive$' -count=1 -v
+SLOPGUARD_TEST_LIVE_CLAUDE=1 go test ./internal/provider -run '^TestClaudeLive$' -count=1 -v
 mise run eval -- -configs codex-diff,codex-snapshot -runs 1
 ```
 
-Overhead benchmark:
+Benchmarks for review overhead and bundle construction:
 
 ```bash
 go test ./cmd/slopguard -run '^$' \
   -bench '^BenchmarkReviewOverhead$' -benchtime=10x -count=1
+go test ./internal/target -run '^$' \
+  -bench 'Benchmark(ComposeBundle|ParseDiffRangesManyShortLines)$' \
+  -benchmem -benchtime=1x
 ```
 
 ## Pull Requests
 
 - Start from a GitHub issue and use Conventional Commits.
 - Update tests and user-facing documentation with contract changes.
-- Validate AI-review findings before fixing them, then close their threads.
 
 ## Releases
 
