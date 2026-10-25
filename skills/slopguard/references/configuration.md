@@ -9,9 +9,3 @@ Check resolved values before a paid run:
 slopguard config --repository . --engine "$engine" --json
 slopguard doctor --repository . --engine "$engine" --json
 ```
-
-`doctor` runs offline and reports auth as `ready` (a credential variable is
-set) or `delegated` (the provider session decides at runtime).
-
-**Web access** is on by default. Pass `--web-access=false` when the target
-shouldn't steer the reviewer to the network or the user says so.

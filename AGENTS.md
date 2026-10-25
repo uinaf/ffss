@@ -3,16 +3,12 @@
 `uinaf/ffss` ships the `slopguard` CLI, the ffss agent skills, and the shared
 agent rules. The [README](README.md) covers install.
 
-## Layout
+## Boundaries
 
-| Path | Owns |
-|---|---|
-| [skills/](skills/) | Skill packages; eval scenarios in `<skill>/evals/<scenario>/` (`task.md`, `criteria.json`) |
-| [cli/slopguard/](cli/slopguard/) | Go review CLI, with its own [agent guide](cli/slopguard/AGENTS.md) and [contributing](cli/slopguard/CONTRIBUTING.md) |
-| [cli/lib/](cli/lib/) | Shared Go module for the CLIs; no binary |
-| [rules/](rules/) | Global agent rules, one standalone file per topic. Consumers fetch them raw from `main` and combine them in their own order; skills must work without them |
-| [plugin.json](plugin.json), [.claude-plugin/](.claude-plugin/), [.cursor-plugin/](.cursor-plugin/) | Plugin manifests and the Claude marketplace |
-| [tools/skill-evals/](tools/skill-evals/) | Pinned [skillcheck](https://github.com/uinaf/skillcheck) for the skills lint |
+- `rules/` holds one standalone file per topic. Consumers fetch them raw from
+  `main` and combine them in their own order; skills must work without them.
+- `cli/lib/` is a shared Go module with no binary.
+- `cli/slopguard/` has its own [agent guide](cli/slopguard/AGENTS.md).
 
 ## Gates
 

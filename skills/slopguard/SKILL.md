@@ -49,8 +49,9 @@ ones. What leaves the machine: [security.md](references/security.md).
 - Exit 1: findings. Done once every finding is fixed and verified, or
   rejected with a reason. Exit 1 is never "clean".
 - Exit 2: no trustworthy result. `source_changed` means the tree moved during
-  review; discard and rerun once edits stop. Other classes:
-  [results.md](references/results.md).
+  review; discard and rerun once edits stop. Report other failure classes
+  ([result contract](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/RESULT_SCHEMA.md))
+  as blockers.
 
 **Convergence:** a repeated finding reopens only with new evidence. Another
 model's verdict on the same inputs is not evidence, so don't rerun unchanged

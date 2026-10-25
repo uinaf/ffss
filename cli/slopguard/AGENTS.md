@@ -11,8 +11,6 @@ steps and the Go parallelism caps. Setup, release, and live provider checks:
 
 ## Boundaries
 
-- The runtime is entirely Go, helpers and wrappers included.
-- Runtime dependencies are Git and the selected review harness.
 - The CLI reviews and reports. Editing source, running tests, committing,
   pushing, and nested reviews belong to the caller.
 - Keep provider execution, protocol validation, review policy, configuration,
