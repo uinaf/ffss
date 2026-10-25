@@ -59,5 +59,5 @@ and may consume plan or API quota; only malformed output consumes the one
 configured protocol retry.
 
 See [Configuration](../CONFIG.md) for precedence and web-access policy.
-[`slopguard doctor`](../DOCTOR.md) runs only this executable and policy
+[`slopguard doctor`](../../README.md#provider-doctor) runs only this executable and policy
 preflight; it never freezes a target or invokes the model.
