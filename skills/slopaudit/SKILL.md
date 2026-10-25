@@ -32,7 +32,8 @@ returns a short summary. Where to look and what to measure:
    mistake, and the cost per merged PR from first commit to production.
 6. **Setup.** Duplicates, contradictions, no-op instructions, stale
    references, competing skills, noisy checks, context leaks, and guardrails
-   on agents that serve other people.
+   on agents that serve other people. Grade each skill against
+   [skills.md](references/skills.md).
 7. **External** (when asked). Popular skill collections: adopt, adapt, or
    skip.
 
