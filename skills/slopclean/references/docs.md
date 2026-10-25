@@ -12,7 +12,10 @@ decisions.
 - **No mirrors:** a mirror restates what code, CI, or config already says:
   how a release, deploy, workflow, or tool works, which keys or tasks exist,
   what a job touches. It goes stale on the next change. Delete it and link the
-  file and key. Docs keep only what a reader must do or must not break.
+  file and key. Behaviour specs, architecture overviews, testing guides, and
+  test or lane catalogs are mirrors too: a rule a test pins is documented by
+  that test. Docs keep only what a reader must do or must not break that no
+  file, test, or check states.
   Exception: README and `AGENTS.md` carry the exact install, setup, run, and
   verify commands.
 - **Current state only:** cut retired or absent systems, their unset
