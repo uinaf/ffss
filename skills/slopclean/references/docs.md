@@ -9,9 +9,12 @@ decisions.
   verification scope, recovery paths.
 - **Cut:** generic advice, directory tours, duplicates, and facts a quick
   lookup gives.
-- **Link, don't copy:** code and config own inventories, defaults, schemas,
-  and task lists. Link the file and key. Exception: README and `AGENTS.md`
-  carry the exact install, setup, run, and verify commands.
+- **No mirrors:** a mirror restates what code, CI, or config already says:
+  how a release, deploy, workflow, or tool works, which keys or tasks exist,
+  what a job touches. It goes stale on the next change. Delete it and link the
+  file and key. Docs keep only what a reader must do or must not break.
+  Exception: README and `AGENTS.md` carry the exact install, setup, run, and
+  verify commands.
 - **Current state only:** cut retired or absent systems, their unset
   settings, history, and "there is no X" sections. Keep a limit only when a
   reader would otherwise build or call the wrong thing, and put the supported
