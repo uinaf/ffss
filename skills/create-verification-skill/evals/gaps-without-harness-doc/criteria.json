@@ -1,0 +1,36 @@
+{
+  "context": "No harness doc exists. A good run builds the verification skill from scripts, Playwright config, and CI, asks only what those sources cannot answer (how the live test account signs in and who owns it, fixture cleanup on shared staging), writes safe marked defaults instead of invented account names or credentials, and leaves the questions for the user.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Skill from real sources",
+      "max_score": 20,
+      "description": "A repo-local SKILL.md under a harness skills directory names pnpm verify as the gate (matching CI) and a proof map that uses the existing scripts: pnpm e2e for mocked browser proof and pnpm e2e:live for staging."
+    },
+    {
+      "name": "Gaps asked, not answered by lookup",
+      "max_score": 25,
+      "description": "The final message lists open questions for the user, including how the live test account signs in to produce .auth/live.json and who owns it; it does not ask things the files already answer, such as the gate command or the Playwright projects."
+    },
+    {
+      "name": "No invented identity or secret",
+      "max_score": 20,
+      "description": "Neither the skill nor any new file invents a test account email, password, token, or sign-in command; unknown values are marked as open (for example TODO for the owner) and the live lane is gated on them."
+    },
+    {
+      "name": "Live fixture caution",
+      "max_score": 15,
+      "description": "The skill treats e2e:live as writing to shared staging: it runs only with the sanctioned account, and it says to cancel or remove only the bookings the run created and to check they are gone."
+    },
+    {
+      "name": "Negative controls and evidence",
+      "max_score": 10,
+      "description": "Proof-map rows say how each proof goes red when the change is wrong, and the skill says where Playwright traces and screenshots land (test-results/) and to look at them before citing them."
+    },
+    {
+      "name": "Short",
+      "max_score": 10,
+      "description": "SKILL.md is at most about 80 lines and does not restate the package.json scripts table or the Playwright config."
+    }
+  ]
+}

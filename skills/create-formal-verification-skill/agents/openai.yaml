@@ -1,0 +1,7 @@
+interface:
+  display_name: "create-formal-verification-skill"
+  short_description: "Generate model-checked proof for races, retries, and state machines"
+  default_prompt: "Use $create-formal-verification-skill to find this repository's costly invariants that tests rarely reach, add bounded models with negative controls and CI, and write the repo-local formal-verification skill."
+
+policy:
+  allow_implicit_invocation: true

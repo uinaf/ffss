@@ -1,0 +1,51 @@
+{
+  "context": "A long testing doc becomes a lean repo-local verification skill: script-owned facts are linked rather than copied, hazards and live-fixture rules are kept, the password sign-in path is dropped and flagged, heavy work points at the routing skill without hosts, each proof has a negative control, and the old doc is removed or cut to a pointer.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Repo-local skill written",
+      "max_score": 10,
+      "description": "A new SKILL.md exists under a harness skills directory in the repo (for example .agents/skills/verification/ or .claude/skills/verification/) with frontmatter whose name matches its directory and a description that says it is for proving changes in this repo."
+    },
+    {
+      "name": "Lean with lane references",
+      "max_score": 12,
+      "description": "SKILL.md is at most about 80 lines and holds the gate and a proof map; device, live-account, and evidence detail sit in separate reference files that SKILL.md links."
+    },
+    {
+      "name": "Script facts linked, not copied",
+      "max_score": 12,
+      "description": "The skill does not reproduce the prove.sh or emulator.sh flag tables or the exit-code list; it links the scripts or their --help instead. Naming a single flag a reader needs is fine."
+    },
+    {
+      "name": "Password path dropped and flagged",
+      "max_score": 16,
+      "description": "The skill gives only the qa-shared CLI device-code login plus the status check for live proof, contains no email/password sign-in or the password itself, and the final message flags the password fallback in the old doc as removed and for the owner to rotate or retire."
+    },
+    {
+      "name": "Fixture ownership kept",
+      "max_score": 12,
+      "description": "The skill keeps the per-run group, the ledger written before each next write, deleting only ledger ids with expenses before groups and a 404 check, no retry after an unknown write outcome, and restoring the shared currency setting."
+    },
+    {
+      "name": "Hazards kept",
+      "max_score": 8,
+      "description": "The skill keeps both hazards: stop only the emulator serial you booted, and never run connectedAndroidTest or prove.sh between authenticated steps."
+    },
+    {
+      "name": "Heavy work routed without hosts",
+      "max_score": 10,
+      "description": "The full instrumented suite is routed to the fleet skill by name, and the skill does not copy the host names, the ci user, or the key location."
+    },
+    {
+      "name": "Negative controls",
+      "max_score": 10,
+      "description": "Each proof-map row, or each lane, says how that proof goes red when the change is wrong (for example reverting the fix, a wrong fixture, or a failing marker), or labels it an observation."
+    },
+    {
+      "name": "Old doc slimmed and history dropped",
+      "max_score": 10,
+      "description": "docs/testing.md is deleted or cut to a short pointer, the Appium and Jenkins history is not carried into the skill, and AGENTS.md no longer tells agents to read the long doc end to end but points at the skill."
+    }
+  ]
+}

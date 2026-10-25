@@ -1,0 +1,41 @@
+{
+  "context": "A refresh-token rotation race across concurrent callers. A good run models the protocol (TLA+/PlusCal or an equivalent bounded checker), maps model to code, reinserts the pre-fix behavior as a negative control the checker must reject on a named invariant, wires one pinned, path-filtered CI task for both, writes a short repo-local skill, and reports honestly what it ran.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Invariant stated",
+      "max_score": 12,
+      "description": "The model states a safety invariant in one sentence equivalent to: concurrent 401s never send a revoked refresh token, so a valid session is never signed out by a refresh race."
+    },
+    {
+      "name": "Bounded model of the protocol",
+      "max_score": 16,
+      "description": "A model file is added (for example a TLA+ or PlusCal spec with a TLC config, or a Lincheck test) that represents at least two concurrent callers, the stored tokens, server-side rotation and revocation, and the mutex; bounds are stated with a reason they suffice."
+    },
+    {
+      "name": "Mapping to code",
+      "max_score": 12,
+      "description": "The model carries a table or header mapping its variables and actions to TokenRefresher.refresh, TokenStore, and AuthApi.refresh, and TokenRefresher.kt gets a short comment naming the model."
+    },
+    {
+      "name": "Negative control",
+      "max_score": 18,
+      "description": "A variant reinserts the pre-fix behavior (no mutex, or no replaced-token check) and is expected to fail with a counterexample on the named invariant; the check treats a parse error or timeout as a failure, not as the expected red."
+    },
+    {
+      "name": "CI wiring",
+      "max_score": 14,
+      "description": "One repo task (for example a Gradle task) runs the clean model and the variant, CI calls it, the checker version is pinned, and the job is path-filtered on the model directory and the mapped auth code."
+    },
+    {
+      "name": "Repo-local skill",
+      "max_score": 14,
+      "description": "A short repo-local SKILL.md under a harness skills directory says how to run the models, what to do when mapped code changes, how to read a counterexample, and how to add a model."
+    },
+    {
+      "name": "Honest about execution",
+      "max_score": 14,
+      "description": "The final message says whether the checker actually ran here; if it did not, it gives the command and claims no state counts, pass, or counterexample output."
+    }
+  ]
+}

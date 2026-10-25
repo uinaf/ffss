@@ -1,0 +1,23 @@
+{
+  "context": "A one-line doc fix: the browser-test command in docs/testing.md becomes npm run test:e2e. No verification skill is generated and the doc keeps its shape.",
+  "type": "weighted_checklist",
+  "skill_use": "forbidden",
+  "install": "all",
+  "checklist": [
+    {
+      "name": "Command fixed",
+      "max_score": 60,
+      "description": "docs/testing.md shows `npm run test:e2e` where it showed `npm run e2e`, and no other command in the doc is wrong."
+    },
+    {
+      "name": "Doc kept in place",
+      "max_score": 25,
+      "description": "docs/testing.md still exists with its other lines intact; it is not deleted, moved, or rewritten into a skill."
+    },
+    {
+      "name": "No new skill",
+      "max_score": 15,
+      "description": "No SKILL.md or skills directory is created."
+    }
+  ]
+}

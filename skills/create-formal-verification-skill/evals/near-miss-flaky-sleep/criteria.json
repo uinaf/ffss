@@ -1,0 +1,23 @@
+{
+  "context": "An ordinary flaky test that waits with a fixed sleep. The fix is deterministic test scheduling, not a formal model.",
+  "type": "weighted_checklist",
+  "skill_use": "forbidden",
+  "install": "all",
+  "checklist": [
+    {
+      "name": "Cause named",
+      "max_score": 30,
+      "description": "Explains that Thread.sleep(100) races the consumer coroutine on Dispatchers.Default, so a slow CI machine asserts before both items are sent."
+    },
+    {
+      "name": "Deterministic fix",
+      "max_score": 45,
+      "description": "The test no longer uses a fixed sleep: it runs the queue on a test dispatcher (for example runTest with StandardTestDispatcher and advanceUntilIdle) or waits on a completion signal, so the assertion runs only after both sends."
+    },
+    {
+      "name": "Scoped change",
+      "max_score": 25,
+      "description": "No model, spec, model-checker setup, CI job, or SKILL.md is added; production SyncQueue behavior is unchanged unless a change is needed to inject the dispatcher."
+    }
+  ]
+}

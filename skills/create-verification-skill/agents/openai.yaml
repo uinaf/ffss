@@ -1,0 +1,7 @@
+interface:
+  display_name: "create-verification-skill"
+  short_description: "Generate a repo-local skill that says how to prove a change"
+  default_prompt: "Use $create-verification-skill to turn this repository's harness docs, scripts, CI, and build tasks into a short repo-local verification skill, and slim the docs it replaces."
+
+policy:
+  allow_implicit_invocation: true

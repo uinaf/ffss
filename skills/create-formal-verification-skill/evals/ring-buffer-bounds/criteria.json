@@ -1,0 +1,41 @@
+{
+  "context": "A single-threaded Rust data structure with an arithmetic bounds invariant. A good run proves it on the real code with a bounded model checker (for example Kani) rather than writing a separate spec, reinserts the fuzz-found off-by-one as a negative control, pins the checker in CI, writes a short repo-local skill, and reports honestly what it ran.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Checks the real code",
+      "max_score": 18,
+      "description": "Proof harnesses call the crate's RingBuffer directly through a code-level bounded checker such as Kani (#[kani::proof] with nondeterministic inputs), not a separate TLA+ or Alloy model of the buffer."
+    },
+    {
+      "name": "Invariants covered",
+      "max_score": 16,
+      "description": "Harnesses cover every capacity from 1 to 8 and nondeterministic push/pop sequences, asserting no out-of-bounds index and FIFO order with no lost or duplicated items (for example against a reference queue)."
+    },
+    {
+      "name": "Bounds stated",
+      "max_score": 10,
+      "description": "Loop unwinding or sequence length is bounded explicitly and the bound is justified (for example enough operations to wrap head around a capacity-8 buffer)."
+    },
+    {
+      "name": "Negative control",
+      "max_score": 18,
+      "description": "A variant reinserts the `len > cap` check (behind a cfg flag or in a test-only copy) and a harness expects the checker to find the lost or duplicated item, for example with #[kani::should_panic]; a timeout or build error does not count as the expected failure."
+    },
+    {
+      "name": "CI wiring",
+      "max_score": 14,
+      "description": "CI runs the proofs with a pinned checker version (for example the Kani GitHub action or cargo-kani at a fixed version), runs the negative control too, and is path-filtered or scoped to the buffer code and harnesses."
+    },
+    {
+      "name": "Repo-local skill",
+      "max_score": 12,
+      "description": "A short repo-local SKILL.md under a harness skills directory says how to run the proofs, what to do when the buffer code changes, how to read a failure trace, and how to add a harness."
+    },
+    {
+      "name": "Honest about execution",
+      "max_score": 12,
+      "description": "The final message says whether the checker actually ran here; if it did not, it gives the command and claims no verification results."
+    }
+  ]
+}

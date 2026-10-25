@@ -23,6 +23,8 @@ One job each.
 | [`slopclean`](skills/slopclean/) | Removing AI tells from prose, code, and tests; cleaning drifted docs and agent guides |
 | [`slopaudit`](skills/slopaudit/) | Auditing an agentic setup, its recent use, and shipped work to decide what to prune, fix, or add |
 | [`slopskills`](skills/slopskills/) | Selecting and installing repo-local skills for the stack and task |
+| [`create-verification-skill`](skills/create-verification-skill/) | Generating a repo-local skill that says how to prove a change, from the repo's scripts, CI, and harness docs |
+| [`create-formal-verification-skill`](skills/create-formal-verification-skill/) | Adding model-checked proof for races, retries, and state machines, with negative controls, CI, and a repo-local skill |
 
 Stack skills such as `react-ban-use-effect` live in
 [uinaf/agent-skills](https://github.com/uinaf/agent-skills).
