@@ -33,8 +33,8 @@ curl --proto '=https' --tlsv1.2 -fsSL \
 - Installer-managed binaries upgrade with `slopguard selfupdate` (`--check`
   probes without touching the binary); brew installs upgrade through
   `brew upgrade`.
-- [Release verification](docs/RELEASES.md#installer-trust-boundary) covers the
-  HTTPS trust boundary and independent Cosign and GitHub attestation checks.
+- The checksum shares GitHub's HTTPS boundary with the archive; for
+  independent provenance, [verify the release](#verify-a-release) first.
 
 With Go 1.26 or newer:
 
@@ -48,6 +48,21 @@ Go-built binaries track `main`, report `dev (unknown)`, and are refused by
 
 Runtime dependencies: Git 2.45 or newer and the selected review harness on
 `PATH`. Several harnesses may be installed; `--engine` selects exactly one.
+
+### Verify a release
+
+```bash
+archive=slopguard_v3.0.0_darwin_arm64.tar.gz   # the release and target you downloaded
+
+cosign verify-blob \
+  --bundle checksums.txt.sigstore.json \
+  --certificate-identity \
+    "https://github.com/uinaf/ffss/.github/workflows/release-slopguard.yml@refs/heads/main" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  checksums.txt
+grep "  ${archive}$" checksums.txt | shasum -a 256 -c -
+gh attestation verify --owner uinaf "$archive"
+```
 
 ## Quick use
 
@@ -148,10 +163,8 @@ independent review to the installed CLI; it contains no second runtime.
 
 - [Configuration and telemetry](docs/CONFIG.md)
 - [Review engines](docs/engines/README.md)
-- [Performance measurement](CONTRIBUTING.md#performance-measurement)
 - [Local, branch, and commit targets](docs/TARGETS.md)
 - [Versioned result and exit contract](docs/RESULT_SCHEMA.md)
-- [Release artifacts and verification](docs/RELEASES.md)
 
 ## Contributing
 
