@@ -5,7 +5,8 @@
 The whole frozen bundle, deleted lines and context included, goes to the
 provider unscanned for credentials. Binaries are never sent (tracked ones
 appear as Git's summary line, untracked as size and SHA-256). Changed `.env`
-files go with key names only; their values are redacted. Environment
+files go redacted: key names only, or nothing when a line isn't a simple
+assignment. Environment
 templates (`.env.example`, `.sample`, `.template`) go whole. Codex also reads a
 redacted snapshot of the repository by default, so any file it opens leaves
 too; `--repository-access=false` keeps it to the bundle. Make sure the target
