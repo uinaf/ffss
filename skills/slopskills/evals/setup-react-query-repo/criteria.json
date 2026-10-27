@@ -4,7 +4,7 @@
   "install": "all",
   "checklist": [
     {"name": "Matching skills picked", "description": "Recommends a React skill and TanStack Router skills through Intent, each tied to evidence in package.json or src/main.tsx, and reports TanStack Query as a gap with no catalog skill.", "max_score": 25},
-    {"name": "Non-matching skills left out", "description": "Does not recommend TanStack Start (Router alone), shadcn (no components.json), TanStack Form (not a dependency), a community TanStack skill (tanstack-skills), TanStack skills through the skills CLI, a Vite+ skill (plain Vite), or Swift skills; or names them only as excluded with the reason.", "max_score": 25},
+    {"name": "Non-matching skills left out", "description": "Does not recommend TanStack Start (Router alone), shadcn (no components.json), TanStack Form (not a dependency), a community TanStack skill (tanstack-skills), TanStack skills through the skills CLI, or Swift skills; or names them only as excluded with the reason.", "max_score": 25},
     {"name": "Source listed first", "description": "The commands list each install source's skills before installing from it.", "max_score": 15},
     {"name": "Scoped install commands", "description": "Skills CLI commands name each skill explicitly, target only Codex and Claude Code, and use project scope: no global or install-all flags. TanStack skills use Intent with a TanStack package rule in intent.skills.", "max_score": 20},
     {"name": "Nothing installed", "description": "No skill files, lockfiles, or agent-guide edits appear in the workdir; the answer stops at the commands.", "max_score": 15}

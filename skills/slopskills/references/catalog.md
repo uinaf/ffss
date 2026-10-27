@@ -22,12 +22,6 @@ not the skills CLI. Query and Form ship none yet; report them as gaps.
 repo pins a design system, record it there as binding, or the skill treats
 existing code as the visual authority. Its hooks stay off unless asked.
 
-## Build tooling
-
-| Skill | Install source | Evidence and use |
-| --- | --- | --- |
-| `vite-plus` | [uinaf/agent-skills](https://github.com/uinaf/agent-skills) | A `vite-plus` dependency or a planned move onto it; `vp migrate`, `vp up`, or Vite+ checks, tasks, and CI. Plain Vite or Vitest does not qualify. |
-
 ## Swift
 
 | Skill | Install source | Evidence and use |
