@@ -18,6 +18,12 @@ decisions.
   file, test, or check states.
   Exception: README and `AGENTS.md` carry the exact install, setup, run, and
   verify commands.
+- **No automated work:** agent guides and repo skills never describe what
+  CI/CD, hooks, Renovate, or bots do on their own: deploy and release steps,
+  upgrade runbooks, what a hook or job runs, recovery for automated deploys.
+  Agents never run those steps. Keep the gates an agent runs, actions that
+  need a user decision, never-rules that stop an agent breaking the
+  automation, and steps an agent performs that nothing automates.
 - **Current state only:** cut retired or absent systems, their unset
   settings, history, and "there is no X" sections. Keep a limit only when a
   reader would otherwise build or call the wrong thing, and put the supported
