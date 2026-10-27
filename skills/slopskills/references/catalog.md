@@ -10,13 +10,13 @@ coordinates; list a source's skills before installing.
 | `react-ban-use-effect` | [uinaf/agent-skills](https://github.com/uinaf/agent-skills) | React code; effect implementation, refactoring, or effect policy. |
 | `react-doctor` | [millionco/react-doctor](https://github.com/millionco/react-doctor) | React code; feature or bug verification and React diagnostics. |
 | `shadcn` | [shadcn/ui](https://github.com/shadcn-ui/ui) | A `components.json` configuration, existing shadcn components, or an explicit shadcn setup task; component composition, registries, presets, or styling. React alone does not qualify. |
-| `tanstack-query` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | A TanStack Query dependency or imports; fetching, query keys, mutations, caching, or invalidation. |
-| `tanstack-form` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | A TanStack Form dependency or imports; form state, field validation, or submission. |
-| `tanstack-start` | [tanstack-skills/tanstack-skills](https://github.com/tanstack-skills/tanstack-skills) | TanStack Start dependency/configuration; routes, server functions, SSR, or deployment. Router alone does not imply Start. |
+| `react-router` | `@tanstack/react-router` via [TanStack Intent](https://tanstack.com/intent) | A TanStack Router dependency; routes, params, search params, loaders, or navigation. |
+| `react-start` | `@tanstack/react-start` via [TanStack Intent](https://tanstack.com/intent) | A TanStack Start dependency or configuration; server functions, server routes, middleware, SSR, or deployment. Router alone does not imply Start. |
 | `impeccable` | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) | A user-facing web UI where design work is in scope: redesign, critique, polish, or loading, empty, and error states. A frontend dependency alone does not qualify. |
 
-Match the actual TanStack package, not React, and check guidance against the
-installed major version.
+Match the actual TanStack package, not React. TanStack ships its skills inside
+the npm packages, versioned with the installed code; load them with Intent,
+not the skills CLI. Query and Form ship none yet; report them as gaps.
 
 `impeccable` writes a `PRODUCT.md` on `init` and follows it afterwards. If the
 repo pins a design system, record it there as binding, or the skill treats
