@@ -20,6 +20,7 @@ Install the stack skills a repository needs into that repository.
 4. **Install** from the repo root with its existing installer and pin, else
    the skills CLI. List the source first; names change. Explicit skill names,
    only the repo's harnesses, project scope (no `--global` or `--all`).
+   Package-shipped skills (TanStack) load through Intent instead.
    Examples and migration: [installation.md](references/installation.md).
 5. **Point to them.** Add short task-to-skill pointers to the agent guide
    ("SwiftUI views: swiftui-expert-skill"). Leave skill bodies alone.
