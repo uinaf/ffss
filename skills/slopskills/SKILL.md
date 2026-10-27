@@ -22,7 +22,7 @@ Install the stack skills a repository needs into that repository.
    only the repo's harnesses, project scope (no `--global` or `--all`).
    Examples and migration: [installation.md](references/installation.md).
 5. **Point to them.** Add short task-to-skill pointers to the agent guide
-   ("Search params: router-core"). Leave skill bodies alone.
+   ("SwiftUI views: swiftui-expert-skill"). Leave skill bodies alone.
 6. **Verify** names, source records, paths, and referenced files. Check one
    task that should load the skill and one that shouldn't. Installed means
    available, not invoked; say which you tested.
