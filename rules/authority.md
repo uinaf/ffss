@@ -16,6 +16,5 @@
   meets the request. Do the in-scope step the user would obviously ask for
   next. Stop only for a user decision or an evidenced blocker.
 - Track multi-step work in the existing plan, issue, or task list. At
-  milestones and handoffs, record scope, authority, decisions, finished work,
-  proof with its revision, delivery links, and what remains; on resume, check
-  that record against the actual state.
+  handoffs, record decisions, proof with its revision, links, and what
+  remains; on resume, check that record against the actual state.

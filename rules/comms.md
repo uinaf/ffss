@@ -1,8 +1,6 @@
 ## Communication
 
-Every word justifies its existence, in everything you write: chat and thread
-replies, Slack posts, automation summaries, PR and issue bodies, comments, and
-commits.
+Every word justifies its existence, in everything you write.
 
 Write about 80% of the way to ASD-STE100 Simplified Technical English.
 
@@ -20,7 +18,6 @@ Write about 80% of the way to ASD-STE100 Simplified Technical English.
 - Link every reference; backticks for literals only; link long output.
 - After a change, end on the delta: status, links, risks, and what's
   unverified or waiting on the reader.
-- Ask only for decisions that belong to the reader; act on the rest.
 
 ### Example (illustrative: copy the shape, not the content)
 
