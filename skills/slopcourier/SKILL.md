@@ -27,7 +27,7 @@ Three lanes. Start where the request starts, stop where it stops:
    ready for review unless asked for a draft.
 3. **Title.** The user-visible outcome, in the shape of recent merged titles.
 4. **Body.** Repo template first, then the owner's `<owner>/.github` default
-   template, else: outcome sentence, one visual aid, up to 3 one-line bullets
+   template, else: outcome sentence, one visual aid, up to 5 one-line bullets
    for what the aid doesn't show. Describe the change as it stands.
    Leave out: file lists, test counts, command logs, review history, finding
    counts, fix hashes, reviewer names, and iteration narrative. CI shows

@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-var defaults = limits{prose: 75, total: 150, bullets: 3}
+var defaults = limits{prose: 75, total: 150, bullets: 5}
 
 const template = `## Change
 
@@ -99,11 +99,11 @@ func TestTotalLimitCountsTables(t *testing.T) {
 }
 
 func TestCountsBulletsOutsideValidation(t *testing.T) {
-	body := "## Change\n\nOutcome.\n\n| a |\n| --- |\n| b |\n\n- one\n- two\n- three\n\n```diff\n- old\n- older\n```\n\n## Validation\n\n- [x] a\n- b\n- c\n- d\n"
+	body := "## Change\n\nOutcome.\n\n| a |\n| --- |\n| b |\n\n- one\n- two\n- three\n- four\n- five\n\n```diff\n- old\n- older\n```\n\n## Validation\n\n- [x] a\n- b\n- c\n- d\n"
 	if problems := problemsFor(t, body); len(problems) > 0 {
 		t.Fatalf("check = %q", problems)
 	}
-	requireProblem(t, problemsFor(t, strings.Replace(body, "- three\n", "- three\n- four\n", 1)), "4 bullets")
+	requireProblem(t, problemsFor(t, strings.Replace(body, "- five\n", "- four\n- five\n", 1)), "6 bullets")
 }
 
 func TestFlagsTestCountsInProseOnly(t *testing.T) {
