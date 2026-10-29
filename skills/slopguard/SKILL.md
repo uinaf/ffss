@@ -7,16 +7,13 @@ description: "Review a finished change with the slopguard CLI and close out its 
 
 `slopguard` sends a frozen snapshot of the change to one model provider and
 reports findings. It never edits, and its verdict is advisory evidence, not
-a merge decision. You validate the findings and fix the real
-ones. What leaves the machine: [security.md](references/security.md).
+a merge decision. What leaves the machine: [security.md](references/security.md).
 
 ## When
 
-- The user asks, or the repo has no review bots or required reviews.
 - Once, after the change passes its checks and before delivery. Not per edit
   or per thread.
-- Reuse a result while the target, base, and requirements are unchanged.
-  Re-review after later edits only if they change behavior, contracts, or
+- Re-review after later edits only if they change behavior, contracts, or
   risk.
 
 ## Steps

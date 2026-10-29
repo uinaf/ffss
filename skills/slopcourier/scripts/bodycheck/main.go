@@ -36,7 +36,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	var lim limits
 	flags.IntVar(&lim.prose, "prose", 75, "maximum words outside tables, code, and collapsed details")
 	flags.IntVar(&lim.total, "total", 150, "maximum words including tables")
-	flags.IntVar(&lim.bullets, "bullets", 3, "maximum top-level bullets outside the validation section")
+	flags.IntVar(&lim.bullets, "bullets", 5, "maximum top-level bullets outside the validation section")
 	flags.Usage = func() {
 		fmt.Fprintln(stderr, "usage: bodycheck [flags] <body.md | ->")
 		flags.PrintDefaults()

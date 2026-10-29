@@ -6,8 +6,7 @@ description: "Remove AI tells from prose, code, or tests; prune low-value tests 
 # Slopclean
 
 Clean the artifact in place, in one pass. Keep meaning, facts, behavior, and
-public API; house style wins. In docs, delete every mirror and fix any claim
-its source contradicts.
+public API; house style wins.
 
 Read the matching reference (source-and-test diffs need both):
 [prose](references/prose.md), [code](references/code.md),

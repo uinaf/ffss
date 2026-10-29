@@ -53,8 +53,8 @@ Grade each dimension strong, mixed, or weak:
 | Verification | Is the strongest mechanical check named, plus a real evidence loop? |
 | Boundaries | Are limits and next steps stated without leaning on a sibling skill? |
 
-Blockers: invalid frontmatter; a description that fails discovery; stale
-commands, paths, or links; a workflow with no start, evidence loop, or
+Blockers: a description that fails discovery; stale commands or paths; a
+workflow with no start, evidence loop, or
 completion; conflicts with the repo's guidance; sibling-skill dependencies.
 
 Majors: vague name; synonym-stuffed description; bloated `SKILL.md`; missing

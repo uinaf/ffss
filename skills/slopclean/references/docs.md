@@ -7,8 +7,7 @@ decisions.
 
 - **Keep:** owners, non-obvious prerequisites, boundaries, repo conventions,
   verification scope, recovery paths.
-- **Cut:** generic advice, directory tours, duplicates, and facts a quick
-  lookup gives.
+- **Cut:** generic advice, directory tours, and duplicates.
 - **No mirrors:** a mirror restates what code, CI, or config already says:
   how a release, deploy, workflow, or tool works, which keys or tasks exist,
   what a job touches. It goes stale on the next change. Delete it and link the
@@ -49,5 +48,3 @@ decisions.
 - **README:** purpose, install and start, first use, links. Contributor setup
   goes in CONTRIBUTING, private reporting in SECURITY. Don't invent contacts
   or promises.
-
-Check changed links, commands, and moved references against current sources.

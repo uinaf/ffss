@@ -1,7 +1,7 @@
 # Prose
 
-Keep the author's voice and house style. Every cut keeps its fact; every
-rewrite names something the reader can do, check, or look up.
+Keep the author's voice. Every cut keeps its fact; every rewrite names
+something the reader can do, check, or look up.
 
 - **Copied config:** replace prose tables of options, defaults, inventories,
   or commands with a link to the owning file and its key or symbol. Read the
