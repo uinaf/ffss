@@ -1,6 +1,6 @@
 ---
 name: slopcourier
-description: "Open, babysit, and merge a change request, then watch what the merge runs. Use when opening or updating a PR or MR, when asked to get one merged or babysit it, or to watch the runs a merge, direct push, or dispatched workflow starts."
+description: "Open, babysit, and merge a PR or MR, then watch the runs a merge, direct push, or dispatched workflow starts. Use when opening or updating one, or when asked to get it merged or babysit it."
 ---
 
 # Slopcourier
@@ -27,7 +27,7 @@ Three lanes. Start where the request starts, stop where it stops:
    ready for review unless asked for a draft.
 3. **Title.** The user-visible outcome, in the shape of recent merged titles.
 4. **Body.** Repo template first, then the owner's `<owner>/.github` default
-   template, else: outcome sentence, one visual aid, a few one-line bullets
+   template, else: outcome sentence, one visual aid, up to 3 one-line bullets
    for what the aid doesn't show. Describe the change as it stands.
    Leave out: file lists, test counts, command logs, review history, finding
    counts, fix hashes, reviewer names, and iteration narrative. CI shows
@@ -37,8 +37,9 @@ Three lanes. Start where the request starts, stop where it stops:
    upload: [visual-evidence.md](references/visual-evidence.md).
 6. **Bodycheck.** From the target repo:
    `go run <this skill's dir>/scripts/bodycheck/main.go body.md`, adding
-   `-before <current body file>` for an edit and `-footer <line>` when an
-   attribution line is required. Fix what it flags or say why it's wrong.
+   `-before <current body file>` for an edit, `-template <file>` when the body
+   came from the owner's `<owner>/.github` template, and `-footer <line>` when
+   an attribution line is required. Fix what it flags or say why it's wrong.
 
 Done when the PR is open: report its URL and head commit.
 
@@ -59,11 +60,10 @@ go run <this skill's dir>/scripts/prwatch/main.go [-R owner/repo] [-since <since
   `error`, or `timeout` (30 minutes).
 - Act, then rerun with `-since <its since: line>` so nothing between runs is
   missed.
-- One background run per PR. For several PRs, start one each.
+- One background run per PR.
 - **Forge.** prwatch reads it from the URL or origin host. For a self-hosted
-  host named without `github` or `gitlab`, pass `-forge gitlab` or map it once
-  in `$XDG_CONFIG_HOME/ffss/prwatch.yaml` (else `~/.config/ffss/prwatch.yaml`):
-  `forges:` then `  git.example.com: gitlab`.
+  host named without `github` or `gitlab`, pass `-forge gitlab`; the header of
+  [prwatch/main.go](scripts/prwatch/main.go) shows the persistent mapping.
 - **No Go:** poll `gh pr view` / `gh pr checks` (or `glab mr view`) for the
   same evidence, and say prwatch didn't run.
 
@@ -98,7 +98,7 @@ feedback.
 - **Failed check:** read the log. Fix what this change broke. If the base has
   since fixed it, bring in the base. A flake or infra failure gets one rerun;
   the same failure twice is real.
-- **slopguard:** only when the user asks or the repo has no review bot or
+- **The `slopguard` CLI:** only when the user asks or the repo has no review bot or
   required review; once, on the final head.
 
 On the forge, post only thread replies and re-requests; status goes to the

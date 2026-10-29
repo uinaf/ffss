@@ -1,9 +1,7 @@
 # Visual evidence
 
 Reuse existing evidence first. Pick the smallest view that answers the review
-question: a focused diff or code sample, a call tree or Mermaid diagram, a
-table, sanitized input/output, a screenshot or short recording. Put it next to
-the claim it supports. Label diagrams and examples as explanatory; they don't
+question and put it next to the claim it supports. Label diagrams and examples as explanatory; they don't
 prove execution.
 
 Text, tables, code, and Mermaid need no upload. Media goes up through the
@@ -24,12 +22,6 @@ PR's own forge. Proof assets are never committed to the repo.
 `gh` 2.99+ takes a repeatable `--attach` on
 `pr create`, `pr edit`, `pr comment`, and the `issue` equivalents.
 `gh pr review` doesn't; use `gh pr comment` for review media.
-
-```bash
-gh pr create --attach './after.png#Login error state'   # alt text after '#'
-gh pr comment 13 --attach ./before.png --attach ./after.png
-gh pr edit 13 --attach ./flow.mp4                       # video takes no alt text
-```
 
 - Video embeds as a bare URL on its own line. No `![]()`, no alt text.
 - `--attach` doesn't work with `--web` or `--dry-run`. Retry a failed upload

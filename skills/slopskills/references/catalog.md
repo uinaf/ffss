@@ -1,7 +1,7 @@
 # Recommended skills
 
 Match each row against repository evidence and the task. Sources are install
-coordinates; list a source's skills before installing.
+coordinates.
 
 ## React and Web UI
 
@@ -14,9 +14,8 @@ coordinates; list a source's skills before installing.
 | `react-start` | `@tanstack/react-start` via [TanStack Intent](https://tanstack.com/intent) | A TanStack Start dependency or configuration; server functions, server routes, middleware, SSR, or deployment. Router alone does not imply Start. |
 | `impeccable` | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) | A user-facing web UI where design work is in scope: redesign, critique, polish, or loading, empty, and error states. A frontend dependency alone does not qualify. |
 
-Match the actual TanStack package, not React. TanStack ships its skills inside
-the npm packages, versioned with the installed code; load them with Intent,
-not the skills CLI. Query and Form ship none yet; report them as gaps.
+Match the actual TanStack package, not React. Query and Form ship no skills
+yet; report them as gaps.
 
 `impeccable` writes a `PRODUCT.md` on `init` and follows it afterwards. If the
 repo pins a design system, record it there as binding, or the skill treats

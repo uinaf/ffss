@@ -2,15 +2,13 @@
 
 ## What leaves the machine
 
-The whole frozen bundle, deleted lines and context included, goes to the
-provider unscanned for credentials. Binaries are never sent (tracked ones
-appear as Git's summary line, untracked as size and SHA-256). Changed `.env`
-files go redacted: key names only, or nothing when a line isn't a simple
-assignment. Environment
-templates (`.env.example`, `.sample`, `.template`) go whole. Codex also reads a
-redacted snapshot of the repository by default, so any file it opens leaves
-too; `--repository-access=false` keeps it to the bundle. Make sure the target
-may go to that provider; if the harness asks for approval, say what leaves the
+The whole frozen bundle goes to the provider, unscanned for credentials;
+[what leaves](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/TARGETS.md#what-leaves-the-machine)
+covers binaries, `.env` redaction, and templates (`.env.*.example`, `.sample`,
+`.template`). Codex has repository access by default, and its sandbox can read
+any file the user can, so reviewed content can steer it there;
+`--repository-access=false` keeps it to the bundle. Make sure the target may
+go to that provider; if the harness asks for approval, say what leaves the
 machine and to whom.
 
 slopguard's refusals (sensitive path, size, binary, invalid UTF-8, symlink,
