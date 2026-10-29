@@ -103,7 +103,7 @@ func TestCountsBulletsOutsideValidation(t *testing.T) {
 	if problems := problemsFor(t, body); len(problems) > 0 {
 		t.Fatalf("check = %q", problems)
 	}
-	requireProblem(t, problemsFor(t, strings.Replace(body, "- five\n", "- four\n- five\n", 1)), "6 bullets")
+	requireProblem(t, problemsFor(t, strings.Replace(body, "- five\n", "- five\n- six\n", 1)), "6 bullets")
 }
 
 func TestFlagsTestCountsInProseOnly(t *testing.T) {
