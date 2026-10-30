@@ -1,9 +1,0 @@
-{
-  "summary": "mutable default list accumulates across calls",
-  "language": "python",
-  "needs_context": false,
-  "bug": {
-    "file": "tags.py",
-    "line": 1
-  }
-}

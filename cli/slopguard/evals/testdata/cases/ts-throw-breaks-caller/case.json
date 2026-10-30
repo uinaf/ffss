@@ -1,9 +1,0 @@
-{
-  "summary": "lookup now throws on a miss, but the existing caller checks for undefined",
-  "language": "typescript",
-  "needs_context": true,
-  "bug": {
-    "file": "users.ts",
-    "line": 11
-  }
-}

@@ -1,11 +1,31 @@
 {
-  "context": "Plans the closeout review with the slopguard CLI: one Codex review at high reasoning in branch mode against main, the distilled contract on stdin, JSON output, and no provider fallback.",
+  "context": "Plans the closeout review of a Claude-written change: one Codex review steered by a prompt that names the branch diff against main and carries the contract, with no fallback.",
   "type": "weighted_checklist",
   "checklist": [
-    {"name": "Slopguard branch review", "description": "The exact command is `slopguard review` with `--mode branch --base main` (or a resolved main ref), not a direct codex or claude invocation", "max_score": 25},
-    {"name": "Codex at high", "description": "With no user or configured choice, closeout.md picks Codex (`--engine codex`) as the single reviewer and states high reasoning effort as the default", "max_score": 25},
-    {"name": "Contract on stdin, JSON out", "description": "The command pipes the distilled acceptance criteria through standard input with `--prompt-file -` and requests `--output json`", "max_score": 15},
-    {"name": "Unfiltered findings requested", "description": "The prompt asks the reviewer for every suspected finding regardless of severity or confidence", "max_score": 15},
-    {"name": "No fallback or panel", "description": "On review failure the plan reports the blocker and does not automatically switch to Claude, run several reviewers, or claim consensus", "max_score": 20}
+    {
+      "name": "Codex reviews",
+      "description": "closeout.md picks Codex as the single reviewer because Claude wrote the change",
+      "max_score": 25
+    },
+    {
+      "name": "Prompted Codex command",
+      "description": "The exact command is `codex review \"<prompt>\"` with the target named in the prompt as the diff of `fix/sigint-children` against main; it does not combine `--base` with a prompt and is not a `slopguard` CLI call",
+      "max_score": 25
+    },
+    {
+      "name": "Contract in the prompt",
+      "description": "The prompt carries both acceptance criteria: byte-stable JSON output and child processes terminating on SIGINT",
+      "max_score": 15
+    },
+    {
+      "name": "Unfiltered findings requested",
+      "description": "The prompt asks the reviewer for every suspected finding regardless of severity or confidence",
+      "max_score": 15
+    },
+    {
+      "name": "No fallback or panel",
+      "description": "On review failure the plan reports the blocker and does not automatically switch to Claude, run several reviewers, or claim consensus",
+      "max_score": 20
+    }
   ]
 }

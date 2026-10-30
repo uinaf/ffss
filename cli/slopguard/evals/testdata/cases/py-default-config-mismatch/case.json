@@ -1,9 +1,0 @@
-{
-  "summary": "new default page size exceeds the limit the existing validator enforces",
-  "language": "python",
-  "needs_context": true,
-  "bug": {
-    "file": "listing.py",
-    "line": 3
-  }
-}

@@ -1,9 +1,0 @@
-{
-  "summary": "Date months are zero-based, so every date lands a month late",
-  "language": "typescript",
-  "needs_context": false,
-  "bug": {
-    "file": "dates.ts",
-    "line": 4
-  }
-}

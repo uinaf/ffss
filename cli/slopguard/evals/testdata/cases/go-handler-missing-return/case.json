@@ -1,9 +1,0 @@
-{
-  "summary": "handler keeps writing after reporting a bad request",
-  "language": "go",
-  "needs_context": false,
-  "bug": {
-    "file": "handler.go",
-    "line": 20
-  }
-}

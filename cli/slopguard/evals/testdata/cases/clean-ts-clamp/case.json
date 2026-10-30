@@ -1,5 +1,0 @@
-{
-  "summary": "add a correct clamp helper with tests",
-  "language": "typescript",
-  "needs_context": false
-}

@@ -1,9 +1,0 @@
-{
-  "summary": "files stay open until the function returns",
-  "language": "go",
-  "needs_context": false,
-  "bug": {
-    "file": "sum.go",
-    "line": 13
-  }
-}

@@ -47,7 +47,7 @@ when a contract breaks and survives refactors
    instead.
 6. **Prove keepers:** break the owner once per moved contract, confirm the
    keeper fails, restore. Then have a different model review deleted coverage
-   against keepers (the `slopguard` CLI). A human reviews every cut that touches auth,
+   against keepers (`slopguard`). A human reviews every cut that touches auth,
    permissions, or credentials before merge.
 
 Keep tests that guard a public API, protocol, config, migration, storage,

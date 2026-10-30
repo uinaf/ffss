@@ -1,29 +1,13 @@
 # Wrap up APP-42
 
 The APP-42 change (fix duplicate invoice emails on retry) is done on branch
-`fix/app-42-dedupe`. Branch tests and a browser smoke of the checkout flow
+`fix/app-42-dedupe`; Codex wrote it. Branch tests and a browser smoke of the checkout flow
 passed. The independent review you ran came back with one finding; its report
 and the relevant code are below.
 
-======= FILE: review.json =======
-{
-  "command": "slopguard review --mode branch --base origin/main --engine claude --web-access=false --output json --prompt-file - < <APP-42 contract>",
-  "status": "findings",
-  "exit_code": 1,
-  "mode": "branch",
-  "base": "origin/main",
-  "provider": {"engine": "claude", "model": "claude-opus-5-5", "web_access": false},
-  "attempts": 1,
-  "findings": [
-    {
-      "priority": "P2",
-      "confidence": "low",
-      "category": "correctness",
-      "location": "billing/invoice_mailer.go:41",
-      "message": "The dedupe key uses invoice.ID only; two different invoices could collide and suppress a legitimate email."
-    }
-  ]
-}
+======= FILE: review.txt =======
+$ claude -p "/code-review fix/app-42-dedupe"
+billing/invoice_mailer.go:41 — The dedupe key uses invoice.ID only; two different invoices could collide and suppress a legitimate email.
 ======= END FILE =======
 
 ======= FILE: invoice_mailer.go =======

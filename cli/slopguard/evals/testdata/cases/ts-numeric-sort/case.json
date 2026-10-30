@@ -1,9 +1,0 @@
-{
-  "summary": "default sort orders numbers as strings",
-  "language": "typescript",
-  "needs_context": false,
-  "bug": {
-    "file": "stats.ts",
-    "line": 3
-  }
-}

@@ -1,13 +1,13 @@
 ---
 name: slopguard
-description: "Review a finished change with the slopguard CLI and close out its findings. Use when the user asks for a slopguard or independent review, or before delivery in a repo with no review bots or required reviews."
+description: "Get an independent review of a finished change from the other model family and close out its findings. Use when the user asks for a slopguard or independent review, or before delivery in a repo with no review bots or required reviews."
 ---
 
 # Slopguard
 
-`slopguard` sends a frozen snapshot of the change to one model provider and
-reports findings. It never edits, and its verdict is advisory evidence, not
-a merge decision. What leaves the machine: [security.md](references/security.md).
+A model reviewing its own change shares its blind spots, so the review comes
+from the other model family. It never edits, and its verdict is advisory
+evidence, not a merge decision.
 
 ## When
 
@@ -18,45 +18,46 @@ a merge decision. What leaves the machine: [security.md](references/security.md)
 
 ## Steps
 
-1. **Check the CLI.** `slopguard --version`. If it's missing, report it. Doc
-   links in the references point at `main`; swap in `slopguard/v<version>` to
-   read the installed release.
-2. **Write the prompt.** Objective, acceptance criteria, non-goals, source
-   ids. Ask for every suspected finding regardless of severity or confidence.
-   Ask the reviewer to compare changed verification (thresholds, checks,
-   assertions, skips, suppressions) against the base.
-3. **Pick one provider.** User's choice, then trusted config, else Codex at
-   high reasoning. Details: [providers.md](references/providers.md).
-   Config and `slopguard doctor`: [configuration.md](references/configuration.md).
-4. **Run.** Mode `local`, `branch` (against the PR's real base), or `commit`:
-   [run-modes.md](references/run-modes.md).
-5. **Validate.** Findings are hypotheses. Accept one only with evidence of a
+1. **Pick the reviewer** from the other model family than the change's author,
+   or than this session's for a human-written change: Claude wrote it, Codex
+   reviews; Codex wrote it, Claude reviews. The user's choice wins. If that
+   CLI is missing or signed out, report it; a same-family review
+   (`/code-review` in Claude Code, `/review` in Codex) runs only if the user
+   accepts it, and the report calls it not independent.
+2. **Run it** from the repo root, in the foreground:
+   - Codex: `codex review "<prompt>"`. The prompt names the target
+     (`git diff <base>...HEAD`, a commit, or the uncommitted changes), the
+     objective, acceptance criteria, and non-goals. It asks for every
+     suspected finding regardless of severity or confidence, and for changed
+     verification (thresholds, checks, assertions, skips, suppressions)
+     compared against the base. `--base`, `--commit`, and `--uncommitted`
+     refuse a prompt; use them only for an unsteered pass.
+   - Claude: `claude -p "/code-review <PR number, branch, or path>"`. It
+     takes a target, not a prompt.
+
+   Both send the diff and every file they read to their provider under the
+   user's login. Findings come back with exit 0; read them from stdout. A
+   non-zero exit means the run failed.
+3. **Validate.** Findings are hypotheses. Accept one only with evidence of a
    defect or unmet requirement; reject the rest with a short reason. Name
    each accepted finding's defect class and fix every instance in the
-   change, not only the flagged line. Fix them together, in the next frozen
-   target (worktree for local, a commit for branch, an amended commit for
-   commit mode).
-6. **Re-review** after accepted fixes change the target: the final target,
-   same provider and mode. After the third round, stop patching; reconsider
-   the approach and tell the user.
+   change, not only the flagged line.
+4. **Re-review** after accepted fixes: the fixed target, same reviewer.
+   After the third round, stop patching; reconsider the approach and tell
+   the user.
 
 ## Done
 
-- Exit 0: clean.
-- Exit 1: findings. Done once every finding is fixed and verified, or
-  rejected with a reason. Exit 1 is never "clean".
-- Exit 2: no trustworthy result. `source_changed` means the tree moved during
-  review; discard and rerun once edits stop. Report other failure classes
-  ([result contract](https://github.com/uinaf/ffss/blob/main/cli/slopguard/docs/RESULT_SCHEMA.md))
-  as blockers.
+Every finding is fixed and verified, or rejected with a reason. A review with
+findings is never "clean", even when all were rejected. A failed run is a
+blocker; rerun once only if the tree changed during the review.
 
 **Convergence:** a repeated finding reopens only with new evidence. Another
 model's verdict on the same inputs is not evidence, so don't rerun unchanged
-inputs, switch providers, or run a panel to get agreement. If a disagreement
+inputs, switch reviewers, or run a panel to get agreement. If a disagreement
 needs the user's judgment, say so and pause only that part.
 
 ## Report
 
-To the user, not the PR body: redacted command and target, provider, web
-access state, builder proof, accepted and rejected findings, verdict or
-blocker.
+To the user, not the PR body: the command and target, the reviewer, accepted
+and rejected findings, and the verdict or blocker.
