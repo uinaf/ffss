@@ -1,4 +1,4 @@
-# Recommended skills
+# Recommended skills and lint plugins
 
 Match each row against repository evidence and the task. Sources are install
 coordinates.
@@ -44,3 +44,16 @@ Benchmarks and build-setting changes stay within the original task.
 
 The Effect setup skill installs a dependency. In an existing repo, keep the
 installed `effect` version; no upgrade to a release candidate.
+
+## Lint plugins
+
+Install these as dev dependencies and register them in the repo's Oxlint or
+Vite+ lint config; each README has the setup.
+
+| Plugin | Install source | Evidence and use |
+| --- | --- | --- |
+| `@uinaf/oxlint-plugin-no-comments` | [uinaf/oxlint-plugin-no-comments](https://github.com/uinaf/oxlint-plugin-no-comments#install) | JS or TS linted by Oxlint or Vite+; enforces the comment rule. With anti-slop vendored, set `safetyMarkers` to its `markers`. |
+
+Run the rule once before enabling it. Existing comments fail the gate: clean
+them with slopclean in the same change, or report the count when it is too
+large for one change.

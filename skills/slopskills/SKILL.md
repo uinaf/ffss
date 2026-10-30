@@ -1,11 +1,12 @@
 ---
 name: slopskills
-description: "Pick and install repo-local skills for a repository's stack. Use when setting up a repo, checking its skill coverage, or starting work that lacks stack guidance."
+description: "Pick and install repo-local skills and lint plugins for a repository's stack. Use when setting up a repo, checking its skill coverage, or starting work that lacks stack guidance."
 ---
 
 # Slopskills
 
-Install the stack skills a repository needs into that repository.
+Install the stack skills and lint plugins a repository needs into that
+repository.
 
 ## Steps
 
@@ -20,13 +21,15 @@ Install the stack skills a repository needs into that repository.
 4. **Install** from the repo root with its existing installer and pin, else
    the skills CLI. List the source first; names change. Explicit skill names,
    only the repo's harnesses, project scope (no `--global` or `--all`).
-   Package-shipped skills (TanStack) load through Intent instead.
+   Package-shipped skills (TanStack) load through Intent instead. Lint
+   plugins install as dev dependencies registered in the repo's lint config.
    Examples and migration: [installation.md](references/installation.md).
 5. **Point to them.** Add short task-to-skill pointers to the agent guide
    ("SwiftUI views: swiftui-expert-skill"). Leave skill bodies alone.
 6. **Verify** names, source records, paths, and referenced files. Check one
    task that should load the skill and one that shouldn't. Installed means
-   available, not invoked; say which you tested.
+   available, not invoked; say which you tested. A lint plugin is verified
+   when the lint gate goes red on a probe violation and green without it.
 
 For advice-only requests, list the source and compose the step 4 commands,
 then stop before installing.
