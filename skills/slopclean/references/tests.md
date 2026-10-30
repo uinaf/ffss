@@ -15,6 +15,8 @@ when a contract breaks and survives refactors
   first run, assert nothing.
 - **Skips** keep an owned reason, or get reported.
 - **Negative cases** fail for the reason they name.
+- **Tombstones:** a test that only asserts a removed feature stays gone pins a
+  conversation, not a contract. Delete it.
 - **A test that breaks after a code change:** fix the code, unless the
   contract changed on purpose or the test pins implementation; then update
   it and say so.
