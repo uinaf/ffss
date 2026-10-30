@@ -90,9 +90,11 @@ feedback.
 - **A human's design question or ambiguous point:** stop rework on that PR,
   post nothing, and hand it back to the user with the evidence.
 - **Concrete fixes** (from humans or bots): validate each against the code.
-  Fix the real ones in one pass, run the gates, push, reply on each thread
-  with the commit, and re-request review from anyone who requested changes or
-  approved an older head. Out-of-scope findings become tracker items.
+  Fix the real ones in one pass, run the gates, push, reply on each fixed
+  thread with the commit link alone, and re-request review from anyone who
+  requested changes or approved an older head. A human's finding you judge
+  wrong goes to the user with the evidence; post nothing. Out-of-scope
+  findings become tracker items.
   After the third fix round on one PR, stop patching, reconsider the
   approach, and tell the user if it changes.
 - **Failed check:** read the log. Fix what this change broke. If the base has

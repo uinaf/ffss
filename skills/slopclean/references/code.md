@@ -2,6 +2,9 @@
 
 Clean only what the diff added, unless asked for more.
 
+- **Comments:** delete them; move a needed why into the commit message. Keep
+  tool directives, license headers, published API docs, and comments a lint
+  rule requires.
 - **TODO without an owner or ticket:** delete it and list it in the report
   as a possible follow-up. Keep ticketed TODOs.
 - **Unreachable branches "for completeness":** delete; explain in the commit
