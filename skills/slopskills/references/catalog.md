@@ -12,14 +12,9 @@ coordinates.
 | `shadcn` | [shadcn/ui](https://github.com/shadcn-ui/ui) | A `components.json` configuration, existing shadcn components, or an explicit shadcn setup task; component composition, registries, presets, or styling. React alone does not qualify. |
 | `react-router` | `@tanstack/react-router` via [TanStack Intent](https://tanstack.com/intent) | A TanStack Router dependency; routes, params, search params, loaders, or navigation. |
 | `react-start` | `@tanstack/react-start` via [TanStack Intent](https://tanstack.com/intent) | A TanStack Start dependency or configuration; server functions, server routes, middleware, SSR, or deployment. Router alone does not imply Start. |
-| `impeccable` | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) | A user-facing web UI where design work is in scope: redesign, critique, polish, or loading, empty, and error states. A frontend dependency alone does not qualify. |
 
 Match the actual TanStack package, not React. Query and Form ship no skills
 yet; report them as gaps.
-
-`impeccable` writes a `PRODUCT.md` on `init` and follows it afterwards. If the
-repo pins a design system, record it there as binding, or the skill treats
-existing code as the visual authority. Its hooks stay off unless asked.
 
 ## Swift
 
