@@ -1,8 +1,0 @@
-Options:
-  -c, --config <key=value>
-  -m, --model <MODEL>
-  -a, --ask-for-approval <APPROVAL_POLICY>
-      Possible values:
-      - on-request
-      - never
-      --search

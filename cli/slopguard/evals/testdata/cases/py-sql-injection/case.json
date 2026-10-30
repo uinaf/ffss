@@ -1,9 +1,0 @@
-{
-  "summary": "query interpolates the user-supplied name",
-  "language": "python",
-  "needs_context": false,
-  "bug": {
-    "file": "repo.py",
-    "line": 2
-  }
-}

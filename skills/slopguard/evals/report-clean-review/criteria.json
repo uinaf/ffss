@@ -1,10 +1,26 @@
 {
-  "context": "Closes a review whose single finding is disproven: the finding is rejected with evidence, the exit-1 result is not called clean, the review evidence goes to the user in closeout.md, and none of it goes into the change-request body.",
+  "context": "Closes a review whose single finding is disproven: the finding is rejected with evidence, the review is not called clean, the review evidence goes to the user in closeout.md, and none of it goes into the change-request body.",
   "type": "weighted_checklist",
   "checklist": [
-    {"name": "Review kept out of PR body", "description": "pr-body.md contains no independent-review content: no mention of slopguard, the review command, the reviewing engine or model, the finding, its rejection, or a review verdict", "max_score": 40},
-    {"name": "Finding rejected with evidence", "description": "closeout.md rejects the collision finding because invoice.ID is a database-generated unique UUID, and does not propose a code change for it", "max_score": 20},
-    {"name": "Exit 1 not called clean", "description": "closeout.md records exit 1 with one finding that was explicitly rejected, and never describes the review as clean or finding-free", "max_score": 20},
-    {"name": "Review evidence in closeout", "description": "closeout.md records the redacted review command or its target flags, Claude as the single reviewer, and web access off, with branch tests and browser smoke listed separately as builder proof", "max_score": 20}
+    {
+      "name": "Review kept out of PR body",
+      "description": "pr-body.md contains no independent-review content: no mention of slopguard, the review command, the reviewing model, the finding, its rejection, or a review verdict",
+      "max_score": 40
+    },
+    {
+      "name": "Finding rejected with evidence",
+      "description": "closeout.md rejects the collision finding because invoice.ID is a database-generated unique UUID, and does not propose a code change for it",
+      "max_score": 20
+    },
+    {
+      "name": "Finding not called clean",
+      "description": "closeout.md records one finding that was explicitly rejected, and never describes the review as clean or finding-free",
+      "max_score": 20
+    },
+    {
+      "name": "Review evidence in closeout",
+      "description": "closeout.md records the review command and target and Claude as the single reviewer, with branch tests and browser smoke listed separately as builder proof",
+      "max_score": 20
+    }
   ]
 }

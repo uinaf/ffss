@@ -1,9 +1,0 @@
-{
-  "summary": "Reset sets the map to nil, and the existing Add then panics",
-  "language": "go",
-  "needs_context": true,
-  "bug": {
-    "file": "reset.go",
-    "line": 5
-  }
-}

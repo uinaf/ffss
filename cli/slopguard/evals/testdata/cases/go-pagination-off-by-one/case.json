@@ -1,9 +1,0 @@
-{
-  "summary": "page slice end includes one item too many",
-  "language": "go",
-  "needs_context": false,
-  "bug": {
-    "file": "page.go",
-    "line": 12
-  }
-}

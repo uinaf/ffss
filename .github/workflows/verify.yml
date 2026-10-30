@@ -21,129 +21,16 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      clilib: ${{ contains(fromJSON(steps.changes.outputs.changes), 'clilib') }}
-      slopguard: ${{ contains(fromJSON(steps.changes.outputs.changes), 'slopguard') }}
       skills: ${{ contains(fromJSON(steps.changes.outputs.changes), 'skills') }}
     steps:
       - id: changes
         uses: uinaf/.github/.github/actions/changes@2925de07626b63b95f77f19e50f10fb7729033bd # v3.0.6
         with:
           filters: |
-            clilib:
-              - 'cli/lib/**'
-            slopguard:
-              - 'cli/slopguard/**'
-              - 'cli/lib/**'
-              - '.github/workflows/verify.yml'
-              - '.github/workflows/release-slopguard.yml'
             skills:
               - 'skills/**'
-              - 'cli/*/skills/**'
               - 'tools/skill-evals/**'
-
-  clilib:
-    name: cli/lib verify
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.clilib == 'true'
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: cli/lib
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
-        with:
-          working_directory: cli/lib
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-clilib-${{ runner.os }}-${{ hashFiles('cli/lib/go.mod', 'cli/lib/go.sum', 'cli/lib/mise.toml') }}
-          restore-keys: |
-            go-clilib-${{ runner.os }}-
-      - run: mise run verify
-
-  slopguard:
-    name: slopguard verify
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.slopguard == 'true'
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: cli/slopguard
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
-        with:
-          working_directory: cli/slopguard
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-            ~/Library/Caches/go-build
-          key: go-slopguard-${{ runner.os }}-${{ hashFiles('cli/slopguard/go.sum', 'cli/slopguard/mise.toml') }}
-          restore-keys: |
-            go-slopguard-${{ runner.os }}-
-      - run: mise run verify
-
-  slopguard-darwin:
-    name: slopguard Darwin verify
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && needs.changes.outputs.slopguard == 'true')
-    runs-on: macos-26
-    timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: cli/slopguard
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
-        with:
-          working_directory: cli/slopguard
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/Library/Caches/go-build
-          key: go-slopguard-${{ runner.os }}-${{ hashFiles('cli/slopguard/go.sum', 'cli/slopguard/mise.toml') }}
-          restore-keys: |
-            go-slopguard-${{ runner.os }}-
-      - run: mise run verify:darwin
-
-  slopguard-integration:
-    name: slopguard integration and vulnerabilities
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.slopguard == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: cli/slopguard
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
-        with:
-          working_directory: cli/slopguard
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-slopguard-${{ runner.os }}-${{ hashFiles('cli/slopguard/go.sum', 'cli/slopguard/mise.toml') }}
-          restore-keys: |
-            go-slopguard-${{ runner.os }}-
-      - run: mise run test:integration
-      - run: mise run vuln
+              - '.github/workflows/verify.yml'
 
   skills:
     name: skills lint
@@ -180,34 +67,19 @@ jobs:
 
   verify:
     if: always()
-    needs: [changes, clilib, slopguard, slopguard-darwin, slopguard-integration, skills]
+    needs: [changes, skills]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require selected checks
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
-          CLILIB_SELECTED: ${{ github.event_name == 'workflow_dispatch' && 'true' || needs.changes.outputs.clilib }}
-          SLOPGUARD_SELECTED: ${{ github.event_name == 'workflow_dispatch' && 'true' || needs.changes.outputs.slopguard }}
           SKILLS_SELECTED: ${{ github.event_name == 'workflow_dispatch' && 'true' || needs.changes.outputs.skills }}
-          CLILIB_RESULT: ${{ needs.clilib.result }}
-          CLILIB_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.clilib == 'true') && 'success' || 'skipped' }}
-          SLOPGUARD_RESULT: ${{ needs.slopguard.result }}
-          SLOPGUARD_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.slopguard == 'true') && 'success' || 'skipped' }}
-          DARWIN_RESULT: ${{ needs.slopguard-darwin.result }}
-          DARWIN_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && needs.changes.outputs.slopguard == 'true')) && 'success' || 'skipped' }}
-          INTEGRATION_RESULT: ${{ needs.slopguard-integration.result }}
           SKILLS_RESULT: ${{ needs.skills.result }}
           SKILLS_EXPECTED: ${{ (github.event_name == 'workflow_dispatch' || needs.changes.outputs.skills == 'true') && 'success' || 'skipped' }}
         run: |
           test "$CHANGES_RESULT" = success
-          test "$CLILIB_SELECTED" = true || test "$CLILIB_SELECTED" = false
-          test "$SLOPGUARD_SELECTED" = true || test "$SLOPGUARD_SELECTED" = false
           test "$SKILLS_SELECTED" = true || test "$SKILLS_SELECTED" = false
-          test "$CLILIB_RESULT" = "$CLILIB_EXPECTED"
-          test "$SLOPGUARD_RESULT" = "$SLOPGUARD_EXPECTED"
-          test "$DARWIN_RESULT" = "$DARWIN_EXPECTED"
-          test "$INTEGRATION_RESULT" = "$SLOPGUARD_EXPECTED"
           test "$SKILLS_RESULT" = "$SKILLS_EXPECTED"
 
       - name: Check out for the scan

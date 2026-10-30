@@ -1,14 +1,12 @@
 # Agent Guide
 
-`uinaf/ffss` ships the `slopguard` CLI, the ffss agent skills, and the shared
-agent rules. The [README](README.md) covers install.
+`uinaf/ffss` ships the ffss agent skills and the shared agent rules. The
+[README](README.md) covers install.
 
 ## Boundaries
 
 - `rules/` holds one standalone file per topic. Consumers fetch them raw from
   `main` and combine them in their own order; skills must work without them.
-- `cli/lib/` is a shared Go module with no binary.
-- `cli/slopguard/` has its own [agent guide](cli/slopguard/AGENTS.md).
 
 ## Gates
 
@@ -16,8 +14,6 @@ agent rules. The [README](README.md) covers install.
 |---|---|
 | `skills/` | `npm ci && npm run lint && npm run audit` in `tools/skill-evals` |
 | `skills/slopcourier/scripts/bodycheck/`, `.../prwatch/` | `gofmt -l .`, `go vet ./...`, and `go test ./...` in each |
-| `cli/slopguard/` | `mise run verify` in `cli/slopguard` |
-| `cli/lib/` | `mise run verify` in `cli/lib` |
 | Root docs, `rules/` | none |
 
 Evals run outside this repo, in skillcheck's
@@ -27,8 +23,5 @@ eval engines, results, and scorecards stay out.
 ## Release
 
 - Skills and plugin: merging to `main` publishes; installs pin the commit SHA.
-- `slopguard`: see [Releases](cli/slopguard/CONTRIBUTING.md#releases).
-- `cli/lib`: tag `cli/lib/vX.Y.Z` before a consumer depends on it. Consumers
-  pin a published tag so `GOWORK=off` builds stay reproducible.
 - `rules/`: consumers read `main` directly, so a merge is live on their next
   sync.

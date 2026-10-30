@@ -1,9 +1,0 @@
-{
-  "summary": "seconds from config become nanoseconds",
-  "language": "go",
-  "needs_context": false,
-  "bug": {
-    "file": "client.go",
-    "line": 15
-  }
-}

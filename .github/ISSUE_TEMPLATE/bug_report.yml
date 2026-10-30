@@ -32,8 +32,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: Affected component and version
-      description: Name the CLI or skill and its release version or commit.
-      placeholder: slopguard vX.Y.Z or slopcourier skill at commit abc1234
+      label: Affected skill and commit
+      description: Name the skill and the commit you installed.
+      placeholder: slopcourier skill at commit abc1234
     validations:
       required: true

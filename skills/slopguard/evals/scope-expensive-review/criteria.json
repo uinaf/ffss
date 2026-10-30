@@ -1,12 +1,36 @@
 {
-  "context": "A consensus-panel request with fallback is scoped down to one slopguard review from one provider; no voting, no fallback chain, and no merge decision derived from the review.",
+  "context": "A consensus-panel request with fallback is scoped down to one review from one reviewer; no voting, no fallback chain, and no merge decision derived from the review.",
   "type": "weighted_checklist",
   "checklist": [
-    {"name": "Single provider only", "description": "response.md plans exactly one reviewer run, not two, and the command shape has exactly one `--engine` value", "max_score": 25},
-    {"name": "No voting or consensus", "description": "The plan does not use two-reviewer agreement or claim consensus, and explains to the maintainer why a panel is not run", "max_score": 20},
-    {"name": "No fallback chain", "description": "If the chosen reviewer fails, the plan reports the blocker instead of moving on to the next provider", "max_score": 20},
-    {"name": "Review does not decide merge", "description": "The response states the review is advisory evidence and does not by itself trigger or decide the merge", "max_score": 15},
-    {"name": "Slopguard branch command", "description": "The command shape is `slopguard review --mode branch --base main` with the acceptance criteria piped via `--prompt-file -`", "max_score": 10},
-    {"name": "Provider choice transparent", "description": "The response names the one provider it will use (or asks the maintainer to pick one) and why", "max_score": 10}
+    {
+      "name": "Single reviewer only",
+      "description": "response.md plans exactly one reviewer run, not two",
+      "max_score": 25
+    },
+    {
+      "name": "No voting or consensus",
+      "description": "The plan does not use two-reviewer agreement or claim consensus, and explains to the maintainer why a panel is not run",
+      "max_score": 20
+    },
+    {
+      "name": "No fallback chain",
+      "description": "If the chosen reviewer fails, the plan reports the blocker instead of moving on to the next reviewer",
+      "max_score": 20
+    },
+    {
+      "name": "Review does not decide merge",
+      "description": "The response states the review is advisory evidence and does not by itself trigger or decide the merge",
+      "max_score": 15
+    },
+    {
+      "name": "Command shape",
+      "description": "The one command is `codex review \"<prompt>\"` naming the diff of `feat/batch-export` against main and the acceptance criteria, or `claude -p \"/code-review feat/batch-export\"`; not a `slopguard` CLI call",
+      "max_score": 10
+    },
+    {
+      "name": "Reviewer choice transparent",
+      "description": "The response names the one reviewer it will use and why (the other model family from the change's author or this session), or asks the maintainer to pick",
+      "max_score": 10
+    }
   ]
 }

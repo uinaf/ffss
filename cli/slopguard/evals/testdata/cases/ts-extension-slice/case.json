@@ -1,9 +1,0 @@
-{
-  "summary": "substring(1) returns everything after the first character, not the extension",
-  "language": "typescript",
-  "needs_context": false,
-  "bug": {
-    "file": "files.ts",
-    "line": 4
-  }
-}

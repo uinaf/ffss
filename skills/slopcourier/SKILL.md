@@ -100,7 +100,7 @@ feedback.
 - **Failed check:** read the log. Fix what this change broke. If the base has
   since fixed it, bring in the base. A flake or infra failure gets one rerun;
   the same failure twice is real.
-- **The `slopguard` CLI:** only when the user asks or the repo has no review bot or
+- **`slopguard`:** only when the user asks or the repo has no review bot or
   required review; once, on the final head.
 
 On the forge, post only thread replies and re-requests; status goes to the

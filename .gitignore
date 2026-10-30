@@ -1,6 +1,4 @@
 .claude/worktrees/
 .skillcheck/
-/cli/*/bin/
-/cli/*/dist/
 /skills/slopcourier/scripts/prwatch/prwatch
 /skills/slopcourier/scripts/bodycheck/bodycheck

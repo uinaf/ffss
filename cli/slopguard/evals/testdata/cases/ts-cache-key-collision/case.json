@@ -1,9 +1,0 @@
-{
-  "summary": "new cache key ignores the locale the existing renderer varies on",
-  "language": "typescript",
-  "needs_context": true,
-  "bug": {
-    "file": "page.ts",
-    "line": 5
-  }
-}
