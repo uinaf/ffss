@@ -26,7 +26,8 @@ decisions.
 - **Current state only:** cut retired or absent systems, their unset
   settings, history, and "there is no X" sections. Keep a limit only when a
   reader would otherwise build or call the wrong thing, and put the supported
-  path beside it.
+  path beside it. ADRs, decision logs, and hand-written changelogs are history
+  too: commits and change request bodies own the why.
 - **Repo-owned only:** private workspaces, local helpers, accounts, hosts,
   internal URLs, and one-off observations stay out unless the owner adopts
   them. Describe what you left out by category, without the values, and note
