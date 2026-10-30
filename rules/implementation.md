@@ -11,7 +11,9 @@
   cancellable, and limited to idempotent transient work.
 - Run noisy commands with quiet flags, or in a delegate that returns only the
   conclusion.
-- Comment only invariants and external constraints the code can't express.
+- Write no code comments: names, types, and tests carry intent, and the
+  commit message carries the why. Keep only tool directives, license headers,
+  published API docs, and comments a lint rule requires.
 - Docs carry only what a reader must do or must not break. Link the code, CI,
   or config that owns a fact; a restated copy is a mirror and goes stale. A
   doc beyond the standard files earns its place or folds into one.
