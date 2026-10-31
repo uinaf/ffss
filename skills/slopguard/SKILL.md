@@ -33,11 +33,13 @@ evidence, not a merge decision.
      compared against the base. `--base`, `--commit`, and `--uncommitted`
      refuse a prompt; use them only for an unsteered pass.
    - Claude: `claude -p "/code-review <PR number, branch, or path>"`. It
-     takes a target, not a prompt.
+     takes a target, not a prompt. From Codex, request escalated
+     permissions: inside the sandbox it fails with a 401.
 
    Both send the diff and every file they read to their provider under the
-   user's login. Findings come back with exit 0; read them from stdout. A
-   non-zero exit means the run failed.
+   user's login. Both exit 0 with findings, and `claude -p` also exits 0 on
+   an auth or API error, so read stdout: an error there or a non-zero exit
+   is a failed run.
 3. **Validate.** Findings are hypotheses. Accept one only with evidence of a
    defect or unmet requirement; reject the rest with a short reason. Name
    each accepted finding's defect class and fix every instance in the
