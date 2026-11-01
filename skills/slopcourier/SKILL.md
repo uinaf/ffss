@@ -90,7 +90,8 @@ feedback.
 - **A human's design question or ambiguous point:** stop rework on that PR,
   post nothing, and hand it back to the user with the evidence.
 - **Concrete fixes** (from humans or bots): validate each against the code.
-  Fix the real ones in one pass, run the gates, push, reply on each fixed
+  Fix each real one's whole defect class across the diff, not only the
+  flagged line, in one pass. Run the gates, push, reply on each fixed
   thread with the commit link alone, and re-request review from anyone who
   requested changes or approved an older head. A human's finding you judge
   wrong goes to the user with the evidence; post nothing. Out-of-scope
@@ -100,6 +101,8 @@ feedback.
 - **Failed check:** read the log. Fix what this change broke. If the base has
   since fixed it, bring in the base. A flake or infra failure gets one rerun;
   the same failure twice is real.
+- **Behind or conflicted:** bring in the base, resolve conflicts, rerun the
+  gates, push, and keep watching.
 - **`slopguard`:** only when the user asks or the repo has no review bot or
   required review; once, on the final head.
 

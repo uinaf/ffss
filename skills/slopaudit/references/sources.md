@@ -8,14 +8,16 @@ describe confidential contexts generically.
 
 | Harness | User prompts | Full sessions |
 |---|---|---|
-| Claude Code | `~/.claude/history.jsonl` (`display`, `project`, `timestamp`) | `~/.claude/projects/<cwd-slug>/<session>.jsonl`; subagents under `<session>/subagents/` |
+| Claude Code | user messages in full sessions; `~/.claude/history.jsonl` misses desktop-app prompts | `~/.claude/projects/<cwd-slug>/<session>.jsonl`; subagents under `<session>/subagents/` |
 | Codex | `~/.codex/history.jsonl` (`text`, `ts`) | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` (`response_item` messages) |
-| T3 Code | — | `~/.t3/userdata/state.sqlite` (`projection_thread_messages`, `projection_threads`) |
+| T3 Code | — | `~/.t3/userdata/state.sqlite` (`projection_thread_messages`, `projection_threads`); if absent, Claude Code sessions whose slug names a T3 worktree |
 
 Before counting:
 
 - Keep only what the user typed: drop tool results, reminders, hook output,
   and skill bodies.
+- Count button clicks that arrive as prompts, such as next-step buttons,
+  apart from typed prompts: they are stamps, not repeated instructions.
 - Separate subagent sessions from top-level ones. Count skill loads for both,
   corrections for top-level only.
 - Exclude eval and sandbox sessions (usually a working directory under a temp
