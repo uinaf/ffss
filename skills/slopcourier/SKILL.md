@@ -9,7 +9,7 @@ Three lanes. Start where the request starts, stop where it stops:
 
 | Request | Lanes |
 |---|---|
-| "open the PR" | Open, then stop |
+| "open the PR" | Open, then Babysit until `ready`; merge only when asked |
 | "get it merged", "babysit" | Open (if needed), Babysit, After merge |
 | review or CI feedback on an open PR | Babysit, After merge |
 | direct push or dispatched workflow | After merge |
@@ -41,7 +41,7 @@ Three lanes. Start where the request starts, stop where it stops:
    came from the owner's `<owner>/.github` template, and `-footer <line>` when
    an attribution line is required. Fix what it flags or say why it's wrong.
 
-Done when the PR is open: report its URL and head commit.
+Report the PR's URL and head commit, then Babysit.
 
 ## Babysit
 
@@ -90,16 +90,21 @@ feedback.
 - **A human's design question or ambiguous point:** stop rework on that PR,
   post nothing, and hand it back to the user with the evidence.
 - **Concrete fixes** (from humans or bots): validate each against the code.
-  Fix the real ones in one pass, run the gates, push, reply on each fixed
+  Fix each real one's whole defect class across the diff, not only the
+  flagged line, in one pass. Run the gates, push, reply on each fixed
   thread with the commit link alone, and re-request review from anyone who
-  requested changes or approved an older head. A human's finding you judge
-  wrong goes to the user with the evidence; post nothing. Out-of-scope
+  requested changes or approved an older head. Reject a wrong bot finding
+  with a one-line reason, then resolve its thread; resolve fixed bot threads
+  too. A human's finding you judge wrong goes to the user with the evidence;
+  post nothing. Out-of-scope
   findings become tracker items.
   After the third fix round on one PR, stop patching, reconsider the
   approach, and tell the user if it changes.
 - **Failed check:** read the log. Fix what this change broke. If the base has
   since fixed it, bring in the base. A flake or infra failure gets one rerun;
   the same failure twice is real.
+- **Behind or conflicted:** bring in the base, resolve conflicts, rerun the
+  gates, push, and keep watching.
 - **`slopguard`:** only when the user asks or the repo has no review bot or
   required review; once, on the final head.
 
