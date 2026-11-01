@@ -90,16 +90,19 @@ feedback.
 - **A human's design question or ambiguous point:** stop rework on that PR,
   post nothing, and hand it back to the user with the evidence.
 - **Concrete fixes** (from humans or bots): validate each against the code.
+  A finding is wrong when a proof in hand refutes it or the user called it
+  negligible in this session; a re-raised finding is not new evidence.
   Fix each real one's whole defect class across the diff, not only the
-  flagged line, in one pass. Run the gates, push, reply on each fixed
-  thread with the commit link alone, and re-request review from anyone who
-  requested changes or approved an older head. Reject a wrong bot finding
-  with a one-line reason, then resolve its thread; resolve fixed bot threads
-  too. A human's finding you judge wrong goes to the user with the evidence;
-  post nothing. Out-of-scope
-  findings become tracker items.
-  After the third fix round on one PR, stop patching, reconsider the
-  approach, and tell the user if it changes.
+  flagged line, in one pass. Run the gates, push, reply on each fixed thread
+  with the commit link alone, and re-request review from anyone who
+  requested changes or approved an older head. Reply to a wrong bot finding
+  with a one-line reason that cites the proof; resolve fixed and rejected bot
+  threads. A human's finding you judge wrong goes to the user with the
+  evidence; post nothing. Out-of-scope findings become tracker items.
+- **Ping-pong:** after the third fix round on one PR, or when each round
+  brings new findings of the same kind, stop patching. Hold the PR and
+  propose a rewrite with a different approach in a fresh session, on another
+  model or harness if this one keeps missing. The user decides.
 - **Failed check:** read the log. Fix what this change broke. If the base has
   since fixed it, bring in the base. A flake or infra failure gets one rerun;
   the same failure twice is real.
