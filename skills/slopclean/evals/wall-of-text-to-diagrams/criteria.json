@@ -1,0 +1,36 @@
+{
+  "context": "A design doc that restates module wiring, a session lifecycle, and per-screen pixel detail in prose. A good cleanup replaces the architecture prose with Mermaid diagrams drawn from the code, drops the screen and change-note detail, and flags where the prose disagreed with the code.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "State machine drawn from the code",
+      "max_score": 30,
+      "description": "docs/design.md or docs/architecture.md has a Mermaid stateDiagram with exactly the transitions in session.ts: signedOut to pairing on pairStarted, pairing to active on paired, pairing to signedOut on codeExpired, active to expired on tokenRejected, active to signedOut on signedOut, expired to pairing on pairStarted. It has no expired-to-active transition."
+    },
+    {
+      "name": "Module graph drawn from the manifests",
+      "max_score": 20,
+      "description": "A Mermaid flowchart shows app depending on sync and store, and sync depending on api and store, with no other edges."
+    },
+    {
+      "name": "Prose replaced, not duplicated",
+      "max_score": 15,
+      "description": "The paragraphs that described the package wiring and the session lifecycle are gone; at most one sentence introduces each diagram."
+    },
+    {
+      "name": "Screen and change-note detail removed",
+      "max_score": 20,
+      "description": "No sp or dp values, per-screen layout notes, or 'Updated in 2.x' and 'since 2.x' change notes remain in the doc."
+    },
+    {
+      "name": "Drift reported",
+      "max_score": 10,
+      "description": "The reply to the user says the old prose described an expired-to-active refresh that session.ts does not have, and that the diagram follows the code."
+    },
+    {
+      "name": "Nothing invented",
+      "max_score": 5,
+      "description": "No package, state, event, or edge appears that the source files do not contain, and no exported image is embedded."
+    }
+  ]
+}

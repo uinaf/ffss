@@ -1,6 +1,6 @@
 ---
 name: slopclean
-description: "Remove AI tells from prose, code, or tests; prune low-value tests from a suite; or fix docs and agent guides that drifted from their sources. Use when asked to unslop, humanize, or de-AI text, prune tests, or fix doc drift."
+description: "Remove AI tells from prose, code, or tests; prune low-value tests from a suite; or fix docs and agent guides that drifted from their sources or go stale on every change. Use when asked to unslop, humanize, or de-AI text, prune tests, fix doc drift, or cut a wall-of-text doc down."
 ---
 
 # Slopclean
