@@ -11,12 +11,19 @@ decisions.
 - **No mirrors:** a mirror restates what code, CI, or config already says:
   how a release, deploy, workflow, or tool works, which keys or tasks exist,
   what a job touches. It goes stale on the next change. Delete it and link the
-  file and key. Behaviour specs, architecture overviews, testing guides, and
-  test or lane catalogs are mirrors too: a rule a test pins is documented by
-  that test. Docs keep only what a reader must do or must not break that no
-  file, test, or check states.
+  file and key. Behaviour specs, per-screen or per-feature walkthroughs,
+  testing guides, and test or lane catalogs are mirrors too: a rule a test
+  pins is documented by that test. Docs keep only what a reader must do or
+  must not break that no file, test, or check states.
   Exception: README and `AGENTS.md` carry the exact install, setup, run, and
   verify commands.
+- **Diagrams over walls of text:** a doc that grows with every feature change
+  is a mirror. Cut it to what changes only with the architecture: module
+  boundaries, main flows, lifecycles, and state machines. Draw each as
+  Mermaid (`flowchart`, `sequenceDiagram`, `stateDiagram-v2`) in place of the
+  prose it covers, from the code, not from the old prose. Name only modules,
+  states, and events the code has. Screen and per-change detail stays in
+  code, tests, and design boards. No exported images: they can't be diffed.
 - **No automated work:** agent guides and repo skills never describe what
   CI/CD, hooks, Renovate, or bots do on their own: deploy and release steps,
   upgrade runbooks, what a hook or job runs, recovery for automated deploys.
@@ -46,6 +53,9 @@ decisions.
   commit caps.
 - **`CLAUDE.md`:** when the repo uses `AGENTS.md`, a regular file containing
   only `@AGENTS.md`.
+- **`docs/architecture.md`,** or a README section in a small repo: one
+  sentence on what the system does, then its diagrams. It changes only when
+  a boundary, flow, or state changes.
 - **README:** purpose, install and start, first use, links. Contributor setup
   goes in CONTRIBUTING, private reporting in SECURITY. Don't invent contacts
   or promises.
