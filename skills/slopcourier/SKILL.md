@@ -9,7 +9,7 @@ Three lanes. Start where the request starts, stop where it stops:
 
 | Request | Lanes |
 |---|---|
-| "open the PR" | Open, then stop |
+| "open the PR" | Open, then Babysit until `ready`; merge only when asked |
 | "get it merged", "babysit" | Open (if needed), Babysit, After merge |
 | review or CI feedback on an open PR | Babysit, After merge |
 | direct push or dispatched workflow | After merge |
@@ -41,7 +41,7 @@ Three lanes. Start where the request starts, stop where it stops:
    came from the owner's `<owner>/.github` template, and `-footer <line>` when
    an attribution line is required. Fix what it flags or say why it's wrong.
 
-Done when the PR is open: report its URL and head commit.
+Report the PR's URL and head commit, then Babysit.
 
 ## Babysit
 
@@ -93,8 +93,10 @@ feedback.
   Fix each real one's whole defect class across the diff, not only the
   flagged line, in one pass. Run the gates, push, reply on each fixed
   thread with the commit link alone, and re-request review from anyone who
-  requested changes or approved an older head. A human's finding you judge
-  wrong goes to the user with the evidence; post nothing. Out-of-scope
+  requested changes or approved an older head. Reject a wrong bot finding
+  with a one-line reason, then resolve its thread; resolve fixed bot threads
+  too. A human's finding you judge wrong goes to the user with the evidence;
+  post nothing. Out-of-scope
   findings become tracker items.
   After the third fix round on one PR, stop patching, reconsider the
   approach, and tell the user if it changes.
