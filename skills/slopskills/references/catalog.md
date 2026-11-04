@@ -36,6 +36,21 @@ The Xcode orchestrator needs all six; specialists can be installed alone:
 
 Benchmarks and build-setting changes stay within the original task.
 
+## Android
+
+| Skill | Install source | Evidence and use |
+| --- | --- | --- |
+| Skills picked by name | [android/skills](https://github.com/android/skills) | Android, Kotlin, or Jetpack Compose apps. Pick each skill from stack evidence: `r8-analyzer` when minify is on, `media3-cast-integration` for Cast, `leanback-to-compose-tv-migration` only for Leanback apps. |
+
+Install each skill by name at project scope, never `--all`:
+
+```sh
+npx skills add android/skills --skill <name> --agent claude-code --agent codex --yes
+```
+
+Run one-off audits such as `play-policy-insights`, `android-intent-security`,
+and `android-permissions-security`; don't vendor them.
+
 ## Effect
 
 | Skill | Install source | Evidence and use |
