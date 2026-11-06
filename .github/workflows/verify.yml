@@ -63,7 +63,7 @@ jobs:
         working-directory: skills/slopcourier/scripts/bodycheck
       - name: Test the slopcourier pull request watcher
         run: test -z "$(gofmt -l .)" && go vet ./... && go test ./...
-        working-directory: skills/slopcourier/scripts/prwatch
+        working-directory: skills/slopcourier/scripts/pr-watch
 
   verify:
     if: always()
