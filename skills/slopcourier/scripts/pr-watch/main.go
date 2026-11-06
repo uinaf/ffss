@@ -1359,7 +1359,7 @@ func (g ghForge) FailedJobs(ctx context.Context, repo string, runID int64) ([]jo
 }
 
 func (g ghForge) RateLimitReset(ctx context.Context) (time.Time, error) {
-	out, err := g.call(ctx, "api", "rate_limit", "--jq", `[.resources.core, .resources.graphql] | map(select(.remaining == 0) | .reset) | max // 0`)
+	out, err := g.call(ctx, "api", "rate_limit", "--jq", `[.resources.core, .resources.graphql] | map(select(.remaining == 0) | .reset) | min // 0`)
 	if err != nil {
 		return time.Time{}, err
 	}
