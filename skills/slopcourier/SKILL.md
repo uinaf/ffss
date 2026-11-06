@@ -1,6 +1,6 @@
 ---
 name: slopcourier
-description: "Open, babysit, and merge a PR or MR, then watch the runs a merge, direct push, or dispatched workflow starts. Use when opening or updating one, or when asked to get it merged or babysit it."
+description: "Open, update, babysit, and merge a PR or MR, then watch the runs a merge, direct push, or dispatched workflow starts. Use before any `gh pr create`, `gh pr edit`, `glab mr create`, or PR/MR title or description edit, and whenever work ends in a pull or merge request: open a PR, ship it, push for review, get it merged, babysit it."
 ---
 
 # Slopcourier
@@ -14,6 +14,9 @@ Three lanes. Start where the request starts, stop where it stops:
 | review or CI feedback on an open PR | Babysit, After merge |
 | direct push or dispatched workflow | After merge |
 
+Every PR or MR create or edit goes through Open, steps 4 to 7, even when
+another skill or the harness asked for the PR.
+
 `git remote get-url origin` picks the forge: github.com uses `gh`, GitLab uses
 `glab`. Any other host: stop and say so. Check auth for that host
 (`GH_HOST=github.com gh auth status`, `glab auth status --hostname <host>`).
@@ -26,20 +29,28 @@ Three lanes. Start where the request starts, stop where it stops:
 2. **Branch.** One task branch. If it already has a PR, update that PR. Open
    ready for review unless asked for a draft.
 3. **Title.** The user-visible outcome, in the shape of recent merged titles.
-4. **Body.** Repo template first, then the owner's `<owner>/.github` default
-   template, else: outcome sentence, one visual aid, up to 5 one-line bullets
-   for what the aid doesn't show. Describe the change as it stands.
+4. **Body.** Write it to `body.md`, never inline. Repo template first, then
+   the owner's `<owner>/.github` default template, else: outcome sentence,
+   one visual aid, up to 5 one-line bullets for what the aid doesn't show.
+   Describe the change as it stands.
    Leave out: file lists, test counts, command logs, review history, finding
    counts, fix hashes, reviewer names, and iteration narrative. CI shows
    proof; add proof only where CI can't.
 5. **Visual aid.** Screenshot or short recording for UI, Mermaid for a flow,
    table for numbers, before/after code for an API. How to capture and
    upload: [visual-evidence.md](references/visual-evidence.md).
-6. **Bodycheck.** From the target repo:
+6. **Bodycheck, before any create or edit call.** From the target repo:
    `go run <this skill's dir>/scripts/bodycheck/main.go body.md`, adding
    `-before <current body file>` for an edit, `-template <file>` when the body
    came from the owner's `<owner>/.github` template, and `-footer <line>` when
-   an attribution line is required. Fix what it flags or say why it's wrong.
+   an attribution line is required. Fix what it flags and rerun until it exits
+   0, or say why a flag is wrong. No Go: check the limits by hand and say
+   bodycheck didn't run.
+7. **Submit the checked file.** `gh pr create --body-file body.md` or
+   `gh pr edit --body-file body.md`; on GitLab,
+   `glab mr create --description "$(cat body.md)"` or
+   `glab mr update --description "$(cat body.md)"`. Never type the body into
+   the command: only the checked file's contents go up.
 
 Report the PR's URL and head commit, then Babysit.
 

@@ -4,7 +4,7 @@
   "checklist": [
     {
       "name": "Org default template checked",
-      "max_score": 26,
+      "max_score": 20,
       "description": "Before settling on its own body format, the agent looks for a default pull request template in the owner's `.github` repository (tallowmere/.github), either with a read-only lookup whose result it reports or as a step in the planned commands, and says which format applies when that repository has none."
     },
     {
@@ -31,6 +31,11 @@
       "name": "Opens ready for review",
       "max_score": 8,
       "description": "The planned `gh pr create` opens the PR ready for review, not as a draft, and the plan checks for an existing PR on the branch first."
+    },
+    {
+      "name": "Bodycheck gates the create call",
+      "max_score": 6,
+      "description": "The planned commands write the body to a file, run bodycheck on that file before the create call, and pass the same file with `--body-file`; there is no inline `--body` string."
     },
     {
       "name": "Measured aid and outcome title",
