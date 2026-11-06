@@ -38,6 +38,7 @@ type fakeForge struct {
 	runPoll int
 	polls   int
 	reset   time.Time
+	lookup  time.Duration
 }
 
 func at[T any](c *fakeClock, timeline map[int]T) T {
@@ -57,6 +58,7 @@ func (f *fakeForge) PullRequest(context.Context, string, int) (pr, error) {
 }
 
 func (f *fakeForge) RateLimitReset(context.Context) (time.Time, error) {
+	f.clock.now = f.clock.now.Add(f.lookup)
 	return f.reset, nil
 }
 
@@ -208,6 +210,27 @@ func TestSurfacesGhErrors(t *testing.T) {
 		f.prs[3] = open(passed("ci"))
 		code, out, _ := watchFor(t, f)
 		if code != exitDone || f.polls < 3 || strings.Contains(out, "failed") {
+			t.Fatalf("code %d after %d polls, output:\n%s", code, f.polls, out)
+		}
+	})
+	t.Run("rate limit sleep excludes a slow reset lookup", func(t *testing.T) {
+		f := newFake()
+		f.prs[0] = limited
+		f.prs[10] = open(passed("ci"))
+		f.reset = t0.Add(10 * time.Minute)
+		f.lookup = 5 * time.Minute
+		code, out, _ := watchFor(t, f, "-timeout", "12m")
+		if code != exitDone || !strings.Contains(out, "rate limited until 12:10:01") {
+			t.Fatalf("code %d at %s, output:\n%s", code, f.clock.now, out)
+		}
+	})
+	t.Run("a 429 in the target is not a rate limit", func(t *testing.T) {
+		f := newFake()
+		f.prs[0] = func() (pr, error) {
+			return pr{}, &cliError{name: "glab", args: []string{"api", "projects/g%2Fp/merge_requests/429"}, stderr: "404 Not Found", err: errors.New("exit 1")}
+		}
+		code, out, _ := watchFor(t, f)
+		if code != exitError || f.polls != 3 || strings.Contains(out, "rate limited") {
 			t.Fatalf("code %d after %d polls, output:\n%s", code, f.polls, out)
 		}
 	})

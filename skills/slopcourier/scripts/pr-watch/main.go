@@ -479,9 +479,10 @@ func (w *watcher) failed(ctx context.Context, err error, inRow *int) (int, bool)
 const rateLimitWait = time.Minute
 
 func (w *watcher) rateLimited(ctx context.Context, err error) (int, bool) {
+	reset, rerr := w.f.RateLimitReset(ctx)
 	now := w.clock.Now()
 	until := now.Add(rateLimitWait)
-	if reset, rerr := w.f.RateLimitReset(ctx); rerr != nil {
+	if rerr != nil {
 		fmt.Fprintf(w.log, "pr-watch: rate limit reset unknown: %v\n", rerr)
 	} else if reset.After(now) {
 		until = reset.Add(time.Second)
@@ -999,10 +1000,17 @@ func (e *cliError) Error() string {
 
 func (e *cliError) Unwrap() error { return e.err }
 
-var rateLimitMessage = regexp.MustCompile(`(?i)rate limit|\b429\b|too many requests`)
+var rateLimitMessage = regexp.MustCompile(`(?i)rate limit|HTTP 429|429 Too Many|too many requests`)
 
 func isRateLimit(err error) bool {
-	return err != nil && rateLimitMessage.MatchString(err.Error())
+	if err == nil {
+		return false
+	}
+	var ce *cliError
+	if errors.As(err, &ce) {
+		return rateLimitMessage.MatchString(ce.stderr)
+	}
+	return rateLimitMessage.MatchString(err.Error())
 }
 
 // cliTimeout bounds one forge CLI call so a hung process can't outlive the
