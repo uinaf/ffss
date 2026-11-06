@@ -13,7 +13,7 @@
 | Change | Gate |
 |---|---|
 | `skills/` | `npm ci && npm run lint && npm run audit` in `tools/skill-evals` |
-| `skills/slopcourier/scripts/bodycheck/`, `.../prwatch/` | `gofmt -l .`, `go vet ./...`, and `go test ./...` in each |
+| `skills/slopcourier/scripts/bodycheck/`, `.../pr-watch/` | `gofmt -l .`, `go vet ./...`, and `go test ./...` in each |
 | Root docs, `rules/` | none |
 
 Evals run outside this repo, in skillcheck's

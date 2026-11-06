@@ -58,10 +58,10 @@ Report the PR's URL and head commit, then Babysit.
 
 ### Watch
 
-Wait with prwatch, not a polling loop:
+Wait with pr-watch, not a polling loop:
 
 ```bash
-go run <this skill's dir>/scripts/prwatch/main.go [-R owner/repo] [-since <since>] <number or URL>
+go run <this skill's dir>/scripts/pr-watch/main.go [-R owner/repo] [-since <since>] <number or URL>
 ```
 
 - **Flags go before the number or URL.** Go stops parsing flags at the first
@@ -72,11 +72,11 @@ go run <this skill's dir>/scripts/prwatch/main.go [-R owner/repo] [-since <since
 - Act, then rerun with `-since <its since: line>` so nothing between runs is
   missed.
 - One background run per PR.
-- **Forge.** prwatch reads it from the URL or origin host. For a self-hosted
+- **Forge.** pr-watch reads it from the URL or origin host. For a self-hosted
   host named without `github` or `gitlab`, pass `-forge gitlab`; the header of
-  [prwatch/main.go](scripts/prwatch/main.go) shows the persistent mapping.
+  [pr-watch/main.go](scripts/pr-watch/main.go) shows the persistent mapping.
 - **No Go:** poll `gh pr view` / `gh pr checks` (or `glab mr view`) for the
-  same evidence, and say prwatch didn't run.
+  same evidence, and say pr-watch didn't run.
 
 Read everything it surfaces: a `CHANGES_REQUESTED` review can have no inline
 thread, and bots often post top-level comments. A requested human reviewer who
@@ -90,7 +90,7 @@ feedback.
   reaction, running check, "reviewing" comment, review request), or for a few
   minutes after a push when it reviewed an earlier head of this PR. A bot that
   never touched this PR is not pending.
-- prwatch waits up to 5 minutes for a pending bot (`-bot-wait`; lower it to
+- pr-watch waits up to 5 minutes for a pending bot (`-bot-wait`; lower it to
   meet a user deadline), then moves on. Name the skipped bot in the report.
 - A usage-limit or quota notice means the bot is unavailable. Say so and move
   on.
@@ -134,10 +134,10 @@ method and report the merged commit. Hold only when asked.
 
 ## After merge
 
-- **Merged PR:** run prwatch on it once. It finds the merge commit and waits
+- **Merged PR:** run pr-watch on it once. It finds the merge commit and waits
   for the runs it starts: `runs-passed`, `no-runs`, `runs-failed`, or
   `timeout`.
-- **Direct push or dispatched workflow:** run prwatch with
+- **Direct push or dispatched workflow:** run pr-watch with
   `-commit <full sha>` instead of a number.
 - **On failure:** report the run link, the likely cause from the failed job's
   log, and the revert command for the user to run: `gh pr revert <number>` (GitLab: a revert

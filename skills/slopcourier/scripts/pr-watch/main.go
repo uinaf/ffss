@@ -1,8 +1,8 @@
-// Command prwatch waits on a GitHub pull request or GitLab merge request until
+// Command pr-watch waits on a GitHub pull request or GitLab merge request until
 // slopcourier has something to act on, then prints what it saw and exits. Run it
 // where `gh` or `glab` is signed in:
 //
-//	go run <skill dir>/scripts/prwatch/main.go [flags] <number | url>
+//	go run <skill dir>/scripts/pr-watch/main.go [flags] <number | url>
 //
 // An open change request is watched until its checks fail, someone else posts
 // a review or comment, its head moves, it merges or closes, or its checks
@@ -10,10 +10,10 @@
 // its merge commit started watched until they finish. With -commit, so do the
 // runs a pushed or dispatched commit started, without a change request:
 //
-//	go run <skill dir>/scripts/prwatch/main.go [flags] -commit <full sha>
+//	go run <skill dir>/scripts/pr-watch/main.go [flags] -commit <full sha>
 //
 // A self-hosted forge whose host name contains neither github nor gitlab is
-// mapped in $XDG_CONFIG_HOME/ffss/prwatch.yaml (else ~/.config/ffss/prwatch.yaml):
+// mapped in $XDG_CONFIG_HOME/ffss/pr-watch.yaml (else ~/.config/ffss/pr-watch.yaml):
 //
 //	forges:
 //	  git.example.com: gitlab
@@ -91,7 +91,7 @@ func originURL(ctx context.Context) (string, error) {
 
 func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) int {
 	clock := d.clock
-	flags := flag.NewFlagSet("prwatch", flag.ContinueOnError)
+	flags := flag.NewFlagSet("pr-watch", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	var opts options
 	var since string
@@ -105,7 +105,7 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 	flags.StringVar(&since, "since", "", "RFC 3339 time; reviews and comments after it count as new (default: now). Pass the previous run's since line")
 	flags.StringVar(&opts.commit, "commit", "", "full SHA of a pushed or dispatched commit whose runs to watch, instead of a change request")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "usage: prwatch [flags] <number | url>\n       prwatch [flags] -commit <full sha>")
+		fmt.Fprintln(stderr, "usage: pr-watch [flags] <number | url>\n       pr-watch [flags] -commit <full sha>")
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args); err != nil {
@@ -120,17 +120,17 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 		return exitError
 	}
 	if opts.commit != "" && !fullSHA.MatchString(opts.commit) {
-		fmt.Fprintln(stderr, "prwatch: -commit needs a full SHA, such as from git rev-parse HEAD; forges list nothing for a short one")
+		fmt.Fprintln(stderr, "pr-watch: -commit needs a full SHA, such as from git rev-parse HEAD; forges list nothing for a short one")
 		return exitError
 	}
 	opts.maxErrors = 3
 	if opts.kind != "" && opts.kind != "github" && opts.kind != "gitlab" {
-		fmt.Fprintln(stderr, "prwatch: -forge must be github or gitlab")
+		fmt.Fprintln(stderr, "pr-watch: -forge must be github or gitlab")
 		return exitError
 	}
 	if opts.commit == "" {
 		if err := parseTarget(flags.Arg(0), &opts); err != nil {
-			fmt.Fprintln(stderr, "prwatch:", err)
+			fmt.Fprintln(stderr, "pr-watch:", err)
 			return exitError
 		}
 	}
@@ -139,7 +139,7 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 	if d.forges != nil {
 		var err error
 		if forges, forgesPath, err = d.forges(); err != nil {
-			fmt.Fprintln(stderr, "prwatch:", err)
+			fmt.Fprintln(stderr, "pr-watch:", err)
 			return exitError
 		}
 	}
@@ -153,7 +153,7 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 	if since != "" {
 		t, err := time.Parse(time.RFC3339, since)
 		if err != nil {
-			fmt.Fprintln(stderr, "prwatch: -since:", err)
+			fmt.Fprintln(stderr, "pr-watch: -since:", err)
 			return exitError
 		}
 		opts.since = t
@@ -170,14 +170,14 @@ func run(ctx context.Context, args []string, d deps, stdout, stderr io.Writer) i
 				opts.host = host
 			}
 		case opts.repo == "":
-			fmt.Fprintln(stderr, "prwatch: pass -R or a URL; no origin remote to read:", err)
+			fmt.Fprintln(stderr, "pr-watch: pass -R or a URL; no origin remote to read:", err)
 			return exitError
 		}
 	}
 	if opts.kind == "" {
 		opts.kind = kindOf(opts.host)
 		if opts.kind == "" {
-			fmt.Fprintf(stderr, "prwatch: can't tell which forge %s is; pass -forge", opts.host)
+			fmt.Fprintf(stderr, "pr-watch: can't tell which forge %s is; pass -forge", opts.host)
 			if forgesPath != "" {
 				fmt.Fprintf(stderr, " or map it under forges: in %s", forgesPath)
 			}
@@ -244,7 +244,7 @@ func loadForges() (map[string]string, string, error) {
 		}
 		dir = filepath.Join(home, ".config")
 	}
-	path := filepath.Join(dir, "ffss", "prwatch.yaml")
+	path := filepath.Join(dir, "ffss", "pr-watch.yaml")
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, path, nil
@@ -259,7 +259,7 @@ func loadForges() (map[string]string, string, error) {
 	return forges, path, nil
 }
 
-// parseForges reads the one YAML shape prwatch.yaml takes, a forges: mapping
+// parseForges reads the one YAML shape pr-watch.yaml takes, a forges: mapping
 // of host to github or gitlab, so the script stays free of dependencies.
 func parseForges(text string) (map[string]string, error) {
 	forges := map[string]string{}
@@ -303,7 +303,7 @@ func unquote(s string) string {
 	return s
 }
 
-// Forge data, as prwatch needs it.
+// Forge data, as pr-watch needs it.
 
 type pr struct {
 	Viewer, URL, State, MergeState string
@@ -374,6 +374,7 @@ type forge interface {
 	BotEyes(ctx context.Context, repo string, number int) ([]string, error)
 	Runs(ctx context.Context, repo, sha, branch string) ([]workflowRun, error)
 	FailedJobs(ctx context.Context, repo string, runID int64) ([]job, error)
+	RateLimitReset(ctx context.Context) (time.Time, error)
 }
 
 type clock interface {
@@ -446,7 +447,7 @@ func (w *watcher) watch(ctx context.Context) int {
 			}
 		}
 		if err != nil {
-			if code, stop := w.failed(err, &errorsInRow); stop {
+			if code, stop := w.failed(ctx, err, &errorsInRow); stop {
 				return code
 			}
 		}
@@ -459,12 +460,38 @@ func (w *watcher) watch(ctx context.Context) int {
 	}
 }
 
-// failed reports a forge CLI failure and says whether to give up. Rate limits and
-// repeated failures end the watch; nothing is retried silently.
-func (w *watcher) failed(err error, inRow *int) (int, bool) {
+// failed reports a forge CLI failure and says whether to give up. A rate limit
+// waits for its reset when that comes before the deadline; repeated failures end
+// the watch; nothing is retried silently.
+func (w *watcher) failed(ctx context.Context, err error, inRow *int) (int, bool) {
+	if isRateLimit(err) && !errors.Is(err, context.Canceled) {
+		return w.rateLimited(ctx, err)
+	}
 	*inRow++
-	fmt.Fprintf(w.log, "prwatch: poll %d/%d failed: %v\n", *inRow, w.opts.maxErrors, err)
-	if errors.Is(err, context.Canceled) || isRateLimit(err) || *inRow >= w.opts.maxErrors {
+	fmt.Fprintf(w.log, "pr-watch: poll %d/%d failed: %v\n", *inRow, w.opts.maxErrors, err)
+	if errors.Is(err, context.Canceled) || *inRow >= w.opts.maxErrors {
+		fmt.Fprintln(w.out, "error:", err)
+		return exitError, true
+	}
+	return 0, false
+}
+
+const rateLimitWait = time.Minute
+
+func (w *watcher) rateLimited(ctx context.Context, err error) (int, bool) {
+	now := w.clock.Now()
+	until := now.Add(rateLimitWait)
+	if reset, rerr := w.f.RateLimitReset(ctx); rerr != nil {
+		fmt.Fprintf(w.log, "pr-watch: rate limit reset unknown: %v\n", rerr)
+	} else if reset.After(now) {
+		until = reset.Add(time.Second)
+	}
+	if until.After(w.deadline) {
+		fmt.Fprintf(w.out, "error: %v; resets at %s, after the deadline\n", err, until.Format(time.RFC3339))
+		return exitError, true
+	}
+	fmt.Fprintf(w.log, "pr-watch: rate limited until %s: %v\n", until.Format("15:04:05"), err)
+	if err := w.clock.Sleep(ctx, until.Sub(now)); err != nil {
 		fmt.Fprintln(w.out, "error:", err)
 		return exitError, true
 	}
@@ -751,14 +778,14 @@ func (w *watcher) watchRuns(ctx context.Context, p pr) int {
 		now := w.clock.Now()
 		all, err := w.f.Runs(ctx, w.opts.repo, sha, p.Base)
 		if err != nil {
-			if code, stop := w.failed(err, &errorsInRow); stop {
+			if code, stop := w.failed(ctx, err, &errorsInRow); stop {
 				return code
 			}
 		} else {
 			runs = w.startedRuns(all)
 			code, done, err := w.judgeRuns(ctx, p, sha, runs, now)
 			if err != nil {
-				if code, stop := w.failed(err, &errorsInRow); stop {
+				if code, stop := w.failed(ctx, err, &errorsInRow); stop {
 					return code
 				}
 			} else if errorsInRow = 0; done {
@@ -972,13 +999,10 @@ func (e *cliError) Error() string {
 
 func (e *cliError) Unwrap() error { return e.err }
 
+var rateLimitMessage = regexp.MustCompile(`(?i)rate limit|\b429\b|too many requests`)
+
 func isRateLimit(err error) bool {
-	var ce *cliError
-	if !errors.As(err, &ce) {
-		return false
-	}
-	msg := strings.ToLower(ce.stderr)
-	return strings.Contains(msg, "rate limit") || strings.Contains(msg, "429")
+	return err != nil && rateLimitMessage.MatchString(err.Error())
 }
 
 // cliTimeout bounds one forge CLI call so a hung process can't outlive the
@@ -1326,7 +1350,23 @@ func (g ghForge) FailedJobs(ctx context.Context, repo string, runID int64) ([]jo
 	return jobs, nil
 }
 
+func (g ghForge) RateLimitReset(ctx context.Context) (time.Time, error) {
+	out, err := g.call(ctx, "api", "rate_limit", "--jq", `[.resources.core, .resources.graphql] | map(select(.remaining == 0) | .reset) | max // 0`)
+	if err != nil {
+		return time.Time{}, err
+	}
+	sec, err := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
+	if err != nil || sec == 0 {
+		return time.Time{}, err
+	}
+	return time.Unix(sec, 0), nil
+}
+
 // GitLab.
+
+func (g *glabForge) RateLimitReset(context.Context) (time.Time, error) {
+	return time.Time{}, nil
+}
 
 type glabForge struct {
 	host   string

@@ -37,6 +37,7 @@ type fakeForge struct {
 	runFn   func(n int) ([]workflowRun, error)
 	runPoll int
 	polls   int
+	reset   time.Time
 }
 
 func at[T any](c *fakeClock, timeline map[int]T) T {
@@ -53,6 +54,10 @@ func at[T any](c *fakeClock, timeline map[int]T) T {
 func (f *fakeForge) PullRequest(context.Context, string, int) (pr, error) {
 	f.polls++
 	return at(f.clock, f.prs)()
+}
+
+func (f *fakeForge) RateLimitReset(context.Context) (time.Time, error) {
+	return f.reset, nil
 }
 
 func (f *fakeForge) BotEyes(context.Context, string, int) ([]string, error) {
@@ -184,13 +189,35 @@ func TestSurfacesGhErrors(t *testing.T) {
 			t.Fatalf("code %d after %d polls, output:\n%s", code, f.polls, out)
 		}
 	})
-	t.Run("rate limit", func(t *testing.T) {
+	limited := func() (pr, error) {
+		return pr{}, &cliError{name: "gh", args: []string{"api", "graphql"}, stderr: "gh: API rate limit exceeded for user ID 1.", err: errors.New("exit 1")}
+	}
+	t.Run("rate limit waits for the reset", func(t *testing.T) {
 		f := newFake()
-		f.prs[0] = func() (pr, error) {
-			return pr{}, &cliError{name: "gh", args: []string{"api"}, stderr: "API rate limit exceeded", err: errors.New("exit 1")}
+		f.prs[0] = limited
+		f.prs[10] = open(passed("ci"))
+		f.reset = t0.Add(10 * time.Minute)
+		code, out, _ := watchFor(t, f)
+		if code != exitDone || strings.Count(out, "rate limited") != 1 || f.clock.now.Before(f.reset) || !strings.Contains(out, "rate limited until 12:10:01") {
+			t.Fatalf("code %d after %d polls at %s, output:\n%s", code, f.polls, f.clock.now, out)
 		}
-		if code, _, _ := watchFor(t, f); code != exitError || f.polls != 1 {
-			t.Fatalf("rate limit should stop at once; code %d after %d polls", code, f.polls)
+	})
+	t.Run("rate limit without a known reset retries each minute", func(t *testing.T) {
+		f := newFake()
+		f.prs[0] = limited
+		f.prs[3] = open(passed("ci"))
+		code, out, _ := watchFor(t, f)
+		if code != exitDone || f.polls < 3 || strings.Contains(out, "failed") {
+			t.Fatalf("code %d after %d polls, output:\n%s", code, f.polls, out)
+		}
+	})
+	t.Run("rate limit resetting after the deadline stops at once", func(t *testing.T) {
+		f := newFake()
+		f.prs[0] = limited
+		f.reset = t0.Add(45 * time.Minute)
+		code, out, _ := watchFor(t, f)
+		if code != exitError || f.polls != 1 || !strings.Contains(out, "resets at 2026-10-07T12:45:01Z, after the deadline") {
+			t.Fatalf("code %d after %d polls, output:\n%s", code, f.polls, out)
 		}
 	})
 }
@@ -500,7 +527,7 @@ func TestPicksForge(t *testing.T) {
 func TestPicksForgeFromConfig(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
-	path := filepath.Join(dir, "ffss", "prwatch.yaml")
+	path := filepath.Join(dir, "ffss", "pr-watch.yaml")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
