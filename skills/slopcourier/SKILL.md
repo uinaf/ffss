@@ -48,8 +48,9 @@ another skill or the harness asked for the PR.
    bodycheck didn't run.
 7. **Submit the checked file.** `gh pr create --body-file body.md` or
    `gh pr edit --body-file body.md`; on GitLab,
-   `glab mr create --description "$(cat body.md)"` or `glab mr update`. Never
-   `--body "…"`: an inline body skips the check.
+   `glab mr create --description "$(cat body.md)"` or
+   `glab mr update --description "$(cat body.md)"`. Never type the body into
+   the command: only the checked file's contents go up.
 
 Report the PR's URL and head commit, then Babysit.
 
