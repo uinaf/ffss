@@ -1,8 +1,8 @@
 # Installation
 
 ```sh
-npx skills add Effect-TS/skills --list
-npx skills add Effect-TS/skills --skill effect-ts --agent codex --yes
+npx skills add AvdLee/SwiftUI-Agent-Skill --list
+npx skills add AvdLee/SwiftUI-Agent-Skill --skill swiftui-expert-skill --agent codex --yes
 ```
 
 TanStack skills ship inside the npm packages and load through

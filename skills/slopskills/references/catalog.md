@@ -53,12 +53,19 @@ and `android-permissions-security`; don't vendor them.
 
 ## Effect
 
-| Skill | Install source | Evidence and use |
-| --- | --- | --- |
-| `effect-ts` | [Effect-TS/skills](https://github.com/Effect-TS/skills) | The TypeScript `effect` dependency or imports; repository setup and routing to Effect's bundled guidance. React effects and Swift side effects do not qualify. |
+Effect ships its agent guide in the package; install no repo skill. Evidence:
+the TypeScript `effect` dependency or imports. React effects and Swift side
+effects do not qualify.
 
-The Effect setup skill installs a dependency. In an existing repo, keep the
-installed `effect` version; no upgrade to a release candidate.
+When `node_modules/effect/AGENTS.md` exists, step 5 adds this pointer:
+
+```md
+Before writing Effect code, read `node_modules/effect/AGENTS.md` completely and
+follow required links. Look up uncovered APIs in `node_modules/effect/src`.
+```
+
+Keep the installed `effect` version; no upgrade to a release candidate. Once
+the pointer is in place, remove a repo-local `effect-ts` skill.
 
 ## Lint plugins
 
