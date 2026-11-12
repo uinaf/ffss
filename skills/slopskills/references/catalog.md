@@ -13,8 +13,8 @@ coordinates.
 | `react-router` | `@tanstack/react-router` via [TanStack Intent](https://tanstack.com/intent) | A TanStack Router dependency; routes, params, search params, loaders, or navigation. |
 | `react-start` | `@tanstack/react-start` via [TanStack Intent](https://tanstack.com/intent) | A TanStack Start dependency or configuration; server functions, server routes, middleware, SSR, or deployment. Router alone does not imply Start. |
 
-Match the actual TanStack package, not React. Query and Form ship no skills
-yet; report them as gaps.
+Match the actual TanStack package, not React. A TanStack package that ships
+no skill is a gap; report it.
 
 ## Swift
 
@@ -23,16 +23,10 @@ yet; report them as gaps.
 | `swiftui-expert-skill` | [AvdLee/SwiftUI-Agent-Skill](https://github.com/AvdLee/SwiftUI-Agent-Skill) | SwiftUI imports or an explicit SwiftUI UI task; skip headless Swift and UIKit-only targets. |
 | `swift-testing-expert` | [AvdLee/Swift-Testing-Agent-Skill](https://github.com/AvdLee/Swift-Testing-Agent-Skill) | Swift test targets or planned tests; Swift Testing, test architecture, or requested XCTest migration. Installation does not authorize migration. |
 | `swift-concurrency` | [AvdLee/Swift-Concurrency-Agent-Skill](https://github.com/AvdLee/Swift-Concurrency-Agent-Skill) | Swift code; async/await, actors, isolation, Sendable, or concurrency migration. |
-| Xcode build skills below | [AvdLee/Xcode-Build-Optimization-Agent-Skill](https://github.com/AvdLee/Xcode-Build-Optimization-Agent-Skill) | Xcode projects/build workflows; build timing, diagnostics, or optimization. Use the SPM specialist alone for a matching SwiftPM task. |
+| Xcode build skills | [AvdLee/Xcode-Build-Optimization-Agent-Skill](https://github.com/AvdLee/Xcode-Build-Optimization-Agent-Skill) | Xcode projects/build workflows; build timing, diagnostics, or optimization. Use the SPM specialist alone for a matching SwiftPM task. |
 
-The Xcode orchestrator needs all six; specialists can be installed alone:
-
-- `xcode-build-orchestrator`
-- `xcode-build-benchmark`
-- `xcode-compilation-analyzer`
-- `xcode-project-analyzer`
-- `spm-build-analysis`
-- `xcode-build-fixer`
+`xcode-build-orchestrator` needs every specialist the source lists;
+specialists can be installed alone.
 
 Benchmarks and build-setting changes stay within the original task.
 
