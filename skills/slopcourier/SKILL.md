@@ -68,7 +68,7 @@ go run <this skill's dir>/scripts/pr-watch/main.go [-R owner/repo] [-since <sinc
   argument.
 - It exits on the first thing to act on. The first output line is the state:
   `ready`, `checks-failed`, `activity`, `pushed`, `blocked`, `closed`,
-  `error`, or `timeout` (30 minutes).
+  `error`, or `timeout` (`-timeout`).
 - Act, then rerun with `-since <its since: line>` so nothing between runs is
   missed.
 - One background run per PR.
@@ -90,7 +90,7 @@ feedback.
   reaction, running check, "reviewing" comment, review request), or for a few
   minutes after a push when it reviewed an earlier head of this PR. A bot that
   never touched this PR is not pending.
-- pr-watch waits up to 5 minutes for a pending bot (`-bot-wait`; lower it to
+- pr-watch waits a bounded time for a pending bot (`-bot-wait`; lower it to
   meet a user deadline), then moves on. Name the skipped bot in the report.
 - A usage-limit or quota notice means the bot is unavailable. Say so and move
   on.
