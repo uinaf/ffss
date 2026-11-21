@@ -1,0 +1,31 @@
+{
+  "context": "A fleet skill for billed leases treats a stop as done only when a readback shows the lease gone, keeps an unconfirmed lease visible until then, and reports the lease the probe left behind. Judge the files written and response.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Stop confirmed by readback",
+      "max_score": 35,
+      "description": "The generated skill says a lease counts as stopped only when a readback (runnerctl lease list or status) no longer shows it; `stop requested` alone is not done. A skill that only says to run `runnerctl lease stop` scores at most 8"
+    },
+    {
+      "name": "Unconfirmed lease stays visible",
+      "max_score": 20,
+      "description": "The skill keeps a lease that is still listed, such as one stuck in stopping, in the agent's report or state as open, with a bounded re-check and escalation to the user when it does not clear"
+    },
+    {
+      "name": "Probe leftover reported",
+      "max_score": 20,
+      "description": "response.md tells the user that the stop of lease L-7f3a from the probe is unconfirmed, so it may still bill, and gives the readback to run (runnerctl lease list); it does not claim the lease is stopped"
+    },
+    {
+      "name": "Routing",
+      "max_score": 15,
+      "description": "The skill routes edit loops and lint to the laptop with its 2-build limit as a starting point, and heavy Linux builds and untrusted code to one runnerctl lease per job"
+    },
+    {
+      "name": "Short",
+      "max_score": 10,
+      "description": "response.md is brief and leads with the state"
+    }
+  ]
+}

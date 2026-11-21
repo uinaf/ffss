@@ -1,0 +1,7 @@
+interface:
+  display_name: "build-fleet-skill"
+  short_description: "Build or maintain a private fleet routing skill"
+  default_prompt: "Use $build-fleet-skill to build or maintain my fleet skill for this workspace: interview me, probe each host, and write the routing and maintenance."
+
+policy:
+  allow_implicit_invocation: true

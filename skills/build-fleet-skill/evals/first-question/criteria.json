@@ -1,0 +1,31 @@
+{
+  "context": "Setting up a routing skill for a user's machines starts from what this machine shows, then asks one question with options and a recommendation, and writes no routing on guessed hosts, roles, or limits. Judge response.md and every file written.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Looks before asking",
+      "max_score": 20,
+      "description": "The reply reflects what this machine shows: the three hosts in ssh-config.txt (kestrel, wren, heron-pc) and, where it checked, this laptop's own OS and cores. A reply that ignores ssh-config.txt scores at most 5"
+    },
+    {
+      "name": "One question, with options and a recommendation",
+      "max_score": 35,
+      "description": "response.md asks exactly one question now, offers concrete options grounded in what was found, recommends one, and says further questions follow its answer. Two or more questions asked at once, or a numbered questionnaire, scores at most 8; a question without options or a recommendation scores at most 12"
+    },
+    {
+      "name": "No routing on guesses",
+      "max_score": 30,
+      "description": "No fleet SKILL.md with a finished routing table is written yet; host roles, operating systems, limits, and untrusted-code rules wait for the answers. A finished skill that assigns roles to hosts from their names alone scores 0"
+    },
+    {
+      "name": "Nothing touched remotely",
+      "max_score": 5,
+      "description": "Does not claim to have connected to, woken, or run anything on the other hosts"
+    },
+    {
+      "name": "Short",
+      "max_score": 10,
+      "description": "response.md is brief and leads with the question or a one-line state, without a long preamble"
+    }
+  ]
+}

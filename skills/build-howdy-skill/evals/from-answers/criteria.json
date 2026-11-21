@@ -1,0 +1,41 @@
+{
+  "context": "A built howdy skill turns verified answers into exact per-source calls and a four-part brief, and treats every source that failed or was never checked as unverified instead of writing it as working. Judge skills/howdy/SKILL.md, any files beside it, and response.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Failed and unchecked sources flagged",
+      "max_score": 25,
+      "description": "Google Calendar, which returned a 403 scope error, and Jira through the Atlassian MCP, which probes.md never checked, are both named to the user as not verified, with a next step (re-auth or check, keep, or drop). Neither is presented as a working source without that marking. Missing either one scores at most 10"
+    },
+    {
+      "name": "Exact call per source",
+      "max_score": 20,
+      "description": "The skill gives, for each verified source, the exact command or MCP tool taken from probes.md: gh search with --owner=acme --owner=acme-labs, gog gmail search with the account, and the Slack MCP's slack_search_messages tool. Generic descriptions such as 'check GitHub' score at most 6"
+    },
+    {
+      "name": "Four-part brief",
+      "max_score": 15,
+      "description": "The skill's brief has Needs you, This week, In flight, and Since last time sections, and Needs you uses the user's own definition from answers.md"
+    },
+    {
+      "name": "Read-only sweep",
+      "max_score": 10,
+      "description": "The skill's sweep only reads: no posting (slack_post_message is not used), no marking mail read. A source that fails during a run becomes one line in the brief and the sweep continues"
+    },
+    {
+      "name": "Lanes on a board",
+      "max_score": 10,
+      "description": "Because the user runs agent lanes, the skill shows lane state as a table or diagram board in or beside Needs you, with lanes waiting on the user surfaced"
+    },
+    {
+      "name": "Skill shape",
+      "max_score": 10,
+      "description": "skills/howdy/SKILL.md has frontmatter with name howdy and a description that says what it does and when to use it, and the steps end in a checkable done condition, such as every source landing in a section or named as failed"
+    },
+    {
+      "name": "Maintenance path",
+      "max_score": 10,
+      "description": "The skill or reply says how to keep it current when a source dies, a tool is renamed, or repos change: re-check sources and update the skill in place"
+    }
+  ]
+}
