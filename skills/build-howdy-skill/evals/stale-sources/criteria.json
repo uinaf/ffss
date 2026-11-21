@@ -1,0 +1,31 @@
+{
+  "context": "Maintaining a generated brief re-checks every source rather than only the reported symptom, fixes mechanical drift in place, asks the user about a source that is gone, and reports the drift found. Judge skills/howdy/SKILL.md as edited and response.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Every drift found",
+      "max_score": 30,
+      "description": "Identifies all four: the Slack tool was renamed (slack_search_messages no longer exists; conversations_search_messages does); the acme-labs org became acme-research, breaking the owner filter and the CI repo; acme/billing in projects.json is missing from the CI health repos; the Atlassian MCP is gone so the Jira source is dead. Each missing item costs about a quarter"
+    },
+    {
+      "name": "Fixed in place",
+      "max_score": 25,
+      "description": "skills/howdy/SKILL.md itself is edited, not replaced by a new file: the Slack row uses conversations_search_messages, owners and CI repos use acme-research, and acme/billing is added. Gmail and Calendar rows, which probe fine, stay as they were"
+    },
+    {
+      "name": "Dead source goes to the user",
+      "max_score": 20,
+      "description": "The Jira source is not silently deleted or silently kept as working: the reply asks the user, as one question with options (reconnect the Atlassian MCP, drop Jira) and a recommendation, and the skill marks the row as unavailable or removes it only per a stated default the user can reverse"
+    },
+    {
+      "name": "Drift report",
+      "max_score": 15,
+      "description": "response.md lists each drift with what changed and what was done, in a table or one line each, and names what remains unverified"
+    },
+    {
+      "name": "Stays read-only and short",
+      "max_score": 10,
+      "description": "Nothing is posted or sent, no live write is claimed, and response.md stays brief"
+    }
+  ]
+}

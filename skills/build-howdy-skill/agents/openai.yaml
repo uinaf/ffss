@@ -1,0 +1,7 @@
+interface:
+  display_name: "build-howdy-skill"
+  short_description: "Build or maintain a private howdy attention brief"
+  default_prompt: "Use $build-howdy-skill to build or maintain my howdy skill for this workspace: interview me, probe each source, and write it."
+
+policy:
+  allow_implicit_invocation: true

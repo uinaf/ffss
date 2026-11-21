@@ -1,0 +1,31 @@
+{
+  "context": "Setting up a personal attention brief starts from what the machine and workspace show, then asks the user one question with options and a recommendation, and writes no skill on guessed sources. Judge response.md and every file written.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Looks before asking",
+      "max_score": 20,
+      "description": "The reply reflects what the workspace shows: the GitHub and GitLab repositories from projects.json and the Atlassian and Slack MCP servers from .mcp.json. A reply that ignores these files scores at most 5"
+    },
+    {
+      "name": "One question, with options and a recommendation",
+      "max_score": 35,
+      "description": "response.md asks exactly one question now, offers concrete options grounded in what was found, recommends one, and says further questions follow its answer. Two or more questions asked at once, or a numbered questionnaire, scores at most 8; a question without options or a recommendation scores at most 12"
+    },
+    {
+      "name": "No skill on guesses",
+      "max_score": 30,
+      "description": "No howdy SKILL.md with a finished source list is written yet; sources, accounts, and what counts as needing the user wait for the answers. A finished skill built on guessed or placeholder sources scores 0"
+    },
+    {
+      "name": "Says where it will live",
+      "max_score": 5,
+      "description": "Names the target as skills/howdy/ in this workspace"
+    },
+    {
+      "name": "Short",
+      "max_score": 10,
+      "description": "response.md is brief and leads with the question or a one-line state, without a long preamble"
+    }
+  ]
+}

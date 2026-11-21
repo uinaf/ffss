@@ -1,0 +1,36 @@
+{
+  "context": "Maintaining a generated routing skill re-probes every host rather than only the reported one, updates the routing in place from evidence, asks the user before giving a new host a role, and reports drift and what needs the user. Judge skills/fleet/ as edited and response.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Every drift found",
+      "max_score": 30,
+      "description": "Identifies all of: wren offline for 9 days; a new host osprey (macOS, 24 cores, Xcode) that now has the Pixel attached; kestrel now has 64 cores, not 16; kestrel's disk at 95%. heron-pc offline for 14h reads as asleep, not dead. Each missing item costs about a fifth"
+    },
+    {
+      "name": "Routing fixed in place",
+      "max_score": 20,
+      "description": "skills/fleet/SKILL.md itself is edited so iOS and Android device runs stop going to wren: wren is marked offline or unavailable, and the device row reflects the Pixel now on osprey. Rows that still hold stay unchanged"
+    },
+    {
+      "name": "New host role goes to the user",
+      "max_score": 20,
+      "description": "osprey's role and limits are not invented as settled: the reply asks the user, as one question with options and a recommendation (for example: osprey replaces wren for iOS and Android), and any interim routing to osprey is marked as pending that answer"
+    },
+    {
+      "name": "Limits stay starting points",
+      "max_score": 10,
+      "description": "The kestrel limit change is proposed or applied as a tunable starting point backed by the 64-core probe, not as a fixed cap"
+    },
+    {
+      "name": "Disk is a user decision past caches",
+      "max_score": 10,
+      "description": "kestrel's 95% disk is reported with a safe next step (pruning stale build cache) and anything beyond stale caches is left for the user; nothing is claimed deleted"
+    },
+    {
+      "name": "Drift report",
+      "max_score": 10,
+      "description": "response.md shows one row or line per host with its state and change, and names what is unverified"
+    }
+  ]
+}
