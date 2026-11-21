@@ -19,9 +19,6 @@ One job each.
 | [`slopaudit`](skills/slopaudit/) | Auditing an agentic setup, its recent use, and shipped work to decide what to prune, fix, or add |
 | [`slopskills`](skills/slopskills/) | Selecting and installing repo-local skills for the stack and task |
 
-Stack skills such as `react-ban-use-effect` live in
-[uinaf/agent-skills](https://github.com/uinaf/agent-skills).
-
 ## Installation
 
 Add this repository's marketplace:
