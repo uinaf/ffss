@@ -82,7 +82,10 @@ way every time:
 - **Rules**: wake steps, quiet hours, shared machines, and who starts
   sessions where. Untrusted code runs only where the user allowed it.
 - **Cleanup**: stop what you started and remove your own worktrees,
-  emulators, and scratch on every host.
+  emulators, and scratch on every host. A lease, VM, or remote job is
+  stopped only when a readback (list or status) no longer shows it; a stop
+  request alone is not done. Keep an unconfirmed one in the report as open,
+  re-check it a bounded number of times, then hand it to the user.
 - **Upkeep**: one line saying that a dead host, a new machine, or a moved
   device means re-running this generator in Maintain mode.
 
