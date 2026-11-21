@@ -945,25 +945,24 @@ func (w *watcher) reportRuns(p pr, sha, state string, runs []workflowRun, jobs m
 }
 
 func (w *watcher) cleanup(ctx context.Context, p pr) {
-	if w.opts.commit != "" || p.HeadBranch == "" {
+	if w.opts.commit != "" || p.HeadBranch == "" || p.HeadBranch == p.Base || p.Head == "" {
 		return
 	}
-	for _, line := range leftovers(ctx, w.opts.repo, p.HeadBranch) {
+	for _, line := range leftovers(ctx, w.opts.repo, p.HeadBranch, p.Head) {
 		fmt.Fprintln(w.out, "cleanup:", line)
 	}
 }
 
-func leftovers(ctx context.Context, repo, branch string) []string {
-	git := func(args ...string) (string, error) {
+func leftovers(ctx context.Context, repo, branch, head string) []string {
+	git := func(args ...string) string {
 		out, err := cli(ctx, "git", args...)
-		return strings.TrimSpace(string(out)), err
-	}
-	remotes, err := git("remote", "-v")
-	if err != nil {
-		return nil
+		if err != nil {
+			return ""
+		}
+		return strings.TrimSpace(string(out))
 	}
 	remote := ""
-	for _, line := range strings.Split(remotes, "\n") {
+	for _, line := range strings.Split(git("remote", "-v"), "\n") {
 		if name, rest, ok := strings.Cut(line, "\t"); ok {
 			if _, r, ok := parseRemote(strings.TrimSuffix(strings.TrimSuffix(rest, " (fetch)"), " (push)")); ok && strings.EqualFold(r, repo) {
 				remote = name
@@ -975,33 +974,27 @@ func leftovers(ctx context.Context, repo, branch string) []string {
 		return nil
 	}
 	var lines []string
-	if _, err := git("show-ref", "--verify", "--quiet", "refs/heads/"+branch); err == nil {
+	if git("rev-parse", "--verify", "--quiet", "refs/heads/"+branch) == head {
 		lines = append(lines, "local branch "+branch)
 	}
-	var dirs []string
-	if top, err := git("rev-parse", "--show-toplevel"); err == nil {
-		dirs = append(dirs, top)
-	}
-	worktrees, _ := git("worktree", "list", "--porcelain")
-	var path string
-	for _, line := range strings.Split(worktrees, "\n") {
-		if p, ok := strings.CutPrefix(line, "worktree "); ok {
-			path = p
-		} else if line == "branch refs/heads/"+branch {
+	var path, at string
+	for _, line := range strings.Split(git("worktree", "list", "--porcelain"), "\n") {
+		if v, ok := strings.CutPrefix(line, "worktree "); ok {
+			path = v
+		} else if v, ok := strings.CutPrefix(line, "HEAD "); ok {
+			at = v
+		} else if line == "branch refs/heads/"+branch && at == head {
 			lines = append(lines, fmt.Sprintf("worktree %s on %s", path, branch))
-			dirs = append(dirs, path)
+			if body := filepath.Join(path, "body.md"); fileExists(body) {
+				lines = append(lines, "stale "+body)
+			}
 		}
 	}
-	if tracked, _ := git("config", "branch."+branch+".remote"); tracked != "" && tracked != "." {
+	if tracked := git("config", "branch."+branch+".remote"); tracked != "" && tracked != "." {
 		remote = tracked
 	}
-	if heads, err := git("ls-remote", "--heads", remote, "refs/heads/"+branch); err == nil && heads != "" {
+	if sha, _, _ := strings.Cut(git("ls-remote", "--heads", remote, "refs/heads/"+branch), "\t"); sha == head {
 		lines = append(lines, fmt.Sprintf("remote branch %s/%s", remote, branch))
-	}
-	for _, dir := range dedupe(dirs) {
-		if body := filepath.Join(dir, "body.md"); fileExists(body) {
-			lines = append(lines, "stale "+body)
-		}
 	}
 	return lines
 }
