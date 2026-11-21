@@ -1199,6 +1199,12 @@ func fromGitHub(repo, number string) (Board, error) {
 		top.deliveries(g.stages)
 		groups = append([]group{g}, groups...)
 	}
+	shipped := map[string]bool{}
+	for _, g := range groups {
+		for n, d := range g.stages {
+			shipped[issueRef(g.repo, n)] = d.Stage == "proven" || d.Stage == "waived"
+		}
+	}
 	var blockers [][2]string
 	var prs []Node
 	prRefs := map[string]ghPR{}
@@ -1211,8 +1217,9 @@ func fromGitHub(repo, number string) (Board, error) {
 			node := Node{ID: id, Epic: g.epic.ID, Kind: "issue", Title: is.Title, Ref: fmt.Sprintf("#%d", is.Number), Repo: is.Repository.NameWithOwner, URL: is.URL}
 			openBlocker := false
 			for _, bl := range is.BlockedBy.Nodes {
-				blockers = append(blockers, [2]string{issueRef(bl.Repository.NameWithOwner, bl.Number), id})
-				openBlocker = openBlocker || bl.State == "OPEN"
+				ref := issueRef(bl.Repository.NameWithOwner, bl.Number)
+				blockers = append(blockers, [2]string{ref, id})
+				openBlocker = openBlocker || bl.State == "OPEN" && !shipped[ref]
 			}
 			needsUser := slices.Contains(is.Labels.Nodes, ghLabel{Name: "needs-user"})
 			switch {
@@ -1253,6 +1260,7 @@ func fromGitHub(repo, number string) (Board, error) {
 				if pr.Repository.NameWithOwner != node.Repo {
 					ref = shortRepo(pr.Repository.NameWithOwner) + ref
 				}
+				g.active = append(g.active, pr.UpdatedAt)
 				switch pr.State {
 				case "MERGED":
 					node.Merged = append(node.Merged, ref)
@@ -1262,7 +1270,6 @@ func fromGitHub(repo, number string) (Board, error) {
 						continue
 					}
 					prRefs[prID] = pr
-					g.active = append(g.active, pr.UpdatedAt)
 					prNode := Node{ID: prID, Epic: g.epic.ID, Kind: "pr", State: "review", Title: pr.Title, Ref: fmt.Sprintf("#%d", pr.Number), Repo: pr.Repository.NameWithOwner, URL: pr.URL, Issue: id}
 					switch {
 					case pr.IsDraft:

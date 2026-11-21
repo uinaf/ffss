@@ -201,16 +201,20 @@ func TestGitHubBoardKeepsNestedIssuesReviewsAndCrossEpicStacks(t *testing.T) {
 		return `{"node":{"subIssues":{"pageInfo":{"hasNextPage":false},"nodes":[` + strings.Join(nodes, ",") + `]}}}`
 	}
 	revision := func(at, line string) string {
-		return fmt.Sprintf(`{"editedAt":%q,"diff":%q}`, at, "## Lane t\n"+line+"\n- [ ] #12 needs-user\n")
+		return fmt.Sprintf(`{"editedAt":%q,"diff":%q}`, at, "## Lane t\n"+line+"\n- [ ] #12 needs-user\n- [x] #15 waived: docs only\n")
 	}
-	ledger := `{"node":{"body":"## Lane t\n- [ ] #13 landed: #33 on staging, promote pending\n- [ ] #12 needs-user\n","createdAt":"2026-11-21T09:00:00Z",
+	ledger := `{"node":{"body":"## Lane t\n- [ ] #13 landed: #33 on staging, promote pending\n- [ ] #12 needs-user\n- [x] #15 waived: docs only\n","createdAt":"2026-11-21T09:00:00Z",
 		"userContentEdits":{"nodes":[` + strings.Join([]string{
 		revision("2026-11-21T11:40:00Z", "- [ ] #13 landed: #33 on staging, promote pending"),
 		revision("2026-11-21T11:20:00Z", "- [ ] #13 landed: #33"),
 		revision("2026-11-21T10:00:00Z", "- [ ] #13 PR #33"),
 		revision("2026-11-21T09:00:00Z", "- [ ] #13"),
 	}, ",") + `]},`
-	closed := strings.Replace(issue("U", 13, 0, "", "", ""), `"state":"OPEN"`, `"state":"CLOSED"`, 1)
+	merged := strings.NewReplacer(`"state":"OPEN"`, `"state":"MERGED"`, `"updatedAt":"2026-11-21T11:30:00Z"`, `"updatedAt":"2026-11-21T11:50:00Z"`).
+		Replace(pr(33, "main", "acme/app", "u", "someone"))
+	closed := strings.Replace(issue("U", 13, 0, "", "", merged), `"state":"OPEN"`, `"state":"CLOSED"`, 1)
+	waived := issue("W", 15, 0, "", "", "")
+	dependent := issue("V", 16, 0, "", `{"number":15,"state":"OPEN","repository":{"nameWithOwner":"acme/app"}}`, "")
 	asked := strings.Replace(issue("S", 12, 0, `{"name":"needs-user"}`, "", ""), `"comments":{"nodes":[]}`,
 		`"comments":{"nodes":[{"body":"Which store holds drafts?\n\n- SQLite (recommended)\n- IndexedDB\n\nThanks"}]}`, 1)
 	responses := map[string]string{
@@ -220,7 +224,7 @@ func TestGitHubBoardKeepsNestedIssuesReviewsAndCrossEpicStacks(t *testing.T) {
 			issue("L", 2, 0, "", `{"number":12,"state":"OPEN","repository":{"nameWithOwner":"acme/app"}}`, pr(32, "api", "acme/app", "ui", "someone")) + `]}}}}`,
 		"E": strings.Replace(children(issue("T", 11, 1, "", "", pr(30, "main", "acme/app", "api", "me")+","+
 			pr(40, "main", "fork-a/app", "main", "someone")+","+pr(41, "main", "fork-b/app", "main", "someone")), closed), `{"node":{`, ledger, 1),
-		"T": children(asked),
+		"T": children(asked, waived, dependent),
 	}
 	graphql = func(_ string, vars map[string]string, into any) error {
 		key := vars["id"]
@@ -236,7 +240,7 @@ func TestGitHubBoardKeepsNestedIssuesReviewsAndCrossEpicStacks(t *testing.T) {
 	if err := run([]string{"github", "-stall", "20m", "acme/app", "1", out}, nil, &stdout); err != nil {
 		t.Fatal(err)
 	}
-	flow := "WIP 2 · landed, not live: app #13 40m · oldest in flight 40m · stalled: Lanes 30m, Issue 10 30m"
+	flow := "WIP 2 · landed, not live: app #13 40m · oldest in flight 40m · stalled: Lanes 30m"
 	if first, _, _ := strings.Cut(stdout.String(), "\n"); first != flow {
 		t.Errorf("want flow line %q, got %q", flow, first)
 	}
@@ -257,6 +261,10 @@ func TestGitHubBoardKeepsNestedIssuesReviewsAndCrossEpicStacks(t *testing.T) {
 		case "acme/app#13":
 			if n.State != "running" || n.Delivery == nil || *n.Delivery != (Delivery{Stage: "landed", Since: "2026-11-21T11:20:00Z", Evidence: "#33 on staging, promote pending"}) {
 				t.Errorf("a closed issue the ledger has at landed should stay in flight since it landed, got %s %+v", n.State, n.Delivery)
+			}
+		case "acme/app#16":
+			if n.State != "running" {
+				t.Errorf("an issue blocked only by a waived issue should run, got %s", n.State)
 			}
 		case "acme/app#12":
 			if n.Need == nil || n.Need.Question != "Which store holds drafts?" || !slices.Equal(n.Need.Options, []string{"SQLite", "IndexedDB"}) || n.Need.Recommend != "SQLite" {
