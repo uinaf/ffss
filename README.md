@@ -8,8 +8,6 @@ Ships slop; checks receipts.
 
 ## Skills
 
-One job each.
-
 | Skill | Use it for |
 | --- | --- |
 | [`slopguard`](skills/slopguard/) | Reviewing one completed change with the other model family: `codex review` or Claude's `/code-review` |
@@ -43,4 +41,4 @@ grok plugin install uinaf/ffss --trust
 
 ## License
 
-MIT; see [LICENSE](LICENSE); members carry their own copies.
+MIT; see [LICENSE](LICENSE).

@@ -5,8 +5,7 @@ npx skills add AvdLee/SwiftUI-Agent-Skill --list
 npx skills add AvdLee/SwiftUI-Agent-Skill --skill swiftui-expert-skill --agent codex --yes
 ```
 
-TanStack skills ship inside the npm packages and load through
-[Intent](https://tanstack.com/intent), not the skills CLI. Follow its
+TanStack skills: follow Intent's
 [consumer quick start](https://tanstack.com/intent/latest/docs/getting-started/quick-start-consumers)
 with the repo's package manager, hooks included. Intent's `intent-skills` block
 in the agent guide replaces step 5's pointers for those skills.

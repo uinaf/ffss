@@ -2,7 +2,7 @@
 
 What lint and evals cannot judge: whether a skill is worth routing to and
 cheap to load. Run `npx -y @uinaf/skillcheck lint --root <dir>` first on each
-dir holding `skills/`; evidence beats stylistic preference.
+dir holding `skills/`.
 
 ## Metadata and discovery
 
@@ -54,8 +54,8 @@ Grade each dimension strong, mixed, or weak:
 | Boundaries | Are limits and next steps stated without leaning on a sibling skill? |
 
 Blockers: a description that fails discovery; stale commands or paths; a
-workflow with no start, evidence loop, or
-completion; conflicts with the repo's guidance; sibling-skill dependencies.
+workflow with no start, evidence loop, or completion; conflicts with the
+repo's guidance; sibling-skill dependencies.
 
 Majors: vague name; synonym-stuffed description; bloated `SKILL.md`; missing
 or muddy boundaries; prose re-inventing a deterministic tool; abstract
