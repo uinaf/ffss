@@ -1,7 +1,7 @@
 interface:
   display_name: "slopflow"
   short_description: "Run a backlog as epics and parallel agent lanes"
-  default_prompt: "Use $slopflow to run this backlog as epics and lanes: triage, groom, kick off, dispatch, coordinate, land, and report."
+  default_prompt: "Use $slopflow to run this backlog as epics and lanes: groom, kick off, dispatch, coordinate, hold, and close out."
 
 policy:
   allow_implicit_invocation: true
