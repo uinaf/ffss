@@ -30,7 +30,9 @@ evidence, not a merge decision.
      objective, acceptance criteria, and non-goals. It asks for every
      suspected finding regardless of severity or confidence, and for changed
      verification (thresholds, checks, assertions, skips, suppressions)
-     compared against the base. `--base`, `--commit`, and `--uncommitted`
+     compared against the base. For a risky change, it also asks the
+     reviewer to exercise one consumer a symbol search misses: a wire format,
+     persisted data, or a pinned dependency. `--base`, `--commit`, and `--uncommitted`
      refuse a prompt; use them only for an unsteered pass.
    - Claude: `claude -p "/code-review <PR number, branch, or path>"`. It
      takes a target, not a prompt. From Codex, request escalated

@@ -118,7 +118,10 @@ feedback.
   since fixed it, bring in the base. A flake or infra failure gets one rerun;
   the same failure twice is real.
 - **Behind or conflicted:** bring in the base, resolve conflicts, rerun the
-  gates, push, and keep watching.
+  gates, push, and keep watching. Before rebasing an old PR, check that its
+  problem is still live (intent, callers), then rebase, rework, or recommend
+  closure. After a rebase, read `git range-diff` and push with
+  `--force-with-lease=<branch>:<head you observed>`.
 - **`slopguard`:** only when the user asks or the repo has no review bot or
   required review; once, on the final head.
 
