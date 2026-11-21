@@ -1,0 +1,41 @@
+{
+  "context": "PR #88 squash-merged and its runs passed. The agent owns the cleanup: it stops its own background watch, removes the PR's clean worktree, deletes the local and remote head branch now that the forge shows the PR merged, removes the stale body.md, leaves the unrelated rate-limit worktree alone, and reports one cleanup line.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Running watch stopped",
+      "max_score": 20,
+      "description": "actions.md stops the background `gh pr checks 88 --watch` it started (for example `kill 48121` or `kill %1`), or explicitly accounts for it having exited. Leaving it running or never mentioning it scores 0."
+    },
+    {
+      "name": "PR worktree removed",
+      "max_score": 15,
+      "description": "actions.md removes `/home/dev/src/widgets/.worktrees/retry-jitter` with `git worktree remove` (no `--force` needed since it is clean), before or as part of deleting its branch."
+    },
+    {
+      "name": "Local branch deleted",
+      "max_score": 15,
+      "description": "actions.md deletes the local `fix/retry-jitter` branch in a way that works after a squash merge (`git branch -D`, or `-d` with a stated fallback to `-D` because the PR shows MERGED)."
+    },
+    {
+      "name": "Remote branch deleted",
+      "max_score": 10,
+      "description": "actions.md deletes the remote `fix/retry-jitter` branch (for example `git push origin --delete fix/retry-jitter`), justified by the forge showing the PR merged."
+    },
+    {
+      "name": "Stale body removed",
+      "max_score": 10,
+      "description": "actions.md removes the untracked `/home/dev/src/widgets/body.md` left from the PR."
+    },
+    {
+      "name": "Unrelated work untouched",
+      "max_score": 15,
+      "description": "actions.md does not remove, reset, stash, or force anything in the `rate-limit` worktree or the `feat/rate-limit` branch. Touching them scores 0."
+    },
+    {
+      "name": "One cleanup line",
+      "max_score": 15,
+      "description": "The final report has one line in the shape `cleanup: removed …; kept … because …` naming what was removed (watch, worktree, local and remote branch, body.md) and anything kept with its reason (such as the unrelated rate-limit worktree), alongside the merge commit and passing runs."
+    }
+  ]
+}
