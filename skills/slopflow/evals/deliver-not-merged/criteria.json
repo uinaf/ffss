@@ -1,0 +1,31 @@
+{
+  "context": "Wrapping up is right when merged work is not treated as done: each issue gets its delivery stage (landed, deployed, live and proven, or waived because nothing deploys) with one line of evidence on the epic checklist, and the epic stays open while #224 is not live and proven. Judge wrapup.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Merged is not done",
+      "max_score": 30,
+      "description": "Says the epic cannot wrap up and the lane cannot be archived yet because #224 (Markdown export) is merged and on staging but not promoted to production or proven there. Closing the epic or archiving the lane scores 0"
+    },
+    {
+      "name": "Stage per issue",
+      "max_score": 25,
+      "description": "Gives each issue its own delivery stage: #222 live and proven in production, #224 landed or deployed to staging only and not proven, #226 waived or not applicable because docs deploy nowhere. Treating #226 as blocking on a deploy, or #222 as unproven, loses this item"
+    },
+    {
+      "name": "Evidence on each line",
+      "max_score": 20,
+      "description": "The updated lane checklist has one line per issue, each with one short piece of evidence from the fixture (such as run 884 and smoke 4411 for #222, run 890 for #224, run 893 skipped or docs-only for #226)"
+    },
+    {
+      "name": "Next step to done",
+      "max_score": 15,
+      "description": "Names what finishes #224: a production promote, then a production proof of Markdown export, after which the epic closes and the lane is archived"
+    },
+    {
+      "name": "Honest",
+      "max_score": 10,
+      "description": "Claims no deploy, proof, or post that the fixture does not show"
+    }
+  ]
+}
