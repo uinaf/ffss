@@ -7,6 +7,9 @@
   the project's typed language.
 - Validate external input at the boundary; prefer validated types to casts,
   ignores, and non-null assertions.
+- Model a lifecycle whose named states matter (resume, stop, retry, inspect)
+  as an explicit state machine, with side effects in its invoked actors, not
+  as boolean flags checked in several places.
 - Preserve error causes and partial failures. Keep retries bounded,
   cancellable, and limited to idempotent transient work.
 - Run noisy commands with quiet flags, or in a delegate that returns only the
