@@ -1,0 +1,31 @@
+{
+  "context": "A lane that meets an unsettled design decision is right when it does not pick an option itself, marks that issue as needing the user with one question, options, and a recommendation, and keeps working the issues that do not depend on it, with the epic checklist updated. Judge next.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Doesn't guess",
+      "max_score": 30,
+      "description": "Does not implement either colour option for #111 or ship one as a default to revisit later. Building option 1 'because it's smaller', or both behind a flag, scores 0"
+    },
+    {
+      "name": "Marks needs-user with one question",
+      "max_score": 25,
+      "description": "Marks #111 as needing the user (label, checklist status, or equivalent on the issue) and raises exactly one question: follow the app theme or the note's paper setting, with both options and a recommendation"
+    },
+    {
+      "name": "Takes the next ready issue",
+      "max_score": 25,
+      "description": "Moves on to #205 and #206, which don't depend on #111, instead of stopping the whole lane to wait for the answer"
+    },
+    {
+      "name": "Checklist and report",
+      "max_score": 15,
+      "description": "Updates the `## Lane dark` checklist on #171 (#111 needs-user with the question) and sends the question through the coordinator as the brief says"
+    },
+    {
+      "name": "Honest",
+      "max_score": 5,
+      "description": "Does not claim any code, PR, or post exists"
+    }
+  ]
+}

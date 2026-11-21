@@ -15,6 +15,24 @@ and cleanup.
 | Lane | one agent session per epic | runs its own workflow and subagents over the epic's issues |
 | Epic | a tracker issue | the lane's [ledger](#ledger) |
 
+## Graph
+
+The issue tree is the only graph: sub-issues for containment, "blocked by"
+links for dependencies, labels for state (`ready`, `claimed`, `needs-user`,
+`failed`, `done`). A node is ready when it is open, unclaimed, and has no open
+blockers. Keep no second store: no plan file, DAG, or hand-kept board.
+
+- Only the coordinator changes the graph. A lane proposes a sub-lane in a
+  comment on its issue; the coordinator creates it after checking file
+  ownership. Depth stops at coordinator, lane, and the lane's own subagents.
+- Review capacity, not machine capacity, caps how many lanes build at once.
+- A lane facing a design decision its brief doesn't settle labels the node
+  `needs-user` with one question, then takes its next ready issue.
+- Results come back as references: the change request link and its check
+  result. Check the plan against the results before calling an epic done.
+  "Stopped trying" and "doesn't work" are different outcomes; failed work
+  survives as a branch or patch.
+
 ## Intake
 
 Requests from outside (chat threads, review requests, mentions, reports)
@@ -128,8 +146,11 @@ waits on the user.
 
 ## Board
 
-One row per issue: lane, issue, status, change request, head, proof, and what
-is unverified. Render it in what the harness shows: a Markdown table or
+Generated from the tree, one row per issue: lane, issue, status, change
+request, head, proof, and what is unverified. Each lane is working, waiting on
+the user, or stopped. A lane waiting on another lane or on CI is not waiting
+on the user; only `needs-user` nodes and layers awaiting the user's review
+are. Render it in what the harness shows: a Markdown table or
 Mermaid diagram, or an HTML render where one is available. Follow it with at
 most a few lines on follow-ups and cleanup.
 

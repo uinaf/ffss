@@ -1,0 +1,31 @@
+{
+  "context": "Handling a lane's split request and a push for more parallelism is right when the coordinator alone changes the work graph, checks file ownership before creating any sub-lane, keeps nesting to coordinator, lane, and the lane's own subagents, and sizes parallelism by review capacity rather than cores. Judge response.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Coordinator changes the graph",
+      "max_score": 20,
+      "description": "Tells the export lane not to create issues, branches, or sub-lanes itself; the coordinator decides and creates any sub-lane and its issue"
+    },
+    {
+      "name": "Ownership checked first",
+      "max_score": 20,
+      "description": "Notices both #223 and #224 touch `src/export/Paginator.ts` and does not run them as two parallel lanes that both edit it: keeps them in one lane, gives Paginator.ts to one of them, or sequences them"
+    },
+    {
+      "name": "Depth capped",
+      "max_score": 20,
+      "description": "Rejects sub-lanes running as their own coordinators: depth stops at coordinator, lane, and the lane's own subagents (the lane may use subagents for tests and screenshots)"
+    },
+    {
+      "name": "Parallelism sized by review",
+      "max_score": 30,
+      "description": "Declines to jump to eight lanes on the strength of the new machine, because review is the bottleneck: Rui reviews about four PRs a day and six already wait. Sizes or holds lane count to that review capacity. Raising lane count because of the 64 cores scores 0"
+    },
+    {
+      "name": "Honest",
+      "max_score": 10,
+      "description": "Does not claim anything was posted, created, or started"
+    }
+  ]
+}

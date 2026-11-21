@@ -1,0 +1,41 @@
+{
+  "context": "Tracking lane work is right when the issue tree itself is the only graph (sub-issues for containment, blocked-by links for dependencies, labels for state), readiness is computed from it, the shared plan file is retired rather than kept beside it, only the coordinator changes the structure, and the ready set is correct. Judge response.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Dependencies as blocked-by links",
+      "max_score": 20,
+      "description": "Each dependency becomes a GitHub 'blocked by' link between issues (#212 and #213 blocked by #211, #214 by #212, #222 by #221, #223 and #224 by #222), with the epics' issues as sub-issues"
+    },
+    {
+      "name": "State as labels",
+      "max_score": 15,
+      "description": "Issue state is carried by labels or an equivalent field on the issue (such as ready, claimed, needs-user, failed, done), including a claim marker so two lanes cannot take the same issue"
+    },
+    {
+      "name": "Ready computed from the tree",
+      "max_score": 15,
+      "description": "Defines ready as open, unclaimed, and with no open blockers, derived from the issues rather than maintained by hand"
+    },
+    {
+      "name": "No second store",
+      "max_score": 20,
+      "description": "Retires PLAN.md (or reduces it to a link) and keeps no separately maintained plan file, DAG file, spreadsheet, or hand-kept board alongside the issues. A view generated from the issues is fine; keeping PLAN.md or any hand-edited copy as a source of truth scores 0"
+    },
+    {
+      "name": "Coordinator owns structure",
+      "max_score": 10,
+      "description": "Only the coordinator creates issues, epics, sub-issue links, or dependencies; lanes claim and update the state of their own issues and propose structural changes through the coordinator"
+    },
+    {
+      "name": "Correct ready set",
+      "max_score": 15,
+      "description": "Names #215 and #222 as ready now; #211 claimed by the api lane; #212, #213, #214 blocked; #224 blocked on #222; #223 blocked and also needing the page-number decision (needs-user)"
+    },
+    {
+      "name": "Honest",
+      "max_score": 5,
+      "description": "Does not claim any label, link, or issue was created"
+    }
+  ]
+}

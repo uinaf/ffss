@@ -1,0 +1,36 @@
+{
+  "context": "Deciding whether an epic is done is right when the coordinator checks the epic's planned outcome against each issue's result by reference (PR link and check result), refuses to close while an issue failed or was abandoned, treats 'stopped trying' as different from 'shown not to work', and has the abandoned attempt recovered as a branch or patch. Judge response.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Not done",
+      "max_score": 20,
+      "description": "Answers that #220 cannot close yet, because the outcome promises a last-page footer (#223 not delivered) and #224's PR #234 has a failing e2e-web check and no approval"
+    },
+    {
+      "name": "Plan checked against results by reference",
+      "max_score": 20,
+      "description": "Goes issue by issue against the epic outcome using references: #221 merged #225, #222 merged #231 at b7c8d9e, #223 no PR, #224 PR #234 with e2e-web failing and review required. Asks the lane for a PR link and check result for any issue it reported only as 'done' or 'looks good'"
+    },
+    {
+      "name": "Stopped trying is not 'doesn't work'",
+      "max_score": 25,
+      "description": "Treats #223 as abandoned after three rounds, not as proven impossible: 'probably not possible' is unverified. It stays open (for example labelled failed or needs-user), goes back to the user or a re-plan, and is not closed as won't-fix on the lane's word"
+    },
+    {
+      "name": "Failed work recovered",
+      "max_score": 20,
+      "description": "Asks the lane to recover the deleted #223 work (from the remote, reflog, or its last pushed commit) and keep it as a branch or a .patch linked from #223, so the next attempt starts from it"
+    },
+    {
+      "name": "Checklist corrected",
+      "max_score": 10,
+      "description": "Corrects the epic checklist: #222 merged #231, #223 failed or blocked rather than dropped, #224 PR #234 with e2e-web failing"
+    },
+    {
+      "name": "Honest",
+      "max_score": 5,
+      "description": "Does not claim any message, label, or recovery happened"
+    }
+  ]
+}
