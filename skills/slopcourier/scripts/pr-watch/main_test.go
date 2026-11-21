@@ -767,3 +767,68 @@ esac
 		})
 	}
 }
+
+func TestMergeListsLocalLeftovers(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	tmp, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkout, tree := filepath.Join(tmp, "r"), filepath.Join(tmp, "wt")
+	git := func(dir string, args ...string) {
+		t.Helper()
+		if out, err := cli(context.Background(), "git", append([]string{"-C", dir, "-c", "user.name=t", "-c", "user.email=t@t"}, args...)...); err != nil {
+			t.Fatalf("git %v: %v %s", args, err, out)
+		}
+	}
+	git(tmp, "init", "-q", "--bare", "fork.git")
+	git(tmp, "init", "-q", "-b", "main", checkout)
+	git(checkout, "remote", "add", "upstream", "git@github.com:o/r.git")
+	git(checkout, "remote", "add", "origin", filepath.Join(tmp, "fork.git"))
+	git(checkout, "commit", "-q", "--allow-empty", "-m", "init")
+	git(checkout, "branch", "fix/x")
+	git(checkout, "branch", "other")
+	git(checkout, "push", "-q", "-u", "origin", "fix/x", "other")
+	git(checkout, "worktree", "add", "-q", tree, "fix/x")
+	for _, dir := range []string{checkout, tree} {
+		if err := os.WriteFile(filepath.Join(dir, "body.md"), []byte("body"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Chdir(checkout)
+
+	merged := func(runs []workflowRun) (int, string) {
+		f := newFake()
+		f.prs[0] = with(open(), func(p *pr) { p.State, p.MergeCommit, p.HeadBranch = "MERGED", "bbbbbbb2", "fix/x" })
+		f.runs[0] = runs
+		code, out, _ := watchFor(t, f)
+		return code, out
+	}
+	code, out := merged([]workflowRun{{ID: 1, Name: "CI", Event: "push", Status: "completed", Conclusion: "success"}})
+	want := []string{
+		"cleanup: local branch fix/x",
+		"cleanup: worktree " + tree + " on fix/x",
+		"cleanup: remote branch origin/fix/x",
+		"cleanup: stale " + filepath.Join(checkout, "body.md"),
+		"cleanup: stale " + filepath.Join(tree, "body.md"),
+	}
+	for _, line := range want {
+		if !strings.Contains(out, line+"\n") {
+			t.Errorf("missing %q", line)
+		}
+	}
+	if code != exitDone || !strings.HasPrefix(out, "runs-passed:") || strings.Contains(out, "other") {
+		t.Fatalf("code %d, output:\n%s", code, out)
+	}
+
+	git(checkout, "worktree", "remove", "--force", tree)
+	git(checkout, "branch", "-D", "fix/x")
+	git(checkout, "push", "-q", "origin", "--delete", "fix/x")
+	if err := os.Remove(filepath.Join(checkout, "body.md")); err != nil {
+		t.Fatal(err)
+	}
+	if _, out := merged(nil); !strings.HasPrefix(out, "no-runs:") || strings.Contains(out, "cleanup:") {
+		t.Fatalf("output after cleanup:\n%s", out)
+	}
+}

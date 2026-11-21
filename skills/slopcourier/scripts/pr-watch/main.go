@@ -7,8 +7,10 @@
 // An open change request is watched until its checks fail, someone else posts
 // a review or comment, its head moves, it merges or closes, or its checks
 // settle and it is ready or blocked. A merged one has the runs or pipelines
-// its merge commit started watched until they finish. With -commit, so do the
-// runs a pushed or dispatched commit started, without a change request:
+// its merge commit started watched until they finish; when they pass, it
+// prints a cleanup: line for each leftover of the merge in this checkout and
+// deletes nothing. With -commit, so do the runs a pushed or dispatched commit
+// started, without a change request:
 //
 //	go run <skill dir>/scripts/pr-watch/main.go [flags] -commit <full sha>
 //
@@ -309,7 +311,7 @@ type pr struct {
 	Viewer, URL, State, MergeState string
 	// MergeDetail is the forge's own reason a merge is blocked, when it says.
 	MergeDetail       string
-	Base              string
+	Base, HeadBranch  string
 	Draft             bool
 	Head, MergeCommit string
 	HeadCommitted     time.Time
@@ -809,6 +811,7 @@ func (w *watcher) judgeRuns(ctx context.Context, p pr, sha string, runs []workfl
 			return 0, false, nil
 		}
 		w.reportRuns(p, sha, "no-runs", nil, nil)
+		w.cleanup(ctx, p)
 		return exitDone, true, nil
 	}
 	var running, failed []string
@@ -833,6 +836,7 @@ func (w *watcher) judgeRuns(ctx context.Context, p pr, sha string, runs []workfl
 	}
 	if len(failed) == 0 {
 		w.reportRuns(p, sha, "runs-passed", runs, nil)
+		w.cleanup(ctx, p)
 		return exitDone, true, nil
 	}
 	jobs := map[int64][]job{}
@@ -938,6 +942,73 @@ func (w *watcher) reportRuns(p pr, sha, state string, runs []workflowRun, jobs m
 	if state == "no-runs" {
 		fmt.Fprintf(w.out, "  - no runs started for %s within %s\n", short(sha), w.opts.appear)
 	}
+}
+
+func (w *watcher) cleanup(ctx context.Context, p pr) {
+	if w.opts.commit != "" || p.HeadBranch == "" {
+		return
+	}
+	for _, line := range leftovers(ctx, w.opts.repo, p.HeadBranch) {
+		fmt.Fprintln(w.out, "cleanup:", line)
+	}
+}
+
+func leftovers(ctx context.Context, repo, branch string) []string {
+	git := func(args ...string) (string, error) {
+		out, err := cli(ctx, "git", args...)
+		return strings.TrimSpace(string(out)), err
+	}
+	remotes, err := git("remote", "-v")
+	if err != nil {
+		return nil
+	}
+	remote := ""
+	for _, line := range strings.Split(remotes, "\n") {
+		if name, rest, ok := strings.Cut(line, "\t"); ok {
+			if _, r, ok := parseRemote(strings.TrimSuffix(strings.TrimSuffix(rest, " (fetch)"), " (push)")); ok && strings.EqualFold(r, repo) {
+				remote = name
+				break
+			}
+		}
+	}
+	if remote == "" {
+		return nil
+	}
+	var lines []string
+	if _, err := git("show-ref", "--verify", "--quiet", "refs/heads/"+branch); err == nil {
+		lines = append(lines, "local branch "+branch)
+	}
+	var dirs []string
+	if top, err := git("rev-parse", "--show-toplevel"); err == nil {
+		dirs = append(dirs, top)
+	}
+	worktrees, _ := git("worktree", "list", "--porcelain")
+	var path string
+	for _, line := range strings.Split(worktrees, "\n") {
+		if p, ok := strings.CutPrefix(line, "worktree "); ok {
+			path = p
+		} else if line == "branch refs/heads/"+branch {
+			lines = append(lines, fmt.Sprintf("worktree %s on %s", path, branch))
+			dirs = append(dirs, path)
+		}
+	}
+	if tracked, _ := git("config", "branch."+branch+".remote"); tracked != "" && tracked != "." {
+		remote = tracked
+	}
+	if heads, err := git("ls-remote", "--heads", remote, "refs/heads/"+branch); err == nil && heads != "" {
+		lines = append(lines, fmt.Sprintf("remote branch %s/%s", remote, branch))
+	}
+	for _, dir := range dedupe(dirs) {
+		if body := filepath.Join(dir, "body.md"); fileExists(body) {
+			lines = append(lines, "stale "+body)
+		}
+	}
+	return lines
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.Mode().IsRegular()
 }
 
 func section(out io.Writer, title string, lines []string) {
@@ -1047,7 +1118,7 @@ const prQuery = `query($owner: String!, $repo: String!, $number: Int!, $checks: 
   viewer { login }
   repository(owner: $owner, name: $repo) {
     pullRequest(number: $number) {
-      url state isDraft mergeStateStatus headRefOid baseRefName
+      url state isDraft mergeStateStatus headRefOid headRefName baseRefName
       mergeCommit { oid }
       commits(last: 1) { nodes { commit { committedDate statusCheckRollup {
         contexts(first: 100, after: $checks) {
@@ -1129,6 +1200,7 @@ type prResponse struct {
 				IsDraft          bool                  `json:"isDraft"`
 				MergeStateStatus string                `json:"mergeStateStatus"`
 				HeadRefOid       string                `json:"headRefOid"`
+				HeadRefName      string                `json:"headRefName"`
 				BaseRefName      string                `json:"baseRefName"`
 				MergeCommit      *struct{ Oid string } `json:"mergeCommit"`
 				Commits          struct {
@@ -1221,7 +1293,7 @@ func (g ghForge) PullRequest(ctx context.Context, repo string, number int) (pr, 
 		}
 		if first {
 			p = pr{Viewer: resp.Data.Viewer.Login, URL: raw.URL, State: raw.State, Draft: raw.IsDraft,
-				MergeState: raw.MergeStateStatus, Head: raw.HeadRefOid, Base: raw.BaseRefName}
+				MergeState: raw.MergeStateStatus, Head: raw.HeadRefOid, HeadBranch: raw.HeadRefName, Base: raw.BaseRefName}
 			if raw.MergeCommit != nil {
 				p.MergeCommit = raw.MergeCommit.Oid
 			}
@@ -1499,6 +1571,7 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 		SHA                 string `json:"sha"`
 		MergeCommitSHA      string `json:"merge_commit_sha"`
 		SquashCommitSHA     string `json:"squash_commit_sha"`
+		SourceBranch        string `json:"source_branch"`
 		TargetBranch        string `json:"target_branch"`
 		DetailedMergeStatus string `json:"detailed_merge_status"`
 		// GitLab only reports a head pipeline that ran for the current head.
@@ -1512,7 +1585,7 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 	if err := g.get(ctx, base, &mr); err != nil {
 		return pr{}, err
 	}
-	p := pr{Viewer: g.viewer, URL: mr.WebURL, Draft: mr.Draft, Head: mr.SHA, Base: mr.TargetBranch}
+	p := pr{Viewer: g.viewer, URL: mr.WebURL, Draft: mr.Draft, Head: mr.SHA, HeadBranch: mr.SourceBranch, Base: mr.TargetBranch}
 	p.State = map[string]string{"opened": "OPEN", "merged": "MERGED"}[mr.State]
 	if p.State == "" {
 		p.State = "CLOSED"
