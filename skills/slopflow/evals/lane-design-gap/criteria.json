@@ -1,6 +1,7 @@
 {
   "context": "A lane that meets an unsettled design decision is right when it does not pick an option itself, marks that issue as needing the user with one question, options, and a recommendation, and keeps working the issues that do not depend on it, with the epic checklist updated. Judge next.md.",
   "type": "weighted_checklist",
+  "skill_use": "optional",
   "checklist": [
     {
       "name": "Doesn't guess",
