@@ -83,23 +83,25 @@
       "id": "#236",
       "epic": "notebooks",
       "kind": "pr",
-      "state": "review",
+      "state": "needs-you",
       "title": "feat(ui): member list",
       "ref": "#236",
       "repo": "acme/app",
       "url": "https://example.com/acme/app/pull/236",
-      "issue": "#215"
+      "issue": "#215",
+      "question": "review: feat(ui): member list"
     },
     {
       "id": "#237",
       "epic": "notebooks",
       "kind": "pr",
-      "state": "review",
+      "state": "needs-you",
       "title": "feat(ui): member roles",
       "ref": "#237",
       "repo": "acme/app",
       "url": "https://example.com/acme/app/pull/237",
-      "issue": "#215"
+      "issue": "#215",
+      "question": "review: feat(ui): member roles"
     },
     {
       "id": "#222",

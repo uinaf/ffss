@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -95,5 +96,60 @@ func TestRenderDrawsEveryNodeAsALink(t *testing.T) {
 	}
 	if !strings.HasPrefix(stdout.String(), "needs-you") {
 		t.Fatalf("needs-you nodes should list first, got %q", stdout.String())
+	}
+}
+
+func TestGitHubBoardKeepsNestedIssuesReviewsAndCrossEpicStacks(t *testing.T) {
+	issue := func(id string, number, children int, labels, prs string) string {
+		return fmt.Sprintf(`{"id":%q,"number":%d,"title":"Issue %d","url":"https://github.com/acme/app/issues/%d","state":"OPEN",
+			"repository":{"nameWithOwner":"acme/app"},"labels":{"nodes":[%s]},"subIssues":{"totalCount":%d},
+			"blockedBy":{"totalCount":0,"nodes":[]},"closedByPullRequestsReferences":{"totalCount":%d,"nodes":[%s]},"comments":{"nodes":[]}}`,
+			id, number, number, number, labels, children, strings.Count(prs, `"number"`), prs)
+	}
+	pr := func(number int, base, head, reviewer string) string {
+		return fmt.Sprintf(`{"number":%d,"title":"PR %d","url":"https://github.com/acme/app/pull/%d","state":"OPEN","isDraft":false,
+			"baseRefName":%q,"headRefName":%q,"repository":{"nameWithOwner":"acme/app"},
+			"reviewRequests":{"nodes":[{"requestedReviewer":{"login":%q}}]}}`, number, number, number, base, head, reviewer)
+	}
+	children := func(nodes ...string) string {
+		return `{"node":{"subIssues":{"pageInfo":{"hasNextPage":false},"nodes":[` + strings.Join(nodes, ",") + `]}}}`
+	}
+	responses := map[string]string{
+		"root": `{"viewer":{"login":"me"},"repository":{"issue":{"title":"Lanes","url":"https://github.com/acme/app/issues/1",
+			"subIssues":{"pageInfo":{"hasNextPage":false},"nodes":[` +
+			issue("E", 10, 1, "", "") + "," + issue("L", 2, 0, "", pr(32, "api", "ui", "someone")) + `]}}}}`,
+		"E": children(issue("T", 11, 1, "", pr(30, "main", "api", "me"))),
+		"T": children(issue("S", 12, 0, `{"name":"needs-user"}`, "")),
+	}
+	graphql = func(_ string, vars map[string]string, into any) error {
+		key := vars["id"]
+		if key == "" {
+			key = "root"
+		}
+		return json.Unmarshal([]byte(responses[key]), into)
+	}
+	t.Cleanup(func() { graphql = ghGraphQL })
+
+	out := filepath.Join(t.TempDir(), "board.html")
+	if err := run([]string{"github", "acme/app", "1", out}, nil, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	html, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := string(html)
+	for _, want := range []string{
+		`href="https://github.com/acme/app/issues/12"`,
+		`<span class="q">review: PR 30</span>`,
+		`<span class="q">Issue 12</span>`,
+		`app #32 · on app #30`,
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("board lacks %s", want)
+		}
+	}
+	if strings.Contains(page, "review: PR 32") {
+		t.Error("a review requested from someone else reached the needs-you strip")
 	}
 }

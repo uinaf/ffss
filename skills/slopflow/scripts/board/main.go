@@ -471,9 +471,10 @@ func newCard(b Board, n Node, byID map[string]Node, inEpic map[string]bool, x, y
 		meta = append(meta, "merged "+strings.Join(n.Merged, ", "))
 	}
 	for _, e := range b.Edges {
-		if e.Kind == "blocked-by" && e.To == n.ID && !inEpic[e.From] {
+		if e.To == n.ID && !inEpic[e.From] {
 			from := byID[e.From]
-			meta = append(meta, "after "+strings.TrimSpace(shortRepo(from.Repo)+" "+from.Ref))
+			word := map[string]string{"blocked-by": "after ", "stacked": "on "}[e.Kind]
+			meta = append(meta, word+strings.TrimSpace(shortRepo(from.Repo)+" "+from.Ref))
 		}
 	}
 	return card{
@@ -614,9 +615,7 @@ type ghIssue struct {
 		NameWithOwner string `json:"nameWithOwner"`
 	} `json:"repository"`
 	Labels struct {
-		Nodes []struct {
-			Name string `json:"name"`
-		} `json:"nodes"`
+		Nodes []ghLabel `json:"nodes"`
 	} `json:"labels"`
 	SubIssues struct {
 		TotalCount int `json:"totalCount"`
@@ -653,6 +652,19 @@ type ghPR struct {
 	Repository  struct {
 		NameWithOwner string `json:"nameWithOwner"`
 	} `json:"repository"`
+	ReviewRequests struct {
+		Nodes []ghReviewRequest `json:"nodes"`
+	} `json:"reviewRequests"`
+}
+
+type ghReviewRequest struct {
+	RequestedReviewer struct {
+		Login string `json:"login"`
+	} `json:"requestedReviewer"`
+}
+
+type ghLabel struct {
+	Name string `json:"name"`
 }
 
 type ghChildren struct {
@@ -671,12 +683,16 @@ fragment fields on Issue {
   blockedBy(first: 50) { totalCount nodes { number state repository { nameWithOwner } } }
   closedByPullRequestsReferences(first: 50, includeClosedPrs: true) {
     totalCount
-    nodes { number title url state isDraft baseRefName headRefName repository { nameWithOwner } }
+    nodes {
+      number title url state isDraft baseRefName headRefName repository { nameWithOwner }
+      reviewRequests(first: 50) { nodes { requestedReviewer { ... on User { login } } } }
+    }
   }
   comments(last: 10) { nodes { body } }
 }`
 
 const rootQuery = `query($owner: String!, $name: String!, $number: Int!) {
+  viewer { login }
   repository(owner: $owner, name: $name) {
     issue(number: $number) { title url subIssues(first: 100) { pageInfo { hasNextPage } nodes { ...fields } } }
   }
@@ -686,7 +702,9 @@ const epicQuery = `query($id: ID!) {
   node(id: $id) { ... on Issue { subIssues(first: 100) { pageInfo { hasNextPage } nodes { ...fields } } } }
 }` + issueFields
 
-func graphql(query string, vars map[string]string, into any) error {
+var graphql = ghGraphQL
+
+func ghGraphQL(query string, vars map[string]string, into any) error {
 	args := []string{"api", "graphql", "-f", "query=" + query}
 	for k, v := range vars {
 		flag := "-f"
@@ -729,6 +747,9 @@ func fromGitHub(repo, number string) (Board, error) {
 		return Board{}, fmt.Errorf("root issue %q is not an issue number", number)
 	}
 	var root struct {
+		Viewer struct {
+			Login string `json:"login"`
+		} `json:"viewer"`
 		Repository struct {
 			Issue *struct {
 				Title     string     `json:"title"`
@@ -760,18 +781,11 @@ func fromGitHub(repo, number string) (Board, error) {
 			leaves = append(leaves, sub)
 			continue
 		}
-		var epic struct {
-			Node struct {
-				SubIssues ghChildren `json:"subIssues"`
-			} `json:"node"`
-		}
-		if err := graphql(epicQuery, map[string]string{"id": sub.ID}, &epic); err != nil {
+		issues, err := descendants(sub)
+		if err != nil {
 			return Board{}, err
 		}
-		if epic.Node.SubIssues.PageInfo.HasNextPage {
-			return Board{}, fmt.Errorf("%s has more than 100 sub-issues", issueRef(sub.Repository.NameWithOwner, sub.Number))
-		}
-		groups = append(groups, group{Epic{ID: issueRef(sub.Repository.NameWithOwner, sub.Number), Title: sub.Title, URL: sub.URL}, epic.Node.SubIssues.Nodes})
+		groups = append(groups, group{Epic{ID: issueRef(sub.Repository.NameWithOwner, sub.Number), Title: sub.Title, URL: sub.URL}, issues})
 	}
 	if len(leaves) > 0 {
 		groups = append([]group{{rootEpic, leaves}}, groups...)
@@ -795,11 +809,7 @@ func fromGitHub(repo, number string) (Board, error) {
 				blockers = append(blockers, [2]string{issueRef(bl.Repository.NameWithOwner, bl.Number), id})
 				openBlocker = openBlocker || bl.State == "OPEN"
 			}
-			needsUser := slices.ContainsFunc(is.Labels.Nodes, func(l struct {
-				Name string `json:"name"`
-			}) bool {
-				return l.Name == "needs-user"
-			})
+			needsUser := slices.Contains(is.Labels.Nodes, ghLabel{Name: "needs-user"})
 			switch {
 			case is.State != "OPEN":
 				node.State = "done"
@@ -827,11 +837,15 @@ func fromGitHub(repo, number string) (Board, error) {
 						continue
 					}
 					prRefs[prID] = pr
-					state := "review"
-					if pr.IsDraft {
-						state = "running"
+					prNode := Node{ID: prID, Epic: g.epic.ID, Kind: "pr", State: "review", Title: pr.Title, Ref: fmt.Sprintf("#%d", pr.Number), Repo: pr.Repository.NameWithOwner, URL: pr.URL, Issue: id}
+					switch {
+					case pr.IsDraft:
+						prNode.State = "running"
+					case reviewRequested(pr, root.Viewer.Login):
+						prNode.State = "needs-you"
+						prNode.Question = "review: " + pr.Title
 					}
-					prs = append(prs, Node{ID: prID, Epic: g.epic.ID, Kind: "pr", State: state, Title: pr.Title, Ref: fmt.Sprintf("#%d", pr.Number), Repo: pr.Repository.NameWithOwner, URL: pr.URL, Issue: id})
+					prs = append(prs, prNode)
 				}
 			}
 			b.Nodes = append(b.Nodes, node)
@@ -860,6 +874,39 @@ func fromGitHub(repo, number string) (Board, error) {
 		return Board{}, fmt.Errorf("board from %s#%s: %w", repo, number, err)
 	}
 	return b, nil
+}
+
+func descendants(parent ghIssue) ([]ghIssue, error) {
+	var children struct {
+		Node struct {
+			SubIssues ghChildren `json:"subIssues"`
+		} `json:"node"`
+	}
+	if err := graphql(epicQuery, map[string]string{"id": parent.ID}, &children); err != nil {
+		return nil, err
+	}
+	if children.Node.SubIssues.PageInfo.HasNextPage {
+		return nil, fmt.Errorf("%s has more than 100 sub-issues", issueRef(parent.Repository.NameWithOwner, parent.Number))
+	}
+	var out []ghIssue
+	for _, child := range children.Node.SubIssues.Nodes {
+		out = append(out, child)
+		if child.SubIssues.TotalCount == 0 {
+			continue
+		}
+		deeper, err := descendants(child)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, deeper...)
+	}
+	return out, nil
+}
+
+func reviewRequested(pr ghPR, login string) bool {
+	return login != "" && slices.ContainsFunc(pr.ReviewRequests.Nodes, func(r ghReviewRequest) bool {
+		return r.RequestedReviewer.Login == login
+	})
 }
 
 func issueRef(repo string, number int) string {
