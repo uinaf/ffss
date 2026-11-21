@@ -5,7 +5,9 @@ app, CLI, or endpoint the change touches), choosing the cheapest run that
 would fail if the change were wrong. Put lasting checks at the highest layer
 the gate affords: real surface, owned boundary, properties, then units for
 pure logic. Prove costly invariants tests rarely reach, such as races,
-retries, and state machines, with a model checker or bounded proof.
+retries, and state machines, with a model checker or bounded proof. Replay
+its counterexample on the real code: remove one guard in the model and in the
+code, and both must fail.
 
 - Keep gates and hooks enabled; fix change-caused failures without asking.
   A gate counts only after you've seen it refuse a bad change, including an
@@ -21,6 +23,9 @@ retries, and state machines, with a model checker or bounded proof.
   strongest boundary. When a change breaks a test, fix the code unless the
   contract changed on purpose or the test pins implementation; then update
   the test and say so.
+- For a performance claim, alternate baseline and candidate runs, count
+  completed work and errors inside the timed region, and report the spread
+  and the user-visible effect.
 - Validate review findings before acting on them.
 - Clean up only the processes you started.
 - When reporting a change, name what ran, failed, was skipped, or was

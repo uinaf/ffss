@@ -11,7 +11,8 @@
   as an explicit state machine, with side effects in its invoked actors, not
   as boolean flags checked in several places.
 - Preserve error causes and partial failures. Keep retries bounded,
-  cancellable, and limited to idempotent transient work.
+  cancellable, and limited to idempotent transient work. Budget them across
+  layers: a client retry inside a job retry multiplies attempts.
 - Run noisy commands with quiet flags, or in a delegate that returns only the
   conclusion.
 - Write no code comments: names, types, and tests carry intent, and the

@@ -67,4 +67,6 @@ Fix blockers first, then the highest-leverage majors, each with the smallest
 change that improves activation, decision quality, or proof. When pruning,
 measure common-path context for representative requests; line count alone
 hides retrieval cost. After edits, rerun `skillcheck lint` and the repo's gate,
-and rerun evals when behavior was the thing changed.
+and rerun evals when behavior was the thing changed. For a disputed rewrite,
+one judge grades both versions' outputs in one pass, under anonymous labels,
+against one rubric.
