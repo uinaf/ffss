@@ -1,0 +1,46 @@
+{
+  "context": "Briefs for parallel lanes are right when each lane owns a disjoint set of files with the shared editor file given to one lane, lane resources carry a lane prefix, the shared build host and the rate-limited test account are protected by limits and a lock, each lane keeps its progress on its epic issue, and reports come back as a per-issue status table on completion or a blocker. Judge briefs.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Disjoint file ownership",
+      "max_score": 20,
+      "description": "Each brief names the files or directories its lane owns, and `src/editor/Editor.tsx` is owned by exactly one lane. The other lane that needs it gets its change through that lane or the coordinator, or waits for that lane's merge. Both lanes free to edit Editor.tsx scores 0"
+    },
+    {
+      "name": "Lane-prefixed resources",
+      "max_score": 15,
+      "description": "Each lane's branches, worktrees, and simulators or emulators carry its lane name or prefix, and a lane stops or deletes only resources carrying its own prefix"
+    },
+    {
+      "name": "Shared host limits",
+      "max_score": 15,
+      "description": "Briefs cap each lane's load on buildbox (for example a maximum number of emulators or simulators per lane, or checking load before heavy runs) and present the number as a starting point to adjust to live load rather than a fixed rule"
+    },
+    {
+      "name": "Sign-in lock",
+      "max_score": 10,
+      "description": "Test-account sign-ins are serialized across lanes, for example under a shared lock or one lane at a time, so the three lanes together stay under 5 per 15 minutes"
+    },
+    {
+      "name": "Ledger on the epic",
+      "max_score": 10,
+      "description": "Each lane keeps a checklist of its issues current on its epic issue (#170, #171, or #172), one line per issue with its status and PR"
+    },
+    {
+      "name": "Report shape",
+      "max_score": 15,
+      "description": "Lanes report back on completion or on a blocker only the user can clear, not routine progress, and the report leads with a table with one row per issue covering status, PR, head commit, proof, and what is unverified"
+    },
+    {
+      "name": "Scope and proof",
+      "max_score": 10,
+      "description": "Each brief lists its issues in an order, says #109 stays untouched, grants branches, PRs, and merges in the repository, and states per issue what done means (the required checks plus screenshots from each platform touched)"
+    },
+    {
+      "name": "Cleanup",
+      "max_score": 5,
+      "description": "Each lane removes its worktrees, branches, simulators or emulators, and locks on every host it used when it finishes"
+    }
+  ]
+}

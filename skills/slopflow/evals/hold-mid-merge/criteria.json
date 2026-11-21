@@ -1,0 +1,36 @@
+{
+  "context": "A hold is right when every lane stops what it started on the shared host, merges nothing (the green #161 included), keeps branches, worktrees, and PRs as they are, and answers briefly with what was mid-flight and where to resume; the resume message then names each lane's next issue, branch, and head and has the lane check its resources first. Judge hold.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Nothing merges",
+      "max_score": 20,
+      "description": "The hold tells every lane to merge nothing, and #161 is explicitly not merged during the hold despite being green and approved. Letting #161 merge first scores 0"
+    },
+    {
+      "name": "Stops what each lane started",
+      "max_score": 20,
+      "description": "Each lane stops the jobs it started on buildbox: the sync lane its `sync-ios-1` simulator and e2e-ios run, the dark lane its lock wait and `dark-android-1` emulator. Each lane stops only its own resources"
+    },
+    {
+      "name": "State preserved",
+      "max_score": 20,
+      "description": "Branches, worktrees, PRs, and unpushed commits stay as they are: no deleting, resetting, force-pushing, closing PRs, or cleanup during the hold. Telling a lane to finish its rebase and push, or to discard local work, fails this item"
+    },
+    {
+      "name": "Short reply with the resume point",
+      "max_score": 15,
+      "description": "Asks each lane to reply briefly (a few lines at most) with what was mid-flight and where it will resume"
+    },
+    {
+      "name": "Resume names the next step",
+      "max_score": 20,
+      "description": "The resume message names, per lane, its next issue or action, its branch, and its head or PR (sync: merge #161 then #103 on `sync/103-conflict-banner`; dark: #111 on `dark/111-code-blocks`; export: #115 on PR #157 at 4d5e6f7), keeps the existing briefs, and has each lane check its worktrees, devices, and locks before continuing"
+    },
+    {
+      "name": "Honest",
+      "max_score": 5,
+      "description": "Does not claim the lanes stopped or replied"
+    }
+  ]
+}

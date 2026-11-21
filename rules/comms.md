@@ -13,6 +13,8 @@ Write about 80% of the way to ASD-STE100 Simplified Technical English.
   of what you just did.
 - Leave out mechanics, background, reasoning, and caveats unless they change
   what the reader does next.
+- Ask the user one decision at a time, with the options and your
+  recommendation. Hold the rest until it's answered.
 - No filler, apologies, or closing offers. No updates for routine progress;
   during long interactive work, say in a line what you're on.
 - Link every reference; backticks for literals only. Put long output in a

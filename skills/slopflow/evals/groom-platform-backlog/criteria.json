@@ -1,0 +1,41 @@
+{
+  "context": "Grooming a two-repository backlog for parallel agent work is done right when stale issues are proposed for closing with a one-line reason each, every remaining issue lands in exactly one epic grouped by feature or root cause rather than by platform label, each epic stays inside one repository, nothing is applied before the user agrees, the map is shown visually, and the user is asked one decision at a time with options and a recommendation. Judge response.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Closes with one-line reasons",
+      "max_score": 15,
+      "description": "Proposes closing #108 (fixed by #140), #112 (obsolete since v1 shut down), #113 (duplicate of #102, keeping #102 as the clearer issue), and #117 (vague), each with a one-line reason. #107 and #109 may be proposed for closing or kept; either is fine. Keeping #113 over #102 or giving no reason fails this item"
+    },
+    {
+      "name": "Epics by feature or root cause, not platform",
+      "max_score": 25,
+      "description": "Groups #101, #102, and #103 into one offline-sync or conflict epic; #110 and #111 into one dark mode epic; #104, #105, and #106 into one search epic; #115 and #116 into one export epic. Any epic or lane per platform (an iOS epic, an Android epic, a web epic), or splitting one root cause across platform epics, scores 0"
+    },
+    {
+      "name": "Each epic stays in one repository",
+      "max_score": 15,
+      "description": "sync-sdk issues #41 and #42 sit in a sync-sdk epic (or epics), not inside an app epic, and no epic lists issues from both repositories. App #114 is either closed or linked as tracked by sync-sdk#41, or kept in an app epic that links to the SDK fix; a cross-repository epic fails this item"
+    },
+    {
+      "name": "Every issue accounted for",
+      "max_score": 10,
+      "description": "Every open issue in both repositories (#101 to #117, #41 to #43) is either in exactly one epic or proposed for closing; none is dropped or placed twice"
+    },
+    {
+      "name": "Nothing applied before the user agrees",
+      "max_score": 10,
+      "description": "Closes, new epics, and re-parenting are presented as a proposal to apply after the user's OK. The response does not claim any change was made and does not plan to apply them first and report afterwards"
+    },
+    {
+      "name": "Map shown visually",
+      "max_score": 10,
+      "description": "The epic map is a Markdown table or a Mermaid diagram listing each epic with its issues, not only prose or nested bullets"
+    },
+    {
+      "name": "One question, with options and a recommendation",
+      "max_score": 15,
+      "description": "The response asks the user one decision (for example whether PDF export stays in 4.0, or whether to close #107) with the options and a recommended choice, and holds any other questions until that answer. Asking several questions at once scores at most 5; a question without options or without a recommendation scores at most 5"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "context": "A 'what needs me' answer is right when it is a board built from the issue tree that puts each lane in one of working, waiting on the user, or stopped, and lists under 'needs you' only the needs-user decision and the PRs awaiting the user's review, not lanes waiting on CI or on another lane. Judge response.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Board from the tree",
+      "max_score": 15,
+      "description": "Shows a Markdown table or Mermaid diagram derived from the tree, covering every lane (api, ui, export, search) and their issues"
+    },
+    {
+      "name": "Three lane states",
+      "max_score": 20,
+      "description": "Each lane is classed as working, waiting on the user, or stopped (or the same three meanings in other words): api working (#211 checks running), ui waiting on the user (two PRs need review), export working on #224 and stopped on #223, search waiting on the user (#241)"
+    },
+    {
+      "name": "Needs you is only user work",
+      "max_score": 35,
+      "description": "The 'needs you' list holds exactly: the #241 decision, and review of #236 then #237 (the stacked layer after its base). It does not list #211's running checks, #212 or #213 waiting on #211, or #224's failing e2e-web that the lane is fixing, as needing the user. Listing any of those as needing the user scores at most 10"
+    },
+    {
+      "name": "Failed node visible",
+      "max_score": 15,
+      "description": "Shows #223 as failed or stopped, with its patch, as something to re-plan, without treating it as done"
+    },
+    {
+      "name": "Decision asked well",
+      "max_score": 10,
+      "description": "Puts the #241 question with its two options and a recommendation"
+    },
+    {
+      "name": "Brief",
+      "max_score": 5,
+      "description": "Leads with what needs the user and stays short"
+    }
+  ]
+}
