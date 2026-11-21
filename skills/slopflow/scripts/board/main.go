@@ -1041,7 +1041,7 @@ fragment fields on Issue {
   timelineItems(itemTypes: [LABELED_EVENT], last: 20) { nodes { ... on LabeledEvent { createdAt label { name } } } }
 }`
 
-const ledgerFields = `body createdAt userContentEdits(last: 30) { nodes { editedAt diff } }`
+const ledgerFields = `body createdAt updatedAt repository { nameWithOwner } userContentEdits(last: 30) { nodes { editedAt diff } }`
 
 const rootQuery = `query($owner: String!, $name: String!, $number: Int!) {
   viewer { login }
@@ -1055,9 +1055,13 @@ const epicQuery = `query($id: ID!) {
 }` + issueFields
 
 type ghLedger struct {
-	Body      string `json:"body"`
-	CreatedAt string `json:"createdAt"`
-	Edits     struct {
+	Body       string `json:"body"`
+	CreatedAt  string `json:"createdAt"`
+	UpdatedAt  string `json:"updatedAt"`
+	Repository struct {
+		NameWithOwner string `json:"nameWithOwner"`
+	} `json:"repository"`
+	Edits struct {
 		Nodes []struct {
 			EditedAt string `json:"editedAt"`
 			Diff     string `json:"diff"`
@@ -1076,7 +1080,7 @@ func ledgerStages(body string) map[int]Delivery {
 	return out
 }
 
-func (l ghLedger) deliveries(into map[int]Delivery) {
+func (l ghLedger) deliveries(into map[string]Delivery) {
 	type revision struct{ at, body string }
 	revisions := []revision{{l.CreatedAt, l.Body}}
 	if len(l.Edits.Nodes) > 0 {
@@ -1086,7 +1090,8 @@ func (l ghLedger) deliveries(into map[int]Delivery) {
 		}
 	}
 	for n, d := range ledgerStages(l.Body) {
-		if _, seen := into[n]; seen {
+		ref := issueRef(l.Repository.NameWithOwner, n)
+		if _, seen := into[ref]; seen {
 			continue
 		}
 		d.Since = revisions[0].at
@@ -1096,7 +1101,7 @@ func (l ghLedger) deliveries(into map[int]Delivery) {
 			}
 			d.Since = r.at
 		}
-		into[n] = d
+		into[ref] = d
 	}
 }
 
@@ -1172,9 +1177,8 @@ func fromGitHub(repo, number string) (Board, error) {
 	var leaves []ghIssue
 	type group struct {
 		epic   Epic
-		repo   string
 		issues []ghIssue
-		stages map[int]Delivery
+		stages map[string]Delivery
 		active []string
 	}
 	var groups []group
@@ -1183,7 +1187,7 @@ func fromGitHub(repo, number string) (Board, error) {
 			leaves = append(leaves, sub)
 			continue
 		}
-		g := group{repo: sub.Repository.NameWithOwner, stages: map[int]Delivery{}, active: []string{sub.UpdatedAt}}
+		g := group{stages: map[string]Delivery{}, active: []string{sub.UpdatedAt}}
 		issues, err := descendants(sub, g.stages)
 		if err != nil {
 			return Board{}, err
@@ -1195,14 +1199,14 @@ func fromGitHub(repo, number string) (Board, error) {
 		groups = append(groups, g)
 	}
 	if len(leaves) > 0 || len(groups) == 0 {
-		g := group{epic: rootEpic, repo: repo, issues: leaves, stages: map[int]Delivery{}}
+		g := group{epic: rootEpic, issues: leaves, stages: map[string]Delivery{}, active: []string{top.UpdatedAt}}
 		top.deliveries(g.stages)
 		groups = append([]group{g}, groups...)
 	}
 	shipped := map[string]bool{}
 	for _, g := range groups {
-		for n, d := range g.stages {
-			shipped[issueRef(g.repo, n)] = d.Stage == "proven" || d.Stage == "waived"
+		for ref, d := range g.stages {
+			shipped[ref] = d.Stage == "proven" || d.Stage == "waived"
 		}
 	}
 	var blockers [][2]string
@@ -1245,7 +1249,7 @@ func fromGitHub(repo, number string) (Board, error) {
 				node.State = "running"
 			}
 			g.active = append(g.active, is.UpdatedAt)
-			if d, ok := g.stages[is.Number]; ok && node.Repo == g.repo {
+			if d, ok := g.stages[id]; ok {
 				node.Delivery = &d
 				g.active = append(g.active, d.Since)
 				switch {
@@ -1332,7 +1336,7 @@ func fromGitHub(repo, number string) (Board, error) {
 	return b, nil
 }
 
-func descendants(parent ghIssue, stages map[int]Delivery) ([]ghIssue, error) {
+func descendants(parent ghIssue, stages map[string]Delivery) ([]ghIssue, error) {
 	var children struct {
 		Node struct {
 			ghLedger

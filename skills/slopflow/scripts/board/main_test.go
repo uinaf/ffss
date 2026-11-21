@@ -203,7 +203,7 @@ func TestGitHubBoardKeepsNestedIssuesReviewsAndCrossEpicStacks(t *testing.T) {
 	revision := func(at, line string) string {
 		return fmt.Sprintf(`{"editedAt":%q,"diff":%q}`, at, "## Lane t\n"+line+"\n- [ ] #12 needs-user\n- [x] #15 waived: docs only\n")
 	}
-	ledger := `{"node":{"body":"## Lane t\n- [ ] #13 landed: #33 on staging, promote pending\n- [ ] #12 needs-user\n- [x] #15 waived: docs only\n","createdAt":"2026-11-21T09:00:00Z",
+	ledger := `{"node":{"body":"## Lane t\n- [ ] #13 landed: #33 on staging, promote pending\n- [ ] #12 needs-user\n- [x] #15 waived: docs only\n","createdAt":"2026-11-21T09:00:00Z","repository":{"nameWithOwner":"acme/app"},
 		"userContentEdits":{"nodes":[` + strings.Join([]string{
 		revision("2026-11-21T11:40:00Z", "- [ ] #13 landed: #33 on staging, promote pending"),
 		revision("2026-11-21T11:20:00Z", "- [ ] #13 landed: #33"),
@@ -218,13 +218,14 @@ func TestGitHubBoardKeepsNestedIssuesReviewsAndCrossEpicStacks(t *testing.T) {
 	asked := strings.Replace(issue("S", 12, 0, `{"name":"needs-user"}`, "", ""), `"comments":{"nodes":[]}`,
 		`"comments":{"nodes":[{"body":"Which store holds drafts?\n\n- SQLite (recommended)\n- IndexedDB\n\nThanks"}]}`, 1)
 	responses := map[string]string{
-		"root": `{"viewer":{"login":"me"},"repository":{"issue":{"title":"Lanes","url":"https://github.com/acme/app/issues/1",
+		"root": `{"viewer":{"login":"me"},"repository":{"issue":{"title":"Lanes","url":"https://github.com/acme/app/issues/1","updatedAt":"2026-11-21T11:35:00Z",
 			"subIssues":{"pageInfo":{"hasNextPage":false},"nodes":[` +
 			issue("E", 10, 1, `{"name":"needs-user"}`, "", "") + "," +
 			issue("L", 2, 0, "", `{"number":12,"state":"OPEN","repository":{"nameWithOwner":"acme/app"}}`, pr(32, "api", "acme/app", "ui", "someone")) + `]}}}}`,
 		"E": strings.Replace(children(issue("T", 11, 1, "", "", pr(30, "main", "acme/app", "api", "me")+","+
 			pr(40, "main", "fork-a/app", "main", "someone")+","+pr(41, "main", "fork-b/app", "main", "someone")), closed), `{"node":{`, ledger, 1),
-		"T": children(asked, waived, dependent),
+		"T": strings.Replace(children(asked, waived, dependent), `{"node":{`,
+			`{"node":{"body":"- [x] #12 proven: other repo","createdAt":"2026-11-21T09:00:00Z","repository":{"nameWithOwner":"other/app"},`, 1),
 	}
 	graphql = func(_ string, vars map[string]string, into any) error {
 		key := vars["id"]
@@ -240,7 +241,7 @@ func TestGitHubBoardKeepsNestedIssuesReviewsAndCrossEpicStacks(t *testing.T) {
 	if err := run([]string{"github", "-stall", "20m", "acme/app", "1", out}, nil, &stdout); err != nil {
 		t.Fatal(err)
 	}
-	flow := "WIP 2 · landed, not live: app #13 40m · oldest in flight 40m · stalled: Lanes 30m"
+	flow := "WIP 2 · landed, not live: app #13 40m · oldest in flight 40m · stalled: Lanes 25m"
 	if first, _, _ := strings.Cut(stdout.String(), "\n"); first != flow {
 		t.Errorf("want flow line %q, got %q", flow, first)
 	}
