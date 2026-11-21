@@ -19,8 +19,9 @@ write outside that workspace.
 
 1. **Locate.** Find the workspace and its skills directory from its agent
    guide, else the harness's project skills directory. Target
-   `<skills>/fleet/`. If the workspace is pushed anywhere public, pick a
-   gitignored or untracked path and say which.
+   `<skills>/fleet/`. If the workspace is pushed anywhere public,
+   use a path `git check-ignore` confirms, or one outside the repository,
+   and say which.
 2. **Inventory.** Read what this machine shows before asking: its OS, cores,
    and memory; SSH config hosts; tailnet peers; remote-build or lease CLIs on
    `PATH`; attached devices (`adb devices`, `xcrun simctl list`). Each

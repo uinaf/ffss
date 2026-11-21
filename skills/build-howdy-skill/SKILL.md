@@ -20,7 +20,8 @@ write outside that workspace.
 1. **Locate.** Find the workspace and its skills directory from its agent
    guide, else the harness's project skills directory. Target
    `<skills>/howdy/SKILL.md`. If the workspace is pushed anywhere public,
-   pick a gitignored or untracked path and say which.
+   use a path `git check-ignore` confirms, or one outside the repository,
+   and say which.
 2. **Inventory.** Read what the machine and workspace show before asking:
    the project or repo list, configured MCP servers (`.mcp.json`, the
    harness's MCP list), and CLIs on `PATH` (`gh`, `glab`, `jira`, `gog`, mail
