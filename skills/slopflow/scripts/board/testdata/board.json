@@ -89,7 +89,10 @@
       "repo": "acme/app",
       "url": "https://example.com/acme/app/pull/236",
       "issue": "#215",
-      "question": "review: feat(ui): member list"
+      "need": {
+        "kind": "approval",
+        "since": "2026-11-19T15:00:00Z"
+      }
     },
     {
       "id": "#237",
@@ -101,7 +104,10 @@
       "repo": "acme/app",
       "url": "https://example.com/acme/app/pull/237",
       "issue": "#215",
-      "question": "review: feat(ui): member roles"
+      "need": {
+        "kind": "approval",
+        "since": "2026-11-20T11:00:00Z"
+      }
     },
     {
       "id": "#222",
@@ -156,7 +162,11 @@
       "ref": "#241",
       "repo": "acme/app",
       "url": "https://example.com/acme/app/issues/241",
-      "question": "Index attachments on device or on the server?"
+      "need": {
+        "kind": "blocked",
+        "since": "2026-11-20T09:30:00Z",
+        "question": "Index attachments on device or on the server?"
+      }
     },
     {
       "id": "#242",
@@ -187,7 +197,11 @@
       "ref": "#251",
       "repo": "acme/app",
       "url": "https://example.com/acme/app/issues/251",
-      "question": "Prorate upgrades to the day, or bill the full month?"
+      "need": {
+        "kind": "decision",
+        "since": "2026-11-17T10:00:00Z",
+        "question": "Prorate upgrades to the day, or bill the full month?"
+      }
     },
     {
       "id": "#261",

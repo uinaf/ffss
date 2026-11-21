@@ -7,8 +7,10 @@
 // github reads the root issue's sub-issues in any repository through `gh`. A
 // sub-issue with sub-issues of its own is an epic; the other sub-issues group
 // under the root. Each issue brings its "blocked by" dependencies, the
-// needs-user label, the last question in its comments, and the pull requests
-// linked to it. Write out.json to get the board in the render contract.
+// needs-user label with when it was added, the last question in its
+// comments, and the pull requests linked to it. A pull request whose review
+// is requested from the signed-in user needs them too. Write out.json to get
+// the board in the render contract.
 //
 // render takes the same board from any tracker:
 //
@@ -18,8 +20,9 @@
 //	  "nodes": [{
 //	    "id": "app#12", "epic": "search", "kind": "issue", "state": "needs-you",
 //	    "title": "Index attachments", "ref": "#12", "repo": "acme/app",
-//	    "url": "https://…", "question": "On device or on the server?",
-//	    "merged": ["#20"]
+//	    "url": "https://…", "merged": ["#20"],
+//	    "need": {"kind": "decision", "since": "2026-11-20T09:30:00Z",
+//	             "question": "On device or on the server?"}
 //	  }, {
 //	    "id": "app#30", "epic": "search", "kind": "pr", "state": "review",
 //	    "title": "Index on device", "ref": "#30", "url": "https://…", "issue": "app#12"
@@ -28,8 +31,12 @@
 //	}
 //
 // kind is issue or pr. state is running, needs-you, blocked, review, or done.
-// An epic's url, a node's repo and question, an issue's merged refs, and a
-// pull request's issue are optional. A blocked-by edge points from the blocker
+// A needs-you node carries need, and only it: need.kind is blocked (work is
+// stopped on it), approval (a merge, deploy, or destructive step waits on a
+// yes), or decision (a design or scope question); need.since is an RFC 3339
+// time. The needs-you strip ranks by that kind, then oldest first. An epic's
+// url, a node's repo, need.question, an issue's merged refs, and a pull
+// request's issue are optional. A blocked-by edge points from the blocker
 // to the node it blocks; a stacked edge from a base pull request to the one
 // stacked on it. Edges must not form a cycle.
 package main
@@ -47,6 +54,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Board struct {
@@ -63,17 +71,23 @@ type Epic struct {
 }
 
 type Node struct {
-	ID       string   `json:"id"`
-	Epic     string   `json:"epic"`
-	Kind     string   `json:"kind"`
-	State    string   `json:"state"`
-	Title    string   `json:"title"`
-	Ref      string   `json:"ref"`
-	Repo     string   `json:"repo,omitempty"`
-	URL      string   `json:"url"`
-	Question string   `json:"question,omitempty"`
-	Merged   []string `json:"merged,omitempty"`
-	Issue    string   `json:"issue,omitempty"`
+	ID     string   `json:"id"`
+	Epic   string   `json:"epic"`
+	Kind   string   `json:"kind"`
+	State  string   `json:"state"`
+	Title  string   `json:"title"`
+	Ref    string   `json:"ref"`
+	Repo   string   `json:"repo,omitempty"`
+	URL    string   `json:"url"`
+	Need   *Need    `json:"need,omitempty"`
+	Merged []string `json:"merged,omitempty"`
+	Issue  string   `json:"issue,omitempty"`
+}
+
+type Need struct {
+	Kind     string `json:"kind"`
+	Since    string `json:"since"`
+	Question string `json:"question,omitempty"`
 }
 
 type Edge struct {
@@ -86,6 +100,8 @@ var (
 	states = []string{"needs-you", "blocked", "running", "review", "done"}
 	kinds  = []string{"issue", "pr"}
 	links  = []string{"blocked-by", "stacked"}
+	needs  = []string{"blocked", "approval", "decision"}
+	now    = time.Now
 )
 
 const usage = `usage:
@@ -199,6 +215,18 @@ func validate(b Board) error {
 			return fmt.Errorf("%s: merged is for issues; a merged pull request is a ref on its issue", where)
 		case n.Kind == "issue" && n.Issue != "":
 			return fmt.Errorf("%s: issue is for pull requests", where)
+		case n.State == "needs-you" && n.Need == nil:
+			return fmt.Errorf("%s: a needs-you node needs need", where)
+		case n.State != "needs-you" && n.Need != nil:
+			return fmt.Errorf("%s: need is for needs-you nodes", where)
+		}
+		if n.Need != nil {
+			if !slices.Contains(needs, n.Need.Kind) {
+				return fmt.Errorf("%s: need.kind %q is not one of %s", where, n.Need.Kind, strings.Join(needs, ", "))
+			}
+			if _, err := time.Parse(time.RFC3339, n.Need.Since); err != nil {
+				return fmt.Errorf("%s: need.since %q is not an RFC 3339 time", where, n.Need.Since)
+			}
 		}
 		nodes[n.ID] = n
 	}
@@ -324,7 +352,8 @@ type section struct {
 }
 
 type needsRow struct {
-	Text, Ref, URL string
+	Kind, Text, Age, Ref, URL string
+	since                     time.Time
 }
 
 var dots = map[string]string{
@@ -508,6 +537,7 @@ body{margin:0}
 .lbl a:hover{color:var(--fg)}
 .needs a{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border-soft)}
 .needs a:first-of-type{border-top:0;padding-top:0}
+.needs .k{min-width:9ch;font-size:11px;color:var(--fg-subtle)}
 .needs .q{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .needs .r{font-size:11px;color:var(--fg-subtle);white-space:nowrap}
 .needs a:hover .q{color:var(--fg-strong)}
@@ -537,7 +567,7 @@ body{margin:0}
 {{- if .Needs}}
 <div class="needs"><div class="lbl">needs you <span class="n">{{len .Needs}}</span></div>
 {{- range .Needs}}
-<a href="{{.URL}}"><span class="u-dot u-dot--warn"></span><span class="q">{{.Text}}</span><span class="r">{{.Ref}}</span></a>
+<a href="{{.URL}}"><span class="u-dot u-dot--warn"></span><span class="k">{{.Kind}}</span><span class="q">{{.Text}}</span><span class="r">{{.Age}} · {{.Ref}}</span></a>
 {{- end}}
 </div>
 {{- end}}
@@ -568,6 +598,18 @@ body{margin:0}
 {{- define "card"}}<span class="st"><span class="u-dot u-dot--{{.Dot}}"></span>{{.Word}}</span><span class="t">{{.Title}}</span><span class="m">{{.Meta}}</span>{{end}}
 `))
 
+func age(d time.Duration) string {
+	switch {
+	case d < time.Hour:
+		return fmt.Sprintf("%dm", max(int(d.Minutes()), 0))
+	case d < 48*time.Hour:
+		return fmt.Sprintf("%dh", int(d.Hours()))
+	case d < 14*24*time.Hour:
+		return fmt.Sprintf("%dd", int(d.Hours()/24))
+	}
+	return fmt.Sprintf("%dw", int(d.Hours()/24/7))
+}
+
 func renderBoard(b Board) ([]byte, error) {
 	data := struct {
 		Title string
@@ -578,12 +620,26 @@ func renderBoard(b Board) ([]byte, error) {
 		if n.State != "needs-you" {
 			continue
 		}
-		text := n.Question
+		text := n.Need.Question
 		if text == "" {
 			text = n.Title
 		}
-		data.Needs = append(data.Needs, needsRow{Text: text, Ref: strings.TrimSpace(shortRepo(n.Repo) + " " + n.Ref), URL: n.URL})
+		since, _ := time.Parse(time.RFC3339, n.Need.Since)
+		data.Needs = append(data.Needs, needsRow{
+			Kind:  n.Need.Kind,
+			Text:  text,
+			Age:   age(now().Sub(since)),
+			Ref:   strings.TrimSpace(shortRepo(n.Repo) + " " + n.Ref),
+			URL:   n.URL,
+			since: since,
+		})
 	}
+	slices.SortStableFunc(data.Needs, func(a, b needsRow) int {
+		if d := slices.Index(needs, a.Kind) - slices.Index(needs, b.Kind); d != 0 {
+			return d
+		}
+		return a.since.Compare(b.since)
+	})
 	single := false
 	for i, e := range b.Epics {
 		s := layout(b, e, i)
@@ -639,6 +695,13 @@ type ghIssue struct {
 			Body string `json:"body"`
 		} `json:"nodes"`
 	} `json:"comments"`
+	UpdatedAt string `json:"updatedAt"`
+	Timeline  struct {
+		Nodes []struct {
+			CreatedAt string  `json:"createdAt"`
+			Label     ghLabel `json:"label"`
+		} `json:"nodes"`
+	} `json:"timelineItems"`
 }
 
 type ghPR struct {
@@ -655,6 +718,13 @@ type ghPR struct {
 	ReviewRequests struct {
 		Nodes []ghReviewRequest `json:"nodes"`
 	} `json:"reviewRequests"`
+	UpdatedAt string `json:"updatedAt"`
+	Timeline  struct {
+		Nodes []struct {
+			CreatedAt string `json:"createdAt"`
+			ghReviewRequest
+		} `json:"nodes"`
+	} `json:"timelineItems"`
 }
 
 type ghReviewRequest struct {
@@ -676,19 +746,24 @@ type ghChildren struct {
 
 const issueFields = `
 fragment fields on Issue {
-  id number title url state
+  id number title url state updatedAt
   repository { nameWithOwner }
-  labels(first: 50) { nodes { name } }
+  labels(first: 20) { nodes { name } }
   subIssues(first: 1) { totalCount }
-  blockedBy(first: 50) { totalCount nodes { number state repository { nameWithOwner } } }
-  closedByPullRequestsReferences(first: 50, includeClosedPrs: true) {
+  blockedBy(first: 20) { totalCount nodes { number state repository { nameWithOwner } } }
+  closedByPullRequestsReferences(first: 20, includeClosedPrs: true) {
     totalCount
     nodes {
       number title url state isDraft baseRefName headRefName repository { nameWithOwner }
-      reviewRequests(first: 50) { nodes { requestedReviewer { ... on User { login } } } }
+      updatedAt
+      reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } }
+      timelineItems(itemTypes: [REVIEW_REQUESTED_EVENT], last: 20) {
+        nodes { ... on ReviewRequestedEvent { createdAt requestedReviewer { ... on User { login } } } }
+      }
     }
   }
   comments(last: 10) { nodes { body } }
+  timelineItems(itemTypes: [LABELED_EVENT], last: 20) { nodes { ... on LabeledEvent { createdAt label { name } } } }
 }`
 
 const rootQuery = `query($owner: String!, $name: String!, $number: Int!) {
@@ -815,8 +890,17 @@ func fromGitHub(repo, number string) (Board, error) {
 				node.State = "done"
 			case needsUser:
 				node.State = "needs-you"
-				for i := len(is.Comments.Nodes) - 1; i >= 0 && node.Question == ""; i-- {
-					node.Question = lastQuestion(is.Comments.Nodes[i].Body)
+				node.Need = &Need{Kind: "decision", Since: is.UpdatedAt}
+				if openBlocker {
+					node.Need.Kind = "blocked"
+				}
+				for _, ev := range is.Timeline.Nodes {
+					if ev.Label.Name == "needs-user" {
+						node.Need.Since = ev.CreatedAt
+					}
+				}
+				for i := len(is.Comments.Nodes) - 1; i >= 0 && node.Need.Question == ""; i-- {
+					node.Need.Question = lastQuestion(is.Comments.Nodes[i].Body)
 				}
 			case openBlocker:
 				node.State = "blocked"
@@ -843,7 +927,12 @@ func fromGitHub(repo, number string) (Board, error) {
 						prNode.State = "running"
 					case reviewRequested(pr, root.Viewer.Login):
 						prNode.State = "needs-you"
-						prNode.Question = "review: " + pr.Title
+						prNode.Need = &Need{Kind: "approval", Since: pr.UpdatedAt}
+						for _, ev := range pr.Timeline.Nodes {
+							if ev.RequestedReviewer.Login == root.Viewer.Login {
+								prNode.Need.Since = ev.CreatedAt
+							}
+						}
 					}
 					prs = append(prs, prNode)
 				}
@@ -867,6 +956,18 @@ func fromGitHub(repo, number string) (Board, error) {
 			if baseID != nextID && base.Repository.NameWithOwner == next.Repository.NameWithOwner && next.BaseRefName == base.HeadRefName {
 				b.Edges = append(b.Edges, Edge{Kind: "stacked", From: baseID, To: nextID})
 			}
+		}
+	}
+	open := map[string]bool{}
+	for _, n := range b.Nodes {
+		open[n.ID] = n.State != "done"
+	}
+	for i, n := range b.Nodes {
+		if n.Need == nil || n.Need.Kind != "decision" {
+			continue
+		}
+		if slices.ContainsFunc(b.Edges, func(e Edge) bool { return e.Kind == "blocked-by" && e.From == n.ID && open[e.To] }) {
+			b.Nodes[i].Need.Kind = "blocked"
 		}
 	}
 	slices.SortStableFunc(b.Edges, func(x, y Edge) int { return strings.Compare(x.Kind+x.From+x.To, y.Kind+y.From+y.To) })
