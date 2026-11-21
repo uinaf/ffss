@@ -19,6 +19,8 @@
   published API docs, and comments a lint rule requires.
 - A correction overwrites, never annotates: code, tests, copy, and docs show
   current behavior, never what was removed or rejected.
+- A product repository's AGENTS.md opens with what it's for, who it serves,
+  and what stays out. Change that only on the user's yes.
 - Docs carry only what a reader must do or must not break. Link the code, CI,
   or config that owns a fact; a restated copy is a mirror and goes stale. A
   doc beyond the standard files earns its place or folds into one.
