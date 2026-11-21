@@ -25,11 +25,13 @@ write outside that workspace.
    and memory; SSH config hosts; tailnet peers; remote-build or lease CLIs on
    `PATH`; attached devices (`adb devices`, `xcrun simctl list`). Each
    question's options come from this inventory.
-3. **Interview.** One question at a time: the decision, options from the
-   inventory, and a recommendation. Ask the first now and hold the rest
-   until it's answered; write no routing on hosts guessed from their names.
-   Skip what the inventory already settles and state it instead. In order:
-   1. Hosts: which machines count, their OS, and how each is reached.
+3. **Interview.** One question at a time, one decision per question: the
+   decision, options from the inventory, and a recommendation. Lead with the
+   question; the inventory follows in a line or a small table. Ask the first
+   now and hold the rest until it's answered; write no routing on hosts
+   guessed from their names. Skip what the inventory already settles and
+   state it instead. In order:
+   1. Hosts: which machines count. OS and reach come from the probe.
    2. Roles: which jobs each host takes (edit loop, heavy build, full suite,
       another OS, simulators, devices).
    3. Rules: who may start what where; hosts that sleep, are shared, or are
@@ -58,10 +60,15 @@ write outside that workspace.
    - a new host or device;
    - capacity change: cores, memory, disk pressure, toolchain versions;
    - a device moved to another host.
-3. Fix mechanical drift in place and keep the user's own edits: mark a dead
-   host unavailable and route its jobs to the remaining hosts that already
-   hold that role. A new host's role, or a limit change, goes to the user as
-   one [Interview](#build) question; route to it only as pending that answer.
+3. Fix drift in place and keep the user's own edits:
+   - Record what the probe shows: a dead host marked unavailable, a device
+     on its new host, new capacity.
+   - Route a dead host's jobs to remaining hosts that already hold that
+     role.
+   - A new host's role goes to the user as one [Interview](#build) question;
+     route to it only as pending that answer.
+   - A capacity change proposes a limit scaled from the probe, as a starting
+     point the user can tune.
 4. Report one row per host: state, drift, and what you changed or left for
    the user. Done when every host in the skill and the inventory has a fresh
    probe result or a pending question.

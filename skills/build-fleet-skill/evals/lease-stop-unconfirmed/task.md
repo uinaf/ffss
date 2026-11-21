@@ -37,12 +37,4 @@ Linux x86_64
 $ runnerctl lease stop L-7f3a
 stop requested for L-7f3a
 
-$ runnerctl lease list
-ID       SIZE   STATE     AGE
-L-7f3a   16cpu  stopping  3m
-
-$ # two minutes later
-$ runnerctl lease list
-ID       SIZE   STATE     AGE
-L-7f3a   16cpu  stopping  5m
 ======= END FILE =======
