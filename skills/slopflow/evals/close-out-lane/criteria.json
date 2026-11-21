@@ -1,0 +1,36 @@
+{
+  "context": "Closing out a lane is right when its epic checklist matches what merged, the out-of-scope finding becomes a tracked sub-issue of the epic, the lane's own worktrees, branches, simulator, sign-in, and any lock it holds are removed on every host while other lanes' resources are left alone, and the user hears only what still waits on them. Judge closeout.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Epic checklist corrected",
+      "max_score": 15,
+      "description": "Updates the epic #170 checklist in place so #102 shows merged #161 and #103 merged #163, and states whether the epic can close"
+    },
+    {
+      "name": "Out-of-scope finding filed",
+      "max_score": 20,
+      "description": "Files the EditorState serialize-per-keystroke finding as a new issue linked as a sub-issue of epic #170 (or of the epic that owns the editor), rather than leaving it only in the review thread"
+    },
+    {
+      "name": "Lane resources removed on every host",
+      "max_score": 25,
+      "description": "Removes the sync lane's worktrees on the local machine (`.worktrees/sync-103`) and on buildbox (`sync-102`, `sync-103`), deletes the merged remote branches `sync/103-conflict-banner` and `sync/102-offline-android`, shuts down the `sync-ios-1` simulator, and signs it out of the test account"
+    },
+    {
+      "name": "Other lanes untouched",
+      "max_score": 20,
+      "description": "Leaves `dark-111` and the `dark-android-1` sign-in alone, and checks who holds `/tmp/quillnote-signin.lock` before removing it rather than deleting it blindly"
+    },
+    {
+      "name": "Report to the user",
+      "max_score": 15,
+      "description": "Ends with a short report of what was cleaned, the new follow-up issue, and anything still waiting on the user, without claiming any step ran"
+    },
+    {
+      "name": "Lane archived last",
+      "max_score": 5,
+      "description": "Archives or ends the lane session only after the checklist, follow-up, and cleanup are done"
+    }
+  ]
+}

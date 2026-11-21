@@ -1,0 +1,31 @@
+{
+  "context": "Kicking off parallel lanes on one feature is right when the coordinator first draws the shared design (the invite lifecycle as a state diagram and the module boundaries each lane owns), puts the open lifecycle question to the user, and starts the lanes only after the user agrees, with briefs that reference the agreed design. Judge kickoff.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Lifecycle state diagram",
+      "max_score": 25,
+      "description": "Draws the invite lifecycle as a state diagram (Mermaid stateDiagram or equivalent) with states such as pending, accepted, declined, revoked, and expired, and the transitions between them, including what accept-after-revoke does or that it is undecided"
+    },
+    {
+      "name": "Module boundaries per lane",
+      "max_score": 20,
+      "description": "Shows the module boundaries and the interface between the lanes (for example the API client's types and functions that the UI and notifications lanes consume), and which lane owns each module"
+    },
+    {
+      "name": "Agreement before lanes start",
+      "max_score": 30,
+      "description": "Asks the user to agree to the design, including the accept-after-revoke question, before any lane starts, and states that lanes start only after that agreement. Starting the lanes now and settling the design in parallel, or treating the design as optional, scores 0"
+    },
+    {
+      "name": "Briefs build on the design",
+      "max_score": 15,
+      "description": "The lane briefs (drafted or outlined) reference the agreed diagram and boundaries as the contract each lane implements against"
+    },
+    {
+      "name": "Question asked well",
+      "max_score": 10,
+      "description": "The open design decision comes with options and a recommendation"
+    }
+  ]
+}

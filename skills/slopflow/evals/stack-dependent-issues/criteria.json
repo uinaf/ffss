@@ -1,0 +1,31 @@
+{
+  "context": "Landing four small dependent issues fast is right when the lane opens them together as a stack of PRs, one per issue, each based on the issue it needs, has each layer reviewed on its own diff against the layer below, and merges from the bottom up. Rebuilding layers after a squash merge is not graded. Judge plan.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Chooses a stack",
+      "max_score": 30,
+      "description": "Opens all four PRs without waiting for each to merge first: one PR per issue, each branched from and based on the issue it depends on (#192 on #191; #193 and #194 on #192). Waiting for #191 to merge before starting #192, or combining issues into one PR, scores 0"
+    },
+    {
+      "name": "Review per layer",
+      "max_score": 30,
+      "description": "Each PR's independent review covers only that layer's diff against the layer below it (for example `git diff <parent-branch>...<branch>`), so each review is small; one review of the whole stack against main, or reviewing each branch against main, scores at most 10"
+    },
+    {
+      "name": "Bottom-up merge",
+      "max_score": 20,
+      "description": "Merges in dependency order, #191 first, then #192, then #193 and #194, each only after its own review, quillbot, approval, and required checks pass on its current head"
+    },
+    {
+      "name": "Parallel where possible",
+      "max_score": 10,
+      "description": "Notes that #193 and #194 both sit on #192 and can be built and reviewed in parallel rather than stacked on each other"
+    },
+    {
+      "name": "Honest",
+      "max_score": 10,
+      "description": "Presents the plan as steps to take; does not claim any PR, review, or merge happened"
+    }
+  ]
+}

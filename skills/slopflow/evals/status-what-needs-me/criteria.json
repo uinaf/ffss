@@ -1,0 +1,36 @@
+{
+  "context": "A coordinator's status answer is right when every issue appears on one visual board with its status, PR, head, proof, and gaps; the waiting lane is told the merge commit it needs; the silent lane is checked; and the user is asked one decision at a time with options and a recommendation. Judge response.md and messages.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "One board with every issue",
+      "max_score": 25,
+      "description": "response.md shows a Markdown table or Mermaid diagram with a row or node for each of #101, #102, #103, #110, #111, #115, and #116, giving status, PR, head or merge commit where known, and proof. It names what is unverified, at least that #102 has no iOS proof. Prose or bullets only, or a board missing issues, scores at most 8"
+    },
+    {
+      "name": "Relays the merge commit",
+      "max_score": 20,
+      "description": "messages.md tells the dark lane that #160 has merged as a1b2c3d on main so it can rebase #111 now"
+    },
+    {
+      "name": "Checks the silent lane",
+      "max_score": 15,
+      "description": "Notices the export lane has been silent since Tuesday despite saying it was fixing the quillbot finding, flags it to the user, and plans to check on or resume that lane rather than wait"
+    },
+    {
+      "name": "One question, with options and a recommendation",
+      "max_score": 25,
+      "description": "response.md names the decisions waiting on the user (#103 conflict UX, #116 keep PDF export) and asks only one of them now, with its options and a recommended choice, saying the other comes next. Asking both at once scores at most 8; a question without options or a recommendation scores at most 8"
+    },
+    {
+      "name": "Answers routed and recorded",
+      "max_score": 10,
+      "description": "Says each answer goes to its lane and is recorded on its issue or epic checklist"
+    },
+    {
+      "name": "Short and honest",
+      "max_score": 5,
+      "description": "response.md leads with the state, stays brief, and does not claim any check, merge, or message happened beyond what the lane messages say"
+    }
+  ]
+}
