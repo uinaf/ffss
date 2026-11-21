@@ -8,6 +8,8 @@ pure logic. Prove costly invariants tests rarely reach, such as races,
 retries, and state machines, with a model checker or bounded proof.
 
 - Keep gates and hooks enabled; fix change-caused failures without asking.
+  A gate counts only after you've seen it refuse a bad change, including an
+  attempt to skip it.
 - Local runs and read-only live checks need no scope; paid calls, shared or
   production writes, and shared devices do.
 - A check proves a claim only if it fails on a negative control, such as the

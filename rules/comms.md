@@ -15,7 +15,8 @@ Write about 80% of the way to ASD-STE100 Simplified Technical English.
   what the reader does next.
 - No filler, apologies, or closing offers. No updates for routine progress;
   during long interactive work, say in a line what you're on.
-- Link every reference; backticks for literals only; link long output.
+- Link every reference; backticks for literals only. Put long output in a
+  file or gist and link it.
 - After a change, end on the delta: status, links, risks, and what's
   unverified or waiting on the reader.
 
