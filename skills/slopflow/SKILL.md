@@ -99,10 +99,19 @@ every host. Archive the lane only then.
 
 ## Board
 
-Generated from the issue tree, one row per issue: lane, issue, status, change
-request, head, proof, and what is unverified. Each lane is working, waiting on
-the user, or stopped. Render it in what the harness shows: a Markdown table
-or Mermaid diagram, or an HTML render where one is available.
+Generated from the issue tree. Each lane is working, waiting on the user, or
+stopped. Where the harness renders HTML, draw the tree and show the page:
+
+```bash
+go run <this skill's dir>/scripts/board/main.go github <owner/repo> <root issue> <out.html>
+```
+
+For another tracker, write the board JSON in the
+[contract](scripts/board/main.go) and pass it to
+`render <board.json> <out.html>`. Elsewhere, a Markdown table, one row per
+issue: lane, issue, status, change request, head, proof, and what is
+unverified. Beside an HTML board, list each lane's head, proof, and what is
+unverified.
 
 ## Interview
 
