@@ -1,30 +1,36 @@
 {
   "title": "Lanes: week 47",
+  "cap": 5,
   "epics": [
     {
       "id": "notebooks",
       "title": "Shared notebooks",
-      "url": "https://example.com/acme/app/issues/210"
+      "url": "https://example.com/acme/app/issues/210",
+      "active": "2026-11-21T11:50:00Z"
     },
     {
       "id": "export",
       "title": "Export",
-      "url": "https://example.com/acme/app/issues/220"
+      "url": "https://example.com/acme/app/issues/220",
+      "active": "2026-11-21T11:30:00Z"
     },
     {
       "id": "search",
       "title": "Search",
-      "url": "https://example.com/acme/app/issues/240"
+      "url": "https://example.com/acme/app/issues/240",
+      "active": "2026-11-21T08:45:00Z"
     },
     {
       "id": "billing",
       "title": "Billing",
-      "url": "https://example.com/acme/app/issues/250"
+      "url": "https://example.com/acme/app/issues/250",
+      "active": "2026-11-21T11:00:00Z"
     },
     {
       "id": "docs",
       "title": "Docs",
-      "url": "https://example.com/acme/app/issues/260"
+      "url": "https://example.com/acme/app/issues/260",
+      "active": "2026-11-21T11:20:00Z"
     }
   ],
   "nodes": [
@@ -120,7 +126,12 @@
       "url": "https://example.com/acme/app/issues/222",
       "merged": [
         "#231"
-      ]
+      ],
+      "delivery": {
+        "stage": "proven",
+        "since": "2026-11-21T11:25:00Z",
+        "evidence": "smoke 4411 in production"
+      }
     },
     {
       "id": "#223",
@@ -141,6 +152,24 @@
       "ref": "#224",
       "repo": "acme/app",
       "url": "https://example.com/acme/app/issues/224"
+    },
+    {
+      "id": "#226",
+      "epic": "export",
+      "kind": "issue",
+      "state": "done",
+      "title": "Export guide",
+      "ref": "#226",
+      "repo": "acme/app",
+      "url": "https://example.com/acme/app/issues/226",
+      "merged": [
+        "#238"
+      ],
+      "delivery": {
+        "stage": "waived",
+        "since": "2026-11-21T10:00:00Z",
+        "evidence": "docs only"
+      }
     },
     {
       "id": "#234",
@@ -165,7 +194,11 @@
       "need": {
         "kind": "blocked",
         "since": "2026-11-20T09:30:00Z",
-        "question": "Index attachments on device or on the server?"
+        "question": "Index attachments on device or on the server?",
+        "options": [
+          "On device",
+          "On the server"
+        ]
       }
     },
     {
@@ -200,21 +233,31 @@
       "need": {
         "kind": "decision",
         "since": "2026-11-17T10:00:00Z",
-        "question": "Prorate upgrades to the day, or bill the full month?"
+        "question": "Prorate upgrades to the day, or bill the full month?",
+        "options": [
+          "Prorate to the day",
+          "Bill the full month"
+        ],
+        "recommend": "Bill the full month"
       }
     },
     {
       "id": "#261",
       "epic": "docs",
       "kind": "issue",
-      "state": "done",
+      "state": "running",
       "title": "Sharing guide",
       "ref": "#261",
       "repo": "acme/app",
       "url": "https://example.com/acme/app/issues/261",
       "merged": [
         "#262"
-      ]
+      ],
+      "delivery": {
+        "stage": "landed",
+        "since": "2026-11-21T11:20:00Z",
+        "evidence": "publish pending"
+      }
     }
   ],
   "edges": [
