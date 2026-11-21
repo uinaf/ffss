@@ -103,8 +103,8 @@ every host. Archive the lane only then.
 
 Generated from the issue tree. Each lane is working, waiting on the user,
 stopped, or stalled: no commit, report, or stage change for 2 hours. Lead with
-one flow line. WIP counts lanes with unproven work, capped at how many the
-user can review:
+one flow line; WIP counts lanes with unproven work, capped at what the user
+can review:
 
 `WIP 2/3 · landed, not live: #14 40m · oldest in flight 2h · last proven 35m ago`
 
@@ -127,9 +127,10 @@ One question at a time: the decision, its options, and a recommendation. Ask
 the first now and hold the rest until it's answered, even in a written
 deliverable.
 
-Four or more open decisions go on one static HTML page instead: a card each
-with its options and recommendation, and a copyable answer block (the board
-script's `decide`). Ask for one reply; record each answer on its issue.
+Four or more open decisions instead go on one script-free HTML page: a card
+each with its options and recommendation, and a copyable answer block (the
+board script's `decide`). Ask for one reply, saying each answer goes on its
+issue.
 
 ## Ledger
 
