@@ -30,7 +30,6 @@ read in the repository only; nothing publishes it.
 
 ## Smoke tests
 - 4411 `e2e-prod` (production), after run 884: PDF export passes.
-- No production run since #234.
 
 ## Epic #172
 ## Lane export
