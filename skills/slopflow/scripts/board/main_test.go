@@ -138,12 +138,12 @@ func TestGitHubBoardKeepsNestedIssuesReviewsAndCrossEpicStacks(t *testing.T) {
 			"timelineItems":{"nodes":[{"createdAt":"2026-11-20T12:00:00Z","label":{"name":"needs-user"}},{"createdAt":"2026-11-20T13:00:00Z","label":{"name":"bug"}}]}}`,
 			id, number, number, number, labels, children, strings.Count(blockers, `"number"`), blockers, strings.Count(prs, `"number"`), prs)
 	}
-	pr := func(number int, base, head, reviewer string) string {
+	pr := func(number int, base, headRepo, head, reviewer string) string {
 		return fmt.Sprintf(`{"number":%d,"title":"PR %d","url":"https://github.com/acme/app/pull/%d","state":"OPEN","isDraft":false,
-			"baseRefName":%q,"headRefName":%q,"repository":{"nameWithOwner":"acme/app"},"updatedAt":"2026-11-21T11:30:00Z",
+			"baseRefName":%q,"headRepository":{"nameWithOwner":%q},"headRefName":%q,"repository":{"nameWithOwner":"acme/app"},"updatedAt":"2026-11-21T11:30:00Z",
 			"reviewRequests":{"nodes":[{"requestedReviewer":{"login":%q}}]},
 			"timelineItems":{"nodes":[{"createdAt":"2026-11-21T10:00:00Z","requestedReviewer":{"login":%q}}]}}`,
-			number, number, number, base, head, reviewer, reviewer)
+			number, number, number, base, headRepo, head, reviewer, reviewer)
 	}
 	children := func(nodes ...string) string {
 		return `{"node":{"subIssues":{"pageInfo":{"hasNextPage":false},"nodes":[` + strings.Join(nodes, ",") + `]}}}`
@@ -151,9 +151,10 @@ func TestGitHubBoardKeepsNestedIssuesReviewsAndCrossEpicStacks(t *testing.T) {
 	responses := map[string]string{
 		"root": `{"viewer":{"login":"me"},"repository":{"issue":{"title":"Lanes","url":"https://github.com/acme/app/issues/1",
 			"subIssues":{"pageInfo":{"hasNextPage":false},"nodes":[` +
-			issue("E", 10, 1, "", "", "") + "," +
-			issue("L", 2, 0, "", `{"number":12,"state":"OPEN","repository":{"nameWithOwner":"acme/app"}}`, pr(32, "api", "ui", "someone")) + `]}}}}`,
-		"E": children(issue("T", 11, 1, "", "", pr(30, "main", "api", "me"))),
+			issue("E", 10, 1, `{"name":"needs-user"}`, "", "") + "," +
+			issue("L", 2, 0, "", `{"number":12,"state":"OPEN","repository":{"nameWithOwner":"acme/app"}}`, pr(32, "api", "acme/app", "ui", "someone")) + `]}}}}`,
+		"E": children(issue("T", 11, 1, "", "", pr(30, "main", "acme/app", "api", "me")+","+
+			pr(40, "main", "fork-a/app", "main", "someone")+","+pr(41, "main", "fork-b/app", "main", "someone"))),
 		"T": children(issue("S", 12, 0, `{"name":"needs-user"}`, "", "")),
 	}
 	graphql = func(_ string, vars map[string]string, into any) error {
@@ -179,6 +180,9 @@ func TestGitHubBoardKeepsNestedIssuesReviewsAndCrossEpicStacks(t *testing.T) {
 	approval := strings.Index(strip, `<span class="k">approval</span><span class="q">PR 30</span><span class="r">2h · app #30</span>`)
 	if blocked < 0 || approval < blocked {
 		t.Errorf("want the nested blocking decision, then the review requested from the viewer:\n%s", strip)
+	}
+	if !strings.Contains(strip, `<span class="q">Issue 10</span>`) {
+		t.Errorf("the epic's own needs-user ask is missing:\n%s", strip)
 	}
 	if strings.Contains(strip, "PR 32") {
 		t.Error("a review requested from someone else reached the needs-you strip")

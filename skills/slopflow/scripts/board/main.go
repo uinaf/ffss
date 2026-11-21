@@ -7,7 +7,8 @@
 // github reads the root issue's sub-issues in any repository through `gh`. A
 // sub-issue with sub-issues of its own is an epic; the other sub-issues group
 // under the root. Each issue brings its "blocked by" dependencies, the
-// needs-user label with when it was added, the last question in its
+// needs-user label with when it was added (an epic with that label is a node
+// of its own epic), the last question in its
 // comments, and the pull requests linked to it. A pull request whose review
 // is requested from the signed-in user needs them too. Write out.json to get
 // the board in the render contract.
@@ -712,7 +713,10 @@ type ghPR struct {
 	IsDraft     bool   `json:"isDraft"`
 	BaseRefName string `json:"baseRefName"`
 	HeadRefName string `json:"headRefName"`
-	Repository  struct {
+	HeadRepo    *struct {
+		NameWithOwner string `json:"nameWithOwner"`
+	} `json:"headRepository"`
+	Repository struct {
 		NameWithOwner string `json:"nameWithOwner"`
 	} `json:"repository"`
 	ReviewRequests struct {
@@ -754,7 +758,7 @@ fragment fields on Issue {
   closedByPullRequestsReferences(first: 20, includeClosedPrs: true) {
     totalCount
     nodes {
-      number title url state isDraft baseRefName headRefName repository { nameWithOwner }
+      number title url state isDraft baseRefName headRefName headRepository { nameWithOwner } repository { nameWithOwner }
       updatedAt
       reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } }
       timelineItems(itemTypes: [REVIEW_REQUESTED_EVENT], last: 20) {
@@ -860,6 +864,9 @@ func fromGitHub(repo, number string) (Board, error) {
 		if err != nil {
 			return Board{}, err
 		}
+		if slices.Contains(sub.Labels.Nodes, ghLabel{Name: "needs-user"}) {
+			issues = append([]ghIssue{sub}, issues...)
+		}
 		groups = append(groups, group{Epic{ID: issueRef(sub.Repository.NameWithOwner, sub.Number), Title: sub.Title, URL: sub.URL}, issues})
 	}
 	if len(leaves) > 0 {
@@ -953,7 +960,7 @@ func fromGitHub(repo, number string) (Board, error) {
 	}
 	for baseID, base := range prRefs {
 		for nextID, next := range prRefs {
-			if baseID != nextID && base.Repository.NameWithOwner == next.Repository.NameWithOwner && next.BaseRefName == base.HeadRefName {
+			if baseID != nextID && base.HeadRepo != nil && base.HeadRepo.NameWithOwner == next.Repository.NameWithOwner && next.BaseRefName == base.HeadRefName {
 				b.Edges = append(b.Edges, Edge{Kind: "stacked", From: baseID, To: nextID})
 			}
 		}
