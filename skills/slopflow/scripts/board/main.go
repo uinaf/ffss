@@ -1,29 +1,40 @@
-// Command board draws a slopflow board: one self-contained HTML page with the
-// nodes that need the user on top and the issue graph below, grouped by epic.
+// Command board draws a slopflow board: one self-contained HTML page with a
+// flow line, the nodes that need the user, and the issue graph below, grouped
+// by epic. decide draws the open questions as one page to answer in a reply.
 //
-//	go run <skill dir>/scripts/board/main.go github <owner/repo> <root issue> <out.html | out.json>
+//	go run <skill dir>/scripts/board/main.go github [-cap N] [-stall 2h] <owner/repo> <root issue> <out.html | out.json>
 //	go run <skill dir>/scripts/board/main.go render <board.json | -> <out.html>
+//	go run <skill dir>/scripts/board/main.go decide <board.json | -> <out.html>
 //
 // github reads the root issue's sub-issues in any repository through `gh`. A
 // sub-issue with sub-issues of its own is an epic; the other sub-issues group
 // under the root. Each issue brings its "blocked by" dependencies, the
 // needs-user label with when it was added (an epic with that label is a node
-// of its own epic), the last question in its
-// comments, and the pull requests linked to it. A pull request whose review
-// is requested from the signed-in user needs them too. Write out.json to get
-// the board in the render contract.
+// of its own epic), the last question in its comments with the list items
+// after it as options ("(recommended)" marks one), and the pull requests
+// linked to it. A pull request whose review is requested from the signed-in
+// user needs them too. An epic's checklist line `#12 proven: <evidence>` sets
+// that issue's delivery, since the edit that wrote the stage. An epic is
+// active at its latest issue, pull request, or stage change. Write out.json
+// to get the board in the render contract.
 //
 // render takes the same board from any tracker:
 //
 //	{
-//	  "title": "Lanes",
-//	  "epics": [{"id": "search", "title": "Search", "url": "https://…"}],
+//	  "title": "Lanes", "cap": 3, "stall": "2h",
+//	  "epics": [{"id": "search", "title": "Search", "url": "https://…",
+//	             "active": "2026-11-20T11:00:00Z"}],
 //	  "nodes": [{
 //	    "id": "app#12", "epic": "search", "kind": "issue", "state": "needs-you",
 //	    "title": "Index attachments", "ref": "#12", "repo": "acme/app",
 //	    "url": "https://…", "merged": ["#20"],
 //	    "need": {"kind": "decision", "since": "2026-11-20T09:30:00Z",
-//	             "question": "On device or on the server?"}
+//	             "question": "On device or on the server?",
+//	             "options": ["On device", "On the server"], "recommend": "On device"}
+//	  }, {
+//	    "id": "app#11", "epic": "search", "kind": "issue", "state": "running",
+//	    "title": "Search ranking", "ref": "#11", "url": "https://…",
+//	    "delivery": {"stage": "landed", "since": "2026-11-20T10:00:00Z", "evidence": "#19 merged"}
 //	  }, {
 //	    "id": "app#30", "epic": "search", "kind": "pr", "state": "review",
 //	    "title": "Index on device", "ref": "#30", "url": "https://…", "issue": "app#12"
@@ -35,11 +46,16 @@
 // A needs-you node carries need, and only it: need.kind is blocked (work is
 // stopped on it), approval (a merge, deploy, or destructive step waits on a
 // yes), or decision (a design or scope question); need.since is an RFC 3339
-// time. The needs-you strip ranks by that kind, then oldest first. An epic's
-// url, a node's repo, need.question, an issue's merged refs, and a pull
-// request's issue are optional. A blocked-by edge points from the blocker
-// to the node it blocks; a stacked edge from a base pull request to the one
-// stacked on it. Edges must not form a cycle.
+// time. The needs-you strip ranks by that kind, then oldest first. options
+// answer the question, and recommend is one of them. delivery.stage is
+// landed, deployed, proven, or waived; an issue with a delivery is done
+// exactly when it is proven or waived. An epic with a node not done is in
+// flight; one in flight and inactive for stall (default 2h) is stalled. cap,
+// stall, an epic's url and active, a node's repo, need.question and its
+// options, an issue's merged refs and delivery, and a pull request's issue
+// are optional. A blocked-by edge points from the blocker to the node it
+// blocks; a stacked edge from a base pull request to the one stacked on it.
+// Edges must not form a cycle.
 package main
 
 import (
@@ -859,7 +875,8 @@ var decisionPage = template.Must(template.New("decide").Parse(`<!doctype html>
 <link rel="stylesheet" href="https://design.uinaf.dev/tokens.css">
 <style>
 body{margin:0}
-.board{max-width:720px;padding:20px;font-size:13px;line-height:1.4}
+.board{box-sizing:border-box;min-height:100vh;padding:20px;font-size:13px;line-height:1.4}
+.board>*{max-width:680px}
 .board a{color:inherit;text-decoration:none}
 .lbl{display:flex;gap:8px;margin:0 0 12px;font-size:10px;letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--fg-subtle)}
 .lbl .n{color:var(--fg-faint)}
