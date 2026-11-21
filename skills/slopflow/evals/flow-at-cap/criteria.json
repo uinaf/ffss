@@ -1,0 +1,31 @@
+{
+  "context": "A flow read is right when it leads with one compact line of WIP against the user's review cap, what is landed but not live with its age, and when work was last proven; counts the merged-but-not-live sync lane as in flight; holds billing at the cap; and flags the silent search lane as stalled without acting on it unasked. Judge flow.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Holds at the cap",
+      "max_score": 30,
+      "description": "Does not start the billing lane now: three lanes are in flight against the user's cap of three, so billing starts only on the user's explicit go-ahead or when a lane frees. Starting billing outright scores 0"
+    },
+    {
+      "name": "In flight until live",
+      "max_score": 20,
+      "description": "Counts sync as in flight because #161 is merged but not in production, and export as out because its work is live and proven, giving three of three (sync, dark, search)"
+    },
+    {
+      "name": "One flow line",
+      "max_score": 20,
+      "description": "Leads with a single compact line covering lanes in flight against the cap (3/3), sync landed but not live for about 40 minutes, and the last proof about 35 minutes ago"
+    },
+    {
+      "name": "Stalled lane",
+      "max_score": 20,
+      "description": "Flags search as stalled: no commit, report, or checklist change for over three hours. Surfaces it to the user and at most asks the lane for status; does not restart, kill, or reassign it unasked"
+    },
+    {
+      "name": "Brief",
+      "max_score": 10,
+      "description": "Answers the billing question first and stays short"
+    }
+  ]
+}

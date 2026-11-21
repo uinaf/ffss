@@ -84,12 +84,14 @@ Send every lane:
 > nothing. Reply in at most three lines: what's mid-flight and where to
 > resume.
 
-Resume names each lane's next issue, branch, and head, under the same brief.
-The lane checks its worktrees, devices, and locks first.
+Resume names each lane's next issue, branch, and head, under the same brief,
+numbering the attempt (`sync a2`). The lane checks its worktrees, devices, and
+locks first and tags reports with the attempt; older attempts' reports change
+nothing.
 
 ## Close out
 
-An epic closes only when each planned issue has its merged change request.
+An epic closes only when each planned issue is proven or waived.
 Failed or abandoned work survives as a branch or patch linked from its issue.
 Findings outside an issue become sub-issues of the epic.
 
@@ -99,11 +101,17 @@ every host. Archive the lane only then.
 
 ## Board
 
-Generated from the issue tree. Each lane is working, waiting on the user, or
-stopped. Where the harness renders HTML, draw the tree and show the page:
+Generated from the issue tree. Each lane is working, waiting on the user,
+stopped, or stalled: no commit, report, or stage change for 2 hours. Lead with
+one flow line; WIP counts lanes with unproven work, capped at what the user
+can review:
+
+`WIP 2/3 · landed, not live: #14 40m · oldest in flight 2h · last proven 35m ago`
+
+Where the harness renders HTML, draw the tree and show the page:
 
 ```bash
-go run <this skill's dir>/scripts/board/main.go github <owner/repo> <root issue> <out.html>
+go run <this skill's dir>/scripts/board/main.go github -cap <N> <owner/repo> <root issue> <out.html>
 ```
 
 For another tracker, write the board JSON in the
@@ -119,12 +127,19 @@ One question at a time: the decision, its options, and a recommendation. Ask
 the first now and hold the rest until it's answered, even in a written
 deliverable.
 
+Four or more open decisions instead go on one script-free HTML page: a card
+each with its options and recommendation, and a copyable answer block (the
+board script's `decide`). Ask for one reply, saying each answer goes on its
+issue.
+
 ## Ledger
 
 The epic issue. Each lane keeps a `## Lane <name>` checklist, one line per
-issue, updated in place:
+issue, updated in place, with its stage (landed, deployed, proven, or waived
+when nothing deploys) and evidence:
 
 ```markdown
-- [x] #12 merged #20
+- [x] #12 proven: smoke 4411 passes in production
+- [ ] #14 landed: #20 merged, promote pending
 - [ ] #31 needs-user: conflict banner or silent merge?
 ```

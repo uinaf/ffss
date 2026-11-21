@@ -1,29 +1,40 @@
-// Command board draws a slopflow board: one self-contained HTML page with the
-// nodes that need the user on top and the issue graph below, grouped by epic.
+// Command board draws a slopflow board: one self-contained HTML page with a
+// flow line, the nodes that need the user, and the issue graph below, grouped
+// by epic. decide draws the open questions as one page to answer in a reply.
 //
-//	go run <skill dir>/scripts/board/main.go github <owner/repo> <root issue> <out.html | out.json>
+//	go run <skill dir>/scripts/board/main.go github [-cap N] [-stall 2h] <owner/repo> <root issue> <out.html | out.json>
 //	go run <skill dir>/scripts/board/main.go render <board.json | -> <out.html>
+//	go run <skill dir>/scripts/board/main.go decide <board.json | -> <out.html>
 //
 // github reads the root issue's sub-issues in any repository through `gh`. A
 // sub-issue with sub-issues of its own is an epic; the other sub-issues group
 // under the root. Each issue brings its "blocked by" dependencies, the
 // needs-user label with when it was added (an epic with that label is a node
-// of its own epic), the last question in its
-// comments, and the pull requests linked to it. A pull request whose review
-// is requested from the signed-in user needs them too. Write out.json to get
-// the board in the render contract.
+// of its own epic), the last question in its comments with the list items
+// after it as options ("(recommended)" marks one), and the pull requests
+// linked to it. A pull request whose review is requested from the signed-in
+// user needs them too. An epic's checklist line `#12 proven: <evidence>` sets
+// that issue's delivery, since the edit that wrote the stage. An epic is
+// active at its latest issue, pull request, or stage change. Write out.json
+// to get the board in the render contract.
 //
 // render takes the same board from any tracker:
 //
 //	{
-//	  "title": "Lanes",
-//	  "epics": [{"id": "search", "title": "Search", "url": "https://…"}],
+//	  "title": "Lanes", "cap": 3, "stall": "2h",
+//	  "epics": [{"id": "search", "title": "Search", "url": "https://…",
+//	             "active": "2026-11-20T11:00:00Z"}],
 //	  "nodes": [{
 //	    "id": "app#12", "epic": "search", "kind": "issue", "state": "needs-you",
 //	    "title": "Index attachments", "ref": "#12", "repo": "acme/app",
 //	    "url": "https://…", "merged": ["#20"],
 //	    "need": {"kind": "decision", "since": "2026-11-20T09:30:00Z",
-//	             "question": "On device or on the server?"}
+//	             "question": "On device or on the server?",
+//	             "options": ["On device", "On the server"], "recommend": "On device"}
+//	  }, {
+//	    "id": "app#11", "epic": "search", "kind": "issue", "state": "running",
+//	    "title": "Search ranking", "ref": "#11", "url": "https://…",
+//	    "delivery": {"stage": "landed", "since": "2026-11-20T10:00:00Z", "evidence": "#19 merged"}
 //	  }, {
 //	    "id": "app#30", "epic": "search", "kind": "pr", "state": "review",
 //	    "title": "Index on device", "ref": "#30", "url": "https://…", "issue": "app#12"
@@ -35,23 +46,30 @@
 // A needs-you node carries need, and only it: need.kind is blocked (work is
 // stopped on it), approval (a merge, deploy, or destructive step waits on a
 // yes), or decision (a design or scope question); need.since is an RFC 3339
-// time. The needs-you strip ranks by that kind, then oldest first. An epic's
-// url, a node's repo, need.question, an issue's merged refs, and a pull
-// request's issue are optional. A blocked-by edge points from the blocker
-// to the node it blocks; a stacked edge from a base pull request to the one
-// stacked on it. Edges must not form a cycle.
+// time. The needs-you strip ranks by that kind, then oldest first. options
+// answer the question, and recommend is one of them. delivery.stage is
+// landed, deployed, proven, or waived; an issue with a delivery is done
+// exactly when it is proven or waived. An epic with a node not done is in
+// flight; one in flight and inactive for stall (default 2h) is stalled. cap,
+// stall, an epic's url and active, a node's repo, need.question and its
+// options, an issue's merged refs and delivery, and a pull request's issue
+// are optional. A blocked-by edge points from the blocker to the node it
+// blocks; a stacked edge from a base pull request to the one stacked on it.
+// Edges must not form a cycle.
 package main
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"html/template"
 	"io"
 	"net/url"
 	"os"
 	"os/exec"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -60,35 +78,47 @@ import (
 
 type Board struct {
 	Title string `json:"title"`
+	Cap   int    `json:"cap,omitempty"`
+	Stall string `json:"stall,omitempty"`
 	Epics []Epic `json:"epics"`
 	Nodes []Node `json:"nodes"`
 	Edges []Edge `json:"edges"`
 }
 
 type Epic struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
-	URL   string `json:"url,omitempty"`
+	ID     string `json:"id"`
+	Title  string `json:"title"`
+	URL    string `json:"url,omitempty"`
+	Active string `json:"active,omitempty"`
 }
 
 type Node struct {
-	ID     string   `json:"id"`
-	Epic   string   `json:"epic"`
-	Kind   string   `json:"kind"`
-	State  string   `json:"state"`
-	Title  string   `json:"title"`
-	Ref    string   `json:"ref"`
-	Repo   string   `json:"repo,omitempty"`
-	URL    string   `json:"url"`
-	Need   *Need    `json:"need,omitempty"`
-	Merged []string `json:"merged,omitempty"`
-	Issue  string   `json:"issue,omitempty"`
+	ID       string    `json:"id"`
+	Epic     string    `json:"epic"`
+	Kind     string    `json:"kind"`
+	State    string    `json:"state"`
+	Title    string    `json:"title"`
+	Ref      string    `json:"ref"`
+	Repo     string    `json:"repo,omitempty"`
+	URL      string    `json:"url"`
+	Need     *Need     `json:"need,omitempty"`
+	Merged   []string  `json:"merged,omitempty"`
+	Issue    string    `json:"issue,omitempty"`
+	Delivery *Delivery `json:"delivery,omitempty"`
 }
 
 type Need struct {
-	Kind     string `json:"kind"`
+	Kind      string   `json:"kind"`
+	Since     string   `json:"since"`
+	Question  string   `json:"question,omitempty"`
+	Options   []string `json:"options,omitempty"`
+	Recommend string   `json:"recommend,omitempty"`
+}
+
+type Delivery struct {
+	Stage    string `json:"stage"`
 	Since    string `json:"since"`
-	Question string `json:"question,omitempty"`
+	Evidence string `json:"evidence,omitempty"`
 }
 
 type Edge struct {
@@ -102,12 +132,16 @@ var (
 	kinds  = []string{"issue", "pr"}
 	links  = []string{"blocked-by", "stacked"}
 	needs  = []string{"blocked", "approval", "decision"}
+	stages = []string{"landed", "deployed", "proven", "waived"}
 	now    = time.Now
 )
 
+const defaultStall = 2 * time.Hour
+
 const usage = `usage:
-  board github <owner/repo> <root issue> <out.html | out.json>
-  board render <board.json | -> <out.html>`
+  board github [-cap N] [-stall 2h] <owner/repo> <root issue> <out.html | out.json>
+  board render <board.json | -> <out.html>
+  board decide <board.json | -> <out.html>`
 
 func main() {
 	if err := run(os.Args[1:], os.Stdin, os.Stdout); err != nil {
@@ -117,20 +151,38 @@ func main() {
 }
 
 func run(args []string, stdin io.Reader, stdout io.Writer) error {
+	if len(args) == 0 {
+		return errors.New(usage)
+	}
+	cmd, rest := args[0], args[1:]
 	var board Board
 	var out string
 	var err error
 	switch {
-	case len(args) == 4 && args[0] == "github":
-		out = args[3]
-		board, err = fromGitHub(args[1], args[2])
-	case len(args) == 3 && args[0] == "render":
-		out = args[2]
+	case cmd == "github":
+		flags := flag.NewFlagSet("github", flag.ContinueOnError)
+		flags.SetOutput(io.Discard)
+		limit := flags.Int("cap", 0, "")
+		stall := flags.Duration("stall", defaultStall, "")
+		if flags.Parse(rest) != nil || flags.NArg() != 3 {
+			return errors.New(usage)
+		}
+		out = flags.Arg(2)
+		board, err = fromGitHub(flags.Arg(0), flags.Arg(1))
+		if err == nil {
+			board.Cap = *limit
+			if *stall != defaultStall {
+				board.Stall = stall.String()
+			}
+			err = validate(board)
+		}
+	case (cmd == "render" || cmd == "decide") && len(rest) == 2:
+		out = rest[1]
 		var data []byte
-		if args[1] == "-" {
+		if rest[0] == "-" {
 			data, err = io.ReadAll(stdin)
 		} else {
-			data, err = os.ReadFile(args[1])
+			data, err = os.ReadFile(rest[0])
 		}
 		if err != nil {
 			return err
@@ -143,9 +195,12 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 		return err
 	}
 	var page []byte
-	if strings.HasSuffix(out, ".json") {
+	switch {
+	case cmd == "decide":
+		page, err = renderDecisions(board)
+	case strings.HasSuffix(out, ".json"):
 		page, err = json.MarshalIndent(board, "", "  ")
-	} else {
+	default:
 		page, err = renderBoard(board)
 	}
 	if err != nil {
@@ -154,6 +209,11 @@ func run(args []string, stdin io.Reader, stdout io.Writer) error {
 	if err := os.WriteFile(out, page, 0o644); err != nil {
 		return err
 	}
+	if cmd == "decide" {
+		fmt.Fprintf(stdout, "decisions: %s\n", out)
+		return nil
+	}
+	fmt.Fprintln(stdout, flowLine(board))
 	for _, n := range sortedByState(board.Nodes) {
 		fmt.Fprintf(stdout, "%-9s %-4s %s %s  %s\n", n.State, n.Kind, n.Repo, n.Ref, n.Title)
 	}
@@ -184,6 +244,14 @@ func validate(b Board) error {
 	if len(b.Epics) == 0 {
 		return errors.New("epics needs at least one epic")
 	}
+	if b.Cap < 0 {
+		return errors.New("cap must not be negative")
+	}
+	if b.Stall != "" {
+		if d, err := time.ParseDuration(b.Stall); err != nil || d <= 0 {
+			return fmt.Errorf("stall %q is not a positive duration such as 2h", b.Stall)
+		}
+	}
 	epics := map[string]bool{}
 	for i, e := range b.Epics {
 		switch {
@@ -193,6 +261,8 @@ func validate(b Board) error {
 			return fmt.Errorf("epics[%d]: duplicate id %q", i, e.ID)
 		case e.URL != "" && !isWebURL(e.URL):
 			return fmt.Errorf("epics[%d] (%s): url must be an absolute http(s) URL", i, e.ID)
+		case e.Active != "" && !isTime(e.Active):
+			return fmt.Errorf("epics[%d] (%s): active %q is not an RFC 3339 time", i, e.ID, e.Active)
 		}
 		epics[e.ID] = true
 	}
@@ -222,11 +292,28 @@ func validate(b Board) error {
 			return fmt.Errorf("%s: need is for needs-you nodes", where)
 		}
 		if n.Need != nil {
-			if !slices.Contains(needs, n.Need.Kind) {
+			switch {
+			case !slices.Contains(needs, n.Need.Kind):
 				return fmt.Errorf("%s: need.kind %q is not one of %s", where, n.Need.Kind, strings.Join(needs, ", "))
-			}
-			if _, err := time.Parse(time.RFC3339, n.Need.Since); err != nil {
+			case !isTime(n.Need.Since):
 				return fmt.Errorf("%s: need.since %q is not an RFC 3339 time", where, n.Need.Since)
+			case len(n.Need.Options) > 0 && n.Need.Question == "":
+				return fmt.Errorf("%s: need.options answer need.question, which is missing", where)
+			case n.Need.Recommend != "" && !slices.Contains(n.Need.Options, n.Need.Recommend):
+				return fmt.Errorf("%s: need.recommend %q is not one of need.options", where, n.Need.Recommend)
+			}
+		}
+		if d := n.Delivery; d != nil {
+			finished := d.Stage == "proven" || d.Stage == "waived"
+			switch {
+			case n.Kind != "issue":
+				return fmt.Errorf("%s: delivery is for issues", where)
+			case !slices.Contains(stages, d.Stage):
+				return fmt.Errorf("%s: delivery.stage %q is not one of %s", where, d.Stage, strings.Join(stages, ", "))
+			case !isTime(d.Since):
+				return fmt.Errorf("%s: delivery.since %q is not an RFC 3339 time", where, d.Since)
+			case finished != (n.State == "done"):
+				return fmt.Errorf("%s: an issue is done exactly when its delivery is proven or waived", where)
 			}
 		}
 		nodes[n.ID] = n
@@ -262,6 +349,11 @@ func validate(b Board) error {
 		return fmt.Errorf("edges form a cycle: %s", strings.Join(cycle, " → "))
 	}
 	return nil
+}
+
+func isTime(raw string) bool {
+	_, err := time.Parse(time.RFC3339, raw)
+	return err == nil
 }
 
 func isWebURL(raw string) bool {
@@ -346,6 +438,7 @@ type card struct {
 type section struct {
 	Epic          Epic
 	Count         int
+	Stalled       string
 	Width, Height int
 	Cards         []card
 	Loose         []card
@@ -354,6 +447,7 @@ type section struct {
 
 type needsRow struct {
 	Kind, Text, Age, Ref, URL string
+	node                      Node
 	since                     time.Time
 }
 
@@ -496,26 +590,37 @@ func layout(b Board, epic Epic, idx int) section {
 }
 
 func newCard(b Board, n Node, byID map[string]Node, inEpic map[string]bool, x, y int) card {
-	meta := []string{strings.TrimSpace(shortRepo(n.Repo) + " " + n.Ref)}
+	meta := []string{nodeRef(n)}
 	if len(n.Merged) > 0 {
 		meta = append(meta, "merged "+strings.Join(n.Merged, ", "))
+	}
+	word := strings.ReplaceAll(n.State, "-", " ")
+	if n.Delivery != nil {
+		word = n.Delivery.Stage
+		if n.Delivery.Evidence != "" {
+			meta = append(meta, n.Delivery.Evidence)
+		}
 	}
 	for _, e := range b.Edges {
 		if e.To == n.ID && !inEpic[e.From] {
 			from := byID[e.From]
 			word := map[string]string{"blocked-by": "after ", "stacked": "on "}[e.Kind]
-			meta = append(meta, word+strings.TrimSpace(shortRepo(from.Repo)+" "+from.Ref))
+			meta = append(meta, word+nodeRef(from))
 		}
 	}
 	return card{
 		Node:  n,
 		X:     x,
 		Y:     y,
-		Word:  strings.ReplaceAll(n.State, "-", " "),
+		Word:  word,
 		Dot:   dots[n.State],
 		Class: n.Kind + " " + n.State,
 		Meta:  strings.Join(meta, " · "),
 	}
+}
+
+func nodeRef(n Node) string {
+	return strings.TrimSpace(shortRepo(n.Repo) + " " + n.Ref)
 }
 
 func shortRepo(repo string) string {
@@ -536,6 +641,8 @@ body{margin:0}
 .lbl{display:flex;gap:8px;margin:0 0 12px;font-size:10px;letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--fg-subtle)}
 .lbl .n{color:var(--fg-faint)}
 .lbl a:hover{color:var(--fg)}
+.lbl .stall{color:var(--warn)}
+.flow{margin:0 0 20px;font-size:11px;color:var(--fg-subtle)}
 .needs a{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border-soft)}
 .needs a:first-of-type{border-top:0;padding-top:0}
 .needs .k{min-width:9ch;font-size:11px;color:var(--fg-subtle)}
@@ -565,6 +672,7 @@ body{margin:0}
 .m{font-size:11px;color:var(--fg-subtle)}
 </style></head>
 <body><div class="uinaf board">
+<div class="flow">{{.Flow}}</div>
 {{- if .Needs}}
 <div class="needs"><div class="lbl">needs you <span class="n">{{len .Needs}}</span></div>
 {{- range .Needs}}
@@ -576,7 +684,7 @@ body{margin:0}
 <div class="band">
 {{- range .}}
 <section class="epic">
-<div class="lbl">{{if .Epic.URL}}<a href="{{.Epic.URL}}">{{.Epic.Title}}</a>{{else}}{{.Epic.Title}}{{end}} <span class="n">{{.Count}}</span></div>
+<div class="lbl">{{if .Epic.URL}}<a href="{{.Epic.URL}}">{{.Epic.Title}}</a>{{else}}{{.Epic.Title}}{{end}} <span class="n">{{.Count}}</span>{{if .Stalled}} <span class="stall">stalled {{.Stalled}}</span>{{end}}</div>
 {{- if .Cards}}
 <div class="canvas" style="width:{{.Width}}px;height:{{.Height}}px">{{.Edges}}
 {{- range .Cards}}
@@ -611,12 +719,85 @@ func age(d time.Duration) string {
 	return fmt.Sprintf("%dw", int(d.Hours()/24/7))
 }
 
-func renderBoard(b Board) ([]byte, error) {
-	data := struct {
-		Title string
-		Needs []needsRow
-		Bands [][]section
-	}{Title: b.Title}
+func stamp(raw string) time.Time {
+	t, _ := time.Parse(time.RFC3339, raw)
+	return t
+}
+
+func inFlight(b Board) map[string]bool {
+	open := map[string]bool{}
+	for _, n := range b.Nodes {
+		if n.State != "done" {
+			open[n.Epic] = true
+		}
+	}
+	return open
+}
+
+func stalled(b Board) map[string]time.Duration {
+	after := defaultStall
+	if b.Stall != "" {
+		after, _ = time.ParseDuration(b.Stall)
+	}
+	open, idle := inFlight(b), map[string]time.Duration{}
+	for _, e := range b.Epics {
+		if d := now().Sub(stamp(e.Active)); open[e.ID] && e.Active != "" && d >= after {
+			idle[e.ID] = d
+		}
+	}
+	return idle
+}
+
+func flowLine(b Board) string {
+	wip := fmt.Sprintf("WIP %d", len(inFlight(b)))
+	if b.Cap > 0 {
+		wip += fmt.Sprintf("/%d", b.Cap)
+	}
+	parts := []string{wip}
+	var landed []string
+	var oldest time.Duration
+	var proven time.Time
+	for _, n := range b.Nodes {
+		if n.Delivery == nil {
+			continue
+		}
+		since := stamp(n.Delivery.Since)
+		switch n.Delivery.Stage {
+		case "landed":
+			landed = append(landed, nodeRef(n)+" "+age(now().Sub(since)))
+			oldest = max(oldest, now().Sub(since))
+		case "deployed":
+			oldest = max(oldest, now().Sub(since))
+		case "proven":
+			if since.After(proven) {
+				proven = since
+			}
+		}
+	}
+	if len(landed) > 0 {
+		parts = append(parts, "landed, not live: "+strings.Join(landed, ", "))
+	}
+	if oldest > 0 {
+		parts = append(parts, "oldest in flight "+age(oldest))
+	}
+	if !proven.IsZero() {
+		parts = append(parts, "last proven "+age(now().Sub(proven))+" ago")
+	}
+	idle := stalled(b)
+	var quiet []string
+	for _, e := range b.Epics {
+		if d, ok := idle[e.ID]; ok {
+			quiet = append(quiet, e.Title+" "+age(d))
+		}
+	}
+	if len(quiet) > 0 {
+		parts = append(parts, "stalled: "+strings.Join(quiet, ", "))
+	}
+	return strings.Join(parts, " · ")
+}
+
+func needRows(b Board) []needsRow {
+	var rows []needsRow
 	for _, n := range b.Nodes {
 		if n.State != "needs-you" {
 			continue
@@ -625,27 +806,42 @@ func renderBoard(b Board) ([]byte, error) {
 		if text == "" {
 			text = n.Title
 		}
-		since, _ := time.Parse(time.RFC3339, n.Need.Since)
-		data.Needs = append(data.Needs, needsRow{
+		since := stamp(n.Need.Since)
+		rows = append(rows, needsRow{
 			Kind:  n.Need.Kind,
 			Text:  text,
 			Age:   age(now().Sub(since)),
-			Ref:   strings.TrimSpace(shortRepo(n.Repo) + " " + n.Ref),
+			Ref:   nodeRef(n),
 			URL:   n.URL,
+			node:  n,
 			since: since,
 		})
 	}
-	slices.SortStableFunc(data.Needs, func(a, b needsRow) int {
+	slices.SortStableFunc(rows, func(a, b needsRow) int {
 		if d := slices.Index(needs, a.Kind) - slices.Index(needs, b.Kind); d != 0 {
 			return d
 		}
 		return a.since.Compare(b.since)
 	})
+	return rows
+}
+
+func renderBoard(b Board) ([]byte, error) {
+	data := struct {
+		Title string
+		Flow  string
+		Needs []needsRow
+		Bands [][]section
+	}{Title: b.Title, Flow: flowLine(b), Needs: needRows(b)}
+	idle := stalled(b)
 	single := false
 	for i, e := range b.Epics {
 		s := layout(b, e, i)
 		if s.Count == 0 {
 			continue
+		}
+		if d, ok := idle[e.ID]; ok {
+			s.Stalled = age(d)
 		}
 		if s.Count == 1 && single {
 			last := len(data.Bands) - 1
@@ -657,6 +853,81 @@ func renderBoard(b Board) ([]byte, error) {
 	}
 	var buf bytes.Buffer
 	if err := page.Execute(&buf, data); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+type option struct {
+	Text        string
+	Recommended bool
+}
+
+type decision struct {
+	needsRow
+	Options   []option
+	Recommend string
+}
+
+var decisionPage = template.Must(template.New("decide").Parse(`<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}: decisions</title>
+<link rel="stylesheet" href="https://design.uinaf.dev/tokens.css">
+<style>
+body{margin:0}
+.board{box-sizing:border-box;min-height:100vh;padding:20px;font-size:13px;line-height:1.4}
+.board>*{max-width:680px}
+.board a{color:inherit;text-decoration:none}
+.lbl{display:flex;gap:8px;margin:0 0 12px;font-size:10px;letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--fg-subtle)}
+.lbl .n{color:var(--fg-faint)}
+.card{box-sizing:border-box;margin:0 0 12px;padding:12px 14px;background:var(--bg-raised);border:1px solid color-mix(in srgb,var(--warn) 35%,var(--border));border-radius:5px}
+.card .h{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--fg-subtle)}
+.card .h:hover{color:var(--fg)}
+.card .r{margin-left:auto}
+.q{margin:8px 0;color:var(--fg)}
+ol{margin:0;padding-left:20px;color:var(--fg-subtle)}
+li.rec{color:var(--fg)}
+.tag{font-size:10px;color:var(--warn)}
+pre{margin:0;padding:12px 14px;background:var(--bg-raised);border:1px solid var(--border);border-radius:5px;font-size:12px;white-space:pre-wrap;user-select:all}
+.band{margin-top:24px}
+</style></head>
+<body><div class="uinaf board">
+<div class="lbl">decisions <span class="n">{{len .Decisions}}</span></div>
+{{- range .Decisions}}
+<section class="card"><a class="h" href="{{.URL}}"><span class="u-dot u-dot--warn"></span>{{.Ref}}<span class="r">{{.Kind}} · {{.Age}}</span></a>
+<p class="q">{{.Text}}</p>
+{{- if .Options}}
+<ol>{{range .Options}}<li{{if .Recommended}} class="rec"{{end}}>{{.Text}}{{if .Recommended}} <span class="tag">recommended</span>{{end}}</li>{{end}}</ol>
+{{- end}}
+</section>
+{{- end}}
+<div class="band"><div class="lbl">answer in one reply</div>
+<pre>{{range .Decisions}}{{.Ref}}: {{.Recommend}}
+{{end}}</pre></div>
+</div></body></html>
+`))
+
+func renderDecisions(b Board) ([]byte, error) {
+	data := struct {
+		Title     string
+		Decisions []decision
+	}{Title: b.Title}
+	for _, row := range needRows(b) {
+		need := row.node.Need
+		if need.Question == "" {
+			continue
+		}
+		d := decision{needsRow: row, Recommend: need.Recommend}
+		for _, o := range need.Options {
+			d.Options = append(d.Options, option{Text: o, Recommended: o == need.Recommend})
+		}
+		data.Decisions = append(data.Decisions, d)
+	}
+	if len(data.Decisions) == 0 {
+		return nil, errors.New("no needs-you node asks a question")
+	}
+	var buf bytes.Buffer
+	if err := decisionPage.Execute(&buf, data); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -770,16 +1041,69 @@ fragment fields on Issue {
   timelineItems(itemTypes: [LABELED_EVENT], last: 20) { nodes { ... on LabeledEvent { createdAt label { name } } } }
 }`
 
+const ledgerFields = `body createdAt updatedAt repository { nameWithOwner } userContentEdits(last: 30) { nodes { editedAt diff } }`
+
 const rootQuery = `query($owner: String!, $name: String!, $number: Int!) {
   viewer { login }
   repository(owner: $owner, name: $name) {
-    issue(number: $number) { title url subIssues(first: 100) { pageInfo { hasNextPage } nodes { ...fields } } }
+    issue(number: $number) { title url ` + ledgerFields + ` subIssues(first: 100) { pageInfo { hasNextPage } nodes { ...fields } } }
   }
 }` + issueFields
 
 const epicQuery = `query($id: ID!) {
-  node(id: $id) { ... on Issue { subIssues(first: 100) { pageInfo { hasNextPage } nodes { ...fields } } } }
+  node(id: $id) { ... on Issue { ` + ledgerFields + ` subIssues(first: 100) { pageInfo { hasNextPage } nodes { ...fields } } } }
 }` + issueFields
+
+type ghLedger struct {
+	Body       string `json:"body"`
+	CreatedAt  string `json:"createdAt"`
+	UpdatedAt  string `json:"updatedAt"`
+	Repository struct {
+		NameWithOwner string `json:"nameWithOwner"`
+	} `json:"repository"`
+	Edits struct {
+		Nodes []struct {
+			EditedAt string `json:"editedAt"`
+			Diff     string `json:"diff"`
+		} `json:"nodes"`
+	} `json:"userContentEdits"`
+}
+
+var ledgerLine = regexp.MustCompile(`(?m)^\s*[-*] \[[ xX]\] #(\d+) (landed|deployed|proven|waived)\b:?[ \t]*(.*)$`)
+
+func ledgerStages(body string) map[int]Delivery {
+	out := map[int]Delivery{}
+	for _, m := range ledgerLine.FindAllStringSubmatch(body, -1) {
+		n, _ := strconv.Atoi(m[1])
+		out[n] = Delivery{Stage: m[2], Evidence: strings.TrimSpace(m[3])}
+	}
+	return out
+}
+
+func (l ghLedger) deliveries(into map[string]Delivery) {
+	type revision struct{ at, body string }
+	revisions := []revision{{l.CreatedAt, l.Body}}
+	if len(l.Edits.Nodes) > 0 {
+		revisions = nil
+		for _, e := range l.Edits.Nodes {
+			revisions = append(revisions, revision{e.EditedAt, e.Diff})
+		}
+	}
+	for n, d := range ledgerStages(l.Body) {
+		ref := issueRef(l.Repository.NameWithOwner, n)
+		if _, seen := into[ref]; seen {
+			continue
+		}
+		d.Since = revisions[0].at
+		for _, r := range revisions {
+			if ledgerStages(r.body)[n].Stage != d.Stage {
+				break
+			}
+			d.Since = r.at
+		}
+		into[ref] = d
+	}
+}
 
 var graphql = ghGraphQL
 
@@ -831,6 +1155,7 @@ func fromGitHub(repo, number string) (Board, error) {
 		} `json:"viewer"`
 		Repository struct {
 			Issue *struct {
+				ghLedger
 				Title     string     `json:"title"`
 				URL       string     `json:"url"`
 				SubIssues ghChildren `json:"subIssues"`
@@ -853,6 +1178,8 @@ func fromGitHub(repo, number string) (Board, error) {
 	type group struct {
 		epic   Epic
 		issues []ghIssue
+		stages map[string]Delivery
+		active []string
 	}
 	var groups []group
 	for _, sub := range top.SubIssues.Nodes {
@@ -860,26 +1187,32 @@ func fromGitHub(repo, number string) (Board, error) {
 			leaves = append(leaves, sub)
 			continue
 		}
-		issues, err := descendants(sub)
+		g := group{stages: map[string]Delivery{}, active: []string{sub.UpdatedAt}}
+		issues, err := descendants(sub, g.stages)
 		if err != nil {
 			return Board{}, err
 		}
 		if slices.Contains(sub.Labels.Nodes, ghLabel{Name: "needs-user"}) {
 			issues = append([]ghIssue{sub}, issues...)
 		}
-		groups = append(groups, group{Epic{ID: issueRef(sub.Repository.NameWithOwner, sub.Number), Title: sub.Title, URL: sub.URL}, issues})
+		g.epic, g.issues = Epic{ID: issueRef(sub.Repository.NameWithOwner, sub.Number), Title: sub.Title, URL: sub.URL}, issues
+		groups = append(groups, g)
 	}
-	if len(leaves) > 0 {
-		groups = append([]group{{rootEpic, leaves}}, groups...)
+	if len(leaves) > 0 || len(groups) == 0 {
+		g := group{epic: rootEpic, issues: leaves, stages: map[string]Delivery{}, active: []string{top.UpdatedAt}}
+		top.deliveries(g.stages)
+		groups = append([]group{g}, groups...)
 	}
-	if len(groups) == 0 {
-		groups = []group{{rootEpic, nil}}
+	shipped := map[string]bool{}
+	for _, g := range groups {
+		for ref, d := range g.stages {
+			shipped[ref] = d.Stage == "proven" || d.Stage == "waived"
+		}
 	}
 	var blockers [][2]string
 	var prs []Node
 	prRefs := map[string]ghPR{}
 	for _, g := range groups {
-		b.Epics = append(b.Epics, g.epic)
 		for _, is := range g.issues {
 			id := issueRef(is.Repository.NameWithOwner, is.Number)
 			if is.BlockedBy.TotalCount > len(is.BlockedBy.Nodes) || is.PullRequests.TotalCount > len(is.PullRequests.Nodes) {
@@ -888,8 +1221,9 @@ func fromGitHub(repo, number string) (Board, error) {
 			node := Node{ID: id, Epic: g.epic.ID, Kind: "issue", Title: is.Title, Ref: fmt.Sprintf("#%d", is.Number), Repo: is.Repository.NameWithOwner, URL: is.URL}
 			openBlocker := false
 			for _, bl := range is.BlockedBy.Nodes {
-				blockers = append(blockers, [2]string{issueRef(bl.Repository.NameWithOwner, bl.Number), id})
-				openBlocker = openBlocker || bl.State == "OPEN"
+				ref := issueRef(bl.Repository.NameWithOwner, bl.Number)
+				blockers = append(blockers, [2]string{ref, id})
+				openBlocker = openBlocker || bl.State == "OPEN" && !shipped[ref]
 			}
 			needsUser := slices.Contains(is.Labels.Nodes, ghLabel{Name: "needs-user"})
 			switch {
@@ -907,18 +1241,30 @@ func fromGitHub(repo, number string) (Board, error) {
 					}
 				}
 				for i := len(is.Comments.Nodes) - 1; i >= 0 && node.Need.Question == ""; i-- {
-					node.Need.Question = lastQuestion(is.Comments.Nodes[i].Body)
+					node.Need.Question, node.Need.Options, node.Need.Recommend = askedIn(is.Comments.Nodes[i].Body)
 				}
 			case openBlocker:
 				node.State = "blocked"
 			default:
 				node.State = "running"
 			}
+			g.active = append(g.active, is.UpdatedAt)
+			if d, ok := g.stages[id]; ok {
+				node.Delivery = &d
+				g.active = append(g.active, d.Since)
+				switch {
+				case d.Stage == "proven" || d.Stage == "waived":
+					node.State, node.Need = "done", nil
+				case node.State == "done":
+					node.State = "running"
+				}
+			}
 			for _, pr := range is.PullRequests.Nodes {
 				ref := fmt.Sprintf("#%d", pr.Number)
 				if pr.Repository.NameWithOwner != node.Repo {
 					ref = shortRepo(pr.Repository.NameWithOwner) + ref
 				}
+				g.active = append(g.active, pr.UpdatedAt)
 				switch pr.State {
 				case "MERGED":
 					node.Merged = append(node.Merged, ref)
@@ -946,6 +1292,12 @@ func fromGitHub(repo, number string) (Board, error) {
 			}
 			b.Nodes = append(b.Nodes, node)
 		}
+		for _, at := range g.active {
+			if at > g.epic.Active && isTime(at) {
+				g.epic.Active = at
+			}
+		}
+		b.Epics = append(b.Epics, g.epic)
 	}
 	b.Nodes = append(b.Nodes, prs...)
 	onBoard := map[string]bool{}
@@ -984,9 +1336,10 @@ func fromGitHub(repo, number string) (Board, error) {
 	return b, nil
 }
 
-func descendants(parent ghIssue) ([]ghIssue, error) {
+func descendants(parent ghIssue, stages map[string]Delivery) ([]ghIssue, error) {
 	var children struct {
 		Node struct {
+			ghLedger
 			SubIssues ghChildren `json:"subIssues"`
 		} `json:"node"`
 	}
@@ -996,13 +1349,14 @@ func descendants(parent ghIssue) ([]ghIssue, error) {
 	if children.Node.SubIssues.PageInfo.HasNextPage {
 		return nil, fmt.Errorf("%s has more than 100 sub-issues", issueRef(parent.Repository.NameWithOwner, parent.Number))
 	}
+	children.Node.deliveries(stages)
 	var out []ghIssue
 	for _, child := range children.Node.SubIssues.Nodes {
 		out = append(out, child)
 		if child.SubIssues.TotalCount == 0 {
 			continue
 		}
-		deeper, err := descendants(child)
+		deeper, err := descendants(child, stages)
 		if err != nil {
 			return nil, err
 		}
@@ -1021,14 +1375,32 @@ func issueRef(repo string, number int) string {
 	return fmt.Sprintf("%s#%d", repo, number)
 }
 
-func lastQuestion(body string) string {
+var listItem = regexp.MustCompile(`^\s*(?:[-*+]|\d+[.)])\s+(.+)$`)
+
+func askedIn(body string) (question string, options []string, recommend string) {
 	lines := strings.Split(body, "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
 		line := strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(lines[i]), "#>-* "))
 		line = strings.Trim(line, "*_")
-		if strings.HasSuffix(line, "?") {
-			return line
+		if !strings.HasSuffix(line, "?") {
+			continue
 		}
+		for _, next := range lines[i+1:] {
+			m := listItem.FindStringSubmatch(next)
+			if m == nil {
+				if strings.TrimSpace(next) == "" {
+					continue
+				}
+				break
+			}
+			text := strings.TrimSpace(m[1])
+			if plain, ok := strings.CutSuffix(text, "(recommended)"); ok {
+				text = strings.TrimSpace(plain)
+				recommend = text
+			}
+			options = append(options, text)
+		}
+		return line, options, recommend
 	}
-	return ""
+	return "", nil, ""
 }

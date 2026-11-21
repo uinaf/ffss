@@ -1,0 +1,31 @@
+{
+  "context": "After a hold and resume, a delayed report from the lane's earlier attempt must not overwrite the current state: the 14:41 failure ran before the hold at an older head, so #102 stays in progress at 9d8e7f6, and lanes are told to tag reports with their attempt so older ones are ignored. Judge status.md.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Stale report ignored",
+      "max_score": 35,
+      "description": "Treats the 14:41 failure as a late result of the attempt before the hold (started 13:52, head 7a1b2c3) and does not mark #102 failed, file it as failed, or count it as a third failed round. Marking #102 failed scores 0"
+    },
+    {
+      "name": "Current state kept",
+      "max_score": 20,
+      "description": "Shows #102 as in progress with e2e-ios running at head 9d8e7f6, and the checklist line for #102 says so"
+    },
+    {
+      "name": "Attempts tagged",
+      "max_score": 25,
+      "description": "The message to the lanes numbers or names the current attempt (or head) and tells each lane to tag every report with it, so a report from an older attempt changes nothing"
+    },
+    {
+      "name": "Other lanes intact",
+      "max_score": 10,
+      "description": "Keeps dark's #111 PR #165 as ready for review and does not alter #101 or #103"
+    },
+    {
+      "name": "Honest",
+      "max_score": 10,
+      "description": "Claims no message was sent and no run finished beyond what the reports show"
+    }
+  ]
+}

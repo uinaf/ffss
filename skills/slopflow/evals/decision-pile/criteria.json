@@ -1,0 +1,31 @@
+{
+  "context": "With five open decisions, the right answer is one static page holding a card per decision with its options and a recommendation, plus a copy-friendly answer block, so the user answers everything in one reply; each answer is then recorded on its issue. Judge the page and the final message.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "One page",
+      "max_score": 25,
+      "description": "Writes one static HTML page with no JavaScript that holds all five decisions (#214, #217, #227, #241, #251). A Markdown file or a chat list instead of an HTML page scores 0"
+    },
+    {
+      "name": "Card per decision",
+      "max_score": 25,
+      "description": "Each decision is its own card or block with its question, both options, and a recommendation"
+    },
+    {
+      "name": "One reply",
+      "max_score": 20,
+      "description": "The page has a copy-friendly answer block, such as one line per issue to fill in or edit, and the final message asks the user to answer all five in one reply"
+    },
+    {
+      "name": "Recorded on issues",
+      "max_score": 20,
+      "description": "Says each answer will be recorded on its own issue and sent to the lane that owns it"
+    },
+    {
+      "name": "No drip",
+      "max_score": 10,
+      "description": "Does not hold four decisions back behind a one-question-at-a-time interview, and keeps the PRs and running work off the decision list"
+    }
+  ]
+}
