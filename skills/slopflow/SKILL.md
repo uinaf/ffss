@@ -103,7 +103,8 @@ every host. Archive the lane only then.
 
 Generated from the issue tree. Each lane is working, waiting on the user,
 stopped, or stalled: no commit, report, or stage change for 2 hours. Lead with
-one flow line; the WIP cap is how many lanes the user can review:
+one flow line. WIP counts lanes with unproven work, capped at how many the
+user can review:
 
 `WIP 2/3 · landed, not live: #14 40m · oldest in flight 2h · last proven 35m ago`
 
@@ -127,15 +128,14 @@ the first now and hold the rest until it's answered, even in a written
 deliverable.
 
 Four or more open decisions go on one static HTML page instead: a card each
-with its options and recommendation, and an answer block to copy
-(`decide <board.json> <out.html>`). Ask for one reply.
+with its options and recommendation, and a copyable answer block (the board
+script's `decide`). Ask for one reply; record each answer on its issue.
 
 ## Ledger
 
 The epic issue. Each lane keeps a `## Lane <name>` checklist, one line per
-issue, updated in place. Merged is not done: an issue is landed, deployed,
-then proven live, or waived when nothing deploys, each with one line of
-evidence:
+issue, updated in place, with its stage (landed, deployed, proven, or waived
+when nothing deploys) and evidence:
 
 ```markdown
 - [x] #12 proven: smoke 4411 passes in production
