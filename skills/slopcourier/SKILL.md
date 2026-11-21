@@ -39,7 +39,9 @@ another skill or the harness asked for the PR.
 5. **Visual aid.** Screenshot or short recording for UI, Mermaid for a flow,
    table for numbers, before/after code for an API. How to capture and
    upload: [visual-evidence.md](references/visual-evidence.md).
-6. **Bodycheck, before any create or edit call.** From the target repo:
+6. **Bodycheck, before any create or edit call.** Run
+   [slopclean's prose pass](../slopclean/references/prose.md) on `body.md`,
+   then, from the target repo,
    `go run <this skill's dir>/scripts/bodycheck/main.go body.md`, adding
    `-before <current body file>` for an edit, `-template <file>` when the body
    came from the owner's `<owner>/.github` template, and `-footer <line>` when
@@ -146,5 +148,9 @@ method and report the merged commit. Hold only when asked.
   log, and the revert command for the user to run: `gh pr revert <number>` (GitLab: a revert
   branch and `glab mr create`), or `git revert <sha>` where the default branch
   takes direct pushes (`-m 1` for a merge commit).
-- **Cleanup:** delete the branch only after the forge shows the PR merged. A
-  deleted head branch closes an open PR.
+- **Cleanup:** on `runs-passed` or `no-runs`, pr-watch prints a `cleanup:`
+  line per leftover in this checkout: local branch, its worktrees, remote
+  branch, stale `body.md`. Remove them and stop your background watches.
+  Delete a branch only after the forge shows the PR merged; a deleted head
+  branch closes an open PR.
+- **Report** one line: `cleanup: removed …; kept … because …`.

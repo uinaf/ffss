@@ -1,0 +1,41 @@
+{
+  "context": "A wordy draft PR body is cut to slopcourier's limits without losing a fact: outcome sentence, one visual aid for the staging numbers, a few one-line bullets, no filler or AI tells, no file list or test counts, and nothing opened on GitHub.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Within word limits",
+      "max_score": 25,
+      "description": "Counting the final body.md: at most 75 words outside tables, code blocks, and collapsed details, at most 150 words in total including tables, and at most 5 top-level bullets. Over any limit scores 0."
+    },
+    {
+      "name": "Bug and cause kept",
+      "max_score": 15,
+      "description": "The body says exports over 10,000 rows stopped at 10,000, and that the exporter ignored the API's next_cursor after the first page and now follows it until it is empty."
+    },
+    {
+      "name": "Staging numbers kept",
+      "max_score": 15,
+      "description": "The body keeps the staging measurements: 48,213 rows returned (was 10,000), 41 s (was 9 s), and peak memory flat at about 120 MB."
+    },
+    {
+      "name": "Risk and links kept",
+      "max_score": 10,
+      "description": "The body keeps the risk that exports above about 70,000 rows may hit the 60-second gateway timeout, tracked in #212, and keeps `Closes #198`."
+    },
+    {
+      "name": "No AI tells or filler",
+      "max_score": 15,
+      "description": "The body has none of the draft's filler: no 'comprehensive', 'robust', 'seamlessly', 'it's worth noting', 'thorough investigation', 'In summary', or triplet lists such as 'data integrity, user trust, and downstream reporting'; no Summary, Testing, or Conclusion scaffold headings."
+    },
+    {
+      "name": "No inventory or test counts",
+      "max_score": 10,
+      "description": "The body does not list changed files and does not mention the 6 new tests or the 312 passing tests."
+    },
+    {
+      "name": "Checked file goes up",
+      "max_score": 10,
+      "description": "delivery.md opens the PR with `--body-file body.md` (no inline `--body`), ready for review, with a conventional-commit title that leads with the user-visible outcome, and the agent pushes and opens nothing."
+    }
+  ]
+}
