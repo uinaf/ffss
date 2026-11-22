@@ -1,0 +1,31 @@
+{
+  "context": "Prose cleanup of a README: contrasts against claims nobody made become direct statements and volume counts go, while a checkable outcome number with its source and the contrasts the reader actually holds (a real alternative, a removed command) survive.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Unprompted contrasts restated",
+      "max_score": 30,
+      "description": "None of these contrasts survive in any wording: 'consistent, not best-effort', 'instead of reading rows one at a time', 'a count, not a guess', 'Speed isn't the goal here; restorability is'. Each is cut or restated as its positive side alone (for example: pgsnap streams each table with COPY; it keeps the last 24 snapshots). Any new 'not X, but Y', 'X, not Y', 'Y instead of X', 'rather than', or 'not just X' construction outside the pg_dump and upgrade sections fails this item."
+    },
+    {
+      "name": "Volume counts cut",
+      "max_score": 25,
+      "description": "The 412 commits, 19 contributors, 38 releases, and 1,840 tests are gone, and no rephrased volume claim replaces them (for example 'hundreds of commits', 'an active community', or 'a large test suite')."
+    },
+    {
+      "name": "Outcome number kept with source",
+      "max_score": 15,
+      "description": "The median snapshot drop from 9.1 GB to 3.4 GB on the 40 GB staging database survives with its link to bench/sizes.md."
+    },
+    {
+      "name": "Held contrasts kept",
+      "max_score": 20,
+      "description": "The pg_dump comparison survives: pg_dump writes one file per database, pgsnap one per table, so a restore can start before the download finishes. The upgrade section still tells the reader to run pgsnap take in place of pgsnap dump, naming both commands, and that the old command exits with code 64."
+    },
+    {
+      "name": "Facts intact, nothing invented",
+      "max_score": 10,
+      "description": "Snapshots while writes continue, the single REPEATABLE READ transaction with COPY, zstd, and keeping the last 24 snapshots survive; headings keep their Title Case; bench/sizes.md is unmodified; no new claims, numbers, or opinions appear."
+    }
+  ]
+}
