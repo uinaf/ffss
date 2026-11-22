@@ -1,6 +1,6 @@
 interface:
   display_name: "slopguard"
-  short_description: "Independent review when asked, or when the repository has no review bots or required reviews"
+  short_description: "Independent review of a finished change, when asked"
   default_prompt: "Use $slopguard for independent review of this completed change against its acceptance criteria."
 
 policy:

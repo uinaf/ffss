@@ -118,8 +118,8 @@ reply.
   callers), then rebase, rework, or recommend closure. After a rebase, read
   `git range-diff` and push with
   `--force-with-lease=<branch>:<head you observed>`.
-- **`slopguard`:** when the user asks, or the repo has no review bot or
-  required review, on the final head.
+- **`slopguard`:** on the final head, when the user or the repository guide
+  asks for it.
 
 Post thread replies and re-requests on the forge. Report status to the user.
 Update the title and body when the rework changes what the PR does.

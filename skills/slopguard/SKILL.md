@@ -1,6 +1,6 @@
 ---
 name: slopguard
-description: "Get an independent review of a finished change from the other model family and close out its findings. Use when the user asks for a slopguard or independent review, or before delivery in a repo with no review bots or required reviews."
+description: "Get an independent review of a finished change from the other model family and close out its findings. Use when the user, a brief, or the repository guide asks for a slopguard or independent review."
 ---
 
 # Slopguard
@@ -10,7 +10,8 @@ finds.
 
 ## When
 
-- Once, after the change passes its checks and before delivery.
+- When the user, a brief, or the repository guide asks for it: once, after
+  the change passes its checks.
 - Again after later edits that change behavior, contracts, or risk.
 
 ## Steps

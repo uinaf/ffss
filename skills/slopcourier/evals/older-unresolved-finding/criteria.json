@@ -1,5 +1,5 @@
 {
-  "context": "An older bot finding survives a docs-only push and is reproduced, so it is fixed in the loop. The repository has a review bot, so its review is the gate and slopguard does not run; the thread gets the fixing commit hash, and the PR is reported ready once green on the new head.",
+  "context": "An older bot finding survives a docs-only push and is reproduced, so it is fixed in the loop. Nobody asked for slopguard, so the bot's review is the gate and slopguard does not run; the thread gets the fixing commit hash, and the PR is reported ready once green on the new head.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -10,7 +10,7 @@
     {
       "name": "Review bot is the gate",
       "max_score": 25,
-      "description": "Does not run slopguard or another local review: the repository has a review bot, so its review of the new head is the gate"
+      "description": "Does not run slopguard or another local review: nobody asked for one, and the bot's review of the new head is the gate"
     },
     {
       "name": "Thread answered with the commit hash",
