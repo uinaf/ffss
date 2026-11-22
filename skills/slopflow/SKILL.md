@@ -28,7 +28,9 @@ issues' state and proposes anything else on its epic.
    of a fix. An epic holds issues from its own repository only; an issue
    fixed elsewhere links to the issue there.
 4. Show the epic map as a [board](#board), settle the closes and open
-   questions by [interview](#interview), and apply them on the user's OK.
+   questions by [interview](#interview), and apply them on the user's OK:
+   one root issue, each epic its sub-issue, each issue a sub-issue of its
+   epic.
 
 ## Kickoff
 

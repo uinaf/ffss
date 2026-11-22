@@ -68,7 +68,11 @@ go run <this skill's dir>/scripts/pr-watch/main.go [-R owner/repo] [-since <sinc
 - It exits on the first thing to act on. The first output line is the state:
   `ready`, `checks-failed`, `activity`, `pushed`, `blocked`, `closed`,
   `error`, or `timeout` (`-timeout`).
-- Act, then rerun with `-since <its since: line>`.
+- Act, then rerun with `-since <its since: line>`. `checks-failed`,
+  `activity`, and `blocked` go to [Triage](#triage); a `blocked` reason only
+  a human clears (a draft, a pending or required review) goes to the user.
+  `pushed`: read the new commits first. `closed`, `error`, `timeout`: report
+  what it printed and stop.
 - One background run per PR.
 - **Forge.** pr-watch reads it from the URL or origin host. For a self-hosted
   host named without `github` or `gitlab`, pass `-forge gitlab`; the header of
@@ -104,10 +108,10 @@ feedback.
   Fix each real one's whole defect class across the diff in one pass. Run
   the gates, push, reply on each fixed thread with the commit link alone,
   and re-request review from anyone who requested changes or approved an
-  older head. Reply to a wrong bot finding
-  with a one-line reason that cites the proof; resolve fixed and rejected bot
-  threads. A human's finding you judge wrong goes to the user with the
-  evidence; post nothing. Out-of-scope findings become tracker items.
+  older head. Reply to a wrong bot finding with a one-line reason that cites
+  the proof. Resolve every fixed thread and every rejected bot thread. A
+  human's finding you judge wrong goes to the user with the evidence; post
+  nothing. Out-of-scope findings become tracker items.
 - **Ping-pong:** after the third fix round on one PR, or when each round
   brings new findings of the same kind, stop patching. Hold the PR and
   propose a rewrite with a different approach in a fresh session, on another
