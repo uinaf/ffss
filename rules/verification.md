@@ -12,8 +12,8 @@ replay its counterexample on the real code.
 - Local runs and read-only live checks need no scope; paid calls, shared or
   production writes, and shared devices do.
 - A check, gate, or model proves a claim only after you've seen it fail on a
-  negative control: the fix reverted, a bad change or skip attempt at the
-  gate, a guard removed from both model and code. Otherwise it's an
+  negative control: the fix reverted, a bad change the gate refuses in
+  scratch, a guard removed from both model and code. Otherwise it's an
   observation.
 - Take expected values from a spec, fixture, captured real I/O, or property,
   never from the code under test. Mock only process, network, clock, or

@@ -15,9 +15,11 @@
   layers.
 - Run noisy commands with quiet flags, or in a delegate that returns only the
   conclusion.
-- Write no code comments. Keep only tool directives, license headers,
-  published API docs, and comments a lint rule requires.
-- A correction overwrites, never annotates.
+- Write no code comments; the commit message carries the why. Keep only tool
+  directives, license headers, published API docs, and comments a lint rule
+  requires.
+- A correction overwrites, never annotates: code, tests, copy, and docs show
+  only current behavior.
 - A product repository's AGENTS.md opens with what it's for, who it serves,
   and what stays out. Change that only on the user's yes.
 - Docs carry only what a reader must do or must not break. Link the code, CI,
