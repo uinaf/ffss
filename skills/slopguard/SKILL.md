@@ -18,11 +18,10 @@ edits; its verdict is advisory evidence, not a merge decision.
 ## Steps
 
 1. **Pick the reviewer** from the other model family than the change's author,
-   or than this session's for a human-written change: Claude wrote it, Codex
-   reviews; Codex wrote it, Claude reviews. The user's choice wins. If that
-   CLI is missing or signed out, report it; a same-family review
-   (`/code-review` in Claude Code, `/review` in Codex) runs only if the user
-   accepts it, and the report calls it not independent.
+   or than this session's for a human-written change. The user's choice
+   wins. If that CLI is missing or signed out, report it; a same-family
+   review (`/code-review` in Claude Code, `/review` in Codex) runs only if
+   the user accepts it, and the report calls it not independent.
 2. **Run it** from the repo root, in the foreground:
    - Codex: `codex review "<prompt>"`. The prompt names the target
      (`git diff <base>...HEAD`, a commit, or the uncommitted changes), the
@@ -41,10 +40,9 @@ edits; its verdict is advisory evidence, not a merge decision.
    user's login. Both exit 0 with findings, and `claude -p` also exits 0 on
    an auth or API error, so read stdout: an error there or a non-zero exit
    is a failed run.
-3. **Validate.** Findings are hypotheses. Accept one only with evidence of a
-   defect or unmet requirement; reject the rest with a short reason. Name
-   each accepted finding's defect class and fix every instance in the
-   change, not only the flagged line.
+3. **Validate.** Accept a finding only with evidence of a defect or unmet
+   requirement; reject the rest with a short reason. Name each accepted
+   finding's defect class and fix every instance in the change.
 4. **Re-review** after accepted fixes: the fixed target, same reviewer.
    After the third round, stop patching; reconsider the approach and tell
    the user.

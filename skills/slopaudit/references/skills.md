@@ -2,7 +2,7 @@
 
 What lint and evals cannot judge: whether a skill is worth routing to and
 cheap to load. Run `npx -y @uinaf/skillcheck lint --root <dir>` first on each
-dir holding `skills/`; evidence beats stylistic preference.
+dir holding `skills/`.
 
 ## Metadata and discovery
 
@@ -13,7 +13,8 @@ dir holding `skills/`; evidence beats stylistic preference.
   should activate it.
 - One trigger per materially distinct request branch. Collapse synonyms that
   rename one branch.
-- State the main overlap boundary without naming another skill.
+- State the main overlap boundary. Name another skill only when it ships in
+  this plugin or one this plugin depends on.
 
 ## Body shape
 
@@ -36,9 +37,9 @@ dir holding `skills/`; evidence beats stylistic preference.
   project's primary language, not ad-hoc shell written as prose.
 - Executable code another project maintains: link the exact public artifact
   and the contract it demonstrates instead of forking it into prose.
-- A package stays independently usable: it states prerequisites and
-  out-of-scope next steps locally, and never invokes, imports, or assumes a
-  sibling skill.
+- A plugin stays independently usable. Its skills may link and invoke each
+  other and skills of a plugin it depends on; they never assume a skill
+  outside those.
 
 ## Grade
 
@@ -51,11 +52,12 @@ Grade each dimension strong, mixed, or weak:
 | Progressive disclosure | Is detail in the right file? |
 | Repo fit | Are links, commands, and conventions current? |
 | Verification | Is the strongest mechanical check named, plus a real evidence loop? |
-| Boundaries | Are limits and next steps stated without leaning on a sibling skill? |
+| Boundaries | Are limits and next steps stated without leaning on a skill outside the plugin and its dependencies? |
 
 Blockers: a description that fails discovery; stale commands or paths; a
 workflow with no start, evidence loop, or completion; conflicts with the
-repo's guidance; sibling-skill dependencies.
+repo's guidance; a dependency on a skill outside the plugin and its
+dependencies.
 
 Majors: vague name; synonym-stuffed description; bloated `SKILL.md`; missing
 or muddy boundaries; prose re-inventing a deterministic tool; abstract
@@ -65,8 +67,7 @@ examples.
 
 Fix blockers first, then the highest-leverage majors, each with the smallest
 change that improves activation, decision quality, or proof. When pruning,
-measure common-path context for representative requests; line count alone
-hides retrieval cost. After edits, rerun `skillcheck lint` and the repo's gate,
-and rerun evals when behavior was the thing changed. For a disputed rewrite,
-one judge grades both versions' outputs in one pass, under anonymous labels,
-against one rubric.
+measure common-path context for representative requests. After edits, rerun
+`skillcheck lint` and the repo's gate, and rerun evals when behavior was the
+thing changed. For a disputed rewrite, one judge grades both versions'
+outputs in one pass, under anonymous labels, against one rubric.

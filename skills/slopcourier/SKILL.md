@@ -23,9 +23,7 @@ another skill or the harness asked for the PR.
 
 ## Open
 
-1. **Gates.** The repo's required checks pass on this revision. Proof fits the
-   change: a bug fix has a check that fails without the fix; a refactor runs
-   the same checks before and after; docs are checked against their sources.
+1. **Gates.** The repo's required checks pass on this revision.
 2. **Branch.** One task branch. If it already has a PR, update that PR. Open
    ready for review unless asked for a draft.
 3. **Title.** The user-visible outcome, in the shape of recent merged titles.
@@ -40,7 +38,7 @@ another skill or the harness asked for the PR.
    table for numbers, before/after code for an API. How to capture and
    upload: [visual-evidence.md](references/visual-evidence.md).
 6. **Bodycheck.** Cuts keep every fact: the bug, its cause, and each risk.
-   If the `slopclean` skill is installed, run its prose pass on `body.md`.
+   Run `slopclean`'s prose pass on `body.md`.
    Then, from the target repo,
    `go run <this skill's dir>/scripts/bodycheck/main.go body.md`, adding
    `-before <current body file>` for an edit, `-template <file>` when the body
@@ -52,7 +50,7 @@ another skill or the harness asked for the PR.
    `gh pr edit --body-file body.md`; on GitLab,
    `glab mr create --description "$(cat body.md)"` or
    `glab mr update --description "$(cat body.md)"`. Never type the body into
-   the command: only the checked file's contents go up.
+   the command.
 
 Report the PR's URL and head commit, then Babysit.
 
@@ -66,13 +64,11 @@ Wait with pr-watch, not a polling loop:
 go run <this skill's dir>/scripts/pr-watch/main.go [-R owner/repo] [-since <since>] <number or URL>
 ```
 
-- **Flags go before the number or URL.** Go stops parsing flags at the first
-  argument.
+- **Flags go before the number or URL.**
 - It exits on the first thing to act on. The first output line is the state:
   `ready`, `checks-failed`, `activity`, `pushed`, `blocked`, `closed`,
   `error`, or `timeout` (`-timeout`).
-- Act, then rerun with `-since <its since: line>` so nothing between runs is
-  missed.
+- Act, then rerun with `-since <its since: line>`.
 - One background run per PR.
 - **Forge.** pr-watch reads it from the URL or origin host. For a self-hosted
   host named without `github` or `gitlab`, pass `-forge gitlab`; the header of
@@ -105,10 +101,10 @@ feedback.
 - **Concrete fixes** (from humans or bots): validate each against the code.
   A finding is wrong when a proof in hand refutes it or the user called it
   negligible in this session; a re-raised finding is not new evidence.
-  Fix each real one's whole defect class across the diff, not only the
-  flagged line, in one pass. Run the gates, push, reply on each fixed thread
-  with the commit link alone, and re-request review from anyone who
-  requested changes or approved an older head. Reply to a wrong bot finding
+  Fix each real one's whole defect class across the diff in one pass. Run
+  the gates, push, reply on each fixed thread with the commit link alone,
+  and re-request review from anyone who requested changes or approved an
+  older head. Reply to a wrong bot finding
   with a one-line reason that cites the proof; resolve fixed and rejected bot
   threads. A human's finding you judge wrong goes to the user with the
   evidence; post nothing. Out-of-scope findings become tracker items.
@@ -119,10 +115,10 @@ feedback.
 - **Failed check:** read the log. Fix what this change broke. If the base has
   since fixed it, bring in the base. A flake or infra failure gets one rerun;
   the same failure twice is real.
-- **Behind or conflicted:** bring in the base, resolve conflicts, rerun the
-  gates, push, and keep watching. Before rebasing an old PR, check that its
-  problem is still live (intent, callers), then rebase, rework, or recommend
-  closure. After a rebase, read `git range-diff` and push with
+- **Behind or conflicted:** bring in the base, rerun the gates, and push.
+  Before rebasing an old PR, check that its problem is still live (intent,
+  callers), then rebase, rework, or recommend closure. After a rebase, read
+  `git range-diff` and push with
   `--force-with-lease=<branch>:<head you observed>`.
 - **`slopguard`:** only when the user asks or the repo has no review bot or
   required review; once, on the final head.

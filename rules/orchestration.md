@@ -8,9 +8,8 @@
 - Wait for delegates to report; poll only external state that reports to
   nobody, with a deadline and a failure exit.
 - A brief gives the goal, scope, authority, constraints, and what to report
-  back, and names the skill that owns each artifact. That skill and the
-  repository's template decide the artifact's text, so a brief never drafts
-  or itemizes public text.
+  back, and names the skill that owns each artifact. It never drafts public
+  text; that skill and the repository's template do.
 - A review or verification brief gives the artifact and checkable pass
   criteria. It leaves out your conclusion and the build history.
 - Run delegates in parallel only on separate files or separate worktrees.

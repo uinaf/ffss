@@ -1,7 +1,6 @@
 # Agent Guide
 
-`uinaf/ffss` ships the ffss agent skills and the shared agent rules. The
-[README](README.md) covers install.
+`uinaf/ffss` ships the ffss agent skills and the shared agent rules. 
 
 ## Boundaries
 

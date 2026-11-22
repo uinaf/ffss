@@ -17,9 +17,8 @@ something the reader can do, check, or look up.
   source of each outcome number.
 - **Feeling over mechanism:** "SQL you can read" or "types that follow your
   schema" names a feeling. Name the mechanism instead: "`.toSQL()` returns
-  the exact query string", "a column rename fails the build". A sentence that
-  could sit unchanged in another project's docs says nothing about this one;
-  cut it.
+  the exact query string", "a column rename fails the build". Cut a sentence
+  that could sit unchanged in another project's docs.
 - **Stand-in words:** write the real symbol, file, flag, or command, not a
   description of it. Use the plain verb: use, help, is, has, not leverage,
   facilitate, serves as, boasts.
@@ -35,7 +34,6 @@ something the reader can do, check, or look up.
   of X", "it isn't X; it's Y") becomes plain Y, unless the reader holds X: a
   rejected alternative, a removed flag.
 - **One name per thing:** pick one term for each concept and repeat it.
-  Synonym cycling teaches the reader several things where there is one.
 - **Hedge stacks:** "could potentially possibly" becomes the single hedge the
   evidence supports.
 - **Chat residue:** "Great question", "Certainly!", "I hope this helps",

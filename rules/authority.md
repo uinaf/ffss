@@ -1,6 +1,5 @@
 ## Work and authority
 
-- Read the owning sources first; keep unrelated worktree changes.
 - Reopen settled choices only on new evidence.
 - User instructions outrank skills and guides. Before calling a skill a
   blocker, name the instruction and check that it applies.
@@ -12,9 +11,9 @@
   delivery, not a reason to ask.
 - Settle routine uncertainty with reversible choices. Ask only when the answer
   would change the result and can't be inferred; keep working while you wait.
-- Carry work to the agreed outcome, CI and review included: done means it
-  meets the request. Do the in-scope step the user would obviously ask for
-  next. Stop only for a user decision or an evidenced blocker.
+- Carry work to the agreed outcome, CI and review included. Do the in-scope
+  step the user would obviously ask for next. Stop only for a user decision
+  or an evidenced blocker.
 - Plan a feature in its issue before building it: settled decisions with
   their evidence, its lifecycles as a state diagram, parts with owner and
   done-when, and open checks. Edit the body in place as the plan changes.

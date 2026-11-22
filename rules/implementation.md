@@ -12,18 +12,14 @@
   as boolean flags checked in several places.
 - Preserve error causes and partial failures. Keep retries bounded,
   cancellable, and limited to idempotent transient work. Budget them across
-  layers: a client retry inside a job retry multiplies attempts.
+  layers.
 - Run noisy commands with quiet flags, or in a delegate that returns only the
   conclusion.
-- Write no code comments: names, types, and tests carry intent, and the
-  commit message carries the why. Keep only tool directives, license headers,
+- Write no code comments. Keep only tool directives, license headers,
   published API docs, and comments a lint rule requires.
-- A correction overwrites, never annotates: code, tests, copy, and docs show
-  current behavior, never what was removed or rejected.
+- A correction overwrites, never annotates.
 - A product repository's AGENTS.md opens with what it's for, who it serves,
   and what stays out. Change that only on the user's yes.
 - Docs carry only what a reader must do or must not break. Link the code, CI,
-  or config that owns a fact; a restated copy is a mirror and goes stale. A
-  doc beyond the standard files earns its place or folds into one.
-- A code change edits a doc only where it changes what a reader must do. If a
-  doc restates the changed behavior, cut that mirror instead of updating it.
+  or config that owns a fact; cut a restated copy instead of updating it.
+- A code change edits a doc only where it changes what a reader must do.

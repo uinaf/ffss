@@ -17,11 +17,11 @@ Before counting:
 - Keep only what the user typed: drop tool results, reminders, hook output,
   and skill bodies.
 - Count button clicks that arrive as prompts, such as next-step buttons,
-  apart from typed prompts: they are stamps, not repeated instructions.
+  apart from typed prompts.
 - Separate subagent sessions from top-level ones. Count skill loads for both,
   corrections for top-level only.
 - Exclude eval and sandbox sessions (usually a working directory under a temp
-  path). They can outnumber real ones.
+  path).
 
 Per week:
 

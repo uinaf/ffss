@@ -26,12 +26,11 @@ write outside that workspace.
    and memory; SSH config hosts; tailnet peers; remote-build or lease CLIs on
    `PATH`; attached devices (`adb devices`, `xcrun simctl list`). Each
    question's options come from this inventory.
-3. **Interview.** One question at a time, one decision per question: the
-   decision, options from the inventory, and a recommendation. Lead with the
-   question; the inventory follows in a line or a small table. Ask the first
-   now and hold the rest until it's answered; write no routing on hosts
-   guessed from their names. Skip what the inventory already settles and
-   state it instead. In order:
+3. **Interview.** One question at a time: the decision, options from the
+   inventory, and a recommendation. Lead with the question; the inventory
+   follows in a line or a small table. Ask the first now and hold the rest
+   until it's answered; write no routing on hosts guessed from their names.
+   Skip what the inventory already settles and state it instead. In order:
    1. Hosts: which machines count. OS and reach come from the probe.
    2. Roles: which jobs each host takes (edit loop, heavy build, full suite,
       another OS, simulators, devices).
@@ -68,16 +67,14 @@ write outside that workspace.
      role.
    - A new host's role goes to the user as one [Interview](#build) question;
      route to it only as pending that answer.
-   - A capacity change proposes a limit scaled from the probe, as a starting
-     point the user can tune.
+   - A capacity change proposes a limit scaled from the probe.
 4. Report one row per host: state, drift, and what you changed or left for
    the user. Done when every host in the skill and the inventory has a fresh
    probe result or a pending question.
 
 ## Generated skill
 
-`SKILL.md` and `references/maintain.md`, shaped so an agent routes the same
-way every time:
+`SKILL.md` and `references/maintain.md`:
 
 - Frontmatter: `name: fleet` and a `description` that leads with what it
   does, then its triggers (a heavy build, another OS, a device, more builds
@@ -91,9 +88,9 @@ way every time:
   sessions where. Untrusted code runs only where the user allowed it.
 - **Cleanup**: stop what you started and remove your own worktrees,
   emulators, and scratch on every host. A lease, VM, or remote job is
-  stopped only when a readback (list or status) no longer shows it; a stop
-  request alone is not done. Keep an unconfirmed one in the report as open,
-  re-check it a bounded number of times, then hand it to the user.
+  stopped only when a readback (list or status) no longer shows it. Keep an
+  unconfirmed one in the report as open, re-check it a bounded number of
+  times, then hand it to the user.
 - **Upkeep**: one line saying that a dead host, a new machine, or a moved
   device means re-running this generator in Maintain mode.
 

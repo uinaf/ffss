@@ -10,11 +10,9 @@ decisions.
 - **Cut:** generic advice, directory tours, and duplicates.
 - **No mirrors:** a mirror restates what code, CI, or config already says:
   how a release, deploy, workflow, or tool works, which keys or tasks exist,
-  what a job touches. It goes stale on the next change. Delete it and link the
-  file and key. Behaviour specs, per-screen or per-feature walkthroughs,
-  testing guides, and test or lane catalogs are mirrors too: a rule a test
-  pins is documented by that test. Docs keep only what a reader must do or
-  must not break that no file, test, or check states.
+  what a job touches. Delete it and link the file and key. Behaviour specs,
+  per-screen or per-feature walkthroughs, testing guides, and test or lane
+  catalogs are mirrors too: a rule a test pins is documented by that test.
   Exception: README and `AGENTS.md` carry the exact install, setup, run, and
   verify commands.
 - **Diagrams over walls of text:** a doc that grows with every feature change
@@ -27,9 +25,9 @@ decisions.
 - **No automated work:** agent guides and repo skills never describe what
   CI/CD, hooks, Renovate, or bots do on their own: deploy and release steps,
   upgrade runbooks, what a hook or job runs, recovery for automated deploys.
-  Agents never run those steps. Keep the gates an agent runs, actions that
-  need a user decision, never-rules that stop an agent breaking the
-  automation, and steps an agent performs that nothing automates.
+  Keep the gates an agent runs, actions that need a user decision,
+  never-rules that stop an agent breaking the automation, and steps an agent
+  performs that nothing automates.
 - **Current state only:** cut retired or absent systems, their unset
   settings, history, and "there is no X" sections. Keep a limit only when a
   reader would otherwise build or call the wrong thing, and put the supported

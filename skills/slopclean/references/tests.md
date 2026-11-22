@@ -29,8 +29,7 @@ when a contract breaks and survives refactors
 
 1. **Target.** Name the owners in scope and a cost goal (CI seconds, test
    lines), never a deletion count. Report the coverage change but don't gate
-   on it: tests that mirror the code inflate coverage. Stop short rather than
-   cut an uncertain test.
+   on it. Stop short rather than cut an uncertain test.
 2. **Baseline** at a pinned revision: counts, test and support lines,
    coverage from the repo's command, per-file results. Failing tests are
    defect candidates, not deletions.

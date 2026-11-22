@@ -65,8 +65,6 @@ write outside that workspace.
 
 ## Generated skill
 
-Shape it so an agent runs it the same way every time:
-
 - Frontmatter: `name: howdy` and a `description` that leads with what it
   does, then its triggers ("howdy", "what needs me", "the brief").
 - **Sources**: one table row per source with the exact command or MCP tool

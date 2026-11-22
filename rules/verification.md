@@ -5,17 +5,16 @@ app, CLI, or endpoint the change touches), choosing the cheapest run that
 would fail if the change were wrong. Put lasting checks at the highest layer
 the gate affords: real surface, owned boundary, properties, then units for
 pure logic. Prove costly invariants tests rarely reach, such as races,
-retries, and state machines, with a model checker or bounded proof. Replay
-its counterexample on the real code: remove one guard in the model and in the
-code, and both must fail.
+retries, and state machines, with a model checker or bounded proof, and
+replay its counterexample on the real code.
 
 - Keep gates and hooks enabled; fix change-caused failures without asking.
-  A gate counts only after you've seen it refuse a bad change, including an
-  attempt to skip it.
 - Local runs and read-only live checks need no scope; paid calls, shared or
   production writes, and shared devices do.
-- A check proves a claim only if it fails on a negative control, such as the
-  fix reverted; otherwise it's an observation.
+- A check, gate, or model proves a claim only after you've seen it fail on a
+  negative control: the fix reverted, a bad change or skip attempt at the
+  gate, a guard removed from both model and code. Otherwise it's an
+  observation.
 - Take expected values from a spec, fixture, captured real I/O, or property,
   never from the code under test. Mock only process, network, clock, or
   randomness boundaries, never the behavior asserted.

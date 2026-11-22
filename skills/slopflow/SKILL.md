@@ -5,8 +5,8 @@ description: "Run a backlog as epics and parallel agent lanes. Use when asked to
 
 # Slopflow
 
-A coordinator runs a backlog as epics and lanes. The scope is the core: one
-lane per epic, owning its files, issues, and cleanup.
+A coordinator runs a backlog as epics, one lane per epic. A lane owns its
+epic's files, issues, and cleanup.
 
 | Role | Is | Does |
 | --- | --- | --- |
@@ -50,10 +50,13 @@ A brief carries, in order:
 2. **Authority**: branches, change requests, and merges in the repository.
 3. **Hosts**: where builds run, and the [host limits](#host-limits).
 4. **Proof**: what done means for each issue.
-5. **Ledger**: keep the epic's lane checklist current.
-6. **Report**: a [board](#board), on completion or on a blocker only the user
+5. **Delivery**: `slopcourier` for every change request. Before merging,
+   fix each AI review bot finding on the final head or reject it with
+   evidence on its thread.
+6. **Ledger**: keep the epic's lane checklist current.
+7. **Report**: a [board](#board), on completion or on a blocker only the user
    can clear.
-7. **Decisions**: a design choice the brief doesn't settle gets the
+8. **Decisions**: a design choice the brief doesn't settle gets the
    `needs-user` label and one [interview](#interview) question on its issue;
    the lane then takes its next issue.
 
