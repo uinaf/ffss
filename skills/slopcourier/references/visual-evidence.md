@@ -5,13 +5,13 @@ question and put it next to the claim it supports. Label diagrams and examples
 as explanatory; they don't prove execution.
 
 Text, tables, code, and Mermaid need no upload. Media goes up through the
-PR's own forge. Proof assets are never committed to the repo.
+PR's own forge.
 
 ## Recordings
 
 - Start within about 2 seconds of the first relevant action; end when the
   outcome is visible.
-- Trim instead of re-recording:
+- Trim:
   `ffmpeg -ss <start> -to <end> -i in.mp4 -c copy out.mp4`. Check the result
   with `ffprobe` before attaching.
 - Transcode webm first: `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4`.

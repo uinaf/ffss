@@ -8,15 +8,14 @@ when a contract breaks and survives refactors
   owned contract (protocol values, legal copy, audit events). Assert the
   fields that matter.
 - **Source-shape policy** goes in a linter, type, or build check.
-- **Mocks** sit at process, network, clock, or randomness boundaries and
-  never implement the behavior under test.
+- **Mocks** sit at process, network, clock, or randomness boundaries.
 - **Expected values** come from a spec, fixture, captured real I/O, or a
   property. Values copied from the subject's output, or snapshots accepted on
   first run, assert nothing.
 - **Skips** keep an owned reason, or get reported.
 - **Negative cases** fail for the reason they name.
-- **Tombstones:** a test that only asserts a removed feature stays gone pins a
-  conversation, not a contract. Delete it.
+- **Tombstones:** delete a test that only asserts a removed feature stays
+  gone.
 - **A test that breaks after a code change:** fix the code, unless the
   contract changed on purpose or the test pins implementation; then update
   it and say so.
@@ -28,11 +27,10 @@ when a contract breaks and survives refactors
 ## Pruning a suite
 
 1. **Target.** Name the owners in scope and a cost goal (CI seconds, test
-   lines), never a deletion count. Report the coverage change but don't gate
-   on it. Stop short rather than cut an uncertain test.
+   lines). Report the coverage change. Keep an uncertain test.
 2. **Baseline** at a pinned revision: counts, test and support lines,
-   coverage from the repo's command, per-file results. Failing tests are
-   defect candidates, not deletions.
+   coverage from the repo's command, per-file results. Report failing tests
+   as defect candidates.
 3. **Read by owner.** Split along production owners; read each test with its
    owner. Across a whole suite, give each file two independent readers and
    cut only where both agree.
@@ -51,9 +49,8 @@ when a contract breaks and survives refactors
 
 Keep tests that guard a public API, protocol, config, migration, storage,
 security, platform, or release contract, even if they look like source
-checks. Static or slow is not a reason. An injected clock doesn't make a
-test a timing test: the only proof of an auth expiry, rotation, or lease
-timeout stays.
+checks. Keep them when static or slow, and keep the only proof of an auth
+expiry, rotation, or lease timeout when it injects a clock.
 
 Report baseline and final counts, lines (production and test apart), and
 coverage; what was removed; look-alikes kept and why; seams removed;

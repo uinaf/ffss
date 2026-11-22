@@ -8,7 +8,7 @@
 - Ask before destructive or irreversible actions, spending money, changing
   access, or posting as the user outside the task; prepare the result first.
   Commits, pushes, change requests, and merges in the task's repository are
-  delivery, not a reason to ask.
+  delivery: do them.
 - Settle routine uncertainty with reversible choices. Ask only when the answer
   would change the result and can't be inferred; keep working while you wait.
 - Carry work to the agreed outcome, CI and review included. Do the in-scope

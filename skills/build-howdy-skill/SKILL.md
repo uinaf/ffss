@@ -38,9 +38,8 @@ write outside that workspace.
       name, own red CI, a ticket state, an unanswered DM, an event today).
    6. Knowledge: where docs and decisions live.
    7. Lanes: does the user run parallel agent lanes on epics?
-4. **Probe.** Run one read-only call per source: a search or list, never a
-   send, post, comment, label, or mark-read. Record the exact command or MCP
-   tool name that worked. Done when every source has a working call, or the
+4. **Probe.** Run one read-only call per source: a search or list. Record
+   the exact command or MCP tool name that worked. Done when every source has a working call, or the
    user decided on its failure: fix now, drop, or keep marked unverified. A
    source checked only by the user counts when they pasted its output.
 5. **Write** the [generated skill](#generated-skill).
@@ -59,7 +58,7 @@ write outside that workspace.
 3. Fix mechanical drift in place (renames, scope changes) and keep the
    user's own edits. Take a dead source or a new one to the user, one
    [Interview](#build) question each; until answered, mark the row
-   unavailable rather than delete it.
+   unavailable.
 4. Report one line per drift: what changed and what you did. Done when every
    row in the source table has a fresh probe result or a pending question.
 

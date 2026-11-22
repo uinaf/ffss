@@ -12,7 +12,6 @@ Read the matching reference (source-and-test diffs need both):
 [prose](references/prose.md), [code](references/code.md),
 [tests](references/tests.md), [docs and agent guides](references/docs.md).
 
-Every contract keeps one automated proof that fails when it breaks: a test at
-its strongest boundary, or a type, schema, or lint check. A drive recipe the
-gate doesn't run is not that proof. Report real defects and contract changes
-separately instead of fixing them in the pass.
+Every contract keeps at least one automated proof the gate runs, which fails
+when the contract breaks: a test at its strongest boundary, or a type,
+schema, or lint check. Report real defects and contract changes separately.

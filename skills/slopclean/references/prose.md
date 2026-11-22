@@ -19,9 +19,9 @@ something the reader can do, check, or look up.
   schema" names a feeling. Name the mechanism instead: "`.toSQL()` returns
   the exact query string", "a column rename fails the build". Cut a sentence
   that could sit unchanged in another project's docs.
-- **Stand-in words:** write the real symbol, file, flag, or command, not a
-  description of it. Use the plain verb: use, help, is, has, not leverage,
-  facilitate, serves as, boasts.
+- **Stand-in words:** write the real symbol, file, flag, or command. Plain
+  verbs (use, help, is, has) replace leverage, facilitate, serves as,
+  boasts.
 - **Mannered prose:** metaphor nouns (substrate, wedge, vector, primitive as
   a noun, north star, flywheel, ratchet, endgame), personified code ("the
   plan holds it"), figurative verbs ("rides along"), and aphorisms become the
@@ -30,9 +30,9 @@ something the reader can do, check, or look up.
   that claim significance (", ensuring reliability"); false ranges ("from
   startups to enterprises"); a bold inline header the line repeats
   ("**Speed:** Speed improved"). State the point once, in its natural shape.
-  A correction of a claim nobody made ("not just X", "Y, not X", "Y instead
-  of X", "it isn't X; it's Y") becomes plain Y, unless the reader holds X: a
-  rejected alternative, a removed flag.
+  A contrast becomes its positive half: "not just X", "Y, not X", "do Y, not
+  X", "Y instead of X", "it isn't X; it's Y" become plain Y. A boundary
+  nobody asked about ("this does A; B goes there") becomes what this does.
 - **One name per thing:** pick one term for each concept and repeat it.
 - **Hedge stacks:** "could potentially possibly" becomes the single hedge the
   evidence supports.
@@ -44,7 +44,7 @@ something the reader can do, check, or look up.
   nothing."
 - **Two readings:** untangle noun stacks ("the proto import budget check
   script" becomes "the script that checks the proto-import budget"); point
-  "this" and "which" at one noun, not a whole clause; keep "only" and "not"
+  "this" and "which" at one noun; keep "only" and "not"
   beside the word they change; name the actor a passive hides; replace "a/b"
   and "(s)" with words.
 - **Structure:** keep heading case, useful headings, lists, and emphasis.

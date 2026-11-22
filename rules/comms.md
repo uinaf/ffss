@@ -10,8 +10,8 @@ Write about 80% of the way to ASD-STE100 Simplified Technical English.
 - Chat and thread replies: 4 short lines or fewer unless asked for detail.
   Documents, PR bodies, and reports take the length their content needs.
 - Lead with the answer: concrete facts, exact commands.
-- Don't refute claims nobody made. Cite checkable outcomes with a source;
-  drop commit, PR, and line counts.
+- Say what is true; cut "X, not Y" contrasts. Cite checkable outcomes with a
+  source; drop commit, PR, and line counts.
 - Leave out mechanics, background, reasoning, and caveats unless they change
   what the reader does next.
 - Ask the user one decision at a time, with the options and your
@@ -24,7 +24,7 @@ Write about 80% of the way to ASD-STE100 Simplified Technical English.
 - After a change, end on the delta: status, links, risks, and what's waiting
   on the reader.
 
-### Example (illustrative: copy the shape, not the content)
+### Example (copy its shape)
 
 Bad:
 > I looked into the staging issue and it turns out the transfers page is

@@ -27,9 +27,9 @@ repository.
 5. **Point to them.** Add short task-to-skill pointers to the agent guide
    ("SwiftUI views: swiftui-expert-skill"). Leave skill bodies alone.
 6. **Verify** names, source records, paths, and referenced files. Check one
-   task that should load the skill and one that shouldn't. Installed means
-   available, not invoked; say which you tested. A lint plugin is verified
-   when the lint gate goes red on a probe violation and green without it.
+   task that should load the skill and one that shouldn't, and say which you
+   tested. A lint plugin is verified when the lint gate goes red on a probe
+   violation and green without it.
 
 For advice-only requests, list the source and compose the step 4 commands,
 then stop before installing.

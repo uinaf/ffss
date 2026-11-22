@@ -23,10 +23,10 @@ issues' state and proposes anything else on its epic.
 1. Read every open issue in the repository.
 2. Propose closes: fixed, obsolete, duplicate, nitpick, or vague, with a
    one-line reason each. Of an overlap, keep the clearest issue.
-3. Map every remaining issue to one epic. Group by feature or root cause,
-   never by platform or device, so one lane builds and proves every surface
-   of a fix. An epic holds issues from its own repository only; an issue
-   fixed elsewhere links to the issue there.
+3. Map every remaining issue to one epic. Group by feature or root cause, so
+   one lane builds and proves every surface of a fix. An epic holds issues
+   from its own repository; an issue fixed elsewhere links to the issue
+   there.
 4. Show the epic map as a [board](#board), settle the closes and open
    questions by [interview](#interview), and apply them on the user's OK:
    one root issue, each epic its sub-issue, each issue a sub-issue of its
@@ -68,7 +68,7 @@ A brief carries, in order:
 
 ### Host limits
 
-Starting points, not caps: tune them to live load, and record a change that
+Starting points: tune them to live load, and record a change that
 sticks.
 
 - A load ceiling per build host; check load before each heavy run.

@@ -13,7 +13,7 @@ coordinates.
 | `react-router` | `@tanstack/react-router` via [TanStack Intent](https://tanstack.com/intent) | A TanStack Router dependency; routes, params, search params, loaders, or navigation. |
 | `react-start` | `@tanstack/react-start` via [TanStack Intent](https://tanstack.com/intent) | A TanStack Start dependency or configuration; server functions, server routes, middleware, SSR, or deployment. Router alone does not imply Start. |
 
-Match the actual TanStack package, not React. A TanStack package that ships
+Match the actual TanStack package. A TanStack package that ships
 no skill is a gap; report it.
 
 ## Swift

@@ -19,7 +19,7 @@ dir holding `skills/`.
 ## Body shape
 
 - `SKILL.md` holds workflow, principles, boundaries, and routing. Lead with the
-  task, not a bibliography.
+  task.
 - Say what to do. Keep a prohibition only for a likely, costly mistake,
   beside the action that replaces it.
 - Spend tokens on repo-specific judgment. Delete any instruction that would
@@ -27,7 +27,7 @@ dir holding `skills/`.
 - Match freedom to risk: high for contextual judgment, medium when a preferred
   pattern exists, low for fragile operations.
 - Say what evidence to gather and what a complete result includes. End each
-  step on an observable completion condition, not "understood" or "handled".
+  step on an observable completion condition.
 
 ## Progressive disclosure
 
@@ -36,12 +36,11 @@ dir holding `skills/`.
   stays inline.
 - Repeated deterministic work routes to the target's existing framework,
   schema, task graph, or library; otherwise to a tested module in the
-  project's primary language, not ad-hoc shell written as prose.
+  project's primary language.
 - Executable code another project maintains: link the exact public artifact
-  and the contract it demonstrates instead of forking it into prose.
-- A plugin stays independently usable. Its skills may link and invoke each
-  other and skills of a plugin it depends on; they never assume a skill
-  outside those.
+  and the contract it demonstrates.
+- A plugin stays independently usable: its skills link and invoke each
+  other and the skills of a plugin it depends on.
 
 ## Grade
 

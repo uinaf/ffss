@@ -17,7 +17,7 @@ Every PR or MR create or edit goes through Open, steps 4 to 7, even when
 another skill or the harness asked for the PR.
 
 `git remote get-url origin` picks the forge: github.com uses `gh`, GitLab uses
-`glab`. Any other host: stop and say so. Check auth for that host
+`glab`. Name any other host to the user. Check auth for that host
 (`GH_HOST=github.com gh auth status`, `glab auth status --hostname <host>`).
 
 ## Open
@@ -43,13 +43,11 @@ another skill or the harness asked for the PR.
    `-before <current body file>` for an edit, `-template <file>` when the body
    came from the owner's `<owner>/.github` template, and `-footer <line>` when
    an attribution line is required. Fix what it flags and rerun until it exits
-   0, or say why a flag is wrong. No Go: check the limits by hand and say
-   bodycheck didn't run.
+   0, or say why a flag is wrong. No Go: say bodycheck didn't run.
 7. **Submit the checked file.** `gh pr create --body-file body.md` or
    `gh pr edit --body-file body.md`; on GitLab,
    `glab mr create --description "$(cat body.md)"` or
-   `glab mr update --description "$(cat body.md)"`. Never type the body into
-   the command.
+   `glab mr update --description "$(cat body.md)"`.
 
 Report the PR's URL and head commit, then Babysit.
 
@@ -57,7 +55,7 @@ Report the PR's URL and head commit, then Babysit.
 
 ### Watch
 
-Wait with pr-watch, not a polling loop:
+Wait with pr-watch:
 
 ```bash
 go run <this skill's dir>/scripts/pr-watch/main.go [-R owner/repo] [-since <since>] <number or URL>
@@ -80,41 +78,38 @@ go run <this skill's dir>/scripts/pr-watch/main.go [-R owner/repo] [-since <sinc
   same evidence, and say pr-watch didn't run.
 
 Read everything it surfaces: a `CHANGES_REQUESTED` review can have no inline
-thread, and bots often post top-level comments. A requested human reviewer who
-hasn't submitted is still pending. An unrelated push doesn't answer older
-feedback.
+thread, and bots often post top-level comments. A requested human reviewer
+is pending until they submit. Feedback stays open until its own fix or
+reply.
 
 ### Bots
 
-- Bots are advisory.
-- A bot is pending only while it visibly works on the current head (eyes
+- A bot is pending while it visibly works on the current head (eyes
   reaction, running check, "reviewing" comment, review request), or for a few
-  minutes after a push when it reviewed an earlier head of this PR. A bot that
-  never touched this PR is not pending.
+  minutes after a push when it reviewed an earlier head of this PR.
 - pr-watch waits a bounded time for a pending bot (`-bot-wait`; lower it to
   meet a user deadline), then moves on. Name the skipped bot in the report.
 - A usage-limit or quota notice means the bot is unavailable. Say so and move
   on.
-- Bots are summoned only when the user asks.
 
 ### Triage
 
-- **A human's design question or ambiguous point:** stop rework on that PR,
-  post nothing, and hand it back to the user with the evidence.
+- **A human's design question or ambiguous point:** pause that PR and hand
+  it to the user with the evidence.
 - **Concrete fixes** (from humans or bots): validate each against the code.
   A finding is wrong when a proof in hand refutes it or the user called it
-  negligible in this session; a re-raised finding is not new evidence.
+  negligible in this session, and stays wrong when re-raised.
   Fix each real one's whole defect class across the diff in one pass. Run
   the gates, push, reply on each fixed thread with the commit link alone,
-  and re-request review from anyone who requested changes or approved an
-  older head. Reply to a wrong bot finding with a one-line reason that cites
+  and re-request review from each human who requested changes or approved
+  an older head. Reply to a wrong bot finding with a one-line reason that cites
   the proof. Resolve every fixed thread and every rejected bot thread. A
-  human's finding you judge wrong goes to the user with the evidence; post
-  nothing. Out-of-scope findings become tracker items.
+  human's finding you judge wrong goes to the user with the evidence.
+  Out-of-scope findings become tracker items.
 - **Ping-pong:** after the third fix round on one PR, or when each round
-  brings new findings of the same kind, stop patching. Hold the PR and
-  propose a rewrite with a different approach in a fresh session, on another
-  model or harness if this one keeps missing. The user decides.
+  brings new findings of the same kind, hold the PR and propose a rewrite
+  with a different approach in a fresh session, on another model or harness
+  if this one keeps missing. The user decides.
 - **Failed check:** read the log. Fix what this change broke. If the base has
   since fixed it, bring in the base. A flake or infra failure gets one rerun;
   the same failure twice is real.
@@ -123,12 +118,11 @@ feedback.
   callers), then rebase, rework, or recommend closure. After a rebase, read
   `git range-diff` and push with
   `--force-with-lease=<branch>:<head you observed>`.
-- **`slopguard`:** only when the user asks or the repo has no review bot or
-  required review; once, on the final head.
+- **`slopguard`:** when the user asks, or the repo has no review bot or
+  required review, on the final head.
 
-On the forge, post only thread replies and re-requests; status goes to the
-user. Update the title and body only when the rework changes what the PR
-does.
+Post thread replies and re-requests on the forge. Report status to the user.
+Update the title and body when the rework changes what the PR does.
 
 ### Ready
 
@@ -142,7 +136,7 @@ commit.
   for the runs it starts: `runs-passed`, `no-runs`, `runs-failed`, or
   `timeout`.
 - **Direct push or dispatched workflow:** run pr-watch with
-  `-commit <full sha>` instead of a number.
+  `-commit <full sha>`.
 - **On failure:** report the run link, the likely cause from the failed job's
   log, and the revert command for the user to run: `gh pr revert <number>`
   (GitLab: a revert branch and `glab mr create`), or `git revert <sha>` where
@@ -150,6 +144,4 @@ commit.
 - **Cleanup:** on `runs-passed` or `no-runs`, pr-watch prints a `cleanup:`
   line per leftover in this checkout: local branch, its worktrees, remote
   branch, stale `body.md`. Remove them and stop your background watches.
-  Delete a branch only after the forge shows the PR merged; a deleted head
-  branch closes an open PR.
 - **Report** one line: `cleanup: removed …; kept … because …`.

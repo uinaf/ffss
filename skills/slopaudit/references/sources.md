@@ -74,7 +74,7 @@ Per agent-written PR in the window (sample if many):
   last agent commit and the merge;
 - follow-up fixes and reverts after merge.
 
-Cluster by mistake, not reviewer. Count each cluster, link two or three
+Cluster by mistake. Count each cluster, link two or three
 examples, and check whether an existing skill, rule, or check already claims
 to prevent it. A written lesson that keeps recurring means the text doesn't
 work.

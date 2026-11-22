@@ -18,10 +18,10 @@
 - Write no code comments; the commit message carries the why. Keep only tool
   directives, license headers, published API docs, and comments a lint rule
   requires.
-- A correction overwrites, never annotates: code, tests, copy, and docs show
-  only current behavior.
+- A correction overwrites: code, tests, copy, and docs show only current
+  behavior.
 - A product repository's AGENTS.md opens with what it's for, who it serves,
   and what stays out. Change that only on the user's yes.
 - Docs carry only what a reader must do or must not break. Link the code, CI,
-  or config that owns a fact; cut a restated copy instead of updating it.
+  or config that owns a fact, and delete a restated copy.
 - A code change edits a doc only where it changes what a reader must do.

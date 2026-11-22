@@ -15,9 +15,8 @@ replay its counterexample on the real code.
   negative control: the fix reverted, a bad change the gate refuses in
   scratch, a guard removed from both model and code. Otherwise it's an
   observation.
-- Take expected values from a spec, fixture, captured real I/O, or property,
-  never from the code under test. Mock only process, network, clock, or
-  randomness boundaries, never the behavior asserted.
+- Take expected values from a spec, fixture, captured real I/O, or property.
+  Mock at process, network, clock, or randomness boundaries.
 - Add a test only for a regression existing coverage would miss, once, at its
   strongest boundary. When a change breaks a test, fix the code unless the
   contract changed on purpose or the test pins implementation; then update

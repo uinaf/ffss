@@ -43,7 +43,7 @@ link.
 ## Validate
 
 Check each finding against the current source yourself. Drop or narrow what
-doesn't hold. A behavior the user set on purpose is not a defect.
+doesn't hold, and drop what the user set on purpose.
 
 ## Report
 

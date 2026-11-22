@@ -19,11 +19,11 @@ decisions.
   is a mirror. Cut it to what changes only with the architecture: module
   boundaries, main flows, lifecycles, and state machines. Draw each as
   Mermaid (`flowchart`, `sequenceDiagram`, `stateDiagram-v2`) in place of the
-  prose it covers, from the code, not from the old prose. Name only modules,
+  prose it covers, from the code. Name only modules,
   states, and events the code has. Screen and per-change detail stays in
   code, tests, and design boards. No exported images: they can't be diffed.
-- **No automated work:** agent guides and repo skills never describe what
-  CI/CD, hooks, Renovate, or bots do on their own: deploy and release steps,
+- **Automated work:** cut from agent guides and repo skills what CI/CD,
+  hooks, Renovate, or bots do on their own: deploy and release steps,
   upgrade runbooks, what a hook or job runs, recovery for automated deploys.
   Keep the gates an agent runs, actions that need a user decision,
   never-rules that stop an agent breaking the automation, and steps an agent
