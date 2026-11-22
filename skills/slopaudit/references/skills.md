@@ -20,6 +20,8 @@ dir holding `skills/`.
 
 - `SKILL.md` holds workflow, principles, boundaries, and routing. Lead with the
   task, not a bibliography.
+- Say what to do. Keep a prohibition only for a likely, costly mistake,
+  beside the action that replaces it.
 - Spend tokens on repo-specific judgment. Delete any instruction that would
   not change a capable model's behavior.
 - Match freedom to risk: high for contextual judgment, medium when a preferred

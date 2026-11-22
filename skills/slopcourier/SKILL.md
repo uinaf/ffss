@@ -1,6 +1,6 @@
 ---
 name: slopcourier
-description: "Open, update, babysit, and merge a PR or MR, then watch the runs a merge, direct push, or dispatched workflow starts. Use before any `gh pr create`, `gh pr edit`, `glab mr create`, or PR/MR title or description edit, and whenever work ends in a pull or merge request, including a request to ship it."
+description: "Open, update, and babysit a PR or MR until it is ready, then watch the runs a merge, direct push, or dispatched workflow starts. Use before any `gh pr create`, `gh pr edit`, `glab mr create`, or PR/MR title or description edit, and whenever work ends in a pull or merge request, including a request to ship it."
 ---
 
 # Slopcourier
@@ -9,10 +9,9 @@ Three lanes. Start where the request starts, stop where it stops:
 
 | Request | Lanes |
 |---|---|
-| "open the PR", "babysit" | Open (if needed), then Babysit until `ready` |
-| "get it merged", "ship it" | Open (if needed), Babysit, Merge, After merge |
+| open, update, or ship a PR | Open (if needed), then Babysit until `ready` |
 | review or CI feedback on an open PR | Babysit |
-| direct push or dispatched workflow | After merge |
+| a merged PR, direct push, or dispatched workflow | After merge |
 
 Every PR or MR create or edit goes through Open, steps 4 to 7, even when
 another skill or the harness asked for the PR.
@@ -131,15 +130,11 @@ On the forge, post only thread replies and re-requests; status goes to the
 user. Update the title and body only when the rework changes what the PR
 does.
 
-### Merge
+### Ready
 
-Merge only when the user asked for this PR to be merged, set a merge rule
-this session, or a brief grants it. Otherwise stop at `ready`, report it,
-and ask once how merges go here: who merges, when, and what to hold.
-
-Then merge when the latest head has green required checks, no pending human
-or bot review, and no open threads or blocking reviews. Use the repo's merge
-method and report the merged commit.
+`ready` means the latest head has green required checks, no pending human or
+bot review, and no open threads or blocking reviews. Report it with the head
+commit.
 
 ## After merge
 
