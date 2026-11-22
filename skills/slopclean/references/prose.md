@@ -13,7 +13,8 @@ something the reader can do, check, or look up.
   (seamless, robust, crucial, pivotal, delve, underscore, testament,
   incredibly, "it is important to note", "In conclusion") without rephrasing
   them into new filler. Where the materials give a number, the number
-  replaces the praise.
+  replaces the praise. Cut volume counts (commits, PRs, lines); link the
+  source of each outcome number.
 - **Feeling over mechanism:** "SQL you can read" or "types that follow your
   schema" names a feeling. Name the mechanism instead: "`.toSQL()` returns
   the exact query string", "a column rename fails the build". A sentence that
