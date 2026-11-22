@@ -11,6 +11,8 @@ Write about 80% of the way to ASD-STE100 Simplified Technical English.
   Documents, PR bodies, and reports take the length their content needs.
 - Lead with the answer: concrete facts, exact commands. No preamble, no recap
   of what you just did.
+- Don't refute claims nobody made. Cite checkable outcomes with a source;
+  drop commit, PR, and line counts.
 - Leave out mechanics, background, reasoning, and caveats unless they change
   what the reader does next.
 - Ask the user one decision at a time, with the options and your

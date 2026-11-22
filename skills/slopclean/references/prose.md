@@ -26,11 +26,13 @@ something the reader can do, check, or look up.
   a noun, north star, flywheel, ratchet, endgame), personified code ("the
   plan holds it"), figurative verbs ("rides along"), and aphorisms become the
   literal phrase. A named pattern the doc defines on first use stays.
-- **Template shapes:** "not just X, but Y"; ideas forced into threes;
-  trailing "-ing" clauses that claim significance (", ensuring
-  reliability"); false ranges ("from startups to enterprises"); a bold
-  inline header the line repeats ("**Speed:** Speed improved"). State the
-  point once, in its natural shape.
+- **Template shapes:** ideas forced into threes; trailing "-ing" clauses
+  that claim significance (", ensuring reliability"); false ranges ("from
+  startups to enterprises"); a bold inline header the line repeats
+  ("**Speed:** Speed improved"). State the point once, in its natural shape.
+  A correction of a claim nobody made ("not just X", "X, not Y", "Y instead
+  of X", "X isn't Y; it's Z") becomes plain Y, unless the reader holds X: a
+  rejected alternative, a removed flag.
 - **One name per thing:** pick one term for each concept and repeat it.
   Synonym cycling teaches the reader several things where there is one.
 - **Hedge stacks:** "could potentially possibly" becomes the single hedge the
