@@ -39,8 +39,9 @@ another skill or the harness asked for the PR.
 5. **Visual aid.** Screenshot or short recording for UI, Mermaid for a flow,
    table for numbers, before/after code for an API. How to capture and
    upload: [visual-evidence.md](references/visual-evidence.md).
-6. **Bodycheck.** If the `slopclean` skill is installed, run its prose pass on
-   `body.md`. Then, from the target repo,
+6. **Bodycheck.** Cuts keep every fact: the bug, its cause, and each risk.
+   If the `slopclean` skill is installed, run its prose pass on `body.md`.
+   Then, from the target repo,
    `go run <this skill's dir>/scripts/bodycheck/main.go body.md`, adding
    `-before <current body file>` for an edit, `-template <file>` when the body
    came from the owner's `<owner>/.github` template, and `-footer <line>` when
