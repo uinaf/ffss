@@ -2,7 +2,7 @@
 
 What lint and evals cannot judge: whether a skill is worth routing to and
 cheap to load. Run `npx -y @uinaf/skillcheck lint --root <dir>` first on each
-dir holding `skills/`.
+dir holding `skills/`; evidence beats stylistic preference.
 
 ## Metadata and discovery
 
