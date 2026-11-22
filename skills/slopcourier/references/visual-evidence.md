@@ -1,8 +1,8 @@
 # Visual evidence
 
 Reuse existing evidence first. Pick the smallest view that answers the review
-question and put it next to the claim it supports. Label diagrams and examples as explanatory; they don't
-prove execution.
+question and put it next to the claim it supports. Label diagrams and examples
+as explanatory; they don't prove execution.
 
 Text, tables, code, and Mermaid need no upload. Media goes up through the
 PR's own forge. Proof assets are never committed to the repo.
@@ -11,17 +11,18 @@ PR's own forge. Proof assets are never committed to the repo.
 
 - Start within about 2 seconds of the first relevant action; end when the
   outcome is visible.
-- Trim instead of re-recording: `ffmpeg -ss <start> -to <end> -i in.mp4 -c copy out.mp4`.
-  Check the result with `ffprobe` before attaching.
+- Trim instead of re-recording:
+  `ffmpeg -ss <start> -to <end> -i in.mp4 -c copy out.mp4`. Check the result
+  with `ffprobe` before attaching.
 - Transcode webm first: `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p out.mp4`.
 - Show a long wait as a before/after pair or a short clip of the transition.
 - Over about 15 seconds, a labeled screenshot sequence reads better.
 
 ## GitHub
 
-`gh` 2.99+ takes a repeatable `--attach` on
-`pr create`, `pr edit`, `pr comment`, and the `issue` equivalents.
-`gh pr review` doesn't; use `gh pr comment` for review media.
+`gh` 2.99+ takes a repeatable `--attach` on `pr create`, `pr edit`,
+`pr comment`, and the `issue` equivalents. `gh pr review` doesn't; use
+`gh pr comment` for review media.
 
 - Video embeds as a bare URL on its own line. No `![]()`, no alt text.
 - `--attach` doesn't work with `--web` or `--dry-run`. Retry a failed upload

@@ -36,12 +36,6 @@ Benchmarks and build-setting changes stay within the original task.
 | --- | --- | --- |
 | Skills picked by name | [android/skills](https://github.com/android/skills) | Android, Kotlin, or Jetpack Compose apps. Pick each skill from stack evidence: `r8-analyzer` when minify is on, `media3-cast-integration` for Cast, `leanback-to-compose-tv-migration` only for Leanback apps. |
 
-Install each skill by name at project scope, never `--all`:
-
-```sh
-npx skills add android/skills --skill <name> --agent claude-code --agent codex --yes
-```
-
 Run one-off audits such as `play-policy-insights`, `android-intent-security`,
 and `android-permissions-security`; don't vendor them.
 
@@ -63,8 +57,7 @@ the pointer is in place, remove a repo-local `effect-ts` skill.
 
 ## Lint plugins
 
-Install these as dev dependencies and register them in the repo's Oxlint or
-Vite+ lint config; each README has the setup.
+Each plugin's README has the setup.
 
 | Plugin | Install source | Evidence and use |
 | --- | --- | --- |

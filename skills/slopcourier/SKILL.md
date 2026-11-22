@@ -1,6 +1,6 @@
 ---
 name: slopcourier
-description: "Open, update, babysit, and merge a PR or MR, then watch the runs a merge, direct push, or dispatched workflow starts. Use before any `gh pr create`, `gh pr edit`, `glab mr create`, or PR/MR title or description edit, and whenever work ends in a pull or merge request: open a PR, ship it, push for review, get it merged, babysit it."
+description: "Open, update, babysit, and merge a PR or MR, then watch the runs a merge, direct push, or dispatched workflow starts. Use before any `gh pr create`, `gh pr edit`, `glab mr create`, or PR/MR title or description edit, and whenever work ends in a pull or merge request, including a request to ship it."
 ---
 
 # Slopcourier
@@ -29,19 +29,18 @@ another skill or the harness asked for the PR.
 2. **Branch.** One task branch. If it already has a PR, update that PR. Open
    ready for review unless asked for a draft.
 3. **Title.** The user-visible outcome, in the shape of recent merged titles.
-4. **Body.** Write it to `body.md`, never inline. Repo template first, then
-   the owner's `<owner>/.github` default template, else: outcome sentence,
-   one visual aid, up to 5 one-line bullets for what the aid doesn't show.
-   Describe the change as it stands.
+4. **Body.** Write it to `body.md`. Repo template first, then the owner's
+   `<owner>/.github` default template, else: outcome sentence, one visual aid,
+   up to 5 one-line bullets for what the aid doesn't show. Describe the change
+   as it stands.
    Leave out: file lists, test counts, command logs, review history, finding
    counts, fix hashes, reviewer names, and iteration narrative. CI shows
    proof; add proof only where CI can't.
 5. **Visual aid.** Screenshot or short recording for UI, Mermaid for a flow,
    table for numbers, before/after code for an API. How to capture and
    upload: [visual-evidence.md](references/visual-evidence.md).
-6. **Bodycheck, before any create or edit call.** Run
-   [slopclean's prose pass](../slopclean/references/prose.md) on `body.md`,
-   then, from the target repo,
+6. **Bodycheck.** If the `slopclean` skill is installed, run its prose pass on
+   `body.md`. Then, from the target repo,
    `go run <this skill's dir>/scripts/bodycheck/main.go body.md`, adding
    `-before <current body file>` for an edit, `-template <file>` when the body
    came from the owner's `<owner>/.github` template, and `-footer <line>` when
@@ -145,9 +144,9 @@ method and report the merged commit. Hold only when asked.
 - **Direct push or dispatched workflow:** run pr-watch with
   `-commit <full sha>` instead of a number.
 - **On failure:** report the run link, the likely cause from the failed job's
-  log, and the revert command for the user to run: `gh pr revert <number>` (GitLab: a revert
-  branch and `glab mr create`), or `git revert <sha>` where the default branch
-  takes direct pushes (`-m 1` for a merge commit).
+  log, and the revert command for the user to run: `gh pr revert <number>`
+  (GitLab: a revert branch and `glab mr create`), or `git revert <sha>` where
+  the default branch takes direct pushes (`-m 1` for a merge commit).
 - **Cleanup:** on `runs-passed` or `no-runs`, pr-watch prints a `cleanup:`
   line per leftover in this checkout: local branch, its worktrees, remote
   branch, stale `body.md`. Remove them and stop your background watches.
