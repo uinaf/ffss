@@ -39,6 +39,9 @@ each lifecycle the epics touch, and the module boundaries with the lane that
 owns each. Get the user's agreement on it; lanes start after that, and their
 briefs link it.
 
+Ask the merge rule once: lanes merge their own change requests when clear,
+or hold them for the user, and which repositories differ.
+
 ## Dispatch
 
 Split lanes so no two own the same file. A file two epics need goes to one
@@ -49,10 +52,11 @@ A brief carries, in order:
 
 1. **Goal**: the epic, its issues in order, the files owned, and the issues
    to leave alone.
-2. **Authority**: branches, change requests, and merges in the repository.
+2. **Authority**: branches, change requests, and merges in the repository,
+   under the merge rule from [Kickoff](#kickoff).
 3. **Hosts**: where builds run, and the [host limits](#host-limits).
 4. **Proof**: what done means for each issue.
-5. **Delivery**: `slopcourier` for every change request. Before merging,
+5. **Delivery**: `slopcourier` for every change request. Before a merge,
    fix each AI review bot finding on the final head or reject it with
    evidence on its thread.
 6. **Ledger**: keep the epic's lane checklist current.

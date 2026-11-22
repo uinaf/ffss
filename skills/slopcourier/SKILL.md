@@ -9,9 +9,9 @@ Three lanes. Start where the request starts, stop where it stops:
 
 | Request | Lanes |
 |---|---|
-| "open the PR" | Open, then Babysit until `ready`; merge only when asked |
-| "get it merged", "babysit" | Open (if needed), Babysit, After merge |
-| review or CI feedback on an open PR | Babysit, After merge |
+| "open the PR", "babysit" | Open (if needed), then Babysit until `ready` |
+| "get it merged", "ship it" | Open (if needed), Babysit, Merge, After merge |
+| review or CI feedback on an open PR | Babysit |
 | direct push or dispatched workflow | After merge |
 
 Every PR or MR create or edit goes through Open, steps 4 to 7, even when
@@ -133,9 +133,13 @@ does.
 
 ### Merge
 
-Merge when the latest head has green required checks, no pending human or
-bot review, and no open threads or blocking reviews. Use the repo's merge
-method and report the merged commit. Hold only when asked.
+Merge only when the user asked for this PR to be merged, set a merge rule
+this session, or a brief grants it. Otherwise stop at `ready`, report it,
+and ask once how merges go here: who merges, when, and what to hold.
+
+Then merge when the latest head has green required checks, no pending human
+or bot review, and no open threads or blocking reviews. Use the repo's merge
+method and report the merged commit.
 
 ## After merge
 
