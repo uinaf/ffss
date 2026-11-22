@@ -1,5 +1,5 @@
 {
-  "context": "An older bot finding survives a docs-only push and is reproduced, so it is fixed in the loop. The repository has a review bot, so its review is the gate and slopguard does not run; the thread gets the fixing commit hash, and the PR is squash-merged once green on the new head without asking permission.",
+  "context": "An older bot finding survives a docs-only push and is reproduced, so it is fixed in the loop. The repository has a review bot, so its review is the gate and slopguard does not run; the thread gets the fixing commit hash, and the PR is reported ready once green on the new head.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -18,14 +18,14 @@
       "description": "The reply on the src/runner.ts thread cites the fixing commit hash (a placeholder for the new commit is fine) and the reproduction evidence, then the thread is resolved"
     },
     {
-      "name": "Merges without asking",
+      "name": "Stops at ready",
       "max_score": 30,
-      "description": "Once required checks pass on the new head with no pending review or open thread, actions.md squash-merges PR #118 and reports it merged; it does not stop to ask whether it may merge or end at 'ready to merge'"
+      "description": "Once required checks pass on the new head with no pending review or open thread, actions.md reports PR #118 ready with its head commit. It does not merge: the request was to babysit"
     },
     {
-      "name": "Does not merge the broken head",
+      "name": "Broken head is not ready",
       "max_score": 15,
-      "description": "Does not merge f31a8bc despite green checks and approval"
+      "description": "Does not report f31a8bc ready, or merge it, despite green checks and approval"
     }
   ]
 }

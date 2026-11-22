@@ -1,0 +1,31 @@
+{
+  "context": "Tests the stop at ready: checks, approval, and thread resolution are all green on the latest head, and the request was to babysit. The agent reports the PR ready with its head commit and leaves the merge to the user, without posting noise.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Stops at ready",
+      "max_score": 30,
+      "description": "actions.md does not run gh pr merge or enable auto-merge for #42: the request was to babysit, and a merge was not asked for. Merging scores 0"
+    },
+    {
+      "name": "Green verified on latest head",
+      "max_score": 18,
+      "description": "The evidence cited is tied to head e4f5a6b: all checks pass, review approved, the Codex review completed on that head, no pending review requests, and zero unresolved threads"
+    },
+    {
+      "name": "Ready reported with the head",
+      "max_score": 30,
+      "description": "Reports PR #42 ready on head e4f5a6b as the settled outcome. Dry-run framing that nothing was executed is not a failure"
+    },
+    {
+      "name": "No noise posted",
+      "max_score": 12,
+      "description": "No filler or status comments are posted to the PR; nothing changed needed saying on the thread"
+    },
+    {
+      "name": "No invented signals",
+      "max_score": 10,
+      "description": "The agent acts only on the provided forge state; it does not invent extra reviews, checks, or blockers"
+    }
+  ]
+}
