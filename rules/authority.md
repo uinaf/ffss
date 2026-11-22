@@ -14,9 +14,9 @@
 - Carry work to the agreed outcome, CI and review included. Do the in-scope
   step the user would obviously ask for next. Stop only for a user decision
   or an evidenced blocker.
-- Plan a feature in its issue before building it: settled decisions with
-  their evidence, its lifecycles as a state diagram, parts with owner and
-  done-when, and open checks. Edit the body in place as the plan changes.
+- Plan a feature that spans several change requests in its issue before
+  building it: settled decisions with their evidence, its lifecycles as a
+  state diagram, parts with owner and done-when, and open checks. Edit the body in place as the plan changes.
 - Track multi-step work in the existing plan, issue, or task list. At
   handoffs, record decisions, proof with its revision, links, and what
   remains; on resume, check that record against the actual state.

@@ -76,7 +76,8 @@ write outside that workspace.
   4. **Since last time**: shipped, resolved, newly opened.
   One fact and one link per line.
 - **Lanes**, when the user runs them: the Needs you view opens with a lane
-  board in the shape of [slopflow's board](../slopflow/SKILL.md#board).
+  board, one row per lane: its epic, state (working, waiting on the user,
+  stopped, or stalled), open change request, and what is unverified.
 - **Done**: every non-empty source lands in exactly one section or is named
   as a failed source.
 - **Upkeep**: one line saying that a failing source, a renamed tool, or a

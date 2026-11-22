@@ -6,7 +6,7 @@ description: "Audit a person's whole agent setup: loaded rules and skills, sessi
 # Slopaudit
 
 Find what to prune, fix, or add so the user can tell agents less and trust
-them more. The audit is read-only and ends in a discussion.
+them more. The audit changes nothing in the setup it reads and ends in a discussion.
 
 ## Scope
 
@@ -65,7 +65,7 @@ deleting instructions and wiring existing checks over adding new ones.
 read of a changed file, always-loaded tokens, top repeated instructions.
 
 Save the report and baseline where the user keeps knowledge, next to earlier
-runs. File follow-ups in their tracker. Delete raw log excerpts from scratch.
+runs. File the follow-ups the user picks in their tracker. Delete raw log excerpts from scratch.
 
 ## Apply
 

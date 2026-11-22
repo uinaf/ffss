@@ -10,8 +10,8 @@ finds.
 
 ## When
 
-- When the user, a brief, or the repository guide asks for it: once, after
-  the change passes its checks.
+- When the user, a brief, or the repository guide asks for it, after the
+  change passes its checks.
 - Again after later edits that change behavior, contracts, or risk.
 
 ## Steps

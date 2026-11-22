@@ -87,8 +87,8 @@ reply.
 - A bot is pending while it visibly works on the current head (eyes
   reaction, running check, "reviewing" comment, review request), or for a few
   minutes after a push when it reviewed an earlier head of this PR.
-- pr-watch waits a bounded time for a pending bot (`-bot-wait`; lower it to
-  meet a user deadline), then moves on. Name the skipped bot in the report.
+- pr-watch waits `-bot-wait` (5 minutes by default; lower it to meet a user
+  deadline) for a pending bot, then moves on. Name the skipped bot in the report.
 - A usage-limit or quota notice means the bot is unavailable. Say so and move
   on.
 

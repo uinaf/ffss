@@ -31,7 +31,8 @@ write outside that workspace.
    follows in a line or a small table. Ask the first now and hold the rest
    until it's answered; write no routing on hosts guessed from their names.
    Skip what the inventory already settles and state it instead. In order:
-   1. Hosts: which machines count. OS and reach come from the probe.
+   1. Hosts: which machines count. [Probe](#build) them before question 2,
+      so the later options come from what each host shows.
    2. Roles: which jobs each host takes (edit loop, heavy build, full suite,
       another OS, simulators, devices).
    3. Rules: who may start what where; hosts that sleep, are shared, or are
@@ -40,7 +41,8 @@ write outside that workspace.
    5. Limits: concurrent builds, simulators, or emulators per host.
    6. Devices: phones, TVs, and emulators, and which host each hangs off.
    7. Needs the user: reboots, OS updates, deletes, waking shared machines.
-4. **Probe.** Reach each host and device read-only: `uname` or `ver`, core
+4. **Probe**, once the Hosts answer is in. Reach each host and device
+   read-only: `uname` or `ver`, core
    count, free disk, toolchain versions, `adb devices`. Wake a sleeping host
    only if the user allowed it. Done when every host has a probe result, or
    the user decided on its failure: fix now, drop, or keep marked
