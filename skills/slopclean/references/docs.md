@@ -36,7 +36,10 @@ decisions.
 - **Repo-owned only:** private workspaces, local helpers, accounts, hosts,
   internal URLs, and one-off observations stay out unless the owner adopts
   them. Describe what you left out by category, without the values, and note
-  that promoting it needs the maintainer.
+  that promoting it needs the maintainer. Public repositories stay
+  self-contained: never move their docs to a private wiki or link one.
+- **Shipped plans go:** delete research, plan, spec, and benchmark docs once
+  their subject ships. Don't move them elsewhere.
 - **One mode per doc:** tutorial, how-to, reference, or explanation
   ([Diátaxis](https://diataxis.fr/)). Move reference tables out of a
   tutorial, background out of a how-to, and argument out of reference into

@@ -22,14 +22,20 @@ another skill or the harness asked for the PR.
 
 ## Open
 
-1. **Gates.** The repo's required checks pass on this revision.
+1. **Gates.** The repo's required checks pass on this revision. No
+   committed media the project doesn't own, such as other people's avatars:
+   a pushed commit stays fetchable by SHA.
 2. **Branch.** One task branch. If it already has a PR, update that PR. Open
    ready for review unless asked for a draft.
 3. **Title.** The user-visible outcome, in the shape of recent merged titles.
 4. **Body.** Write it to `body.md`. Repo template first, then the owner's
    `<owner>/.github` default template, else: outcome sentence, one visual aid,
    up to 5 one-line bullets for what the aid doesn't show. Describe the change
-   as it stands.
+   as it stands. A closing keyword (`fix:`, `fixes`, `closes`, `resolves`)
+   goes only before an issue this change resolves; write `Related:` before
+   other links. With semantic-release, the `BREAKING CHANGE:` footer holds
+   the whole list of what callers must change, because release notes show
+   only the footer.
    Leave out: file lists, test counts, command logs, review history, finding
    counts, fix hashes, reviewer names, and iteration narrative. CI shows
    proof; add proof only where CI can't.
