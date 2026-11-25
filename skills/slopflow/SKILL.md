@@ -55,7 +55,9 @@ A brief carries, in order:
 2. **Authority**: branches, change requests, and merges in the repository,
    under the merge rule from [Kickoff](#kickoff).
 3. **Hosts**: where builds run, and the [host limits](#host-limits).
-4. **Proof**: what done means for each issue.
+4. **Proof**: what done means for each issue. The lane fixes its own
+   findings and leftovers instead of filing new issues, and deletes its
+   scratch before it reports.
 5. **Delivery**: `slopcourier` for every change request. Before a merge,
    fix each AI review bot finding on the final head or reject it with
    evidence on its thread.
