@@ -4,9 +4,10 @@
 //
 //	go run <skill dir>/scripts/pr-watch/main.go [flags] <number | url>
 //
-// An open change request is watched until its checks fail, someone else posts
-// a review or comment, its head moves, it merges or closes, or its checks
-// settle and it is ready or blocked. A merged one has the runs or pipelines
+// An open change request is watched until its checks fail, one of the
+// repository's own people or an installed bot posts a review or comment, its
+// head moves, it merges or closes, or its checks settle and it is ready or
+// blocked. Reviews and comments from anyone else are listed unread. A merged one has the runs or pipelines
 // its merge commit started watched until they finish; when they pass, it
 // prints a cleanup: line for each leftover of the merge in this checkout and
 // deletes nothing. With -commit, so do the runs a pushed or dispatched commit
@@ -329,8 +330,9 @@ type pr struct {
 }
 
 type actor struct {
-	Login string
-	Bot   bool
+	Login    string
+	Bot      bool
+	Outsider bool
 }
 
 type check struct {
@@ -632,22 +634,25 @@ func checkSignature(checks []check) string {
 // events to the second, and the printed since line is truncated to it.
 func isNew(at, since time.Time) bool { return !at.Before(since) }
 
+func fromOthers(a actor, viewer string) bool { return a.Login != viewer }
+
 // newActivity lists reviews and comments, threaded or not, resolved or not,
-// from anyone but the viewer at or after since.
+// at or after since, from anyone but the viewer and outsiders: accounts the
+// repository doesn't count as its own.
 func newActivity(p pr, since time.Time) []string {
 	var news []string
 	for _, r := range p.Reviews {
-		if r.Author.Login != p.Viewer && isNew(r.Submitted, since) {
+		if fromOthers(r.Author, p.Viewer) && !r.Author.Outsider && isNew(r.Submitted, since) {
 			news = append(news, fmt.Sprintf("%s reviewed: %s", r.Author.Login, r.State))
 		}
 	}
 	for _, c := range p.Comments {
-		if c.Author.Login != p.Viewer && isNew(c.Created, since) {
+		if fromOthers(c.Author, p.Viewer) && !c.Author.Outsider && isNew(c.Created, since) {
 			news = append(news, c.Author.Login+" commented")
 		}
 	}
 	for _, c := range p.ThreadComments {
-		if c.Author.Login != p.Viewer && isNew(c.Created, since) {
+		if fromOthers(c.Author, p.Viewer) && !c.Author.Outsider && isNew(c.Created, since) {
 			news = append(news, c.Author.Login+" commented in a thread")
 		}
 	}
@@ -694,7 +699,7 @@ func blockers(p pr) []string {
 		out = append(out, fmt.Sprintf("%d unresolved thread(s)", n))
 	}
 	for _, r := range p.Verdicts {
-		if r.State == "CHANGES_REQUESTED" {
+		if r.State == "CHANGES_REQUESTED" && !r.Author.Outsider {
 			out = append(out, r.Author.Login+" requested changes")
 		}
 	}
@@ -907,21 +912,34 @@ func (w *watcher) report(p pr, v verdict, polled time.Time) {
 		if t.Outdated {
 			where += " (outdated)"
 		}
-		threads = append(threads, fmt.Sprintf("%s %s: %s %s", where, t.Last.Author.Login, firstLine(t.Last.Body), t.Last.URL))
+		last := firstLine(t.Last.Body)
+		if t.Last.Author.Outsider {
+			last = "(not read)"
+		}
+		threads = append(threads, fmt.Sprintf("%s %s: %s %s", where, t.Last.Author.Login, last, t.Last.URL))
 	}
 	section(w.out, "unresolved threads", threads)
-	var news []string
+	var news, unread []string
 	for _, r := range p.Reviews {
-		if r.Author.Login != p.Viewer && isNew(r.Submitted, w.opts.since) && strings.TrimSpace(r.Body) != "" {
+		switch {
+		case !fromOthers(r.Author, p.Viewer) || !isNew(r.Submitted, w.opts.since):
+		case r.Author.Outsider:
+			unread = append(unread, strings.TrimSpace(r.Author.Login+" review "+r.URL))
+		case strings.TrimSpace(r.Body) != "":
 			news = append(news, fmt.Sprintf("%s review: %s %s", r.Author.Login, firstLine(r.Body), r.URL))
 		}
 	}
 	for _, c := range append(append([]comment{}, p.Comments...), p.ThreadComments...) {
-		if c.Author.Login != p.Viewer && isNew(c.Created, w.opts.since) {
+		switch {
+		case !fromOthers(c.Author, p.Viewer) || !isNew(c.Created, w.opts.since):
+		case c.Author.Outsider:
+			unread = append(unread, strings.TrimSpace(c.Author.Login+" "+c.URL))
+		default:
 			news = append(news, fmt.Sprintf("%s: %s %s", c.Author.Login, firstLine(c.Body), c.URL))
 		}
 	}
 	section(w.out, "new since "+w.opts.since.UTC().Format(time.RFC3339), news)
+	section(w.out, "not read (no write access)", dedupe(unread))
 	fmt.Fprintln(w.out, "since:", polled.UTC().Format(time.RFC3339))
 }
 
@@ -1126,13 +1144,13 @@ const prQuery = `query($owner: String!, $repo: String!, $number: Int!, $checks: 
       reviewRequests(first: 50) { nodes { requestedReviewer {
         __typename ... on User { login } ... on Bot { login } ... on Team { slug } ... on Mannequin { login }
       } } }
-      reviews(last: 100) { nodes { author { __typename login } state submittedAt url body commit { oid } } }
-      latestOpinionatedReviews(first: 100) { nodes { author { __typename login } state submittedAt url body commit { oid } } }
-      comments(last: 100) { nodes { author { __typename login } createdAt url body } }
+      reviews(last: 100) { nodes { author { __typename login } authorAssociation state submittedAt url body commit { oid } } }
+      latestOpinionatedReviews(first: 100) { nodes { author { __typename login } authorAssociation state submittedAt url body commit { oid } } }
+      comments(last: 100) { nodes { author { __typename login } authorAssociation createdAt url body } }
       reviewThreads(first: 100, after: $threads) {
         pageInfo { hasNextPage endCursor }
         nodes { isResolved isOutdated path line originalLine
-          comments(last: 50) { nodes { author { __typename login } createdAt url body } } }
+          comments(last: 50) { nodes { author { __typename login } authorAssociation createdAt url body } } }
       }
     }
   }
@@ -1143,26 +1161,31 @@ type gqlAuthor struct {
 	Login    string `json:"login"`
 }
 
-func (a *gqlAuthor) actor() actor {
+var insiders = map[string]bool{"OWNER": true, "MEMBER": true, "COLLABORATOR": true}
+
+func (a *gqlAuthor) actor(association string) actor {
 	if a == nil {
-		return actor{Login: "ghost"}
+		return actor{Login: "ghost", Outsider: !insiders[association]}
 	}
-	return actor{Login: a.Login, Bot: a.Typename == "Bot"}
+	bot := a.Typename == "Bot"
+	return actor{Login: a.Login, Bot: bot, Outsider: !bot && !insiders[association]}
 }
 
 type gqlComment struct {
-	Author    *gqlAuthor `json:"author"`
-	CreatedAt time.Time  `json:"createdAt"`
-	URL       string     `json:"url"`
-	Body      string     `json:"body"`
+	Author      *gqlAuthor `json:"author"`
+	Association string     `json:"authorAssociation"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	URL         string     `json:"url"`
+	Body        string     `json:"body"`
 }
 
 func (c gqlComment) comment() comment {
-	return comment{Author: c.Author.actor(), Created: c.CreatedAt, URL: c.URL, Body: c.Body}
+	return comment{Author: c.Author.actor(c.Association), Created: c.CreatedAt, URL: c.URL, Body: c.Body}
 }
 
 type gqlReview struct {
 	Author      *gqlAuthor            `json:"author"`
+	Association string                `json:"authorAssociation"`
 	State       string                `json:"state"`
 	SubmittedAt time.Time             `json:"submittedAt"`
 	URL         string                `json:"url"`
@@ -1171,7 +1194,7 @@ type gqlReview struct {
 }
 
 func (r gqlReview) review() review {
-	rv := review{Author: r.Author.actor(), State: r.State, Submitted: r.SubmittedAt, URL: r.URL, Body: r.Body}
+	rv := review{Author: r.Author.actor(r.Association), State: r.State, Submitted: r.SubmittedAt, URL: r.URL, Body: r.Body}
 	if r.Commit != nil {
 		rv.Commit = r.Commit.Oid
 	}
@@ -1442,8 +1465,17 @@ func (g *glabForge) RateLimitReset(context.Context) (time.Time, error) {
 }
 
 type glabForge struct {
-	host   string
-	viewer string
+	host     string
+	viewer   string
+	insiders map[string]bool
+}
+
+const glDeveloper = 30
+
+func (g *glabForge) author(u glUser) actor {
+	a := u.actor()
+	a.Outsider = !g.insiders[u.Username]
+	return a
 }
 
 func (g *glabForge) get(ctx context.Context, path string, out any) error {
@@ -1594,6 +1626,22 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 		return p, nil
 	}
 
+	if g.insiders == nil {
+		members, err := list[struct {
+			Username    string `json:"username"`
+			AccessLevel int    `json:"access_level"`
+		}](ctx, g, project(repo)+"/members/all?per_page=100")
+		if err != nil {
+			return pr{}, err
+		}
+		g.insiders = map[string]bool{}
+		for _, m := range members {
+			if m.AccessLevel >= glDeveloper {
+				g.insiders[m.Username] = true
+			}
+		}
+	}
+
 	if hp := mr.HeadPipeline; hp != nil {
 		// A fork's merge request runs its pipeline in the fork.
 		jobs, err := list[struct {
@@ -1624,9 +1672,9 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 	for _, r := range reviewers {
 		switch r.State {
 		case "requested_changes":
-			p.Verdicts = append(p.Verdicts, review{Author: r.User.actor(), State: "CHANGES_REQUESTED"})
+			p.Verdicts = append(p.Verdicts, review{Author: g.author(r.User), State: "CHANGES_REQUESTED"})
 		case "approved":
-			p.Verdicts = append(p.Verdicts, review{Author: r.User.actor(), State: "APPROVED"})
+			p.Verdicts = append(p.Verdicts, review{Author: g.author(r.User), State: "APPROVED"})
 		case "unreviewed", "review_started":
 			p.ReviewRequests = append(p.ReviewRequests, r.User.actor())
 		}
@@ -1646,7 +1694,7 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 			if !n.System {
 				notes = append(notes, n)
 			} else if m := glReviewNote.FindStringSubmatch(n.Body); m != nil {
-				p.Reviews = append(p.Reviews, review{Author: n.Author.actor(), State: glReviewStates[strings.ToLower(m[1])], Submitted: n.CreatedAt})
+				p.Reviews = append(p.Reviews, review{Author: g.author(n.Author), State: glReviewStates[strings.ToLower(m[1])], Submitted: n.CreatedAt})
 			}
 			open = open || (n.Resolvable && !n.Resolved)
 		}
@@ -1654,7 +1702,7 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 			continue
 		}
 		toComment := func(n glNote) comment {
-			return comment{Author: n.Author.actor(), Created: n.CreatedAt, URL: fmt.Sprintf("%s#note_%d", mr.WebURL, n.ID), Body: n.Body}
+			return comment{Author: g.author(n.Author), Created: n.CreatedAt, URL: fmt.Sprintf("%s#note_%d", mr.WebURL, n.ID), Body: n.Body}
 		}
 		if d.IndividualNote {
 			for _, n := range notes {
