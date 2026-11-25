@@ -1472,7 +1472,7 @@ type glabForge struct {
 
 const glDeveloper = 30
 
-func (g *glabForge) noteAuthor(u glUser) actor {
+func (g *glabForge) author(u glUser) actor {
 	a := u.actor()
 	a.Outsider = !g.insiders[u.Username]
 	return a
@@ -1672,9 +1672,9 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 	for _, r := range reviewers {
 		switch r.State {
 		case "requested_changes":
-			p.Verdicts = append(p.Verdicts, review{Author: r.User.actor(), State: "CHANGES_REQUESTED"})
+			p.Verdicts = append(p.Verdicts, review{Author: g.author(r.User), State: "CHANGES_REQUESTED"})
 		case "approved":
-			p.Verdicts = append(p.Verdicts, review{Author: r.User.actor(), State: "APPROVED"})
+			p.Verdicts = append(p.Verdicts, review{Author: g.author(r.User), State: "APPROVED"})
 		case "unreviewed", "review_started":
 			p.ReviewRequests = append(p.ReviewRequests, r.User.actor())
 		}
@@ -1694,7 +1694,7 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 			if !n.System {
 				notes = append(notes, n)
 			} else if m := glReviewNote.FindStringSubmatch(n.Body); m != nil {
-				p.Reviews = append(p.Reviews, review{Author: g.noteAuthor(n.Author), State: glReviewStates[strings.ToLower(m[1])], Submitted: n.CreatedAt})
+				p.Reviews = append(p.Reviews, review{Author: g.author(n.Author), State: glReviewStates[strings.ToLower(m[1])], Submitted: n.CreatedAt})
 			}
 			open = open || (n.Resolvable && !n.Resolved)
 		}
@@ -1702,7 +1702,7 @@ func (g *glabForge) PullRequest(ctx context.Context, repo string, number int) (p
 			continue
 		}
 		toComment := func(n glNote) comment {
-			return comment{Author: g.noteAuthor(n.Author), Created: n.CreatedAt, URL: fmt.Sprintf("%s#note_%d", mr.WebURL, n.ID), Body: n.Body}
+			return comment{Author: g.author(n.Author), Created: n.CreatedAt, URL: fmt.Sprintf("%s#note_%d", mr.WebURL, n.ID), Body: n.Body}
 		}
 		if d.IndividualNote {
 			for _, n := range notes {
