@@ -27,7 +27,8 @@ another skill or the harness asked for the PR.
    a pushed commit stays fetchable by SHA.
 2. **Branch.** One task branch. If it already has a PR, update that PR. Open
    ready for review unless asked for a draft.
-3. **Title.** The user-visible outcome, in the shape of recent merged titles.
+3. **Title.** One user-visible outcome, 72 characters at most, in the shape
+   of recent merged titles.
 4. **Body.** Write it to `body.md`. Repo template first, then the owner's
    `<owner>/.github` default template, else: outcome sentence, one visual aid,
    up to 5 one-line bullets for what the aid doesn't show. Describe the change
@@ -45,8 +46,8 @@ another skill or the harness asked for the PR.
 6. **Bodycheck.** Cuts keep every fact: the bug, its cause, and each risk.
    Run `slopclean`'s prose pass on `body.md`.
    Then, from the target repo,
-   `go run <this skill's dir>/scripts/bodycheck/main.go body.md`, adding
-   `-before <current body file>` for an edit, `-template <file>` when the body
+   `go run <this skill's dir>/scripts/bodycheck/main.go -title "<title>" body.md`,
+   adding `-before <current body file>` for an edit, `-template <file>` when the body
    came from the owner's `<owner>/.github` template, and `-footer <line>` when
    an attribution line is required. Fix what it flags and rerun until it exits
    0, or say why a flag is wrong. No Go: say bodycheck didn't run.

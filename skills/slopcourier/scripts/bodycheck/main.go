@@ -17,10 +17,11 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 type limits struct {
-	prose, total, bullets int
+	prose, total, bullets, title int
 }
 
 func main() {
@@ -33,10 +34,12 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	templatePath := flags.String("template", "", "template whose required headings the body keeps (default: the repository's change-request template)")
 	beforePath := flags.String("before", "", "body this one replaces; flags closing references it drops")
 	footer := flags.String("footer", "", "line the body must end with, such as an attribution")
+	title := flags.String("title", "", "change-request title to check against -title-max")
 	var lim limits
 	flags.IntVar(&lim.prose, "prose", 75, "maximum words outside tables, code, and collapsed details")
 	flags.IntVar(&lim.total, "total", 150, "maximum words including tables")
 	flags.IntVar(&lim.bullets, "bullets", 5, "maximum top-level bullets outside the validation section")
+	flags.IntVar(&lim.title, "title-max", 72, "maximum characters in the -title")
 	flags.Usage = func() {
 		fmt.Fprintln(stderr, "usage: bodycheck [flags] <body.md | ->")
 		flags.PrintDefaults()
@@ -71,7 +74,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	problems := check(body, template, before, *footer, lim)
+	problems := append(checkTitle(*title, lim.title), check(body, template, before, *footer, lim)...)
 	for _, problem := range problems {
 		fmt.Fprintln(stdout, problem)
 	}
@@ -298,6 +301,13 @@ func closingRefs(text string) map[string]string {
 		refs[strings.ToLower(match[1])] = match[0]
 	}
 	return refs
+}
+
+func checkTitle(title string, limit int) []string {
+	if n := utf8.RuneCountInString(strings.TrimSpace(title)); n > limit {
+		return []string{fmt.Sprintf("title is %d characters (limit %d): name one outcome", n, limit)}
+	}
+	return nil
 }
 
 func check(body, template, before, footer string, lim limits) []string {

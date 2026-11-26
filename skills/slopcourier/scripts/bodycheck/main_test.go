@@ -215,6 +215,14 @@ func TestRunExitCodes(t *testing.T) {
 	if code := run([]string{"-"}, strings.NewReader("Just words."), &stdout, &stderr); code != 1 || !strings.Contains(stdout.String(), "no visual aid") {
 		t.Fatalf("bad body: exit %d, %q", code, stdout.String())
 	}
+	stdout.Reset()
+	long := "fix: harden MIME normalization, bulk unwatched writes, history formatting, and subtitles"
+	if code := run([]string{"-title", long, "-"}, strings.NewReader(good), &stdout, &stderr); code != 1 || !strings.Contains(stdout.String(), "title is 88 characters (limit 72)") {
+		t.Fatalf("long title: exit %d, %q", code, stdout.String())
+	}
+	if code := run([]string{"-title", long[:72], "-"}, strings.NewReader(good), &stdout, &stderr); code != 0 {
+		t.Fatalf("title at limit: exit %d", code)
+	}
 	if code := run([]string{"missing.md"}, nil, &stdout, &stderr); code != 2 {
 		t.Fatalf("missing file: exit %d", code)
 	}
