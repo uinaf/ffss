@@ -16,8 +16,8 @@
 - Run noisy commands with quiet flags, or in a delegate that returns only the
   conclusion.
 - Write no code comments; the commit message carries the why. Keep only tool
-  directives, license headers, published API docs, and comments a lint rule
-  requires.
+  directives, license headers, published API docs, comments a lint rule
+  requires, and `SAFETY:` comments for invariants no code or test enforces.
 - A correction overwrites: code, tests, copy, and docs show only current
   behavior.
 - A product repository's AGENTS.md opens with what it's for, who it serves,
